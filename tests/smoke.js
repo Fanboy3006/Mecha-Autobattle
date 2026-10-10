@@ -9,9 +9,9 @@
  *      顶栏的版本 / 里程碑文字被脚本填上（证明 DOM 接线是通的）。
  *
  * 为什么不直接用 Playwright：本机（DSH 沙箱）装不了 Playwright —— npm 缓存在
- * 沙箱外，`npm i playwright` 会被系统拒绝。战棋那边同样的问题，用的办法是
- * `tools/boot-smoke.mjs`：在 Node 的 `vm` 里搭一套最小 DOM / Canvas 替身，把页面
- * 的内联脚本真跑一遍。这里沿用同一套办法，所以 `node tests/smoke.js` 不需要任何依赖。
+ * 沙箱外，`npm i playwright` 会被系统拒绝。战棋那边同样的问题，用的是
+ * `tools/boot-smoke.mjs`：在 Node 的 `vm` 里搭一套最小 DOM / Canvas 替身把页面
+ * 的内联脚本真跑一遍。替身在 `tests/lib/dom-stub.mjs`，和 `tests/sim.js` 共用。
  * 等哪天 Playwright 能装了，再加一个真浏览器的 `tests/browser-smoke.js`。
  *
  * 用法：node tests/smoke.js
@@ -19,8 +19,8 @@
 import { readFileSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import vm from 'vm';
 import { assemble } from '../tools/assemble-src.mjs';
+import { loadPage } from './lib/dom-stub.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
@@ -35,92 +35,6 @@ const errs = [];
 const ok = m => console.log('  ✓ ' + m);
 const bad = m => { fails++; errs.push(m); console.log('  ✗ ' + m); };
 const info = m => console.log('    · ' + m);
-
-/* ============================ DOM / Canvas 替身 ============================ */
-/* 只实现游戏真的用到的那点 API；以后片段变多，缺什么就往这里加。 */
-const byId = new Map();
-
-function makeCtx() {
-  const noop = () => {};
-  const target = {
-    globalAlpha: 1, fillStyle: '#000', strokeStyle: '#000', lineWidth: 1,
-    font: '10px sans-serif', textAlign: 'start', textBaseline: 'alphabetic',
-    measureText: t => ({ width: String(t).length * 6 }),
-    createLinearGradient: () => ({ addColorStop: noop }),
-    createRadialGradient: () => ({ addColorStop: noop }),
-    getImageData: (x, y, w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(Math.max(4, w * h * 4)) }),
-    createImageData: (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(Math.max(4, w * h * 4)) }),
-    getLineDash: () => [],
-  };
-  return new Proxy(target, {
-    get(t, k) { return k in t ? t[k] : noop; },
-    set(t, k, v) { t[k] = v; return true; },
-  });
-}
-
-function makeEl(tag = 'div', id = '') {
-  return {
-    tagName: String(tag).toUpperCase(), nodeType: 1, id,
-    innerHTML: '', textContent: '', value: '', hidden: false, disabled: false,
-    style: {}, dataset: {}, children: [], _attrs: {}, _ctx: null,
-    classList: { _s: new Set(), add(...c) { c.forEach(x => this._s.add(x)); }, remove(...c) { c.forEach(x => this._s.delete(x)); }, toggle(c, f) { const on = f === undefined ? !this._s.has(c) : !!f; on ? this._s.add(c) : this._s.delete(c); return on; }, contains(c) { return this._s.has(c); } },
-    setAttribute(k, v) { this._attrs[k] = String(v); },
-    getAttribute(k) { return k in this._attrs ? this._attrs[k] : null; },
-    removeAttribute(k) { delete this._attrs[k]; },
-    addEventListener() {}, removeEventListener() {},
-    appendChild(c) { this.children.push(c); return c; },
-    insertBefore(c) { this.children.push(c); return c; },
-    prepend(c) { this.children.unshift(c); return c; },
-    removeChild() {}, remove() {}, focus() {}, blur() {}, click() {}, select() {},
-    scrollTo() {}, scrollIntoView() {},
-    querySelector() { return makeEl('div'); },
-    querySelectorAll() { return []; },
-    closest() { return null; },
-    getBoundingClientRect: () => ({ left: 0, top: 0, right: 900, bottom: 700, width: 900, height: 700 }),
-  };
-}
-
-function makeCanvas(w = 300, h = 150) {
-  const cv = makeEl('canvas');
-  cv.width = w; cv.height = h; cv.clientWidth = w; cv.clientHeight = h;
-  cv.getContext = () => (cv._ctx = cv._ctx || makeCtx());
-  cv.toDataURL = () => 'data:image/png;base64,';
-  return cv;
-}
-
-function getEl(sel) {
-  const id = String(sel).replace(/^#/, '');
-  if (!byId.has(id)) byId.set(id, id === 'cv' ? makeCanvas(800, 600) : makeEl('div', id));
-  return byId.get(id);
-}
-
-const documentStub = {
-  documentElement: makeEl('html'), body: makeEl('body'), head: makeEl('head'),
-  title: '', cookie: '', hidden: false,
-  querySelector: sel => getEl(sel),
-  querySelectorAll: () => [],
-  getElementById: id => getEl('#' + id),
-  createElement: tag => (tag === 'canvas' ? makeCanvas() : makeEl(tag)),
-  createDocumentFragment: () => makeEl('fragment'),
-  addEventListener() {}, removeEventListener() {},
-};
-
-const store = new Map();
-const sandbox = {
-  console,
-  document: documentStub,
-  devicePixelRatio: 2, innerWidth: 1440, innerHeight: 900,
-  matchMedia: q => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {} }),
-  requestAnimationFrame: () => 0, cancelAnimationFrame() {},
-  setTimeout: () => 0, clearTimeout() {}, setInterval: () => 0, clearInterval() {},
-  performance: { now: () => Date.now() },
-  localStorage: { getItem: k => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: k => store.delete(k), clear: () => store.clear() },
-  navigator: { userAgent: 'node' },
-  addEventListener() {}, removeEventListener() {},
-  getComputedStyle: () => ({ getPropertyValue: () => '#000' }),
-  alert() {}, confirm: () => true, prompt: () => null,
-};
-sandbox.window = sandbox; sandbox.self = sandbox; sandbox.globalThis = sandbox;
 
 /* ============================ [1] 生成物同步 ============================ */
 console.log('冒烟测试：机甲指挥\n\n[1] 生成物与源文件同步');
@@ -172,38 +86,32 @@ if (html) {
 
 /* ============================ [3] 跑页面里的内联脚本 ============================ */
 console.log('\n[3] 页面里的内联脚本能真的跑起来');
-const scripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]);
-if (!scripts.length) bad('页面里找不到内联脚本');
-else info(`找到 ${scripts.length} 段内联脚本，共 ${scripts.reduce((n, s) => n + s.length, 0)} 字符`);
-
-const ctxVm = vm.createContext(sandbox);
-let loaded = true;
-for (let i = 0; i < scripts.length; i++) {
-  try {
-    new vm.Script(scripts[i], { filename: `index.html#script${i}` }).runInContext(ctxVm);
-    info(`脚本 ${i} 执行完成`);
-  } catch (e) {
-    bad(`脚本 ${i} 执行报错：${e && e.stack ? e.stack.split('\n').slice(0, 4).join('\n      ') : e}`);
-    loaded = false;
-  }
-}
-if (loaded && scripts.length) ok('全部内联脚本执行完毕，没有抛异常');
+const page = html ? loadPage(INDEX) : { sandbox: {}, byId: new Map(), scripts: [], errors: ['没有 index.html，跳过'] };
+if (!page.scripts.length) bad('页面里找不到内联脚本');
+else info(`找到 ${page.scripts.length} 段内联脚本，共 ${page.scripts.reduce((n, s) => n + s.length, 0)} 字符`);
+if (page.errors.length) page.errors.forEach(e => bad('内联脚本执行报错：' + e));
+else if (page.scripts.length) ok('全部内联脚本执行完毕，没有抛异常');
 
 /* ============================ [4] window.__game 接口 ============================ */
 console.log('\n[4] window.__game 就绪');
-const G = sandbox.__game;
+const G = page.sandbox.__game;
 if (!G) bad('window.__game 没有暴露');
 else {
   ok('window.__game 已暴露');
   const checks = [
     ['version', v => typeof v === 'string' && /^\d+\.\d+\.\d+$/.test(v)],
-    ['milestone', v => v === 'M0'],
+    ['milestone', v => v === 'M1'],
     ['ready', v => v === true],
     ['slots', v => v === 6],                                  // 方案 3.1：双方各 2 排 × 3 列
     ['rows', v => v === 2],
     ['cols', v => v === 3],
     // 带种子的随机数：同一种子必须给出同一串数（方案 6.1）
     ['mulberry32', v => typeof v === 'function' && v(12345)() === v(12345)()],
+    // M1 的战斗内核：simulate(我方, 敌方, 指令, 种子) → 逐条战斗记录
+    ['simulate', v => typeof v === 'function'],
+    ['编成表', v => Array.isArray(v) && v.length > 0],
+    ['默认五人队', v => Array.isArray(v) && v.length > 0],
+    ['ALLY_T', v => Array.isArray(v) && v.length === 34],
   ];
   for (const [name, test] of checks) {
     const v = G[name];
@@ -214,9 +122,9 @@ else {
 
 /* ============================ [5] 顶栏接线（DOM 真的被改到） ============================ */
 console.log('\n[5] 脚本真的改到了页面上的元素');
-const verEl = byId.get('ver'), msEl = byId.get('ms');
+const verEl = page.byId.get('ver'), msEl = page.byId.get('ms');
 if (!verEl || !msEl) bad('脚本没有查询过 #ver / #ms（boot() 没接线？）');
-else if (verEl.textContent === 'v0.0.1' && msEl.textContent === 'M0') ok(`顶栏文字被脚本填成：${verEl.textContent} · ${msEl.textContent}`);
+else if (verEl.textContent === 'v' + (G ? G.version : '?') && msEl.textContent === (G ? G.milestone : '?')) ok(`顶栏文字被脚本填成：${verEl.textContent} · ${msEl.textContent}`);
 else bad(`顶栏文字不对：#ver=${JSON.stringify(verEl.textContent)} #ms=${JSON.stringify(msEl.textContent)}`);
 
 /* ============================ 结果 ============================ */

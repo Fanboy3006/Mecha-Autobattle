@@ -32,20 +32,30 @@
 
 ## 2. 当前进度
 
-**M0（仓库骨架）已交付**，内容就是第 3 节那张表里的文件：
+**M0（仓库骨架）已完成**（作者试过：页面能打开、顶栏和说明卡片正常）：
 
 - 本地 git 仓库 `F:\DSH-mecha\mecha-autobattle`（打算公开到 GitHub，但本机没装 `gh`，暂时还没推）；
 - 源文件 `src/shell.html` + `src/css/main.css` + `src/js/*.js`；
-- 生成物 `src/artifact-fragment.html`、`index.html`（双击能打开的空页面）；
+- 生成物 `src/artifact-fragment.html`、`index.html`（双击能打开的页面）；
 - 工具 `tools/assemble-src.mjs`、`tools/build-src.mjs`；
 - 冒烟测试 `tests/smoke.js`：**不依赖 Playwright**，用 Node 的 `vm` + 最小 DOM / Canvas 替身加载 `index.html` 里的全部内联脚本，
-  检查没有报错、`window.__game` 齐全（旧项目 `tools/boot-smoke.mjs` 就是这么做的）；
+  检查没有报错、`window.__game` 齐全（旧项目 `tools/boot-smoke.mjs` 就是这么做的），替身在 `tests/lib/dom-stub.mjs`；
 - 协作文件 `协作/任务板.md`、`协作/协作日志.md`。
+
+**M1（战斗内核，无界面）已交付，等作者试**：
+
+- `src/js/10-数据.js`（34 名角色 / 29 种敌人，整份复制）、`11-敌方梯队.js`、`12-档位职业.js`；
+- `30-射程.js`（方案 3.3 的射程换算）、`20-战斗计算.js`（公式 / 减免 / 命中 / 暴击 / 武器可用性）、
+  `40-单位.js`（升级与晋升、速度、排 / 列）、`50-AI.js`（方案 5.1 / 5.2）、`60-战斗.js`（回合流程 + `simulate()`）、
+  `70-编成.js`（第 1 层 3 条编成初稿 + 默认 Lv10 五人队）；
+- 测试 `tests/sim.js`（固定种子可复现 + 100 场胜率 + 公式对照）、`tools/specials.mjs` → `docs/特技换算待办.md`（只列清单，不含换算方案）。
 
 > M0 的冒烟测试不是 Playwright：本机 npm 缓存在沙箱外，Playwright 装不上。
 > 方案 M0 里写的「Playwright 冒烟测试」按上面这个替代方案落地。
 
-**下一个里程碑：M1 战斗内核（没有界面）**，验收方式是 `node tests/sim.js`。见第 5 节。
+**下一个里程碑：M2 战斗画面**（编队、战斗画面、播放 / 暂停 / 二倍速 / 跳过动画），见第 5 节。
+M1 遗留的待作者拍板事项（编成强度、默认五人队、修理策略、`statCoef` / `ENEMY_SCALE` 命名、减免顺序）
+都记在 `协作/任务板.md` 的 M1 段里。
 
 > 本文件是说明书，不是测试报告。**不要**在文档里写「已测试通过」这类没有实际跑过的结论；
 > 要下结论，先真的跑命令，把真实输出记进 `协作/任务板.md`。
@@ -170,7 +180,7 @@ node tests/smoke.js               # 冒烟：加载 index.html 的内联脚本�
 | 旧项目协作规范 | `F:\DSH-mecha\mecha-tactics\协作\分工与派活指南.md` | 谁做什么、怎么派活、已知坑 |
 | 旧项目接口约定 | `F:\DSH-mecha\mecha-tactics\协作\接口约定.md` | `__game` 字段、音频 / 美术接口的写法范例 |
 | 旧项目规则设计 | `F:\DSH-mecha\mecha-tactics\Claude hand off\docs\战棋规则设计.md` | 数值与公式的原始出处（抄公式时对这份） |
-| 新项目特技待办（**待建**） | `docs/特技换算待办.md` | 6.2 的特技 / 特殊武器 / 藏品清单，等 Claude 出换算方案 |
+| 新项目特技待办（自动生成：`node tools/specials.mjs`） | `docs/特技换算待办.md` | 6.2 的特技 / 特殊武器 / 支援武器清单，等 Claude 出换算方案（只列清单，不含换算方案） |
 | 新项目进度 | `协作/任务板.md`、`协作/协作日志.md` | 里程碑状态与交付记录 |
 
 ## 10. 之后的重点（不要提前做）
