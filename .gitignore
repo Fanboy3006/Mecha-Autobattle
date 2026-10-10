@@ -1,0 +1,23 @@
+# 依赖 / 生成物
+node_modules/
+art/out/
+audio/out/
+.chrome-tmp/
+dist/
+
+# aider 的现场文件
+.aider*
+.env
+.env.local
+
+# 版权音乐（作者本地的版权曲只在本地试玩用，不能公开；audio/SUNO/ 是 Suno 生成的，可以进仓库）
+audio/*.mp3
+audio/*.ogg
+audio/*.m4a
+audio/*.wav
+audio/*.flac
+audio/本地音乐/
+audio/SUNO/*.download
+
+# 版权图片（作品截图，不能公开；绝不复制进本仓库）
+图片库/

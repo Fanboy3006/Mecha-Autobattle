@@ -1,0 +1,37 @@
+<title>机甲指挥 试作版</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+<!-- @include css/main.css -->
+</style>
+
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <span class="mark">机甲指挥</span>
+      <span class="ver">试作版 <span id="ver">v0.0.1</span> · <span id="ms">M0</span> 仓库骨架</span>
+    </div>
+    <div class="ctrl">
+      <button id="btnFight" disabled title="战斗画面在 M2">战斗（M2）</button>
+    </div>
+  </header>
+  <main class="main">
+    <section class="card">
+      <h3>M0 · 仓库骨架</h3>
+      <p><b>机甲指挥</b>是从「机甲战棋」分叉出来的<b>自动战斗回合制 RPG</b>：玩家在肉鸽大地图上走格子、招募机师、拿藏品；遇到战斗时把机体摆进前排 / 后排，每回合给每台机体下一条指令，这一回合自动打完，看结果，再下下一回合的指令。</p>
+      <ul>
+        <li>站位：双方各 2 排 × 3 列，最多 6 台机体；前排全灭后后排不会自动前移。</li>
+        <li>指令：进攻（默认）/ 集火 / 守护 / 防御 / 换位（M3 做全）。</li>
+        <li>胜负：敌方全灭 = 胜，我方全灭或第 12 回合结束 = 败。</li>
+      </ul>
+      <p class="small">这个页面目前只有骨架，没有任何战斗逻辑。下一步 M1：战斗内核（数据导入、射程换算、速度与行动顺序、伤害公式、AI、胜负判定、带种子随机数），先做没有界面的 <code>simulate()</code>，跑 <code>node tests/sim.js</code>。</p>
+      <p class="small">源文件在 <code>src/</code>，这个 <code>index.html</code> 是 <code>node tools/build-src.mjs</code> 生成的，不要手改。</p>
+    </section>
+  </main>
+</div>
+
+<script>
+<!-- @include js/00-head.js -->
+<!-- @include js/99-boot.js -->
+</script>
