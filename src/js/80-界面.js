@@ -26,7 +26,7 @@ const 势力色 = 键 => {
 const 敌方色 = '#d9564b';
 
 const 界面 = {
-  屏: '菜单',                     // 菜单 / 编队 / 战斗 / 结算
+  屏: '菜单',                     // 菜单 / 编队 / 战斗 / 结算 / 分队 / 大地图 / 招募 / 奇遇 / 黑市 / 肉鸽结算
   阶段: '指令',                   // 战斗屏的阶段：指令 / 播放 / 结算
   编队: { 等级: 10, 出击: [], 选中: null, 编成序号: 0, 势力: '全部' },
   ctx: null,                      // 这一场战斗的引擎状态（开局() 给的）
@@ -36,11 +36,14 @@ const 界面 = {
   提示: '',
   显示单位: null,                 // 播放阶段用的「这一回合开始时」的快照
   战报: null,                     // 结算用的小结
-  肉鸽战斗: null,                 // 正在打的这一场是哪个肉鸽节点（打完回调 肉鸽.战斗结束）
+  肉鸽战斗: null,                 // 正在打的这一场是哪个肉鸽节点 {格类型, 类型, 条目}
+  肉鸽战斗类型: '作战',           // 这一场的节点类型（打这一场() 从它取，出口守军 / 追击战会改写）
+  肉鸽编队模式: false,            // 编队屏是「肉鸽里出战前编队」还是沙盒练习
   种子: null,
   手动播放: false,                // 测试用：播放引擎不排计时器，自己 tick
   跳过动画总是: false,
   预览缓存: {},
+  对话框: null,                   // 测试用：`对话框(标题, 文本, 选项)` 给一个返回值就顶替弹窗（见 肉鸽弹窗）
 
   /* ---------------- 小工具 ---------------- */
   位名,
@@ -64,7 +67,14 @@ const 界面 = {
   },
 
   /* ---------------- 屏幕切换 ---------------- */
-  开屏(名) { this.屏 = 名; this.刷(); 音乐.场景切换(名); return this; },   // M5：切屏跟着换曲子（方案 8.2）
+  开屏(名) {
+    this.屏 = 名;
+    this.刷();
+    /* M5：切屏跟着换曲子（方案 8.2）。`96-音乐.js` 在最后，加载期/测试期取不到就跳过 —— 音乐是可选层，
+       任何一种「读不到曲子」的情况都不该让界面切屏失败（M5 的降级规矩）。 */
+    if (typeof 音乐 !== 'undefined' && 音乐 && typeof 音乐.场景切换 === 'function') 音乐.场景切换(名);
+    return this;
+  },
 
   刷() {
     const 屏 = $('#screen');
@@ -171,53 +181,104 @@ const 界面 = {
     return true;
   },
 
-  /** 界面上的所有动作都走这里（浏览器里由按钮点，测试里直接调用）。 */
+  /** 界面上的所有动作都走这里（浏览器里由按钮点，测试里直接调用）。
+   *  动作名有两种写法（沿用 M4 起的老约定）：
+   *    ① `动作` 或 `动作:参数`（例如 `选分队:近卫`、`去节点:12`、`休整:耐久`）—— 按 `:` 拆一次；
+   *    ② 动作表里直接写了带冒号的键名（例如 `黑市买:g2` 不会这样写，但 `黑市离开` 是整键）—— 先查整键。 */
   动作(动, 参) {
-    switch (动) {
-      case '去编队': return this.开屏('编队');
-      case '回菜单': return this.开屏('菜单');
-      case '选人': return this.选人(参);
-      case '放位': return this.放位(Number(参));
-      case '取回': return this.取回(Number(参));
-      case '默认五人队': return this.默认五人队();
-      case '清空': return this.清空();
-      case '等级': return this.设等级(Number(参));
-      case '势力': return this.设势力(参);
-      case '编成': return this.设编成(Number(参));
-      case '开战': return this.肉鸽编队模式 ? this.从编队开战肉鸽() : this.开战();
-      case '备战': return this.准备肉鸽编队();
-      case '开打': return this.开打();
-      case '暂停': return this.暂停();
-      case '二倍速': return this.二倍速();
-      case '跳过': return this.跳过();
-      case '再来一场': return this.来一场(参);
-      /* M3 的指令阶段 */
-      case '选单位': return this.选单位(Number(参));
-      case '指令': return this.下指令(参);
-      case '点敌人': return this.点敌人(Number(参));
-      case '点队友': return this.点队友(Number(参));
-      case '大招': return this.切大招(Number(参));
-      /* M4 肉鸽 */
-      case '去分队': return this.开屏('分队');
-      case '选分队': return this.选分队(参);
-      case '开新局': return this.开新局();
-      case '继续上一局': return this.继续上一局();
-      case '回大地图': return this.开屏('大地图');
-      case '备战': return this.准备肉鸽编队();
-      case '去节点': return this.去节点(参);
-      case '打这一场': return this.打这一场();
-      case '去招募': return this.开屏('招募');
-      case '招募': return this.招募(参);
-      case '补给': return this.领补给();
-      case '去奇遇': return this.开屏('奇遇');
-      case '奇遇': return this.选奇遇(参);
-      case '存个档': return this.存个档();
-      case '放弃本局': return this.放弃本局();
-      /* M5 美术和音乐 */
-      case '音乐鉴赏': return this.去音乐鉴赏();
-      case '声音': return 音乐.切开关();
-      default: return null;
+    if (动 == null) return null;
+    const 名 = String(动);
+    /* 弹窗上的按钮：`弹窗:<值>` —— 先把答案填回去（`对话框()` 正同步等着它） */
+    if (名.indexOf('弹窗:') === 0) return this.回答(名.slice(3));
+    if (typeof this.动作表[名] === 'function') return this.动作表[名].call(this, 参);
+    const i = 名.indexOf(':');
+    if (i > 0) {
+      const 头 = 名.slice(0, i), 尾 = 名.slice(i + 1);
+      if (typeof this.动作表[头] === 'function') return this.动作表[头].call(this, 尾);
     }
+    return null;
+  },
+  /* 动作表（M4）：键 = 界面上 `data-act` 的名字，值 = 处理函数（`this` = 界面）。
+     原来是一个大 switch，换成表之后「出口被守军挡着」那条带参数的动作名
+     （`去节点:<格号>`）可以在 动作() 里按前缀转一次。
+     用 `键: function(参){…}` 的写法（不用简写方法），因为键名和 `界面` 上的方法同名，
+     简写会让人以为 `this.xxx` 指的是表里的项 —— 写成函数属性最不容易看错。 */
+  动作表: {
+    去编队: function () { return this.开屏('编队'); },
+    回菜单: function () { return this.开屏('菜单'); },
+    选人: function (参) { return this.选人(参); },
+    放位: function (参) { return this.放位(Number(参)); },
+    取回: function (参) { return this.取回(Number(参)); },
+    默认五人队: function () { return this.默认五人队(); },
+    清空: function () { return this.清空(); },
+    等级: function (参) { return this.设等级(Number(参)); },
+    势力: function (参) { return this.设势力(参); },
+    编成: function (参) { return this.设编成(Number(参)); },
+    开战: function () { return this.肉鸽编队模式 ? this.从编队开战肉鸽() : this.开战(); },
+    开打: function () { return this.开打(); },
+    暂停: function () { return this.暂停(); },
+    二倍速: function () { return this.二倍速(); },
+    跳过: function () { return this.跳过(); },
+    再来一场: function (参) { return this.来一场(参); },
+    /* M3 的指令阶段 */
+    选单位: function (参) { return this.选单位(Number(参)); },
+    指令: function (参) { return this.下指令(参); },
+    点敌人: function (参) { return this.点敌人(Number(参)); },
+    点队友: function (参) { return this.点队友(Number(参)); },
+    大招: function (参) { return this.切大招(Number(参)); },
+    /* M4 肉鸽 */
+    去分队: function () { return this.开屏('分队'); },
+    选分队: function (参) { return this.选分队(参); },
+    开新局: function () { return this.开新局(); },
+    继续上一局: function () { return this.继续上一局(); },
+    回大地图: function () { return this.开屏('大地图'); },
+    去节点: function (参) { return this.去节点(参); },
+    打这一场: function () { return this.打这一场(); },
+    去招募: function () { return this.开屏('招募'); },
+    招募: function (参) { return this.招募(参); },
+    去黑市: function () { return this.开屏('黑市'); },
+    黑市买: function (参) { return this.黑市买(参); },
+    黑市离开: function () { return this.黑市离开(); },
+    瞭望: function () { return this.去瞭望(); },
+    穿隧道: function () { return this.穿隧道(); },
+    探查遗迹: function () { return this.去遗迹(); },
+    休整: function (参) { return this.休整(参); },
+    前进: function () { return this.前进(); },
+    跳过节点: function () { return this.跳过节点(); },
+    补给: function () { return this.领补给(); },
+    去奇遇: function () { return this.开屏('奇遇'); },
+    奇遇: function (参) { return this.选奇遇(参); },
+    存个档: function () { return this.存个档(); },
+    放弃本局: function () { return this.放弃本局(); },
+    /* M5 美术和音乐 */
+    音乐鉴赏: function () { return this.去音乐鉴赏(); },
+    声音: function () { return 音乐.切开关(); },
+  },
+
+  /* ---------------- 通用弹窗（隧道 / 休整 / 出口都用它） ----------------
+     ① 测试用：`界面.对话框钩子 = (标题, 文本, 选项) => 值` 直接顶替弹窗；
+     ② 真的在浏览器里：记在 `this.弹窗` 上，画面右边出现一排按钮，
+        点一下走 `data-act="弹窗:<值>"` → 动作表里的 `弹窗` → 回调。
+     两种都是**同步**返回的（`回答` 就是最后选的那个值），所以节点的结算不需要 await。 */
+  对话框(标题, 文本, 选项) {
+    if (typeof this.对话框钩子 === 'function') return this.对话框钩子(标题, 文本, 选项);
+    if (typeof document === 'undefined' || !document.body) return 选项 && 选项.length ? 选项[0].值 : null;
+    this.弹窗 = { 标题, 文本, 选项, 答案: null };
+    this.刷();
+    return this.弹窗.答案;
+  },
+  /** 回答当前弹窗（界面上点按钮 / 测试直接调） */
+  回答(值) {
+    const d = this.弹窗;
+    this.弹窗 = null;
+    if (d) d.答案 = 值;
+    return 值;
+  },
+  弹窗控件Html() {
+    const d = this.弹窗;
+    if (!d) return '';
+    return `<div class="rv-card dlg"><h3>${d.标题}</h3><p class="small">${d.文本 || ''}</p>
+      <div class="acts">${(d.选项 || []).map(o => `<button data-act="弹窗:${o.值}">${o.名}</button>`).join('')}</div></div>`;
   },
 
   /* ---------------- 顶栏 ---------------- */
@@ -248,11 +309,13 @@ const 界面 = {
   菜单屏() {
     const 有存档 = !!肉鸽.读存档();
     return `<section class="card menu">
-      <h3>机甲指挥 · M5 美术和音乐</h3>
+      <h3>机甲指挥 · M4 肉鸽（网格大地图）</h3>
       <p>自动战斗回合制 RPG：把机体摆进<b>前排 / 后排</b>（前 3 后 2），每回合给每台机体下一条<b>大方向指令</b>，这一回合按速度自动打完。</p>
       <ul>
-        <li><b>肉鸽</b>（方案第 7 节）：选分队 → 大地图走节点（作战 / 精英 / Boss / 招募 / 补给 / 奇遇）→ 层出口；
-          希望 / 源碳结晶 / 作战耐久，<b>关掉页面能继续</b>（存档）。</li>
+        <li><b>肉鸽</b>（方案第 7 节）：选分队 → <b>6×4 网格大地图</b>（战棋那套：四邻接 BFS 走格子、
+          <b>推进剂</b>每层 7、走一格扣 1、用光触发追击战）→ 作战 / 精英 / 侵蚀源 / 黑市 / 事件 / 瞭望站 /
+          遗迹 / 休整 / 招募站 / 隧道 / 出口守军 → 第 4 层出口通关；
+          希望 / 源碳结晶 / 作战耐久 / 藏品，<b>关掉页面能继续</b>（存档）。</li>
         <li><b>战斗</b>：指令阶段（进攻 / 集火 / 守护 / 防御 / 换位 + 大招开关）→ 看敌人意图 →「开打 ▶」自动打完。</li>
         <li><b>练习</b>：不进肉鸽，直接用编队界面挑一队打一场（试数值用）。</li>
       </ul>
@@ -262,10 +325,9 @@ const 界面 = {
         <button data-act="去编队">练习：直接编队打一场</button>
         <button data-act="音乐鉴赏">音乐鉴赏</button>
       </div>
-      <p class="small">M5 美术和音乐：机体图标是原创矢量素材（<code>art/mech-icons.js</code>）；
-        音乐按场景切（菜单 = 主题曲、大地图 / 编队 = 战略、战斗中 = 我方回合、Boss 战 = Boss 曲），
-        <b>放大招</b>时切成那台机体的主题曲、保持到本回合结束。右上角是声音开关（按 <b>M</b> 也行）；
-        读不到曲子时自动静音、按钮隐藏。</p>
+      <p class="small">网格大地图照战棋 <code>26-地图生成.js</code> / <code>28-层.js</code> / <code>30-移动与节点.js</code> 实现
+        （数值逐字照抄，出处写在 <code>91-地图.js</code> 里）；机体图标是原创矢量素材（<code>art/mech-icons.js</code>）；
+        音乐按场景切，<b>放大招</b>时切成那台机体的主题曲、保持到本回合结束。右上角是声音开关（按 <b>M</b> 也行）。</p>
     </section>`;
   },
 
@@ -523,14 +585,16 @@ const 界面 = {
       结果: c.result ? c.result.结果 : '败', 原因: c.result ? c.result.原因 : '—',
       回合数: c.turn, 记录: c.log, 我方: c.allies, 敌方: c.enemies, 种子: c.种子,
     };
-    /* 肉鸽里的战斗：把结果交回肉鸽（发奖励 / 扣作战耐久），然后回大地图 */
+    /* 肉鸽里的战斗：把结果交回肉鸽（发奖励 / 扣作战耐久 / 出口守军放行 / 追击后换层），
+       然后回大地图；本局结束（耐久耗尽 / 通关）就去肉鸽结算屏。 */
     if (this.肉鸽战斗) {
       const 这次 = this.肉鸽战斗;
       this.肉鸽战斗 = null;
-      const r = 肉鸽.战斗结束(this.战报.结果, 这次.类型, this.战报);
+      const r = 肉鸽.战斗结束(this.战报.结果, 这次.格类型, this.战报);
       this.阶段 = '结算';
-      this.开屏(r && r.结束 ? '肉鸽结算' : '大地图');
-      return;
+      if (!肉鸽.进行中 || (肉鸽.RUN && 肉鸽.RUN.结局)) this.开屏('肉鸽结算');
+      else this.开屏('大地图');
+      return r;
     }
     this.阶段 = '结算';
     this.开屏('结算');
@@ -606,6 +670,7 @@ const 界面 = {
   大地图屏() { return 肉鸽界面.大地图屏(); },
   招募屏() { return 肉鸽界面.招募屏(); },
   奇遇屏() { return 肉鸽界面.奇遇屏(); },
+  黑市屏() { return 肉鸽界面.黑市屏(); },
   肉鸽结算屏() { return 肉鸽界面.肉鸽结算屏(); },
 
   选分队(名) { 肉鸽界面.分队ID = 名; 肉鸽界面.提示 = ''; this.刷(); return 名; },
@@ -621,30 +686,48 @@ const 界面 = {
     this.开屏('大地图');
     return true;
   },
-  去节点(id) {
-    const 类型 = 肉鸽.移动(id);
-    if (!类型) return false;
+  /* ---------------- 肉鸽：网格大地图上的移动与节点（作者 2026-10-10：换成网格 + 推进剂） ----------------
+     走到一格之后按**节点类型**决定开哪个屏，返回的是**节点类型字符串**（老的 `去节点(id)` 也是这个约定）：
+       作战 / 精英 / 侵蚀源 / 出口守军 → 先进编队屏（摆好阵再点「开战」）；
+       招募站 / 事件 / 黑市 → 开对应的屏；
+       瞭望站 / 遗迹 / 隧道 / 休整 → 走弹窗（`肉鸽弹窗`），结算完回大地图；
+       出口 → 守军没清就先指路，清了就下一层（第 4 层 = 通关）。 */
+  去节点(参) {
+    const k = Number(参);
+    const 走 = 肉鸽.移动(k);
+    if (!走) { 肉鸽界面.提示 = `走不过去：这一格到不了，或者推进剂不够（现在 ${肉鸽.RUN ? 肉鸽.RUN.推进剂 : 0}）。`; this.刷(); return null; }
+    肉鸽界面.提示 = '';
+    const 类型 = 走.类型;
+    if (走.已过) { this.刷(); return 类型; }                    // 走过的空格：只挪位置
+    if (['作战', '精英', '侵蚀源', '出口守军'].includes(类型)) { this.准备肉鸽编队(); return 类型; }
+    if (类型 === '招募站') { this.开屏('招募'); return 类型; }
+    if (类型 === '事件') { this.开屏('奇遇'); return 类型; }
+    if (类型 === '黑市') { this.开屏('黑市'); return 类型; }
+    if (类型 === '瞭望站') { this.去瞭望(); return 类型; }
+    if (类型 === '遗迹') { this.去遗迹(); return 类型; }
+    if (类型 === '隧道') { this.穿隧道(); return 类型; }
+    if (类型 === '休整') { this.休整(); return 类型; }
+    if (类型 === '出口') { this.前进(); return 类型; }
     this.刷();
-    /* 走到哪一类节点就开哪个屏（战斗类留在原地，等玩家点「打这一场」） */
-    if (类型 === '招募') this.开屏('招募');
-    else if (类型 === '奇遇') this.开屏('奇遇');
-    else if (类型 === '补给') this.领补给();
-    else if (类型 === '出口') { 肉鸽.节点完成(); this.开屏('大地图'); }   // 走到出口就进下一层
     return 类型;
   },
+  /** 打这一场（战斗节点 / 出口守军 / 侵蚀源 / 追击战都走这里） */
   打这一场() {
     if (!肉鸽.进行中) return false;
     const R = 肉鸽.RUN;
-    const 条目 = 肉鸽.抽当前编成();
-    if (!条目) { 肉鸽界面.提示 = `第 ${R.层} 层没有「${肉鸽.当前战斗类型()}」的编成，写进编成表再打。`; this.开屏('大地图'); return false; }
+    const 格 = 肉鸽.当前格();
+    const 格类型 = this.肉鸽战斗类型 || (格 ? 格.类型 : '作战');
+    this.肉鸽战斗类型 = '作战';            // 读掉就用掉：下一场默认回到「这一格的类型」
+    const 条目 = 肉鸽.抽当前编成(格类型);
+    if (!条目) { 肉鸽界面.提示 = `第 ${R.层} 层没有「${肉鸽.当前战斗类型(格类型)}」的编成，写进编成表再打。`; this.开屏('大地图'); return false; }
     /* 出击名单：优先用编队界面摆好的阵（RUN.出击阵 = [{键, 位}]），没有就用名册前几台 */
     const 阵 = (R.出击阵 && R.出击阵.length) ? R.出击阵 : R.队伍.slice(0, 肉鸽数值.出击上限).map((m, i) => ({ 键: m.键, 位: i }));
     const 等级 = 键 => { const m = R.队伍.find(x => x.键 === 键); return (m && m.等级) || 肉鸽数值.招募等级; };
     const 我方 = 阵.map(x => ({ 键: x.键, 位: x.位, 等级: 等级(x.键) }));
     const 敌方 = 编成到单位(条目, R.场次).map(u => ({ 键: u.key, 位: u.slot, 等级: u.lv }));
     this.肉鸽编队模式 = false;
-    this.种子 = (R.种子 + R.层 * 131 + R.场次 * 17) >>> 0;
-    this.肉鸽战斗 = { 类型: 肉鸽.当前战斗类型(), 条目 };
+    this.种子 = (R.种子 + R.层 * 131 + R.场次 * 17 + (格 ? 格.k : 0) * 7) >>> 0;
+    this.肉鸽战斗 = { 格类型, 类型: 肉鸽.当前战斗类型(格类型), 条目 };
     this.ctx = 开局(我方, 敌方, this.种子);
     this.指令 = {};
     this.选中位 = null; this.选目标 = null; this.提示 = '';
@@ -657,7 +740,9 @@ const 界面 = {
   准备肉鸽编队() {
     const R = 肉鸽.RUN;
     if (!R) return false;
+    const 格 = 肉鸽.当前格();
     this.肉鸽编队模式 = true;
+    this.肉鸽战斗类型 = 格 ? 格.类型 : '作战';
     this.编队.选中 = null;
     this.编队.出击 = (R.出击阵 && R.出击阵.length ? R.出击阵 : R.队伍.slice(0, 肉鸽数值.出击上限).map((m, i) => ({ 键: m.键, 位: i })))
       .map(x => ({ 键: x.键, 位: x.位 }));
@@ -680,12 +765,102 @@ const 界面 = {
     if (!R) return false;
     if (R.队伍.length >= 肉鸽数值.队伍上限) { 肉鸽界面.提示 = `队伍已经满了（${肉鸽数值.队伍上限} 台）。`; this.开屏('招募'); return false; }
     if (R.队伍.some(m => m.键 === 键)) { 肉鸽界面.提示 = '这位机师已经在队里了。'; this.开屏('招募'); return false; }
-    const 停 = 肉鸽.当前节点();
-    const 之前 = R.场次;
     肉鸽.招募(键);                          // 内部会 节点完成()（含存档）
-    if (停) { /* 招募完直接回大地图 */ }
     this.开屏('大地图');
     return true;
+  },
+  /* ---------------- 新节点的界面（7 种：黑市 / 瞭望站 / 隧道 / 遗迹 / 休整 / 出口守军 / 侵蚀源） ---------------- */
+  黑市买(id) {
+    const r = 肉鸽.黑市买(id);
+    if (!r || !r.ok) 肉鸽界面.提示 = (r && r.why) || '买不了。';
+    else 肉鸽界面.提示 = `买下了【${r.名}】（−${r.价} 源碳）。`;
+    this.开屏('黑市');
+    return r;
+  },
+  黑市离开() { 肉鸽.黑市离开(); 肉鸽界面.提示 = ''; this.开屏('大地图'); return true; },
+  去瞭望() {
+    const r = 肉鸽.结算瞭望站();
+    if (r) 肉鸽界面.提示 = `瞭望站：推进剂 ${r.推进剂}、揭开 ${r.揭开} 格、希望 +${r.希望}。`;
+    this.开屏('大地图');
+    return r;
+  },
+  去遗迹() {
+    const r = 肉鸽.结算遗迹();
+    if (r) 肉鸽界面.提示 = `遗迹：源碳 +${r.源碳}${r.藏品 ? `、藏品【${r.藏品.名}】` : ''}。`;
+    this.开屏('大地图');
+    return r;
+  },
+  /** 隧道：弹窗问一句（**同步**版 —— 弹窗的答案通过 `肉鸽弹窗(标题, 文本, 选项, 回调)` 回填，
+   *  这样「点一下 → 传送 → 回大地图」是同一个调用里做完的，测试不用等 Promise）。 */
+  穿隧道() {
+    const R = 肉鸽.RUN;
+    if (!R) return null;
+    const 到 = 肉鸽.隧道另一头();
+    const 做 = 答案 => {
+      if (答案 === 'go') {
+        const r = 肉鸽.结算隧道();
+        肉鸽界面.提示 = r && r.传送 ? `穿过隧道，到了 ${坐标文字(R.地图.格[r.到])}。` : '隧道另一头不在了。';
+        this.开屏('大地图');
+        return r;
+      }
+      肉鸽界面.提示 = '留在了隧道这一头。';
+      this.开屏('大地图');
+      return null;
+    };
+    if (到 == null) return 做('no');
+    return 肉鸽弹窗('废弃隧道',
+      `隧道另一端在 ${坐标文字(R.地图.格[到])}（${节点类型表[R.地图.格[到].类型].名}），传送不消耗推进剂。`,
+      [['go', '传送过去'], ['no', '留在这里']], 做);
+  },
+  /** 休整：作战耐久 +2 / 花希望换耐久（本仓库初稿）/ 跳过。同步版同上。 */
+  休整(参) {
+    const R = 肉鸽.RUN;
+    if (!R) return null;
+    const 做 = 答案 => {
+      const r = 肉鸽.结算休整(答案);
+      肉鸽界面.提示 = (r && r.ok === false) ? r.why : `休整完了：作战耐久 ${肉鸽.RUN.耐久}、希望 ${肉鸽.RUN.希望}。`;
+      this.开屏('大地图');
+      return r;
+    };
+    if (参) return 做(参);
+    return 肉鸽弹窗('休整', `作战耐久 ${R.耐久}、希望 ${R.希望}。选一项：`, [
+      ['耐久', `作战耐久 +${肉鸽数值.休整耐久}`],
+      ['希望', `花 ${肉鸽数值.休整希望} 希望 → 作战耐久 +1`],
+      ['跳过', '算了，不休息'],
+    ], 做);
+  },
+  /** 「跳过」：不结算，直接离开这一格（隧道 / 休整这类想反悔的节点） */
+  跳过节点() { 肉鸽.节点完成(); 肉鸽界面.提示 = ''; this.开屏('大地图'); return true; },
+  /** 出口：守军没清就先指路；清了就换层（第 4 层 = 通关）；
+   *  推进剂归零时先在出口这一格打一场追击战（战棋 30:34「结算完再判 prop <= 0」），打完再换层。 */
+  前进() {
+    const R = 肉鸽.RUN;
+    if (!R) return false;
+    const 守 = R.地图.格[R.地图.守军];
+    if (守 && !守.已过 && 守.类型 !== '空') {
+      肉鸽界面.提示 = '出口被守军挡着：先走到 ⇛ 守军那一格把它打掉。';
+      this.开屏('大地图');
+      return false;
+    }
+    if (R.推进剂 <= 0 && !R.追击) {
+      this.肉鸽战斗类型 = '追击';
+      肉鸽界面.提示 = '推进剂用光了 —— 追兵到了，打一场追击战，赢了才出得去。';
+      return this.打这一场();
+    }
+    const 之前 = R.层;
+    肉鸽.下一层();
+    if (!肉鸽.进行中 || R.结局) { this.开屏('肉鸽结算'); return true; }
+    肉鸽界面.提示 = `进入第 ${R.层} 层（推进剂 ${R.推进剂}）。`;
+    this.开屏('大地图');
+    return 之前 !== R.层;
+  },
+  /** 追击战：推进剂用光之后强制打一场（战棋 31:304-307） */
+  追击战() {
+    const R = 肉鸽.RUN;
+    if (!R || !肉鸽.进行中) return false;
+    this.肉鸽战斗类型 = '追击';
+    肉鸽界面.提示 = '推进剂用光了 —— 追兵到了，打一场追击战！';
+    return this.打这一场();
   },
   领补给() { 肉鸽.补给(); this.开屏('大地图'); return true; },
   选奇遇(选) { 肉鸽.奇遇(选); this.开屏('大地图'); return true; },

@@ -179,6 +179,29 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .rv-node.can:hover{border-color:var(--accent)}
 .rv-node.here{opacity:1;border-style:solid;outline:2px solid var(--accent)}
 
+/* ---------- 网格大地图（作者 2026-10-10：换成战棋那套 6×4 网格 + 推进剂） ----------
+   格子按钮沿用 .rv-node 的视觉语言（--fc 类型色 + 已过 / 可去 / 当前三态）；
+   手机上横向滚动（.gmap 有 overflow-x:auto），格子本身还是普通按钮，pointer 事件照旧能点。 */
+.gmap{display:flex;flex-direction:column;gap:6px;overflow-x:auto;padding:10px 2px 14px}
+.gmap .grow{display:grid;grid-template-columns:repeat(6,minmax(74px,1fr));gap:6px}
+.gcell{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;text-align:center;
+  padding:6px 4px;border-radius:6px;border:1px dashed var(--line);border-top:3px solid var(--fc);
+  background:var(--panel2);color:var(--fg);font:inherit;cursor:default;opacity:.5;min-height:56px}
+.gcell i{font-size:15px;font-style:normal;line-height:1}
+.gcell b{font-size:11px;font-weight:600}
+.gcell small{font-size:9px;color:var(--muted);line-height:1.15}
+.gcell.walked{opacity:.32}
+.gcell.done{opacity:.28;border-style:solid}
+.gcell.can{opacity:1;border-style:solid;cursor:pointer;box-shadow:0 0 0 1px color-mix(in srgb,var(--fc) 60%,transparent)}
+.gcell.can:hover{border-color:var(--accent)}
+.gcell.can small{color:var(--accent)}
+.gcell.here{opacity:1;border-style:solid;outline:2px solid var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--panel2))}
+.gcell.none{opacity:.18;border-top-color:var(--line)}
+.glegend{display:inline-flex;align-items:center;gap:4px;margin-right:8px;border-left:3px solid var(--fc);padding-left:4px}
+/* 节点弹窗（隧道 / 休整）：大地图屏上一张卡片 + 一排按钮，点一下走 data-act="弹窗:<值>" */
+.dlg{border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--panel2));margin:10px 0}
+.dlg h3{color:var(--accent)}
+
 /* ============================================================================
  * M5：机体图标和声音开关
  * ----------------------------------------------------------------------------

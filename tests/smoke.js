@@ -107,7 +107,7 @@ else {
   ok('window.__game 已暴露');
   const checks = [
     ['version', v => typeof v === 'string' && /^\d+\.\d+\.\d+$/.test(v)],
-    ['milestone', v => v === 'M5'],
+    ['milestone', v => v === 'M4'],
     ['ready', v => v === true],
     ['slots', v => v === 5],                                  // 作者 2026-10-10：暂时「前 3 后 2」= 5 格
     ['rows', v => v === 2],

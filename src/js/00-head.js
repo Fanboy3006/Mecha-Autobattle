@@ -13,8 +13,8 @@
 'use strict';
 
 /* ---------- 版本 / 里程碑（顶栏会显示，测试也会读） ---------- */
-const VERSION = '0.5.0';
-const MILESTONE = 'M5';
+const VERSION = '0.6.0';
+const MILESTONE = 'M4';
 
 /* ---------- 小工具 ---------- */
 const $ = s => document.querySelector(s);
