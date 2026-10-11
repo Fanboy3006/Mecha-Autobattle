@@ -244,20 +244,58 @@ if (再动C.length) {
   else bad(`有队友一回合被再动多次：${重复.map(x => `${x.回合}/${x.目标}`).join('、')}`);
 } else bad('跳过开场冷却后「再动」还是没放出来');
 
-/* ---- 7c. 残月的余响：被动、行动结束后自动放、只打敌方前排 ---- */
-if (余响.length) {
-  const 位 = 余响.map(x => x.目标位);
-  if (位.every(s => s < G.行列数(G.ROW_FRONT))) ok(`残月的余响只打敌方前排（${位.length} 台次，格子 ${[...new Set(位)].join('/')}）`);
-  else bad(`残月的余响打到了后排：格子 ${位.join('、')}`);
-  ok(`残月的余响是 Feena 放的，每次行动结束后都会自动放：${余响[0].文本}`);
-} else bad('残月的余响一次都没放（被动自动释放没接上？）');
+/* ---- 7c. 残月的余响（★ 作者 2026-10-11 **换机制**）：不再是范围伤害，改成「队友攻击后追加一发」 ----
+ * 原来的断言盯的是「行动结束后自动放、只打敌方前排」；作者把这条大招改成了
+ * 「队友攻击时追加一次攻击」（`协作/势力特色落地决定.md` 第 3 条）→ 这里**跟着改成新机制的断言**，
+ * 不是删掉断言。旧机制「一次都不走」单独在下面钉一条。 */
+const 打一场换机制 = () => {
+  const ctx = G.开局([{ 键: 'M1', 位: 0, 等级: 20 }, { 键: 'B2', 位: 1, 等级: 20 }, { 键: 'CB2', 位: 2, 等级: 20 }],
+    [{ 键: 'bluefish', 位: 0, 等级: 1 }], 20261011);
+  const 靶 = ctx.enemies[0];
+  靶.hp = 靶.maxHp = 9999999;         // 打不死的靶子：队友每一击都不会把人打死 → 追加条件稳定成立
+  ctx.rng = () => 0;                  // 必中（引擎的随机数入口就是 ctx.rng）
+  return ctx;
+};
+const ctxR = 打一场换机制();
+const 录R1 = G.打一回合(ctxR);
+const 追1 = 录R1.filter(x => x.类型 === '残月余响');
+const 攻击1 = 录R1.filter(x => x.类型 === '攻击' && x.单位方 === 'ally');
+if (追1.length === 1) ok(`队友攻击后真的追加了一发（第 1 回合：我方出手 ${攻击1.length} 次 → 追加 ${追1.length} 次）：${追1[0].文本}`);
+else bad(`追加次数不对：我方出手 ${攻击1.length} 次 → 追加 ${追1.length} 次（预期 1）`);
+if (追1.length && 追1[0].单位 === 'M1' && 追1[0].队友 && 追1[0].队友 !== 'M1') ok(`是 Feena（${追1[0].单位}）放的，记录里写着是哪个队友触发的（队友 ${追1[0].队友}）、武器【${追1[0].武器}】、目标 ${追1[0].目标}`);
+else bad(`追加记录的字段不对：${JSON.stringify(追1[0])}`);
+if (追1.length && 追1[0].每回合上限 === 1 && 追1[0].本回合第几次 === 1) ok(`★ 每回合上限是常量 1（记录里带 \`每回合上限: ${追1[0].每回合上限}\`、\`本回合第几次: ${追1[0].本回合第几次}\`）—— 第 1 回合我方出手 ${攻击1.length} 次也只追加 1 次`);
+else bad(`每回合上限字段不对：${JSON.stringify(追1[0])}`);
+const 录R2 = G.打一回合(ctxR);
+const 追2 = 录R2.filter(x => x.类型 === '残月余响');
+if (追2.length === 1 && 追2[0].本回合第几次 === 1) ok(`下一回合重新开一次上限（第 2 回合照样追加 1 次、\`本回合第几次\` 回到 1）`);
+else bad(`第 2 回合的追加不对：${追2.length} 次（${JSON.stringify(追2.map(x => x.本回合第几次))}）`);
+/* 旧的「行动结束后自动放、范围 = 敌方前排」那条路径**一次都不该走** */
+const ctx旧 = G.开局([{ 键: 'M1', 位: 4, 等级: 20 }], 敌军久, 5);
+const 旧前 = ctx旧.log.length;
+for (const u of ctx旧.allies) G.runAutoCast(u, ctx旧);
+if (ctx旧.log.length === 旧前) ok('旧的「行动结束后自动放、范围 = 敌方前排」那条路径已经不走（`runAutoCast()` 一条记录都不写）');
+else bad(`旧的余响路径还在跑：${ctx旧.log.slice(旧前).map(x => x.文本).join('｜')}`);
+const M1模板 = G.ALLY_T.find(t => t.mech === 'M1');
+if (M1模板 && !M1模板.weapons.some(w => w.special === 'echo') && M1模板.weapons.some(w => w.special === G.残月余响标记)) {
+  ok(`武器上的标记已经从 \`echo\` 换成 \`${G.残月余响标记}\`（\`runAutoCast()\` 只认 \`echo\` → 认不出它了），数值 / 必中 / 物理一个字没改`);
+} else bad(`残月的余响的 special 标记不对：${JSON.stringify((M1模板 || {}).weapons.map(w => [w.name, w.special]))}`);
 
-/* ---- 7d. Lv30 的「满月·月蚀」：数据里写明「冷却好时代替残月的余响」，一回合只放一把 ---- */
-const ctx30 = G.开局([{ 键: 'M1', 位: 4, 等级: 30 }, { 键: 'B2', 位: 0, 等级: 30 }], [{ 键: 'grunt', 位: 0, 等级: 10 }, { 键: 'shield', 位: 1, 等级: 10 }], 5);
-G.打一回合(ctx30);
-const 名30 = [...new Set(ctx30.log.filter(x => x.类型 === '残月余响').map(x => x.武器))];
-if (名30.length <= 1) ok(`一回合只自动放一把余响类武器（本回合：${名30.join('、') || '无'}）`);
-else bad(`一回合放了多把余响类武器：${名30.join('、')}`);
+/* ---- 7d. Lv30 的「满月·月蚀」：数据里写明「冷却好时代替残月的余响」，换机制后这条仍然成立 ---- */
+const ctx30 = G.开局([{ 键: 'M1', 位: 0, 等级: 30 }, { 键: 'B2', 位: 1, 等级: 30 }], [{ 键: 'bluefish', 位: 0, 等级: 1 }], 5);
+const 菲娜30 = ctx30.allies.find(u => u.key === 'M1');
+const 靶30 = ctx30.enemies[0];
+靶30.hp = 靶30.maxHp = 9999999;
+for (const e of 菲娜30.weapons) e.readyTurn = 1;    // 直接跳过大招开场冷却（这里只验「用哪一把」）
+ctx30.rng = () => 0;
+const 枪手 = ctx30.allies.find(u => u.key === 'B2');
+const 用30 = G.usableWeapons(枪手, ctx30).find(e => !['支援', '修理'].includes(G.rangeKindOf(e.t)));
+if (用30) {
+  G.resolveAction(枪手, { kind: 'attack', weapon: 用30.t, target: 靶30, entry: 用30 }, ctx30);
+  const 名30 = [...new Set(ctx30.log.filter(x => x.类型 === '残月余响').map(x => x.武器))];
+  if (名30.length === 1 && 名30[0] === '满月·月蚀') ok(`Lv30 冷却好时用【满月·月蚀】代替残月的余响（一回合还是只放一把）：${名30.join('、')}`);
+  else bad(`Lv30 的追加武器不对：${名30.join('、') || '（没有追加）'}`);
+} else bad('B2（Lv30）没有可用武器（7d 段没跑起来）');
 
 /* ---- 7e. 开场冷却：大招（unlock ≥ 20）在第 4 回合之前不能用 ---- */
 const 大招名 = G.ALLY_T.flatMap(t => t.weapons.filter(w => w.unlock >= 20 && G.rangeKindOf(w) && w.power > 0).map(w => w.name));

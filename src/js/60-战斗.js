@@ -204,7 +204,7 @@ function actOnce(u, ctx) {
   let r = null;
   if (action) r = resolveAction(u, action, ctx);
   else pushLog(ctx, `${u.name} 没有能打到人的武器，跳过`, Object.assign({ 类型: '跳过', 单位: u.key }, 谁(u)));
-  runAutoCast(u, ctx);                 // 残月的余响：行动结束后自动释放（被动）
+  runAutoCast(u, ctx);                 // 被动自动释放（2026-10-11 起空转：残月的余响改成走新钩子，见下面）
 
   /* 近卫（方案 6.3）：击破目标后立刻再行动一次，每回合最多 1 次 */
   if (r && r.击破 > 0 && 职业是(u, '近卫') && u.近卫再动Turn !== ctx.turn) {
@@ -220,7 +220,13 @@ function 换同源增益(u, src, buff) {
   u.buffs.push(Object.assign({ src, 剩余: 1 }, buff));
 }
 
-/* ---------- 残月的余响（被动；范围由作者 2026-10-10 定为「敌方前排」） ---------- */
+/* ---------- 被动自动释放（`runAutoCast`） ----------
+ * 2026-10-11 起**没有任何武器走这条路径**：唯一用它的「残月的余响」按作者拍板改成了
+ * 「队友攻击后追加一发」——武器上的标记从 `special:'echo'` 换成 `'echoFollow'`
+ * （`71-改动.js` 的 `残月余响标记`），实现在**新钩子 `势力友军攻击后`** + `72-势力.js` 的月球王国条目。
+ * 这里保留这个空转的框架，留给以后别的「行动结束后自动释放」的被动
+ * （例如 Iris 的「月华再生」`special:'regen'`，第一期没做）。
+ * ★ 空转 = 一条记录都不写、一个数值都不改 → 没有 `echo` 武器的战斗**逐字不变**。 */
 function runAutoCast(u, ctx) {
   if (u.echoTurn === ctx.turn) return;
   const pool = u.weapons.filter(e => e.t.special === 'echo' && u.lv >= e.t.unlock && e.cd <= 0);
@@ -228,7 +234,7 @@ function runAutoCast(u, ctx) {
   pool.sort((a, b) => a.t.unlock - b.t.unlock);
   const e = pool[pool.length - 1], w = e.t;
   const foes = livingOf(otherSide(u.side), ctx);
-  const targets = 残月余响范围 === '敌方前排' ? foes.filter(t => unitRow(t) === ROW_FRONT) : foes;
+  const targets = foes.filter(t => unitRow(t) === ROW_FRONT);
   if (!targets.length) return;
   u.echoTurn = ctx.turn;
   if (w.cd) e.cd = w.cd;
@@ -344,6 +350,13 @@ function resolveAction(actor, action, ctx) {
        写在这一条攻击记录**之后**，记录里就能读到「谁打死了谁」。
        `势力击破()` 自己会判双方阵营（敌人击破我方时，卫星国防军 SEED 不会涨）。 */
     if (打死了) 势力击破(ctx, actor, 实际);
+    /* ★ 2026-10-11 新加的势力钩子 `势力友军攻击后(ctx, 攻击者, 目标, 一击)`：
+       触发时机 = **我方队友一次攻击真的造成伤害之后**（就在这一条攻击记录与 `势力击破()` 之后）。
+       参数 `一击` = 这一下的记录字段（`伤害 > 0` 才算「造成伤害」；未命中不触发）。
+       第一件用它的是**月球王国**：队友攻击后 Feena 追加一发「残月的余响」（`72-势力.js`）。
+       ★ 没有势力条目 / 条目没写这个钩子 → 框架里是空循环，**公式与记录逐字不变**；
+         追加的那一发在实现里自己走 `resolveAttack()`，**不会再回头触发这个钩子**（不连锁）。 */
+    if (rec.字段.伤害 > 0) 势力友军攻击后(ctx, actor, 实际, rec.字段);
   }
   spendWeapon(actor, action.entry);
   return { 击破 };
