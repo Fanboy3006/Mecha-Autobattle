@@ -330,6 +330,134 @@ console.log('\n[8] 带种子的确定性：Boss 脚本不含随机数，同种�
   else info('换个种子记录一样（大肥鱼是必中，这一场确实没有随机数参与，正常）');
 }
 
+/* ============================ [9] 大技能改成「可躲的形状」（作者 2026-10-11） ============================
+ * 作者原话：「**Boss / 大技能改成可躲的形状**……最终效果：**换位能真的改变结果**」。
+ * 改前：`area` 没写就默认 `row`（打一整排）→ 9 格里总有一排站着人，**换位躲不掉总伤害**。
+ * 改后：`战斗结构.大招形状` 把大肥鱼的「周身冲击」收成 `col`（**阻挡束**：一个前排位 + 它挡的 1–2 个后排位），
+ *       并且 `算意图()` 会给出**落点们**（将打哪几个位），界面直接写出来。 */
+console.log('\n[9] 大技能可躲：形状收成阻挡束（col）+ 意图显示落点 + 换位真的改变伤害');
+{
+  const 招 = G.ENEMY_T.bluefish.weapons.find(w => w.name === '周身冲击');
+  if (招 && 招.area === 'col') ok(`大肥鱼的【周身冲击】形状 = ${招.area}（阻挡束：目标位 + 它挡的 1–2 个后排位）—— 不再是默认的一整排 row`);
+  else bad(`大技能形状没收窄：${招 ? 招.area : '找不到那把武器'}`);
+
+  /* 落点：`areaSlots()` 直接算给测试看（后2 = slot 5 → 前2 + 后2 + 后3） */
+  const 后2 = G.slotOf ? G.slotOf(G.ROW_BACK, 1) : null;
+  const 位5 = 4 + 1;                       // 后 5 格从 slot 4 起：后2 = 5
+  const 落点 = G.areaSlots(招, G.ROW_BACK, 1);
+  if (落点.length === 3 && 落点.join(',') === [1, 5, 6].join(',')) {
+    ok(`打「后2」时落点 = ${落点.map(G.位名).join('、')}（前2 / 后2 / 后3）—— 只有 3 格，**后1 在范围外 → 能躲**`);
+  } else bad(`落点不对：${落点.map(G.位名).join('、')}`);
+
+  /* 换位能真的改变结果：同种子、同编队，「不换位」vs「大技能那一回合把位 5 的人换到后1（4）」
+     —— 对比**我方总挨的伤害**。 */
+  const 跑 = (换位) => {
+    const 我方 = [
+      { 键: 'B1', 位: 5, 等级: 30 },        // 后2（大技能盯的就是这一格）
+      { 键: 'CB4', 位: 1, 等级: 30 },       // 前2（在阻挡束里）
+      { 键: 'CB2', 位: 7, 等级: 30 },       // 后4（不在阻挡束里）
+      { 键: 'B2', 位: 4, 等级: 30 },        // 后1（换位的落点：`相邻位(5)` 里有它）
+    ];
+    const ctx = G.开局(我方, G.敌方规格组(G.编成到单位(G.编成表[G.编成表.length - 1], 0)), 20261010);
+    let 我方挨 = 0;
+    for (let i = 0; i < 3 && !ctx.result; i++) {
+      /* 第 1 回合就是大技能回合（`(回合−1) % 间隔 === 0`）→ 在第 1 回合的指令阶段就把位 5 换到后1 */
+      if (换位) G.设指令(ctx, { 5: { 类型: '换位' } });
+      const 起 = ctx.log.length;
+      G.打一回合(ctx);
+      for (const x of ctx.log.slice(起)) if (x.目标方 === 'ally') 我方挨 += (x.伤害 || 0);
+    }
+    const 大技能记录 = ctx.log.filter(x => x.类型 === 'Boss' && x.Boss事件 === '大技能').length;
+    return { 挨: 我方挨, 大技能记录, 记录: ctx.log };
+  };
+  const 不换 = 跑(false), 换 = 跑(true);
+  info(`不换位：我方总共挨 ${不换.挨}（大技能记录 ${不换.大技能记录} 条）　｜　把「后2」的人换到「后1」：我方总共挨 ${换.挨}`);
+  if (不换.大技能记录 > 0 && 换.大技能记录 > 0 && 换.挨 < 不换.挨) {
+    ok(`换位真的改变结果：同种子同编队，**不换位挨 ${不换.挨} → 换位只挨 ${换.挨}**`
+      + `（少挨 ${不换.挨 - 换.挨}，${((1 - 换.挨 / 不换.挨) * 100).toFixed(0)}%）—— 把站位挪出「前2/后2/后3」这一束就真的躲开了`);
+  } else bad(`换位没有改变结果：不换位 ${不换.挨} / 换位 ${换.挨}（大技能记录 ${不换.大技能记录} / ${换.大技能记录}）`);
+
+  /* 指令阶段的意图里写得出来「将打哪几个位」 */
+  const ctx2 = G.开局([{ 键: 'B1', 位: 5, 等级: 30 }, { 键: 'CB4', 位: 0, 等级: 30 }],
+    G.敌方规格组(G.编成到单位(G.编成表[G.编成表.length - 1], 0)), 20261010);
+  const 意图 = G.算意图(ctx2).find(x => x.单位 === 'bluefish' && x.武器 === '周身冲击');
+  if (意图 && 意图.大技能 && 意图.形状 === 'col' && 意图.落点们 && 意图.落点们.length) {
+    ok(`指令阶段的意图里有落点：${意图.名称}【${意图.武器}】（${意图.形状} 形状）将打 ${意图.落点们.map(G.位名).join('、')}`);
+  } else bad(`意图里没有落点 / 形状：${JSON.stringify(意图 && { 武器: 意图.武器, 形状: 意图.形状, 落点们: 意图.落点们 })}`);
+}
+
+/* ============================ [10] 敌方上 debuff（作者 2026-10-11） ============================
+ * 作者原话：「**敌方上 debuff**：敌方也能给我方挂 debuff（复用现成的 `debuffs` 管线：
+ *            命中 −20 / 破甲 `pct` / 削装甲 `armorCut` 等），让**防御 / 守护 / 修理**有存在的理由」。
+ * 三条管线本来就在读（`hitRate()` 读 buffs.hit，`defMul()` 读 debuffs.pct，`effArmor()` 减 u.armorCut），
+ * 这一版只是**补上生产者和到期还回去的簿记**。 */
+console.log('\n[10] 敌方 debuff：命中 −N / 破甲 pct / 削装甲 armorCut（三条现成管线）');
+{
+  const 表 = G.战斗结构.敌方debuff;
+  ok(`参数表里有 ${Object.keys(表).length} 种敌人的大招带 debuff：`
+    + Object.entries(表).map(([k, v]) => `${k} ${Object.entries(v).map(([w, d]) => `${w}[${Object.entries(d).map(([a, b]) => `${a} ${b}`).join('、')}]`).join('')}`).join('；'));
+
+  /* 命中 −25：干扰机的「全频干扰弹」。
+     ★ 口径：命中公式读的是**攻击者自己**身上的 `buffSum(att,'hit')`
+     （`20-战斗计算.js:80`：`(baseHit − 被攻击者闪避) + … + buffSum(att,'hit')`）——
+     所以「被挂上命中 −25」的意思是**这台机体下次打人时更难打中**（和「特种」同一条口径）。
+     这里就让被挂的那台去打一次，比前后的原始命中值。 */
+  const 假 = { key: 'X', name: '假人', side: 'ally', tags: {}, eva: 10, aim: 160, buffs: [], debuffs: [], armorCut: 0, armor: 1000, defense: 100 };
+  const w = { name: 'T', fire: 'direct', hit: 100, cd: 0, unlock: 1, dmgType: '物理', stat: '射击' };
+  const 靶 = { side: 'enemy', key: 'grunt', eva: 10, buffs: [], debuffs: [] };
+  const 前命中 = G.hitRate(假, w, 靶, { turn: 1 }).raw;
+  G.应用武器debuff(假, G.武器debuff('jammer', '全频干扰弹'), '全频干扰弹');
+  const 后命中 = G.hitRate(假, w, 靶, { turn: 1 }).raw;
+  if (G.buffSum(假, 'hit') === -25 && 后命中 === 前命中 - 25) ok(`命中 debuff 真的进公式：挂上「全频干扰弹」→ buffSum(hit) = ${G.buffSum(假, 'hit')}，这台下次打人的原始命中 ${前命中} → ${后命中}`);
+  else bad(`命中 debuff 没进公式：buffSum ${G.buffSum(假, 'hit')}、命中 ${前命中} → ${后命中}`);
+
+  /* 破甲 25%：λ 加农炮·全开 —— `defMul()` 真的 ×0.75，而且 `dmgCore` 里真的吃到了 */
+  const 甲 = { key: 'Y', name: '假人2', side: 'ally', tags: {}, eva: 0, buffs: [], debuffs: [], armorCut: 0, armor: 1000, defense: 100, hp: 99999, maxHp: 99999 };
+  const 前破 = G.defMul(甲);
+  const 打手 = { side: 'enemy', key: 'grunt', shoot: 160, melee: 100, aim: 160 };
+  const 一发 = { name: 'x', fire: 'direct', power: 3000, hit: 100, stat: '射击', dmgType: '物理', cd: 0, unlock: 1 };
+  const 伤前 = G.dmgCore(打手, 一发, { ...甲 }, { power: 3000, preview: true }).dmg;
+  G.应用武器debuff(甲, G.武器debuff('venom', 'λ 加农炮·全开'), 'λ 加农炮·全开');
+  const 后破 = G.defMul(甲);
+  const 伤后 = G.dmgCore(打手, 一发, 甲, { power: 3000, preview: true }).dmg;
+  if (前破 === 1 && Math.abs(后破 - 0.75) < 1e-9 && 伤后 > 伤前) {
+    ok(`破甲真的进公式：defMul ${前破} → ${后破.toFixed(2)}（破防 −25%），同一发 3000 威力打上去 ${伤前} → ${伤后}`);
+  } else bad(`破甲没进公式：defMul ${前破} → ${后破}、伤害 ${伤前} → ${伤后}`);
+
+  /* 削装甲 250：甲虫的「重甲冲撞」—— `effArmor()` 真的少 250，到期（endTurn）还回去 */
+  const 丙 = { key: 'Z', name: '假人3', side: 'ally', tags: {}, eva: 0, buffs: [], debuffs: [], armorCut: 0, armor: 1000, defense: 100, hp: 99999, maxHp: 99999 };
+  const 甲前 = G.effArmor(丙);
+  G.应用武器debuff(丙, G.武器debuff('beetle', '重甲冲撞'), '重甲冲撞');
+  const 甲后 = G.effArmor(丙);
+  if (甲前 === 1000 && 甲后 === 750) ok(`削装甲真的进公式：有效装甲 ${甲前} → ${甲后}（armorCut 250）`);
+  else bad(`削装甲没生效：${甲前} → ${甲后}`);
+  /* 到期还回去：造一个真 ctx 走 endTurn */
+  const ctx = G.开局([{ 键: 'B1', 位: 0, 等级: 10 }], [{ 键: 'grunt', 位: 0, 等级: 10 }], 7);
+  const 真 = ctx.allies[0];
+  G.应用武器debuff(真, G.武器debuff('beetle', '重甲冲撞'), '重甲冲撞');
+  const 挂上 = G.effArmor(真);
+  G.endTurn(ctx); G.endTurn(ctx);              // 剩余 2 → 两回合后到期
+  const 还了 = G.effArmor(真);
+  if (挂上 < 还了 && 还了 === 真.armor && (真.armorCut || 0) === 0) {
+    ok(`debuff 到期真的把装甲还回去了：挂上时 ${挂上} → 两回合后 ${还了}（armorCut 归 0）`);
+  } else bad(`到期没还回去：挂上 ${挂上} → 之后 ${还了}（armorCut ${真.armorCut}）`);
+
+  /* 真打一场：干扰机的「全频干扰弹」命中之后，我方身上真的有那条 debuff。
+     ★ 我方**只用 B3 维诺一台**（第一期她只有修理武器、一次都不还手）—— 干扰机因此活得到
+     第 4 回合（开场冷却 3）放出大招；换成会还手的机体，Lv10 的干扰机一回合就被打死了。 */
+  let 抓到 = null, 出手 = 0;
+  for (let s = 1; s <= 60 && !抓到; s++) {
+    const ctx2 = G.开局([{ 键: 'B3', 位: 4, 等级: 30 }],
+      [{ 键: 'jammer', 位: 0, 等级: 10 }], s);
+    for (let i = 0; i < 6 && !ctx2.result; i++) G.打一回合(ctx2);
+    const 录 = ctx2.log.filter(x => x.类型 === '攻击' && x.武器 === '全频干扰弹');
+    出手 += 录.length;
+    抓到 = 录.find(x => x.命中 && x.debuff) || null;
+  }
+  if (抓到) ok(`真打一场也挂得上（${出手} 次出手里抓到一次命中）：${抓到.文本}`);
+  else bad(`跑了 60 个种子、${出手} 次出手都没抓到「全频干扰弹」命中并挂 debuff 的记录`);
+}
+
 /* ============================ 结果 ============================ */
 console.log(`\nERRS [${errs.join(' | ')}]`);
 console.log(fails ? `共 ${fails} 项失败` : '站桩 Boss 测试全部通过');

@@ -495,10 +495,16 @@ function endTurn(ctx) {
        以前只衰减 `buffs`，`debuffs`（破防 / 破甲那一类，`20-战斗计算.js:43-44` 的 `breakSum()` / `defMul()`）
        **没有任何生产者，也一直不衰减**。这一版把规则补齐成和 buffs **完全一样**：
        `剩余` 默认 1、每回合结束 −1、减到 0 就摘掉。
-       ★ 全仓库现在只有**秘银的标定**往 `debuffs` 里写（`72-势力.js`，它的「剩余」就是层数 —— 这就是
-         方案三 b:「每回合结束标定 −1 层」的落点）；**没有标定的战斗 `debuffs` 是空数组 → 这一行空转**，
-         既有战斗的数值一个字节都不变（`tests/sim.js` 的胜率表与公式对照盯着这一条）。 */
-    u.debuffs = (u.debuffs || []).filter(b => (b.剩余 = (b.剩余 == null ? 1 : b.剩余) - 1) > 0);
+       ★ 2026-10-11 第二轮：**敌方武器 debuff** 也会挂 `debuffs`（`战斗结构.敌方debuff`）——
+         里面 `armorCut`（削装甲，`effArmor()` 减的那一项）是**累加**在 `u.armorCut` 上的标量，
+         所以到期时必须**还回去**（和 `barrierLeft` 一样的簿记写法）。
+       ★ 没有 debuff 的战斗 `debuffs` 是空数组 → 这一行空转，既有战斗的数值一个字节都不变
+         （`tests/sim.js` 的胜率表与公式对照盯着这一条）。 */
+    u.debuffs = (u.debuffs || []).filter(b => {
+      const 还活着 = (b.剩余 = (b.剩余 == null ? 1 : b.剩余) - 1) > 0;
+      if (!还活着 && b.armorCut) u.armorCut = Math.max(0, (u.armorCut || 0) - b.armorCut);
+      return 还活着;
+    });
     u.defending = false;
   }
   /* 势力特色（框架在 `72-势力.js`）：回合结束的钩子。
@@ -555,6 +561,18 @@ function 算意图(ctx) {
        bossAction 是纯函数，所以指令阶段读它不会改动战斗状态。 */
     const a = bossAction(u, ctx);
     const bp = Boss参数(u);
+    /* ★ 2026-10-11 新加：**这一发会打到哪几个位**（作者：「指令阶段的敌人意图要显示将打哪几个位」）。
+       范围武器用 `areaSlots()`（`30-射程.js`）按落点算；`pickAreaTarget()` 已经给了一份 `hit`，优先用它。
+       单体武器只有一个位。玩家因此能一眼看出「换位到底躲不躲得掉」。 */
+    let 落点们 = [];
+    if (a && a.weapon) {
+      if (isAreaKind(rangeKindOf(a.weapon))) {
+        const 位 = a.slot != null ? a.slot : (a.target ? a.target.slot : null);
+        if (a.hit && a.hit.length) 落点们 = a.hit.map(t => t.slot);
+        else if (位 != null) 落点们 = areaSlots(a.weapon, rowOfSlot(位), colOfSlot(位));
+        落点们 = [...new Set(落点们)].sort((x, y) => x - y);
+      } else if (a.target) 落点们 = [a.target.slot];
+    }
     return {
       单位: u.key, 单位位: u.slot, 名称: u.name,
       武器: a && a.weapon ? a.weapon.name : null,
@@ -567,6 +585,8 @@ function 算意图(ctx) {
           界面上要跟这条规则一致：意图里写「被挡 −20」（作者 2026-10-10 拍板）。 */
       被挡: !!(a && a.被挡),
       命中修正: a && a.被挡 ? -20 : 0,
+      落点们,                                   // ★ 2026-10-11：这一发会打到哪几个位（可躲形状用）
+      形状: a && a.weapon ? (isAreaKind(rangeKindOf(a.weapon)) ? (a.weapon.area || 'row') : '单格') : null,
       /* Boss：这一发是不是大技能、现在第几阶段、还是这一回合在蓄力（界面上看得见节奏） */
       大技能: !!(a && a.大技能),
       /* ★ 2026-10-11 新加：这一发是不是**大招**（我方 unlock ≥ 20 的那批 + 敌方 `战斗结构.敌方大招`

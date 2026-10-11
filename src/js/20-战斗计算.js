@@ -380,11 +380,57 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
     def.buffs.push({ src: '特种', hit: -特种减命中, 剩余: 2 });
   }
 
+  /* ★ 2026-10-11 新加的**敌方武器 debuff**（作者：「敌方也能给我方挂 debuff」）：
+     数据在 `71-改动.js` 的 `战斗结构.敌方debuff[敌人键][武器名]`，**复用现成的三条管线**：
+       · `hit`      → `def.buffs[]`（命中公式 `hitRate()` 读 `buffSum(def,'hit')`，和「特种」同一条）
+       · `pct`      → `def.debuffs[]`（破甲：`breakSum()` → `defMul()`，装甲与防御一起降）
+       · `armorCut` → `def.armorCut`（削装甲：`effArmor()` 减的那一项；到期由 `60-战斗.js` 的 `endTurn()` 还回去）
+     ★ **公式一行没改**：这三项本来就在读，只是一直没有（或只有秘银一个）生产者。
+     ★ 没有配 debuff 的武器 → `武器debuff()` 返回 null → 这一整段不进，行为与改前逐字相同。 */
+  let 挂上的debuff = null;
+  if (landed) {
+    挂上的debuff = 武器debuff(att.key, w.name);
+    if (挂上的debuff) 应用武器debuff(def, 挂上的debuff, w.name);
+  }
+
   const 段 = hits > 1 ? `${landed}/${hits} 段 ` : '';
   return {
     文本: landed
-      ? `${att.name}【${w.name}】→ ${def.name}：${段}伤害 ${total}${crits ? `（暴击 ${crits} 次）` : ''}${特种减命中 ? `（特种：对方命中 −${特种减命中}，到下回合结束）` : ''}`
+      ? `${att.name}【${w.name}】→ ${def.name}：${段}伤害 ${total}${crits ? `（暴击 ${crits} 次）` : ''}`
+        + `${特种减命中 ? `（特种：对方命中 −${特种减命中}，到下回合结束）` : ''}`
+        + `${挂上的debuff ? `（${debuff文字(挂上的debuff)}）` : ''}`
       : `${att.name}【${w.name}】→ ${def.name}：未命中（${rolls.join('；')}）`,
-    字段: { 命中: landed > 0, 伤害: total, 段数: hits, 命中段数: landed, 暴击: crits, 目标剩余HP: def.hp, 特种减命中, 详情: rolls.join('；') },
+    字段: { 命中: landed > 0, 伤害: total, 段数: hits, 命中段数: landed, 暴击: crits, 目标剩余HP: def.hp, 特种减命中, debuff: 挂上的debuff || null, 详情: rolls.join('；') },
   };
+}
+
+/* ---------- 敌方武器 debuff 的落点（2026-10-11，出处见 `71-改动.js` 的 `战斗结构.敌方debuff`） ----------
+ * 同一来源**只留一份**（和 `换同源增益()` 同一个规矩），换新的时候先把旧的副作用还回去，
+ * 免得 `armorCut` 这种**累加**的量越挂越多。 */
+function 应用武器debuff(def, d, 武器名) {
+  const 源 = d.src || `${武器名}(敌)`;
+  const 剩余 = Number.isFinite(Number(d.剩余)) ? Number(d.剩余) : 2;
+  /* 先把同源的旧条目摘掉，并把可累加的那一项（armorCut）还回去 */
+  for (const b of (def.debuffs || [])) if (b.src === 源 && b.armorCut) def.armorCut = Math.max(0, (def.armorCut || 0) - b.armorCut);
+  def.debuffs = (def.debuffs || []).filter(b => b.src !== 源);
+  def.buffs = (def.buffs || []).filter(b => b.src !== 源);
+  if (d.hit) def.buffs.push({ src: 源, hit: d.hit, 剩余 });
+  if (d.pct || d.armorCut) {
+    /* ★ `pct` **一定要写数字**（哪怕 0）：`breakSum()` 是 `reduce((a,b) => a + b.pct, 0)`，
+       少写一个 `pct` 会让它变成 `0 + undefined = NaN`，接着 `defMul()` / `dmgCore()` 全线 NaN。
+       （这个坑是 `tests/balance.js` 跑出来的：某些档的「平均剩余 HP 比例」变成了 NaN%。） */
+    const 条 = { src: 源, pct: d.pct || 0, 剩余 };
+    if (d.armorCut) { 条.armorCut = d.armorCut; def.armorCut = (def.armorCut || 0) + d.armorCut; }
+    def.debuffs.push(条);
+  }
+  return 源;
+}
+
+/** debuff 的人话（记录里那一句「（破甲 −25%，到下回合结束）」）。 */
+function debuff文字(d) {
+  const 们 = [];
+  if (d.hit) 们.push(`命中 ${d.hit}`);
+  if (d.pct) 们.push(`破甲 −${d.pct}%`);
+  if (d.armorCut) 们.push(`削装甲 ${d.armorCut}`);
+  return `挂上 debuff：${们.join('、')}，到下回合结束`;
 }
