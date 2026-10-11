@@ -500,6 +500,10 @@ const 界面 = {
     /* 势力特色（作者 2026-10-10；框架在 `72-势力.js`）：单位卡上多一行字，**只多这一行**——
        第一件 = 卫星国防军 SEED「累计 / 还差多少」与觉醒后的加成；没有特色的单位是空串。 */
     const 势力行 = 方 === 'ally' ? 势力卡行(u) : '';
+    /* 秘银（势力特色第六件，`72-势力.js`）：**敌机卡**上显示它身上挂的标定（几层 / 谁挂的 / 兑现了没）——
+       框架的 `势力卡行()` 只问我方单位（敌人卡走不到那里），所以这一行走 `秘银标定卡行()`；
+       **没有标定 = 空串**（一张卡都不多画，别的战斗逐字不变；播放阶段的快照没有 `debuffs` 也走同一条）。 */
+    const 标定行 = 方 === 'enemy' ? 秘银标定卡行(u) : '';
     return `<div class="uc${u.hp <= 0 ? ' down' : ''}${选中}" id="u-${方}-${u.slot}" data-side="${方}" data-slot="${u.slot}" style="--fc:${色}"${动}>
       <span class="pos">${位名(u.slot)}</span>
       <div class="head">${图标.卡(u.key, 方, 图标.尺寸.卡)}<div class="nm"><b>${u.name}</b><small>${u.key} · 速 ${speedOf(u)}</small></div></div>
@@ -507,6 +511,7 @@ const 界面 = {
       <div class="nums">HP ${Math.max(0, u.hp)} / ${u.maxHp}${u.shieldHp ? ` · 盾 ${u.shieldHp}` : ''}</div>
       <div class="tags">${(u.tags && u.tags.战斗分类) || ''}${u.weapons && u.weapons.filter(e => isUltimate(e.t)).length ? ' · 大招' : ''}</div>
       ${势力行 ? `<div class="faction">${势力行}</div>` : ''}
+      ${标定行 ? `<div class="faction">${标定行}</div>` : ''}
       ${方 === 'ally' && 指令行 ? `<div class="cmd">${指令行}</div>` : ''}
       ${方 === 'enemy' && 意图行 ? `<div class="intent">${意图行}</div>` : ''}
     </div>`;

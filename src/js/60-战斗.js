@@ -347,6 +347,13 @@ function resolveAction(actor, action, ctx) {
        近战够不够得着由 AI 那边按 `rowReachable` 过滤，这里只管直射的 −20。 */
     const 活位 = livingOf(实际.side, ctx).map(x => x.slot);
     const blockPenalty = isAreaKind(kind) ? 0 : rowBlockPenalty(kind, 实际.slot, 活位, actor);
+    /* ★ 2026-10-11 新加的势力钩子 `势力攻击前(ctx, 攻击者, 目标, 武器)`（框架第 13 个，`72-势力.js`）：
+       触发时机 = **这一发真的结算之前**（逐目标、`resolveAttack()` 之前、`spendWeapon()` 还没走）。
+       第一条用它的是**秘银**：作战岗在这里**兑现**情报岗挂的标定（把 `debuffs` 里的 `pct` 打开）——
+       破防必须先挂到目标身上，这一发自己才吃得到；写到 `势力友军攻击后` 就晚了（那是伤害算完之后）。
+       ★ 没有势力条目 / 条目没写这个钩子 → 框架里是空循环，**公式与记录逐字不变**；
+         实现里**不许消耗 `ctx.rng`**（在这个位置上动随机数会改整场结果）。 */
+    势力攻击前(ctx, actor, 实际, w);
     const rec = resolveAttack(actor, 实际, w, ctx, { blockPenalty, defending: 按防御, 伤害倍率: 倍率 });
     const 打死了 = 血 > 0 && 实际.hp <= 0;
     if (打死了) 击破++;
@@ -420,11 +427,19 @@ function checkResult(ctx) {
   return null;
 }
 
-/* ---------- 回合结束：buff / 冷却计时减 1（方案 3.2） ---------- */
+/* ---------- 回合结束：buff / debuff / 冷却计时减 1（方案 3.2） ---------- */
 function endTurn(ctx) {
   for (const u of livingUnits(ctx)) {
     for (const e of u.weapons) if (e.cd > 0) e.cd--;
     u.buffs = (u.buffs || []).filter(b => (b.剩余 = (b.剩余 == null ? 1 : b.剩余) - 1) > 0);
+    /* ★ **2026-10-11 新加的 debuff 衰减**（势力特色第六件「秘银」带出来的）：
+       以前只衰减 `buffs`，`debuffs`（破防 / 破甲那一类，`20-战斗计算.js:43-44` 的 `breakSum()` / `defMul()`）
+       **没有任何生产者，也一直不衰减**。这一版把规则补齐成和 buffs **完全一样**：
+       `剩余` 默认 1、每回合结束 −1、减到 0 就摘掉。
+       ★ 全仓库现在只有**秘银的标定**往 `debuffs` 里写（`72-势力.js`，它的「剩余」就是层数 —— 这就是
+         方案三 b:「每回合结束标定 −1 层」的落点）；**没有标定的战斗 `debuffs` 是空数组 → 这一行空转**，
+         既有战斗的数值一个字节都不变（`tests/sim.js` 的胜率表与公式对照盯着这一条）。 */
+    u.debuffs = (u.debuffs || []).filter(b => (b.剩余 = (b.剩余 == null ? 1 : b.剩余) - 1) > 0);
     u.defending = false;
   }
   /* 势力特色（框架在 `72-势力.js`）：回合结束的钩子。
