@@ -13,8 +13,8 @@
 'use strict';
 
 /* ---------- 版本 / 里程碑（顶栏会显示，测试也会读） ---------- */
-const VERSION = '0.6.1';
-const MILESTONE = '晋升+零件';
+const VERSION = '0.6.2';
+const MILESTONE = 'M6 平衡工具';
 
 /* ---------- 小工具 ---------- */
 const $ = s => document.querySelector(s);

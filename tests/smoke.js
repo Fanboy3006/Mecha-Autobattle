@@ -107,7 +107,8 @@ else {
   ok('window.__game 已暴露');
   const checks = [
     ['version', v => typeof v === 'string' && /^\d+\.\d+\.\d+$/.test(v)],
-    ['milestone', v => v === 'M4' || v === '晋升+零件'],       // M4 之后的追加段会把里程碑文字换掉（v0.6.1 起）
+    /* M4 之后的追加段会把里程碑文字换掉；M6（v0.6.2）起是「M6 平衡工具」。 */
+    ['milestone', v => v === 'M4' || v === '晋升+零件' || v === 'M6 平衡工具'],
     ['ready', v => v === true],
     ['slots', v => v === 5],                                  // 作者 2026-10-10：暂时「前 3 后 2」= 5 格
     ['rows', v => v === 2],
