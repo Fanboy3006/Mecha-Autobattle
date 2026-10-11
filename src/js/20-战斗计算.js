@@ -29,7 +29,12 @@
 /* ---------- 属性 ---------- */
 const STAT_KEY = { 格斗: 'melee', 射击: 'shoot', 觉醒: 'awaken', 防御: 'defense' };
 const statNames = w => String(w.stat || '射击').split('+');
-const statVal = (u, k) => u[STAT_KEY[k]] ?? 100;
+/* `觉醒` 这一项读**战斗内会成长**的觉醒值（框架 `势力觉醒值()`，在 `72-势力.js`）——
+ * 出处：战棋 `15-战斗计算.js:48` `statVal = (u,k) => STAT_KEY[k]==='awaken' ? awakenOf(u) : (u[STAT_KEY[k]] ?? 100)`
+ * （v0.41.4 卫星国防军：觉醒值在战斗中成长，17b:198 的 `awakenOf = 模板 awaken + 本场成长`）。
+ * ★ 没有势力成长的单位（**全部敌人** + 没有 `awaken` 字段的机体）算出来还是 `u.awaken ?? 100`，
+ *   与改动前**逐字相同** —— 只有吃势力特色的我方单位会变（第一件 = 卫星国防军 SEED）。 */
+const statVal = (u, k) => k === '觉醒' ? 势力觉醒值(u) : (u[STAT_KEY[k]] ?? 100);
 const atkStat = (u, w) => Math.round(statNames(w).reduce((a, k) => a + statVal(u, k), 0) * (w.statMul || 1));
 
 /* ---------- 增益 / 装甲 / 破防 ---------- */
@@ -55,7 +60,10 @@ const lsLeft = (u, turn) => u.lsTurn !== turn ? 2 : 2 - (u.lsCount || 0);   // �
 function hitRate(att, w, def, opts = {}) {
   if (isSure(w)) return { hit: 100, raw: 100, eva: 0, sure: true };
   const 尖兵闪 = (职业是(def, '尖兵') && def.尖兵闪避Turn !== opts.turn) ? 20 : 0;
-  const eva = Math.max(0, def.eva - (def.dodgePen || 0)) + buffSum(def, 'eva') + (def.moveEva || 0) + 尖兵闪;
+  /* `势力闪避(def)`（`72-势力.js` 的框架钩子）＝ 势力特色给的闪避，**只对我方、没有特色恒 0**
+     （第一件 = 卫星国防军 SEED 觉醒：闪避 + 觉醒 × 0.15；战棋同款是 `03-能力与减免管线.js:100` 的
+     `TRAIT_FX.seed`，那里也是加在闪避上）。所以别的战斗与改动前**逐字相同**。 */
+  const eva = Math.max(0, def.eva - (def.dodgePen || 0)) + buffSum(def, 'eva') + (def.moveEva || 0) + 尖兵闪 + 势力闪避(def);
   const h = (opts.baseHit ?? w.hit) - eva + Math.round(((att.aim ?? 160) - 160) / 2) + buffSum(att, 'hit') + (opts.blockPenalty || 0);
   return { hit: clamp(Math.round(h), 0, 100), raw: Math.round(h), eva, 尖兵闪 };
 }
@@ -97,6 +105,12 @@ const REDUCTIONS = [
    * 那里写着 `Math.min(90, softRed(c))`。我们照抄这一条，只读 buffSum(def,'red')。
    * **没有藏品的战斗 buffSum 是 0 → applies 为假 → 一行都不进步骤**，公式与改动前逐字相同。 */
   { id: 'relicRed', name: '减伤', stage: 2, applies: c => buffSum(c.def, 'red') > 0, def: c => Math.min(90, buffSum(c.def, 'red')) },
+  /* 「势力防御」（**势力特色**用；★ 第一件 = 卫星国防军 SEED 的**重装**档，实现在 `72-势力.js`）：
+   * 战棋把「SEED 防御」放在同一个 stage 2、加到**防御值**上（`03-能力与减免管线.js:227-229` 的
+   * `REDUCTIONS.seedDef`，值来自 `17b:200` 的 `seedDefOf = seedActive(u) && isHeavy(u) ? round(觉醒 × 0.25) : 0`）。
+   * 我们把它做成**通用的势力入口**（`势力防御(u)`），后面 5 个势力共用。
+   * **没有势力特色的战斗这个值是 0 → applies 为假 → 一行都不进步骤**，公式与改动前逐字相同。 */
+  { id: 'factionDef', name: '势力防御', stage: 2, applies: c => 势力防御(c.def) > 0, def: c => 势力防御(c.def) },
   {
     id: 'barrier', name: '能量屏障', stage: 1,
     applies: c => abilOn(c.def, 'barrier') && c.def.barrierLeft > 0 && c.dmg <= 2500,

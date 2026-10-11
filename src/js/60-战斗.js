@@ -89,6 +89,11 @@ function 回合开始(ctx) {
      放在最前面 —— 补进来的敌人这一回合就按速度正常行动（和战棋 respawnFoes 一个时机）。 */
   增援(ctx);
 
+  /* 0.5 势力特色（作者 2026-10-10；框架在 `72-势力.js`）：「我方阶段开始」这类效果。
+     排在增援之后 —— 补进来的人这一回合就在场，势力特色看到的「在场有谁」和它一致；
+     排在指令解析之前 —— 势力给的增益这一回合的指令就能读到。没有势力特色时它空转。 */
+  势力回合开始(ctx);
+
   /* 1. 把「位」形式的指令解析成**单位引用**：换位之后引用不会错 */
   for (const u of livingOf('ally', ctx)) {
     u.守护对象 = null;
@@ -231,6 +236,8 @@ function runAutoCast(u, ctx) {
     if (t.hp <= 0) continue;
     const rec = resolveAttack(u, t, w, ctx, {});
     pushLog(ctx, `〔${w.name}〕${rec.文本}`, Object.assign({ 类型: '残月余响', 单位: u.key, 目标: t.key, 武器: w.name }, 谁(u), 谁目标(t), rec.字段));
+    /* 击破钩子（势力特色）：这一下打死了就通知一次（战棋 `unitDestroyed` 的等价物） */
+    if (t.hp <= 0) 势力击破(ctx, u, t);
   }
 }
 
@@ -330,8 +337,13 @@ function resolveAction(actor, action, ctx) {
     const 活位 = livingOf(实际.side, ctx).map(x => x.slot);
     const blockPenalty = isAreaKind(kind) ? 0 : rowBlockPenalty(kind, 实际.slot, 活位, actor);
     const rec = resolveAttack(actor, 实际, w, ctx, { blockPenalty, defending: 按防御, 伤害倍率: 倍率 });
-    if (血 > 0 && 实际.hp <= 0) 击破++;
+    const 打死了 = 血 > 0 && 实际.hp <= 0;
+    if (打死了) 击破++;
     pushLog(ctx, rec.文本, Object.assign({ 类型: '攻击', 单位: actor.key, 目标: 实际.key, 武器: w.name, 集火: !!action.集火, 守护挡下: 按防御, 原目标: 按防御 ? t.key : null, 原目标位: 按防御 ? t.slot : null }, 谁(actor), 谁目标(实际), rec.字段));
+    /* 击破钩子（势力特色，框架在 `72-势力.js`；战棋 `unitDestroyed` 的等价物）：
+       写在这一条攻击记录**之后**，记录里就能读到「谁打死了谁」。
+       `势力击破()` 自己会判双方阵营（敌人击破我方时，卫星国防军 SEED 不会涨）。 */
+    if (打死了) 势力击破(ctx, actor, 实际);
   }
   spendWeapon(actor, action.entry);
   return { 击破 };
@@ -391,6 +403,10 @@ function endTurn(ctx) {
     u.buffs = (u.buffs || []).filter(b => (b.剩余 = (b.剩余 == null ? 1 : b.剩余) - 1) > 0);
     u.defending = false;
   }
+  /* 势力特色（框架在 `72-势力.js`）：回合结束的钩子。
+     第一件 = 卫星国防军 SEED 的「每回合 +5」—— 战棋挂在**我方阶段开始**（17b:220-226），
+     我们挂在回合结束：第 N 回合结束 = 第 N+1 回合开始，加点与次数和战棋一致。 */
+  势力回合结束(ctx);
 }
 
 /* ---------- 开场 ----------
@@ -418,6 +434,9 @@ function 开局(我方编成, 敌方编成, 种子, 指令表, 选项) {
   }
   设指令(ctx, 指令表);
   pushLog(ctx, `战斗开始：我方 ${ctx.allies.length} 台 vs 敌方 ${ctx.enemies.length} 台`, { 类型: '开始' });
+  /* 势力特色（作者 2026-10-10；框架在 `72-势力.js`）：开场钩子 —— 本场状态清零 / 开场一次性效果。
+     放在最后，所以「战斗开始」永远是第 1 条记录（测试与单点查询的逐条记录按这个数行）。 */
+  势力开局(ctx);
   return ctx;
 }
 

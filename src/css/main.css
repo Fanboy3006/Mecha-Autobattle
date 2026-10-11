@@ -98,6 +98,8 @@ h3 .small{margin-left:6px;font-weight:400}
 .uc .bar i{display:block;height:100%;background:var(--good);transition:width .18s}
 .uc .nums{font-family:var(--font-m);font-size:10px;color:var(--muted)}
 .uc .tags{font-size:10px;color:var(--muted)}
+/* 势力特色那一行（作者 2026-10-10；框架在 72-势力.js）：SEED 层数 / 觉醒后的加成 */
+.uc .faction{font-family:var(--font-m);font-size:10px;color:#ff9ad0;margin-top:2px}
 .uc.empty{border-style:dashed;border-left-color:var(--line);opacity:.5;display:flex;align-items:center;justify-content:center}
 .uc.down{opacity:.35;filter:grayscale(1)}
 .uc.hit{animation:hitflash .18s;box-shadow:0 0 0 2px color-mix(in srgb,var(--enemy) 70%,transparent)}

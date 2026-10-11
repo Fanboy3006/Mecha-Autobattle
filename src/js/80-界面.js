@@ -497,12 +497,16 @@ const 界面 = {
       ? `${意图.大技能 ? '★大技能 ' : ''}→ ${意图.目标名}(${位名(意图.目标位)}) · ${意图.武器} · 约 ${意图.期望}${意图.被挡 ? '（被挡 −20 命中）' : ''}`
       : (意图 ? (意图.蓄力 ? '蓄力中（这一回合不出手）' : '不行动') : '');
     const 选中 = 方 === 'ally' && this.选中位 === u.slot ? ' sel' : '';
+    /* 势力特色（作者 2026-10-10；框架在 `72-势力.js`）：单位卡上多一行字，**只多这一行**——
+       第一件 = 卫星国防军 SEED「累计 / 还差多少」与觉醒后的加成；没有特色的单位是空串。 */
+    const 势力行 = 方 === 'ally' ? 势力卡行(u) : '';
     return `<div class="uc${u.hp <= 0 ? ' down' : ''}${选中}" id="u-${方}-${u.slot}" data-side="${方}" data-slot="${u.slot}" style="--fc:${色}"${动}>
       <span class="pos">${位名(u.slot)}</span>
       <div class="head">${图标.卡(u.key, 方, 图标.尺寸.卡)}<div class="nm"><b>${u.name}</b><small>${u.key} · 速 ${speedOf(u)}</small></div></div>
       <div class="bar hp"><i style="width:${hp}%"></i></div>
       <div class="nums">HP ${Math.max(0, u.hp)} / ${u.maxHp}${u.shieldHp ? ` · 盾 ${u.shieldHp}` : ''}</div>
       <div class="tags">${(u.tags && u.tags.战斗分类) || ''}${u.weapons && u.weapons.filter(e => isUltimate(e.t)).length ? ' · 大招' : ''}</div>
+      ${势力行 ? `<div class="faction">${势力行}</div>` : ''}
       ${方 === 'ally' && 指令行 ? `<div class="cmd">${指令行}</div>` : ''}
       ${方 === 'enemy' && 意图行 ? `<div class="intent">${意图行}</div>` : ''}
     </div>`;
@@ -550,10 +554,15 @@ const 界面 = {
   /** 「开打」：把这一回合的指令交给引擎 → 打一回合 → 把这一回合的记录交给播放引擎放出来。 */
   开打() {
     if (!this.ctx || this.阶段 !== '指令') return false;
-    /* 记下这一回合**开始时**的状态：播放时血条从这里开始走 */
+    /* 记下这一回合**开始时**的状态：播放时血条从这里开始走。
+       字段要够单位卡用（`速 ` 读 `speedOf()` 的 `mov` / `eva`）+ 势力特色那一行
+       （`abilities` / `awaken` / `势力状态`，`势力卡行()` 读它们，第一件 = SEED 层数）——
+       少了就会在播放阶段显示「速 NaN」/ 0 层（**顺手修掉的老问题：「速 NaN」**）。 */
     const 快照 = 列表 => 列表.map(u => ({
       side: u.side, slot: u.slot, key: u.key, name: u.name, maxHp: u.maxHp, hp: u.hp,
-      shieldHp: u.shieldHp, tags: u.tags, weapons: u.weapons,
+      shieldHp: u.shieldHp, tags: u.tags, weapons: u.weapons, abilities: u.abilities,
+      mov: u.mov, eva: u.eva, awaken: u.awaken,
+      势力状态: u.势力状态 ? JSON.parse(JSON.stringify(u.势力状态)) : null,
     }));
     this.显示单位 = { 我方: 快照(this.ctx.allies), 敌方: 快照(this.ctx.enemies) };
     设指令(this.ctx, this.指令);
