@@ -12,6 +12,9 @@
  *
  * 一个回合（方案 3.2）：全场单位按速度从高到低各行动一次（同速 → 我方先，再按列号），
  * 然后 buff / 冷却计时减 1。胜负：敌方全灭 = 胜；我方全灭或第 12 回合结束 = 败。
+ *
+ * 敌方单位的行动先过**站桩 Boss 脚本**（方案 5.2，`61-Boss.js`）：每 N 回合放一次大技能、
+ * 半血换阶段。没配脚本的敌人原样走 `enemyAction`（50-AI.js），行为不变。
  * ========================================================================== */
 
 const MAX_TURN = 12;          // 第 12 回合结束还没分出胜负 = 败（方案 3.2）
@@ -135,7 +138,9 @@ function 换位目标(ctx, actor) {
 
 /* ---------- 一个单位这次行动做什么 ---------- */
 function 单位动作(u, ctx) {
-  if (u.side === 'enemy') return enemyAction(u, ctx);
+  /* 敌方走 Boss 脚本那一层（方案 5.2：每 N 回合大技能 + 半血换阶段，见 61-Boss.js）：
+     没配脚本的敌人它原样转给 enemyAction，行为一个字节都不变。 */
+  if (u.side === 'enemy') return bossTurn(u, ctx);
   switch (u.指令) {
     case '防御': return { kind: 'defend' };
     case '换位': return { kind: 'swap' };
@@ -192,6 +197,9 @@ function runAutoCast(u, ctx) {
 function resolveAction(actor, action, ctx) {
   const w = action.weapon;
   const 空 = { 击破: 0 };
+
+  /* Boss 蓄力（61-Boss.js）：这一回合不出手，记录已经在 bossTurn 里写好了 */
+  if (action.kind === 'none') return 空;
 
   /* 支援①：加增益（月光祝福） */
   if (action.kind === 'buff') {
@@ -252,6 +260,8 @@ function resolveAction(actor, action, ctx) {
   const kind = rangeKindOf(w);
   const targets = isAreaKind(kind) ? (action.hit || []) : [action.target];
   const 守护方 = actor.指令 === '守护' && actor.守护对象 ? 0.7 : 1;   // 守护者自己攻击伤害 −30%
+  /* 站桩 Boss 脚本（61-Boss.js）：这一阶段的伤害倍率（没配脚本 = 1，与守护的 ×0.7 相乘） */
+  const 倍率 = 守护方 * Boss伤害倍率(actor);
   let 击破 = 0;
 
   for (const t of targets) {
@@ -276,7 +286,7 @@ function resolveAction(actor, action, ctx) {
     const 行 = unitRow(实际);
     const frontAliveNow = frontAlive(livingOf(otherSide(actor.side), ctx));
     const blockPenalty = isAreaKind(kind) ? 0 : rowBlockPenalty(kind, 行, frontAliveNow, actor);
-    const rec = resolveAttack(actor, 实际, w, ctx, { blockPenalty, defending: 按防御, 伤害倍率: 守护方 });
+    const rec = resolveAttack(actor, 实际, w, ctx, { blockPenalty, defending: 按防御, 伤害倍率: 倍率 });
     if (血 > 0 && 实际.hp <= 0) 击破++;
     pushLog(ctx, rec.文本, Object.assign({ 类型: '攻击', 单位: actor.key, 目标: 实际.key, 武器: w.name, 集火: !!action.集火, 守护挡下: 按防御, 原目标: 按防御 ? t.key : null, 原目标位: 按防御 ? t.slot : null }, 谁(actor), 谁目标(实际), rec.字段));
   }
@@ -364,7 +374,10 @@ function 开局(我方编成, 敌方编成, 种子, 指令表) {
  * （守护挡下 / 重新挑目标），这一点在行动阶段由引擎自己处理。 */
 function 算意图(ctx) {
   return livingOf('enemy', ctx).map(u => {
-    const a = enemyAction(u, ctx);
+    /* Boss 脚本（61-Boss.js）也在这里生效：间隔 / 阶段会影响「这一回合它要做什么」。
+       bossAction 是纯函数，所以指令阶段读它不会改动战斗状态。 */
+    const a = bossAction(u, ctx);
+    const bp = Boss参数(u);
     return {
       单位: u.key, 单位位: u.slot, 名称: u.name,
       武器: a && a.weapon ? a.weapon.name : null,
@@ -373,6 +386,11 @@ function 算意图(ctx) {
       目标名: a && a.target ? a.target.name : null,
       期望: a && a.expected ? Math.round(a.expected) : 0,
       压制射击: hasOverwatch(u),
+      /* Boss：这一发是不是大技能、现在第几阶段、还是这一回合在蓄力（界面上看得见节奏） */
+      大技能: !!(a && a.大技能),
+      Boss: !!bp,
+      Boss阶段: bp ? bp.第几阶段 : null,
+      蓄力: !a && !!bp,
     };
   });
 }

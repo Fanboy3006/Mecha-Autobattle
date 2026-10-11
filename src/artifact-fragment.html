@@ -2683,7 +2683,7 @@ const tplOf = m => ALLY_T.find(t => t.mech === m);
 /* 我方按战斗分类的初始命中（敌人默认 160）。方案 6.1：精准沿用战棋的 AIM_BY_CLASS */
 const AIM_BY_CLASS = { 狙击: 180, 尖兵: 170, 近卫: 165, 特种: 165, 指挥: 160, 重装: 150 };
 /* ============================================================================
- * 新项目对数据的改动（作者 2026-10-10 口头定的三条）
+ * 新项目对数据的改动（作者 2026-10-10 口头定的三条 + 站桩 Boss 脚本）
  * ----------------------------------------------------------------------------
  * 战棋那份数据（`10-数据.js`）是**原样复制**的，一个字都不改；
  * 新项目要改的地方全部写在这个文件里，这样以后跟战棋对账时能一眼看出差在哪。
@@ -2696,6 +2696,7 @@ const AIM_BY_CLASS = { 狙击: 180, 尖兵: 170, 近卫: 165, 特种: 165, 指�
  *      改成**敌方前排**（数据里的威力 3200 / Lv30 5400、必中、物理都照旧）。
  *   3. 她的另一个大招 = **让队友再动一次**（战棋里是指挥技能，数据表 COMMANDS 里没有这条）。
  *      先做最小版：大招（开场冷却 3 回合）、目标 = 本回合已经行动过、期望伤害最高的队友，立刻再行动一次。
+ *   4. 站桩大 Boss 的脚本参数（方案 5.2）：见文件末尾的 `Boss脚本`，字段说明在 `61-Boss.js` 开头。
  * ========================================================================== */
 
 /* 前两条的「新范围」在这里登记，实现分别在 60-战斗.js 的 resolveAction / runAutoCast */
@@ -2718,6 +2719,37 @@ const 再动 = {
   const feena = ALLY_T.find(t => t.mech === 'M1');
   if (feena && !feena.weapons.some(w => w.grant)) feena.weapons.push(再动);
 }
+
+/* ============================================================================
+ * 站桩大 Boss 的脚本（方案 5.2）· 参数表
+ * ----------------------------------------------------------------------------
+ * 方案 5.2：「Boss：各写一个简单脚本（每 N 回合放一次大技能、半血换阶段），
+ *            第一期只做蓝色大肥鱼一个。」→ 作者 2026-10-10 拍板「可以做站桩大boss」。
+ *
+ * 战棋里的大肥鱼是 `ai:'lane'`：每个敌方阶段**逐格右移**、碾碎路线上的单位、
+ * 游到地图右边缘就判我方失败。新项目没有格子地图（见 `协作/战棋协作可搬清单.md`
+ * 第一节 A1–A12），所以它在这里是**站着打的 Boss**：逐格右移 / 碾压 / 到终点判负
+ * **一条都没做**，只做方案 5.2 的两件事。
+ *
+ * ⚠ 下面这一组是**初稿**（作者要试玩后再调），`10-数据.js` 里战棋复制来的数值
+ *   （HP 240000 / 装甲 1800 / 防御 150 / 威力 2800 …）**一个字没改**。
+ *   大肥鱼 HP / 装甲怎么按我们公式换算成产品数值**归 Claude**（见任务板）——
+ *   照现在的数值，12 回合上限下我方打不死它（我们的单发伤害是几百到几千量级）。
+ *
+ * 字段（实现和判定规则在 `61-Boss.js` 开头，那里写全了）：
+ *   大技能间隔 / 大技能武器 / 伤害倍率   = 第 1 阶段（基础）
+ *   阶段: [{ 触发, …同上 }]              = 半血之后换的那一套参数；触发写 '半血' 或数字
+ * ========================================================================== */
+const Boss脚本 = {
+  bluefish: {
+    大技能间隔: 3,             // 初稿：每 3 回合放一次（第 1、4、7、10… 回合）
+    大技能武器: '周身冲击',     // 初稿：点数据里那把 `fire:'map'` 的武器（范围类、必中）
+    伤害倍率: 1,              // 初稿：第 1 阶段不额外加成
+    阶段: [
+      { 触发: '半血', 大技能间隔: 2, 伤害倍率: 1.25 },   // 初稿：半血后每 2 回合一次、伤害 ×1.25
+    ],
+  },
+};
 /* ============================================================================
  * 射程换算：能打到哪一排（方案 3.3）
  * ----------------------------------------------------------------------------
@@ -3200,6 +3232,10 @@ function makeUnits(编成, side) {
  *   5.1 我方「进攻」怎么挑       → chooseAttack()
  *   5.2 敌方（普通 / 近战 / 狙击 / overwatch / Boss）→ enemyAction()
  *   第 4 节 大招开关（自动 / 保留）→ u.holdUlt
+ *
+ * Boss 脚本（`61-Boss.js`，方案 5.2 的「每 N 回合大技能 + 半血换阶段」）**不写在这里**：
+ * 它只在 `weaponPool` 里挂了一个纯函数钩子（`Boss本回合禁用`），
+ * 由 `60-战斗.js` 的 `单位动作` 把敌方单位交给 `bossTurn`。没配脚本的敌人行为不变。
  * ========================================================================== */
 
 /* 大招 = 战棋里 unlock 为 20 或 30 的武器，有开场冷却 3 回合（方案第 4 节）。
@@ -3229,6 +3265,9 @@ function weaponPool(actor, ctx) {
     const kind = rangeKindOf(e.t);
     if (kind === null || isHealKind(kind) || isSupportKind(kind)) return false;   // 被动 / 修理 / 支援 不参与「进攻」
     if (isUltimate(e.t) && actor.holdUlt) return false;   // 大招开关「保留」= 这一回合不放（方案第 4 节）
+    /* 站桩 Boss 脚本（61-Boss.js）：间隔外不许把「大技能武器」当普通武器用，
+       否则「每 N 回合放一次」就变成「每回合都放」。没配脚本的单位不受影响。 */
+    if (Boss本回合禁用(actor, ctx, e.t)) return false;
     return true;
   });
   const ults = pool.filter(e => ultAllowed(actor, e.t));
@@ -3460,6 +3499,9 @@ const hasOverwatch = u => u.side === 'enemy' && ENEMY_OVERWATCH.includes(u.key);
  *
  * 一个回合（方案 3.2）：全场单位按速度从高到低各行动一次（同速 → 我方先，再按列号），
  * 然后 buff / 冷却计时减 1。胜负：敌方全灭 = 胜；我方全灭或第 12 回合结束 = 败。
+ *
+ * 敌方单位的行动先过**站桩 Boss 脚本**（方案 5.2，`61-Boss.js`）：每 N 回合放一次大技能、
+ * 半血换阶段。没配脚本的敌人原样走 `enemyAction`（50-AI.js），行为不变。
  * ========================================================================== */
 
 const MAX_TURN = 12;          // 第 12 回合结束还没分出胜负 = 败（方案 3.2）
@@ -3583,7 +3625,9 @@ function 换位目标(ctx, actor) {
 
 /* ---------- 一个单位这次行动做什么 ---------- */
 function 单位动作(u, ctx) {
-  if (u.side === 'enemy') return enemyAction(u, ctx);
+  /* 敌方走 Boss 脚本那一层（方案 5.2：每 N 回合大技能 + 半血换阶段，见 61-Boss.js）：
+     没配脚本的敌人它原样转给 enemyAction，行为一个字节都不变。 */
+  if (u.side === 'enemy') return bossTurn(u, ctx);
   switch (u.指令) {
     case '防御': return { kind: 'defend' };
     case '换位': return { kind: 'swap' };
@@ -3640,6 +3684,9 @@ function runAutoCast(u, ctx) {
 function resolveAction(actor, action, ctx) {
   const w = action.weapon;
   const 空 = { 击破: 0 };
+
+  /* Boss 蓄力（61-Boss.js）：这一回合不出手，记录已经在 bossTurn 里写好了 */
+  if (action.kind === 'none') return 空;
 
   /* 支援①：加增益（月光祝福） */
   if (action.kind === 'buff') {
@@ -3700,6 +3747,8 @@ function resolveAction(actor, action, ctx) {
   const kind = rangeKindOf(w);
   const targets = isAreaKind(kind) ? (action.hit || []) : [action.target];
   const 守护方 = actor.指令 === '守护' && actor.守护对象 ? 0.7 : 1;   // 守护者自己攻击伤害 −30%
+  /* 站桩 Boss 脚本（61-Boss.js）：这一阶段的伤害倍率（没配脚本 = 1，与守护的 ×0.7 相乘） */
+  const 倍率 = 守护方 * Boss伤害倍率(actor);
   let 击破 = 0;
 
   for (const t of targets) {
@@ -3724,7 +3773,7 @@ function resolveAction(actor, action, ctx) {
     const 行 = unitRow(实际);
     const frontAliveNow = frontAlive(livingOf(otherSide(actor.side), ctx));
     const blockPenalty = isAreaKind(kind) ? 0 : rowBlockPenalty(kind, 行, frontAliveNow, actor);
-    const rec = resolveAttack(actor, 实际, w, ctx, { blockPenalty, defending: 按防御, 伤害倍率: 守护方 });
+    const rec = resolveAttack(actor, 实际, w, ctx, { blockPenalty, defending: 按防御, 伤害倍率: 倍率 });
     if (血 > 0 && 实际.hp <= 0) 击破++;
     pushLog(ctx, rec.文本, Object.assign({ 类型: '攻击', 单位: actor.key, 目标: 实际.key, 武器: w.name, 集火: !!action.集火, 守护挡下: 按防御, 原目标: 按防御 ? t.key : null, 原目标位: 按防御 ? t.slot : null }, 谁(actor), 谁目标(实际), rec.字段));
   }
@@ -3812,7 +3861,10 @@ function 开局(我方编成, 敌方编成, 种子, 指令表) {
  * （守护挡下 / 重新挑目标），这一点在行动阶段由引擎自己处理。 */
 function 算意图(ctx) {
   return livingOf('enemy', ctx).map(u => {
-    const a = enemyAction(u, ctx);
+    /* Boss 脚本（61-Boss.js）也在这里生效：间隔 / 阶段会影响「这一回合它要做什么」。
+       bossAction 是纯函数，所以指令阶段读它不会改动战斗状态。 */
+    const a = bossAction(u, ctx);
+    const bp = Boss参数(u);
     return {
       单位: u.key, 单位位: u.slot, 名称: u.name,
       武器: a && a.weapon ? a.weapon.name : null,
@@ -3821,6 +3873,11 @@ function 算意图(ctx) {
       目标名: a && a.target ? a.target.name : null,
       期望: a && a.expected ? Math.round(a.expected) : 0,
       压制射击: hasOverwatch(u),
+      /* Boss：这一发是不是大技能、现在第几阶段、还是这一回合在蓄力（界面上看得见节奏） */
+      大技能: !!(a && a.大技能),
+      Boss: !!bp,
+      Boss阶段: bp ? bp.第几阶段 : null,
+      蓄力: !a && !!bp,
     };
   });
 }
@@ -3851,6 +3908,199 @@ function simulate(我方, 敌方, 指令, 种子) {
     结果: ctx.result.结果, 原因: ctx.result.原因, 回合数: ctx.turn,
     记录: ctx.log, 我方: ctx.allies, 敌方: ctx.enemies, 种子: ctx.种子, ctx,
   };
+}
+/* ============================================================================
+ * 站桩大 Boss 的脚本框架（方案 5.2）
+ * ----------------------------------------------------------------------------
+ * 方案 5.2 原文：「Boss：各写一个简单脚本（每 N 回合放一次大技能、半血换阶段），
+ *                第一期只做蓝色大肥鱼一个。」
+ *
+ * 新项目**没有格子地图**：战棋那套「逐格右移 / 碾压路线上的单位 / 到终点判负 /
+ * 撞碎力场壁 / 永远朝右」全都搬不了（逐条见 `协作/战棋协作可搬清单.md` 第一节 A1–A12）。
+ * 所以新项目里的 Boss 是**站着打的**：脚本只管两件事——「每 N 回合放一次大技能」和
+ * 「半血换阶段」。作者 2026-10-10 拍板：「可以做站桩大boss」。
+ *
+ * 数据驱动：参数写在 `src/js/71-改动.js` 的 `Boss脚本` 里（新项目改数据只改那里），
+ * 引擎这一侧只认下面这几个字段（**下面是初稿，作者试玩后再调**）：
+ *
+ *   Boss脚本[敌人键] = {
+ *     大技能间隔: 3,             // 每 N 回合放一次：第 1、1+N、1+2N… 回合
+ *     大技能武器: '周身冲击',     // 用数据里的武器名指定
+ *     伤害倍率: 1,              // 第 1 阶段（基础参数）
+ *     阶段: [ { 触发: '半血', 大技能间隔: 2, 伤害倍率: 1.25 } ],   // 半血换第 2 阶段
+ *   }
+ *
+ * 规则（这一版自己定的地方，任务板里也写了）：
+ *   1. **只对我方之外的单位生效**（`side === 'enemy'` 且键在 `Boss脚本` 里）；
+ *      没配脚本的敌人一个字节的行为都不变（还是 50-AI.js 的 `enemyAction`）。
+ *   2. 大技能回合：`（回合 − 1) % 大技能间隔 === 0`，也就是**第 1 回合起算**
+ *      （第 1、4、7… 回合），这样开场第一回合就能在记录里看到它出手。
+ *   3. 不是大技能回合时，大技能武器**不进普通 AI 的武器池**——否则它就变成「每回合都放」，
+ *      「每 N 回合一次」就没有意义了。如果这名 Boss 除了大技能没有别的武器能打
+ *      （蓝色大肥鱼只有一把「周身冲击」），这一回合就**蓄力**：不出手，记录里写
+ *      `〔Boss〕… 蓄力中（第 N 回合释放【…】）`。玩家因此能看见「下一发什么时候来」。
+ *   4. 阶段按**当前 HP 比例**判定（纯计算，不存状态）：`hp / maxHp <= 触发阈值` 就进那个阶段。
+ *      `触发` 写 `'半血'`（= 0.5）或直接写数字（0.5 / 50 都认）；多个阶段按顺序判，
+ *      **最后一个满足的生效**。基础参数 = 第 1 阶段，`阶段[0]` = 第 2 阶段，依此类推。
+ *      换阶段只在战斗记录里报**一次**（`〔Boss〕蓝色大肥鱼 进入第 2 阶段`）。
+ *   5. `伤害倍率` 是这一阶段下 Boss 造成的**全部**伤害的倍率（在 60-战斗.js 的
+ *      `resolveAction` 里乘进去，和「守护者 ×0.7」相乘）；没配就是 1。
+ *   6. 脚本自己**不含随机数**（阶段只看 HP、间隔只看回合号），所以同种子同结果照旧。
+ *
+ * 【不归我做的地方】大肥鱼的 240000 HP / 1800 装甲怎么按新公式换算成产品数值，
+ * 由 Claude 定（`协作/战棋协作可搬清单.md` B1/B2 只列了事实）。这一版**照数据原样用**，
+ * 所以 12 回合上限下打不死——任务板里写明了这一点，测试里只做「把 HP 临时改小」的验算。
+ * ========================================================================== */
+
+/* ---------- 取脚本：只认敌人 ---------- */
+/** 这名单位有没有 Boss 脚本（`Boss脚本` 在 71-改动.js，新项目改数据只改那里）。 */
+function 取Boss脚本(u) {
+  if (!u || u.side !== 'enemy' || !u.key) return null;
+  return (Boss脚本 && Boss脚本[u.key]) || null;
+}
+const 是Boss单位 = u => !!取Boss脚本(u);
+
+/* ---------- 阶段（纯计算：只看当前 HP 比例） ---------- */
+/** 触发条件 → HP 比例阈值：`'半血'` = 0.5；数字 0–1 直接用；数字 >1 当百分数（50 = 0.5）。 */
+function Boss触发阈值(触发) {
+  if (typeof 触发 === 'number') return 触发 > 1 ? 触发 / 100 : 触发;
+  if (触发 === '半血') return 0.5;
+  return null;   // 认不出来的触发条件：这一条阶段不生效（不抛异常）
+}
+
+/** 现在是第几阶段：0 = 基础（第 1 阶段），1 = `阶段[0]`（第 2 阶段）…；没脚本返回 0。 */
+function Boss阶段序号(u) {
+  const s = 取Boss脚本(u);
+  if (!s || !Array.isArray(s.阶段) || !s.阶段.length || !(u.maxHp > 0)) return 0;
+  const 血比 = u.hp / u.maxHp;
+  let n = 0;
+  for (let i = 0; i < s.阶段.length; i++) {
+    const t = Boss触发阈值(s.阶段[i] && s.阶段[i].触发);
+    if (t != null && 血比 <= t) n = i + 1;   // 后面的阶段覆盖前面的
+  }
+  return n;
+}
+
+/** 这一阶段实际生效的参数：基础字段 + 阶段覆盖（脚本没写的字段用默认值）。纯函数。 */
+function Boss参数(u) {
+  const s = 取Boss脚本(u);
+  if (!s) return null;
+  const 阶段 = Boss阶段序号(u);
+  const o = (阶段 > 0 ? s.阶段[阶段 - 1] : null) || {};
+  const 取 = (k, d) => (o[k] != null ? o[k] : (s[k] != null ? s[k] : d));
+  return {
+    脚本: s, 阶段, 第几阶段: 阶段 + 1,
+    大技能间隔: 取('大技能间隔', 0),
+    大技能武器: 取('大技能武器', null),
+    伤害倍率: 取('伤害倍率', 1),
+  };
+}
+
+/* ---------- 大技能的节奏 ---------- */
+/** 这一回合是不是「大技能回合」：`（回合 − 1) % 间隔 === 0`（第 1、1+间隔、…回合）。 */
+function Boss本回合放大技能(u, ctx) {
+  const p = Boss参数(u);
+  if (!p || !p.大技能武器 || !(p.大技能间隔 > 0)) return false;
+  if (!ctx || ctx.turn == null) return false;
+  return ((ctx.turn - 1) % p.大技能间隔) === 0;
+}
+
+/** 下一次大技能在第几回合（蓄力的记录里要写）。 */
+function Boss下次技能回合(u, ctx) {
+  const p = Boss参数(u);
+  if (!p || !(p.大技能间隔 > 0) || !ctx || ctx.turn == null) return null;
+  const 间隔 = p.大技能间隔;
+  return ctx.turn + (间隔 - ((ctx.turn - 1) % 间隔));
+}
+
+/** 普通 AI 的武器池要不要**排除**这把武器（间隔外不许把大技能当普通武器用）。
+ *  纯函数，被 50-AI.js 的 `weaponPool` 调用。 */
+function Boss本回合禁用(u, ctx, w) {
+  const p = Boss参数(u);
+  if (!p || !p.大技能武器 || !(p.大技能间隔 > 0)) return false;
+  if (!w || w.name !== p.大技能武器) return false;
+  if (!ctx || ctx.turn == null) return false;
+  return !Boss本回合放大技能(u, ctx);
+}
+
+/** 这一阶段下 Boss 伤害的倍率（没有脚本 / 没配 / 配错 → 1）。 */
+function Boss伤害倍率(u) {
+  const p = Boss参数(u);
+  const v = p ? p.伤害倍率 : 1;
+  return (typeof v === 'number' && v > 0) ? v : 1;
+}
+
+/* ---------- 大技能这一下打谁 ---------- */
+/** 脚本点名的那把武器，现在能不能用（等级门 / 冷却 / 次数都照 `usableWeapons` 的规则）。 */
+function Boss大技能条目(u, ctx) {
+  const p = Boss参数(u);
+  if (!p || !p.大技能武器) return null;
+  return usableWeapons(u, ctx).find(e => e.t.name === p.大技能武器) || null;
+}
+
+/** 只用一把武器挑目标 / 落点：范围武器按「命中的敌人总期望伤害」挑，其余按单体挑。
+ *  复用 50-AI.js 里的纯函数（`pickAreaTarget` / `pickSingleTarget`），不改那边。 */
+function 单武器动作(u, 条目, ctx) {
+  const foes = livingOf(otherSide(u.side), ctx);
+  if (!条目 || !foes.length) return null;
+  const w = 条目.t, pool = [条目];
+  if (isAreaKind(rangeKindOf(w))) {
+    const a = pickAreaTarget(u, foes, pool);
+    if (a) return { kind: 'attack', weapon: w, target: a.target, expected: a.exp, slot: a.slot, hit: a.hit, entry: a.entry };
+  }
+  const s = pickSingleTarget(u, foes, pool, ctx);
+  if (s) return { kind: 'attack', weapon: w, target: s.target, expected: s.exp, entry: s.entry };
+  return null;
+}
+
+/* ---------- 一台 Boss 这一回合想做什么 ---------- */
+/** **纯函数**：不改状态、不写记录（`算意图()` 也用它，界面在指令阶段就能看见 Boss 的节奏）。
+ *  返回 null = 这一回合没有出手的手段（大肥鱼在间隔外就是这样，由 bossTurn 记「蓄力」）。 */
+function bossAction(u, ctx) {
+  if (!取Boss脚本(u)) return enemyAction(u, ctx);          // 没配脚本 → 普通敌方 AI（行为不变）
+  if (Boss本回合放大技能(u, ctx)) {
+    const a = 单武器动作(u, Boss大技能条目(u, ctx), ctx);
+    if (a) { a.大技能 = true; a.第几阶段 = Boss参数(u).第几阶段; return a; }
+  }
+  const a = enemyAction(u, ctx);
+  if (a) return a;
+  return null;
+}
+
+/* ---------- 真的行动：补记录 + 出手 ---------- */
+/** 敌方单位的一次行动（60-战斗.js 的 `单位动作` 走这里）。
+ *  - 先补「进入第 N 阶段」的记录（只报一次，所以这里是**会改状态**的那一半）；
+ *  - 大技能回合：记录 `〔Boss〕…释放【…】`，再按大技能出手；
+ *  - 间隔外又无别的武器：记录 `〔Boss〕…蓄力中`，这一回合不出手（kind: 'none'）。 */
+function bossTurn(u, ctx) {
+  const p = Boss参数(u);
+  if (!p) return enemyAction(u, ctx);
+
+  const 已报 = u.boss阶段已报 || 0;
+  if (p.第几阶段 > 已报) {
+    u.boss阶段已报 = p.第几阶段;
+    /* 第 1 阶段 = 基础参数：报一次「登场」，让记录里一开场就能看见它的节奏；
+       第 2 阶段起 = 换的那套参数，报「进入第 N 阶段」（方案 5.2 的「半血换阶段」）。 */
+    const 文 = p.第几阶段 > 1
+      ? `〔Boss〕${u.name} 进入第 ${p.第几阶段} 阶段（大技能间隔 ${p.大技能间隔} 回合、伤害倍率 ×${p.伤害倍率}）`
+      : `〔Boss〕${u.name} 站桩 Boss：${p.大技能间隔 > 0 && p.大技能武器 ? `每 ${p.大技能间隔} 回合放一次【${p.大技能武器}】` : '（没配大技能）'}（伤害倍率 ×${p.伤害倍率}）`;
+    pushLog(ctx, 文,
+      Object.assign({ 类型: 'Boss', Boss事件: '阶段', Boss阶段: p.第几阶段, 大技能间隔: p.大技能间隔, 伤害倍率: p.伤害倍率 }, 谁(u)));
+  }
+
+  const a = bossAction(u, ctx);
+  if (!a) {
+    const 下次 = Boss下次技能回合(u, ctx);
+    pushLog(ctx, `〔Boss〕${u.name} 蓄力中${下次 ? `（第 ${下次} 回合释放【${p.大技能武器}】）` : ''}`,
+      Object.assign({ 类型: 'Boss', Boss事件: '蓄力', 大技能回合: 下次 }, 谁(u)));
+    return { kind: 'none' };
+  }
+  if (a.大技能) {
+    pushLog(ctx, `〔Boss〕${u.name} 释放【${a.weapon.name}】`,
+      Object.assign({ 类型: 'Boss', Boss事件: '大技能', BOSS大技能: true, 武器: a.weapon.name,
+        目标: a.target ? a.target.key : null, 目标位: a.target ? a.target.slot : null }, 谁(u)));
+  }
+  return a;
 }
 /* ============================================================================
  * 编成表（方案第 7 节）· 取代战棋的关卡和地图
@@ -5013,7 +5263,11 @@ const 界面 = {
     const 动 = 可点 ? (方 === 'ally' ? ` data-act="选单位:${u.slot}"` : ` data-act="点敌人:${u.slot}"`) : '';
     const c = 方 === 'ally' ? this.当前指令(u.slot) : null;
     const 指令行 = c ? `${c.类型}${c.目标位 != null ? '→' + 位名(c.目标位) : ''}${c.保留大招 ? ' · 大招保留' : ''}` : '';
-    const 意图行 = 意图 && 意图.武器 ? `→ ${意图.目标名}(${位名(意图.目标位)}) · ${意图.武器} · 约 ${意图.期望}` : (意图 ? '不行动' : '');
+    /* 站桩 Boss（61-Boss.js）：大技能那一下前面标 ★，蓄力时直接写「蓄力中」——
+       玩家在指令阶段就能看见 Boss 的节奏（方案 5.3 的意图显示） */
+    const 意图行 = 意图 && 意图.武器
+      ? `${意图.大技能 ? '★大技能 ' : ''}→ ${意图.目标名}(${位名(意图.目标位)}) · ${意图.武器} · 约 ${意图.期望}`
+      : (意图 ? (意图.蓄力 ? '蓄力中（这一回合不出手）' : '不行动') : '');
     const 选中 = 方 === 'ally' && this.选中位 === u.slot ? ' sel' : '';
     return `<div class="uc${u.hp <= 0 ? ' down' : ''}${选中}" id="u-${方}-${u.slot}" data-side="${方}" data-slot="${u.slot}" style="--fc:${色}"${动}>
       <span class="pos">${位名(u.slot)}</span>
@@ -5542,6 +5796,9 @@ const G = {
   statCoef, hitRate, critRate, dmgCore, critMul, isSure, isUltimate,
   编成表, 选编成, 编成到单位, 默认五人队, 类型到Kind,
   月光祝福范围, 残月余响范围, 再动,
+  /* ---- 站桩 Boss 脚本（方案 5.2 / 61-Boss.js） ---- */
+  Boss脚本, 取Boss脚本, 是Boss单位, Boss参数, Boss阶段序号, Boss触发阈值,
+  Boss本回合放大技能, Boss下次技能回合, Boss本回合禁用, Boss伤害倍率, bossAction, bossTurn,
   /* ---- 数据（方便在控制台里查看） ---- */
   ALLY_T, ENEMY_T, CLASSES, FACTIONS, TIER, TIER_NAME, tierOf, AIM_BY_CLASS, ENEMY_TIER, tierOfEnemy, runEnemyLv,
   boot,

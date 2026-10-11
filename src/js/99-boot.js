@@ -46,6 +46,9 @@ const G = {
   statCoef, hitRate, critRate, dmgCore, critMul, isSure, isUltimate,
   编成表, 选编成, 编成到单位, 默认五人队, 类型到Kind,
   月光祝福范围, 残月余响范围, 再动,
+  /* ---- 站桩 Boss 脚本（方案 5.2 / 61-Boss.js） ---- */
+  Boss脚本, 取Boss脚本, 是Boss单位, Boss参数, Boss阶段序号, Boss触发阈值,
+  Boss本回合放大技能, Boss下次技能回合, Boss本回合禁用, Boss伤害倍率, bossAction, bossTurn,
   /* ---- 数据（方便在控制台里查看） ---- */
   ALLY_T, ENEMY_T, CLASSES, FACTIONS, TIER, TIER_NAME, tierOf, AIM_BY_CLASS, ENEMY_TIER, tierOfEnemy, runEnemyLv,
   boot,

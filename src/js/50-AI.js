@@ -15,6 +15,10 @@
  *   5.1 我方「进攻」怎么挑       → chooseAttack()
  *   5.2 敌方（普通 / 近战 / 狙击 / overwatch / Boss）→ enemyAction()
  *   第 4 节 大招开关（自动 / 保留）→ u.holdUlt
+ *
+ * Boss 脚本（`61-Boss.js`，方案 5.2 的「每 N 回合大技能 + 半血换阶段」）**不写在这里**：
+ * 它只在 `weaponPool` 里挂了一个纯函数钩子（`Boss本回合禁用`），
+ * 由 `60-战斗.js` 的 `单位动作` 把敌方单位交给 `bossTurn`。没配脚本的敌人行为不变。
  * ========================================================================== */
 
 /* 大招 = 战棋里 unlock 为 20 或 30 的武器，有开场冷却 3 回合（方案第 4 节）。
@@ -44,6 +48,9 @@ function weaponPool(actor, ctx) {
     const kind = rangeKindOf(e.t);
     if (kind === null || isHealKind(kind) || isSupportKind(kind)) return false;   // 被动 / 修理 / 支援 不参与「进攻」
     if (isUltimate(e.t) && actor.holdUlt) return false;   // 大招开关「保留」= 这一回合不放（方案第 4 节）
+    /* 站桩 Boss 脚本（61-Boss.js）：间隔外不许把「大技能武器」当普通武器用，
+       否则「每 N 回合放一次」就变成「每回合都放」。没配脚本的单位不受影响。 */
+    if (Boss本回合禁用(actor, ctx, e.t)) return false;
     return true;
   });
   const ults = pool.filter(e => ultAllowed(actor, e.t));
