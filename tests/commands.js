@@ -200,10 +200,20 @@ console.log('\n[6] 职业特色（方案 6.3）');
   const 敌人 = [{ 键: 'shield', 位: 0, 等级: 20 }];           // 盾卫，皮厚，第一回合打不死
   const ctx = 打(队伍, 敌人, {}, 707);
   const 目标 = ctx.enemies[0];
-  const 减防 = (目标.buffs || []).find(b => b.src === '特种');
-  if (目标.hp > 0 && 减防 && 减防.def === -20) ok(`特种命中后目标防御 −20（盾卫身上挂着「${减防.src} ${减防.def}」，剩余 ${减防.剩余} 回合）`);
-  else bad(`特种的减防没挂上：hp ${目标.hp} buffs ${JSON.stringify(目标.buffs)}`);
-  if (减防 && 减防.剩余 >= 1) ok('减防会留到下一回合（方案：持续到下回合结束）');
+  const 减命中 = (目标.buffs || []).find(b => b.src === '特种');
+  if (目标.hp > 0 && 减命中 && 减命中.hit === -20) ok(`特种命中后给对方挂上「命中 −20」（盾卫 buffs：${JSON.stringify(目标.buffs)}）`);
+  else bad(`特种的降命中没挂上：hp ${目标.hp} buffs ${JSON.stringify(目标.buffs)}`);
+  if (减命中 && 减命中.剩余 >= 1) ok('降命中会留到下一回合（方案：持续到下回合结束）');
+  /* 真的影响对方的攻击：拿这个被减命中的单位去打人，命中率应该低 20 */
+  const w = 目标.weapons[0] && 目标.weapons[0].t;
+  const 挨打 = ctx.allies[0];
+  if (w && 挨打) {
+    const 低 = G.hitRate(目标, w, 挨打, { baseHit: 80, turn: ctx.turn }).hit;
+    目标.buffs = (目标.buffs || []).filter(b => b.src !== '特种');
+    const 原 = G.hitRate(目标, w, 挨打, { baseHit: 80, turn: ctx.turn }).hit;
+    if (原 - 低 === 20) ok(`降命中真的进了命中公式：对方打人时 ${原}% → ${低}%`);
+    else bad(`降命中没进公式：有 debuff ${低}% / 去掉后 ${原}%`);
+  }
 }
 /* 近卫：击破目标后立刻再行动一次（每回合最多 1 次） */
 {

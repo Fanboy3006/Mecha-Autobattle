@@ -1215,6 +1215,9 @@ function spendWeapon(u, entry) {
 /* ---------- 修理 ---------- */
 const healAmount = (u, w) => Math.round(w.power * u.shoot / 100);   // 17-战斗执行.js:259
 
+/* 特种的降命中值（作者 2026-10-10：先按 20 做，和原来「防御 −20」同一个量级；要调就改这一个常量） */
+const 特种降命中值 = 20;
+
 /* ---------- 一次普通攻击的结算（第一期唯一的攻击路径） ----------
  * 随机数全部走 ctx.rng（带种子，方案 6.1）。返回一条战斗记录用的文本 + 字段。
  * 多段：w.hits 段，每段独立判定命中与暴击；武器写了 w.step 时命中后逐段递减命中（战棋 multi 的做法）。
@@ -1222,7 +1225,10 @@ const healAmount = (u, w) => Math.round(w.power * u.shoot / 100);   // 17-战斗
  *   blockPenalty  直射打后排的 −20（方案 3.3）
  *   defending     这一下按防御结算（守护替队友挨打）
  *   伤害倍率       守护者本回合自己攻击时 ×0.7（方案第 4 节：伤害 −30%）
- * 职业特色（方案 6.3）：特种的武器命中后目标防御值 −20（到下回合结束）；尖兵每回合第一次被攻击闪避 +20。 */
+ * 职业特色（方案 6.3 + 作者 2026-10-10）：
+ *   特种 = 武器命中后给对方挂「命中 −20」（持续到下回合结束，同一来源只留一份、不叠加）；
+ *          作者原话：「推人其实还是可以设计，用来破坏对手的阵型，或者给对方上 DEBUFF，作为职业特色可以先设置降低命中率」；
+ *   尖兵 = 每回合第一次被攻击闪避 +20。 */
 function resolveAttack(att, def, w, ctx, opts = {}) {
   const rng = ctx.rng;
   const blockPenalty = opts.blockPenalty || 0;
@@ -1254,18 +1260,21 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
   def.hp = Math.max(0, def.hp - total);
   /* 尖兵：这一回合的「第一次被攻击闪避 +20」用掉了 */
   if (尖兵加成) def.尖兵闪避Turn = ctx.turn;
-  /* 特种：命中后目标防御值 −20，持续到下回合结束（同一个来源只留一份，不叠加） */
+  /* 特种（作者 2026-10-10）：武器命中后给对方挂「命中 −20」——对方的攻击更难打中（到下回合结束，
+     同一个来源只留一份，不叠加）。作者说推人 / 破坏阵型以后可以单独设计，职业特色先做降命中。 */
+  let 特种减命中 = 0;
   if (landed && 职业是(att, '特种')) {
+    特种减命中 = 特种降命中值;
     def.buffs = (def.buffs || []).filter(b => b.src !== '特种');
-    def.buffs.push({ src: '特种', def: -20, 剩余: 2 });
+    def.buffs.push({ src: '特种', hit: -特种减命中, 剩余: 2 });
   }
 
   const 段 = hits > 1 ? `${landed}/${hits} 段 ` : '';
   return {
     文本: landed
-      ? `${att.name}【${w.name}】→ ${def.name}：${段}伤害 ${total}${crits ? `（暴击 ${crits} 次）` : ''}`
+      ? `${att.name}【${w.name}】→ ${def.name}：${段}伤害 ${total}${crits ? `（暴击 ${crits} 次）` : ''}${特种减命中 ? `（特种：对方命中 −${特种减命中}，到下回合结束）` : ''}`
       : `${att.name}【${w.name}】→ ${def.name}：未命中（${rolls.join('；')}）`,
-    字段: { 命中: landed > 0, 伤害: total, 段数: hits, 命中段数: landed, 暴击: crits, 目标剩余HP: def.hp, 详情: rolls.join('；') },
+    字段: { 命中: landed > 0, 伤害: total, 段数: hits, 命中段数: landed, 暴击: crits, 目标剩余HP: def.hp, 特种减命中, 详情: rolls.join('；') },
   };
 }
 /* ============================================================================
