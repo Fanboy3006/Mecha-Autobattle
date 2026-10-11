@@ -36,6 +36,7 @@ const 界面 = {
   提示: '',
   显示单位: null,                 // 播放阶段用的「这一回合开始时」的快照
   战报: null,                     // 结算用的小结
+  肉鸽战斗: null,                 // 正在打的这一场是哪个肉鸽节点（打完回调 肉鸽.战斗结束）
   种子: null,
   手动播放: false,                // 测试用：播放引擎不排计时器，自己 tick
   跳过动画总是: false,
@@ -195,6 +196,21 @@ const 界面 = {
       case '点敌人': return this.点敌人(Number(参));
       case '点队友': return this.点队友(Number(参));
       case '大招': return this.切大招(Number(参));
+      /* M4 肉鸽 */
+      case '去分队': return this.开屏('分队');
+      case '选分队': return this.选分队(参);
+      case '开新局': return this.开新局();
+      case '继续上一局': return this.继续上一局();
+      case '回大地图': return this.开屏('大地图');
+      case '去节点': return this.去节点(参);
+      case '打这一场': return this.打这一场();
+      case '去招募': return this.开屏('招募');
+      case '招募': return this.招募(参);
+      case '补给': return this.领补给();
+      case '去奇遇': return this.开屏('奇遇');
+      case '奇遇': return this.选奇遇(参);
+      case '存个档': return this.存个档();
+      case '放弃本局': return this.放弃本局();
       default: return null;
     }
   },
@@ -225,17 +241,22 @@ const 界面 = {
 
   /* ---------------- 菜单 ---------------- */
   菜单屏() {
+    const 有存档 = !!肉鸽.读存档();
     return `<section class="card menu">
-      <h3>机甲指挥 · M3 指令与意图</h3>
-      <p>自动战斗回合制 RPG：把机体摆进<b>前排 / 后排</b>（各 2 排 × 3 列），每回合给每台机体下一条<b>大方向指令</b>，这一回合按速度自动打完。</p>
+      <h3>机甲指挥 · M4 肉鸽</h3>
+      <p>自动战斗回合制 RPG：把机体摆进<b>前排 / 后排</b>（前 3 后 2），每回合给每台机体下一条<b>大方向指令</b>，这一回合按速度自动打完。</p>
       <ul>
-        <li><b>指令</b>（方案第 4 节）：进攻（默认）/ <b>集火</b>▶敌人 / <b>守护</b>▶队友 / 防御 / 换位；每台还能设「大招：自动 / 保留」。</li>
-        <li><b>敌人意图</b>（方案 5.3）：指令阶段敌人头上会写它这一回合打算打谁、用什么、预计多少伤害——照着它下指令。</li>
-        <li><b>职业特色</b>（方案 6.3）：重装嘲讽、近卫击破再动、尖兵首次被击闪避 +20、狙击打后排无惩罚且暴击 +10、指挥同排命中 +10、特种命中后目标防御 −20。</li>
-        <li>机体图标在 <b>M5</b>，现在用势力颜色的方块 + 短名。</li>
+        <li><b>肉鸽</b>（方案第 7 节）：选分队 → 大地图走节点（作战 / 精英 / Boss / 招募 / 补给 / 奇遇）→ 层出口；
+          希望 / 源碳结晶 / 作战耐久，<b>关掉页面能继续</b>（存档）。</li>
+        <li><b>战斗</b>：指令阶段（进攻 / 集火 / 守护 / 防御 / 换位 + 大招开关）→ 看敌人意图 →「开打 ▶」自动打完。</li>
+        <li><b>练习</b>：不进肉鸽，直接用编队界面挑一队打一场（试数值用）。</li>
       </ul>
-      <div class="acts"><button class="primary" data-act="去编队">开始编队 →</button></div>
-      <p class="small">想直接看一场：点「开始编队」→「默认五人队」→「开战」→「开打 ▶」。</p>
+      <div class="acts">
+        <button class="primary" data-act="去分队">新的一局（肉鸽）→</button>
+        ${有存档 ? `<button data-act="继续上一局">继续上一局（第 ${肉鸽.读存档().层} 层）</button>` : ''}
+        <button data-act="去编队">练习：直接编队打一场</button>
+      </div>
+      <p class="small">机体图标在 M5，现在用势力颜色的方块 + 短名。</p>
     </section>`;
   },
 
@@ -480,6 +501,15 @@ const 界面 = {
       结果: c.result ? c.result.结果 : '败', 原因: c.result ? c.result.原因 : '—',
       回合数: c.turn, 记录: c.log, 我方: c.allies, 敌方: c.enemies, 种子: c.种子,
     };
+    /* 肉鸽里的战斗：把结果交回肉鸽（发奖励 / 扣作战耐久），然后回大地图 */
+    if (this.肉鸽战斗) {
+      const 这次 = this.肉鸽战斗;
+      this.肉鸽战斗 = null;
+      const r = 肉鸽.战斗结束(this.战报.结果, 这次.类型, this.战报);
+      this.阶段 = '结算';
+      this.开屏(r && r.结束 ? '肉鸽结算' : '大地图');
+      return;
+    }
     this.阶段 = '结算';
     this.开屏('结算');
   },
@@ -548,6 +578,71 @@ const 界面 = {
     const c = this.当前指令(位);
     return this.设某指令(位, { 保留大招: !c.保留大招 });
   },
+
+  /* ---------------- 肉鸽：把 92-肉鸽界面.js 的画面接进来 ---------------- */
+  分队屏() { return 肉鸽界面.分队屏(); },
+  大地图屏() { return 肉鸽界面.大地图屏(); },
+  招募屏() { return 肉鸽界面.招募屏(); },
+  奇遇屏() { return 肉鸽界面.奇遇屏(); },
+  肉鸽结算屏() { return 肉鸽界面.肉鸽结算屏(); },
+
+  选分队(名) { 肉鸽界面.分队ID = 名; 肉鸽界面.提示 = ''; this.刷(); return 名; },
+  开新局() {
+    if (!肉鸽界面.分队ID) { 肉鸽界面.提示 = '先挑一个分队。'; this.刷(); return false; }
+    肉鸽.新的一局(肉鸽界面.分队ID);
+    this.开屏('大地图');
+    return true;
+  },
+  继续上一局() {
+    const R = 肉鸽.读存档();
+    if (!R) { this.开屏('菜单'); return false; }
+    this.开屏('大地图');
+    return true;
+  },
+  去节点(id) {
+    const 类型 = 肉鸽.移动(id);
+    if (!类型) return false;
+    this.刷();
+    /* 走到哪一类节点就开哪个屏（战斗类留在原地，等玩家点「打这一场」） */
+    if (类型 === '招募') this.开屏('招募');
+    else if (类型 === '奇遇') this.开屏('奇遇');
+    else if (类型 === '补给') this.领补给();
+    else if (类型 === '出口') { 肉鸽.节点完成(); this.开屏('大地图'); }   // 走到出口就进下一层
+    return 类型;
+  },
+  打这一场() {
+    if (!肉鸽.进行中) return false;
+    const R = 肉鸽.RUN;
+    const 条目 = 肉鸽.抽当前编成();
+    if (!条目) { 肉鸽界面.提示 = `第 ${R.层} 层没有「${肉鸽.当前战斗类型()}」的编成，写进编成表再打。`; this.开屏('大地图'); return false; }
+    const 我方 = R.队伍.map((m, i) => ({ 键: m.键, 位: Math.min(i, SLOTS - 1), 等级: m.等级 }));
+    const 敌方 = 编成到单位(条目, R.场次).map(u => ({ 键: u.key, 位: u.slot, 等级: u.lv }));
+    this.种子 = (R.种子 + R.层 * 131 + R.场次 * 17) >>> 0;
+    this.肉鸽战斗 = { 类型: 肉鸽.当前战斗类型(), 条目 };
+    this.ctx = 开局(我方, 敌方, this.种子);
+    this.指令 = {};
+    this.选中位 = null; this.选目标 = null; this.提示 = '';
+    this.显示单位 = null; this.战报 = null;
+    this.阶段 = '指令';
+    this.开屏('战斗');
+    return this.ctx;
+  },
+  招募(键) {
+    const R = 肉鸽.RUN;
+    if (!R) return false;
+    if (R.队伍.length >= 肉鸽数值.队伍上限) { 肉鸽界面.提示 = `队伍已经满了（${肉鸽数值.队伍上限} 台）。`; this.开屏('招募'); return false; }
+    if (R.队伍.some(m => m.键 === 键)) { 肉鸽界面.提示 = '这位机师已经在队里了。'; this.开屏('招募'); return false; }
+    const 停 = 肉鸽.当前节点();
+    const 之前 = R.场次;
+    肉鸽.招募(键);                          // 内部会 节点完成()（含存档）
+    if (停) { /* 招募完直接回大地图 */ }
+    this.开屏('大地图');
+    return true;
+  },
+  领补给() { 肉鸽.补给(); this.开屏('大地图'); return true; },
+  选奇遇(选) { 肉鸽.奇遇(选); this.开屏('大地图'); return true; },
+  存个档() { const ok = 肉鸽.存档(); 肉鸽界面.提示 = ok ? '已存档（关掉页面也能继续）。' : '存档失败（浏览器不让存？）'; this.开屏('大地图'); return ok; },
+  放弃本局() { 肉鸽.失败('玩家放弃'); this.开屏('肉鸽结算'); return true; },
 
   /* ---------------- 编队动作 ---------------- */
   选人(键) { this.编队.选中 = this.编队.选中 === 键 ? null : 键; this.刷(); return this.编队.选中; },

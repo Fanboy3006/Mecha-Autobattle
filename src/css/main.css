@@ -163,3 +163,18 @@ button:disabled{opacity:.4;cursor:not-allowed}
 /* 编队格子：每一排一行，列数由 05-阵型.js 的 --cols 决定（前排 3、后排 2） */
 .编队屏 .grid{display:flex;flex-direction:column;gap:6px}
 .编队屏 .grid .row{display:grid;grid-template-columns:repeat(var(--cols,3),1fr);gap:6px;margin:0}
+/* ---------- M4 肉鸽：大地图 ---------- */
+.rv-bar2{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.rv-bar2 .rv-chip{font-size:13px;padding:3px 10px;border:1px solid var(--line);border-radius:4px;background:var(--panel2)}
+.rv-bar2 .rv-chip b{font-family:var(--font-m);margin-left:4px;color:var(--accent)}
+.rv-bar2 .rv-chip.warn b{color:var(--enemy)}
+.rv-map2{display:flex;gap:12px;overflow-x:auto;padding:10px 2px 14px}
+.rv-col{display:flex;flex-direction:column;gap:8px;min-width:118px}
+.rv-node{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;padding:7px 9px;border-radius:6px;
+  border:1px dashed var(--line);border-left:4px solid var(--fc);background:var(--panel2);color:var(--fg);font:inherit;cursor:default;opacity:.55}
+.rv-node b{font-size:13px}
+.rv-node small{font-size:10px;color:var(--muted)}
+.rv-node.done{opacity:.4;border-style:solid}
+.rv-node.can{opacity:1;border-style:solid;cursor:pointer;box-shadow:0 0 0 1px color-mix(in srgb,var(--fc) 60%,transparent)}
+.rv-node.can:hover{border-color:var(--accent)}
+.rv-node.here{opacity:1;border-style:solid;outline:2px solid var(--accent)}

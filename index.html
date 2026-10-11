@@ -183,7 +183,22 @@ button:disabled{opacity:.4;cursor:not-allowed}
   border-radius:4px;padding:3px 8px;font-size:12px;color:var(--fg);box-shadow:0 4px 14px rgba(0,0,0,.5)}
 /* 编队格子：每一排一行，列数由 05-阵型.js 的 --cols 决定（前排 3、后排 2） */
 .编队屏 .grid{display:flex;flex-direction:column;gap:6px}
-.编队屏 .grid .row{display:grid;grid-template-columns:repeat(var(--cols,3),1fr);gap:6px;margin:0}</style>
+.编队屏 .grid .row{display:grid;grid-template-columns:repeat(var(--cols,3),1fr);gap:6px;margin:0}
+/* ---------- M4 肉鸽：大地图 ---------- */
+.rv-bar2{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.rv-bar2 .rv-chip{font-size:13px;padding:3px 10px;border:1px solid var(--line);border-radius:4px;background:var(--panel2)}
+.rv-bar2 .rv-chip b{font-family:var(--font-m);margin-left:4px;color:var(--accent)}
+.rv-bar2 .rv-chip.warn b{color:var(--enemy)}
+.rv-map2{display:flex;gap:12px;overflow-x:auto;padding:10px 2px 14px}
+.rv-col{display:flex;flex-direction:column;gap:8px;min-width:118px}
+.rv-node{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;padding:7px 9px;border-radius:6px;
+  border:1px dashed var(--line);border-left:4px solid var(--fc);background:var(--panel2);color:var(--fg);font:inherit;cursor:default;opacity:.55}
+.rv-node b{font-size:13px}
+.rv-node small{font-size:10px;color:var(--muted)}
+.rv-node.done{opacity:.4;border-style:solid}
+.rv-node.can{opacity:1;border-style:solid;cursor:pointer;box-shadow:0 0 0 1px color-mix(in srgb,var(--fc) 60%,transparent)}
+.rv-node.can:hover{border-color:var(--accent)}
+.rv-node.here{opacity:1;border-style:solid;outline:2px solid var(--accent)}</style>
 
 <div class="app">
   <header class="bar">
@@ -2022,25 +2037,70 @@ function simulate(我方, 敌方, 指令, 种子) {
 /* ============================================================================
  * 编成表（方案第 7 节）· 取代战棋的关卡和地图
  * ----------------------------------------------------------------------------
- * 每条 = 一组敌人和站位：{层, 类型, 前:[键, …], 后:[键, …]}，从对应层 / 类型里随机抽一条。
- * 位置：前 = 前排（列 0 / 1 / 2），后 = 后排（列 0 / 1 / 2）。
+ * 每条 = 一组敌人和站位：{层, 类型, 前:[…], 后:[…]}。
+ * 站位跟着阵型（05-阵型.js：前 3 后 2），所以 前 最多 3 个、后 最多 2 个。
+ * 战斗节点从对应层 / 对应类型里**随机抽一条**（`抽编成()`）。
  *
  * ⚠ 方案第 10 节第 4 条：「敌人编成表里放哪些敌人」**不要自己决定**——
- *   第一期先按「每层 3 条」随便配，配完给作者看。所以下面第 1 层这 3 条是
- *   **待作者确认的初稿**，M4 做肉鸽时会按作者的反馈重配、并补齐每一层。
+ *   下面是按「每层每种 3 条」配的**初稿**，配完给作者看，等作者改。
+ *   敌人等级不用写：沿用 `runEnemyLv(kind, 层, 场次) + 梯队加成`（11-敌方梯队.js）。
  *
- * 敌人等级：沿用 runEnemyLv(kind, 层) + 梯队加成（11-敌方梯队.js），
- * 第 1 层普通作战 = Lv1–3，杂兵 +0、精锐 +1。
+ * 敌人梯队（11-敌方梯队.js 的 ENEMY_TIER）：
+ *   杂兵 = grunt / fighter / drone / swarm / raider / hound / bomber
+ *   精锐 = shield / beamcoat / phase / stealth / mirror / jammer / sniper / artillery / beetle
+ *   头目 = captain / venom / regen / funnel / berserker
+ *   Boss = ENEMY_BOSS（fortress / tank / skyfort）+ BOSS_SPECIAL（flagship / bluefish）
  * ========================================================================== */
 
 /* 类型 → runEnemyLv 的 kind（11-敌方梯队.js 的曲线用这几个词） */
-const 类型到Kind = { 普通: 'battle', 精英: 'elite', 守军: 'guard', 侵蚀源: 'source', 追击: 'chase' };
+const 类型到Kind = { 普通: 'battle', 精英: 'elite', 守军: 'guard', 侵蚀源: 'source', 追击: 'chase', Boss: 'final' };
+
+/* 三档敌人池（配编成时从这里挑；同一个键在同一条里不重复） */
+const 杂兵池 = ['grunt', 'fighter', 'drone', 'swarm', 'raider', 'hound', 'bomber'];
+const 精锐池 = ['shield', 'beamcoat', 'phase', 'stealth', 'mirror', 'jammer', 'sniper', 'artillery', 'beetle'];
+const 头目池 = ['captain', 'venom', 'regen', 'funnel', 'berserker'];
 
 const 编成表 = [
-  /* ---- 第 1 层 · 普通作战（初稿，等作者确认）---- */
+  /* ================= 第 1 层（杂兵为主） ================= */
   { 层: 1, 类型: '普通', 前: ['grunt', 'grunt'], 后: ['drone'] },
   { 层: 1, 类型: '普通', 前: ['hound', 'fighter'], 后: ['grunt'] },
-  { 层: 1, 类型: '普通', 前: ['raider'], 后: ['swarm', 'swarm'] },
+  { 层: 1, 类型: '普通', 前: ['raider', 'swarm', 'swarm'], 后: ['drone'] },
+  /* 精英：作者 2026-10-10「精英必须有点挑战」→ 精锐带路 + 少量杂兵 */
+  { 层: 1, 类型: '精英', 前: ['shield', 'grunt'], 后: ['sniper'] },
+  { 层: 1, 类型: '精英', 前: ['beetle', 'hound'], 后: ['artillery'] },
+  { 层: 1, 类型: '精英', 前: ['jammer', 'fighter', 'drone'], 后: ['stealth'] },
+  /* Boss：头目 + 护卫 */
+  { 层: 1, 类型: 'Boss', 前: ['captain', 'shield'], 后: ['sniper'] },
+  { 层: 1, 类型: 'Boss', 前: ['venom', 'beetle'], 后: ['artillery'] },
+  { 层: 1, 类型: 'Boss', 前: ['regen', 'phase'], 后: ['jammer'] },
+
+  /* ================= 第 2 层（精锐变多） ================= */
+  { 层: 2, 类型: '普通', 前: ['grunt', 'hound', 'fighter'], 后: ['drone'] },
+  { 层: 2, 类型: '普通', 前: ['raider', 'swarm'], 后: ['sniper'] },
+  { 层: 2, 类型: '普通', 前: ['bomber', 'grunt'], 后: ['artillery'] },
+  { 层: 2, 类型: '精英', 前: ['shield', 'beamcoat', 'beetle'], 后: ['sniper'] },
+  { 层: 2, 类型: '精英', 前: ['phase', 'stealth'], 后: ['mirror'] },
+  { 层: 2, 类型: '精英', 前: ['jammer', 'artillery'], 后: ['beetle'] },
+  { 层: 2, 类型: 'Boss', 前: ['venom', 'shield', 'beetle'], 后: ['sniper'] },
+  { 层: 2, 类型: 'Boss', 前: ['berserker', 'phase'], 后: ['artillery'] },
+  { 层: 2, 类型: 'Boss', 前: ['funnel', 'beamcoat'], 后: ['jammer'] },
+
+  /* ================= 第 3 层（头目坐镇） ================= */
+  { 层: 3, 类型: '普通', 前: ['shield', 'hound', 'fighter'], 后: ['sniper'] },
+  { 层: 3, 类型: '普通', 前: ['beetle', 'raider'], 后: ['artillery'] },
+  { 层: 3, 类型: '普通', 前: ['phase', 'swarm'], 后: ['jammer'] },
+  { 层: 3, 类型: '精英', 前: ['berserker', 'beamcoat', 'stealth'], 后: ['sniper'] },
+  { 层: 3, 类型: '精英', 前: ['funnel', 'mirror'], 后: ['artillery'] },
+  { 层: 3, 类型: '精英', 前: ['regen', 'jammer'], 后: ['beetle'] },
+  { 层: 3, 类型: 'Boss', 前: ['captain', 'venom', 'shield'], 后: ['berserker'] },
+  { 层: 3, 类型: 'Boss', 前: ['funnel', 'beetle'], 后: ['artillery'] },
+  { 层: 3, 类型: 'Boss', 前: ['regen', 'stealth'], 后: ['sniper'] },
+
+  /* ================= 第 4 层（终点：蓝色大肥鱼） =================
+     战棋：3 层航区 + 第 4 层终点；方案 5.2 说第一期 Boss 只做蓝色大肥鱼这一个。 */
+  { 层: 4, 类型: 'Boss', 前: ['bluefish'], 后: ['sniper', 'artillery'] },
+  { 层: 4, 类型: 'Boss', 前: ['bluefish', 'shield'], 后: ['jammer'] },
+  { 层: 4, 类型: 'Boss', 前: ['bluefish', 'beetle', 'phase'], 后: ['regen'] },
 ];
 
 /** 按层 / 类型筛出候选编成。 */
@@ -2048,19 +2108,26 @@ function 选编成(层, 类型) {
   return 编成表.filter(e => (层 == null || e.层 === 层) && (类型 == null || e.类型 === 类型));
 }
 
-/** 把一条编成变成"敌方单位数组"。场次 = 本层打到第几场（影响等级，M4 用）。 */
+/** 从对应层 / 类型的候选里随机抽一条（走带种子的随机数，测试可复现）。 */
+function 抽编成(层, 类型, rng) {
+  const 候选 = 选编成(层, 类型);
+  if (!候选.length) return null;
+  const r = rng || Math.random;
+  return 候选[Math.min(候选.length - 1, Math.floor(r() * 候选.length))];
+}
+
+/** 把一条编成变成"敌方单位数组"。场次 = 本层打到第几场（影响等级）。 */
 function 编成到单位(条目, 场次 = 0) {
   const kind = 类型到Kind[条目.类型] || 'battle';
   const 前排 = 条目.前 || [], 后排 = 条目.后 || [];
   const 列表 = [];
-  前排.forEach((键, i) => 列表.push({ 键, 位: i, 等级: runEnemyLv(kind, 条目.层, 场次) + TIER_LV[tierOfEnemy(键)] }));
-  后排.forEach((键, i) => 列表.push({ 键, 位: slotOf(ROW_BACK, i), 等级: runEnemyLv(kind, 条目.层, 场次) + TIER_LV[tierOfEnemy(键)] }));
+  前排.slice(0, 行列数(ROW_FRONT)).forEach((键, i) => 列表.push({ 键, 位: slotOf(ROW_FRONT, i), 等级: runEnemyLv(kind, 条目.层, 场次) + TIER_LV[tierOfEnemy(键)] }));
+  后排.slice(0, 行列数(ROW_BACK)).forEach((键, i) => 列表.push({ 键, 位: slotOf(ROW_BACK, i), 等级: runEnemyLv(kind, 条目.层, 场次) + TIER_LV[tierOfEnemy(键)] }));
   return makeUnits(列表, 'enemy');
 }
 
-/* ---------- 默认的 Lv10 五人队（方案第 9 节 M1 验收用） ----------
- * 方案没有指定是哪五个人，先按「五个不同职业 + 覆盖三个势力」挑一队**初稿**，
- * 给作者看；要换人改这里就行（或者直接在 tests/sim.js 里传自己的一队）。 */
+/* ---------- 默认的 Lv10 五人队（方案第 9 节 M1 验收用；肉鸽开局的样例队伍也用它） ----------
+ * 方案没有指定是哪五个人，先按「五个不同职业 + 覆盖三个势力」挑一队**初稿**。 */
 const 默认五人队 = [
   { 键: 'B1', 位: 0, 等级: 10 },    // 近卫 · 雷萨（影世界）
   { 键: 'B2', 位: 1, 等级: 10 },    // 尖兵 · 蕾卡（影世界）
@@ -2068,6 +2135,452 @@ const 默认五人队 = [
   { 键: 'CB2', 位: 3, 等级: 10 },   // 狙击 · 洛克昂（天人）
   { 键: 'M1', 位: 4, 等级: 10 },    // 指挥 · Feena（月球王国）
 ];
+/* ============================================================================
+ * 肉鸽外壳（方案第 7 节）· 从机甲战棋复制 + 简化
+ * ----------------------------------------------------------------------------
+ * 带过来的：分队、招募券、希望、源碳结晶、作战耐久、层与节点大地图、藏品框架、存档。
+ * 换掉的：节点里的「战斗 / 精英 / Boss」不再进战棋，而是进**自动战斗**（M3 的内核）。
+ * 第一期不做的：侵蚀场、战斗里的零件、涉及格子 / 移动 / 地形的藏品（都列在 docs/特技换算待办.md）。
+ *
+ * ⚠ 数值：下面的 `肉鸽数值` 是按战棋那套抄的**初稿**（出处写在注释里），等作者看过再调。
+ *
+ * 状态全在 `RUN` 里，能整个 JSON 存进 localStorage —— 这就是「关掉页面能继续」。
+ * ========================================================================== */
+
+const 存档键 = 'mecha-autobattle-run-v1';
+
+/* 数值初稿（出处：战棋 27-开局.js / 28-层.js / 30-移动与节点.js 的同类数值；等作者确认） */
+const 肉鸽数值 = {
+  /* 初始值抄战棋 27-开局.js:33：希望 8、源碳结晶 20、作战耐久 10 */
+  起始希望: 8,
+  起始源碳: 20,
+  起始耐久: 10,
+  /* 地图：这里是**简化版**（一列一列的节点），战棋是 6×4 网格 + 四邻接 BFS + 推进剂，见任务板的说明 */
+  每层列数: 2,
+  每列节点数: 3,
+  /* 奖励 / 消耗（战棋同类处的数值，先按这一版定，等作者看） */
+  胜利希望: 3,
+  精英希望: 6,
+  Boss希望: 10,
+  胜利源碳: 5,
+  补给源碳: 8,
+  队伍上限: 12,              // 战棋：队伍上限 12（出击另有上限，见 出击上限）
+  出击上限: 5,               // 我们的阵型只有 5 格（前 3 后 2）
+  招募等级: 10,              // 战棋：招到的机师 Lv10
+  招募费: { S: 5, A: 3, B: 0 },   // 战棋：精锐 5 / 骨干 3 / 普通 0 希望
+  奇遇希望: 4,
+  奇遇源碳: 10,
+};
+
+const 节点类型表 = {
+  战斗: { 名: '作战', 色: '#4f95e0' },
+  精英: { 名: '精英作战', 色: '#e9a23b' },
+  Boss: { 名: 'Boss', 色: '#d9564b' },
+  招募: { 名: '招募', 色: '#5cc08a' },
+  补给: { 名: '补给', 色: '#7fb3d5' },
+  奇遇: { 名: '奇遇', 色: '#cfa8ff' },
+  出口: { 名: '层出口', 色: '#ffffff' },
+};
+
+/** 队伍成员的等级：按层数涨（第 1 层 Lv10、第 2 层 Lv20、第 3 层 Lv30） */
+const 招募等级 = 层 => Math.min(30, 10 * Math.max(1, Math.min(3, 层)));
+
+const 肉鸽 = {
+  RUN: null,
+  进行中: false,
+
+  /* ---------------- 开局 ---------------- */
+  新的一局(分队, 种子) {
+    const 种 = (种子 >>> 0) || (Math.floor(Date.now() % 900000) + 100000);
+    const rng = mulberry32(种);
+    const RUN = {
+      版本: 1, 种子: 种, t0: Date.now(),
+      分队: 分队 || '无',
+      层: 1, 场次: 0,
+      希望: 肉鸽数值.起始希望,
+      源碳: 肉鸽数值.起始源碳,
+      耐久: 肉鸽数值.起始耐久,
+      队伍: 默认五人队.map(x => ({ 键: x.键, 等级: 10 })),   // 队伍（名册，上限 12）
+      出击: 默认五人队.map(x => x.键),                        // 出击名单（最多 5 台，前 3 后 2）
+      券: 2,                                                // 战棋：开局送 2 张招募券 + 1 名免费 Lv20
+      藏品: [], 券: [],
+      日志: [],
+      当前: null,            // 当前所在节点 id
+      地图: null,
+    };
+    this.RUN = RUN;
+    this.进行中 = true;
+    RUN.地图 = this.生成层(RUN, rng);
+    RUN.当前 = RUN.地图.起点;
+    this.记(`第 ${RUN.层} 层：出发（${RUN.队伍.length} 台机体）`);
+    return RUN;
+  },
+
+  /* ---------------- 战斗节点：抽一条编成 ---------------- */
+  /** 当前节点对应的战斗类型（普通 / 精英 / Boss） */
+  当前战斗类型() {
+    const n = this.当前节点();
+    return n && ['战斗', '精英', 'Boss'].includes(n.类型) ? n.类型 : '战斗';
+  },
+  /** 抽这一场用的编成（层 + 类型 + 场次 + 节点，全部进种子，所以同一局同一节点每次一样） */
+  抽当前编成() {
+    const R = this.RUN;
+    if (!R) return null;
+    const n = this.当前节点() || { 序: 0 };
+    const rng = mulberry32((R.种子 + R.层 * 131 + R.场次 * 17 + (n.序 || 0) * 7) >>> 0);
+    return 抽编成(R.层, this.当前战斗类型(), rng);
+  },
+
+  /* ---------------- 层与节点地图 ----------------
+     每层：起点 → 第 1 列（3 个节点）→ 第 2 列（3 个）→ 出口。
+     玩家每次只能移动到「当前节点连着的、还没走过的」节点。 */
+  生成层(RUN, rng) {
+    const r = rng || mulberry32(RUN.种子 + RUN.层 * 7919);
+    const 节点 = [];
+    const 加 = (列, 序, 类型) => {
+      const id = `L${RUN.层}-${列}-${序}`;
+      节点.push({ id, 列, 序, 类型, 通: [], 已过: false });
+      return id;
+    };
+    const 起点 = 加(-1, 0, '起点');
+    const 列们 = [];
+    for (let c = 0; c < 肉鸽数值.每层列数; c++) {
+      const 本列 = [];
+      for (let i = 0; i < 肉鸽数值.每列节点数; i++) 本列.push(加(c, i, this.抽节点类型(c, RUN.层, r)));
+      列们.push(本列);
+    }
+    /* 出口：最后一列的每个节点都能去（第 3 层以上是 Boss 关，见 出口类型()） */
+    const 出口类型 = this.出口类型(RUN.层);
+    const 出口 = 加(肉鸽数值.每层列数, 0, 出口类型);
+
+    连(起点, 列们[0]);
+    for (let c = 0; c + 1 < 列们.length; c++) 连(列们[c], 列们[c + 1]);
+    连(列们[列们.length - 1], [出口]);
+
+    function 连(从们, 到们) {
+      const 源 = Array.isArray(从们) ? 从们 : [从们];
+      for (const a of 源) {
+        const 甲 = 节点.find(n => n.id === a);
+        if (!甲) continue;
+        /* 每个节点连到下一列的 1–2 个节点（带上一点随机，但不至于全连） */
+        const 目标 = 到们.filter(() => r() < 0.75);
+        const 选 = 目标.length ? 目标 : [到们[Math.floor(r() * 到们.length)]];
+        for (const b of 选) if (!甲.通.includes(b)) 甲.通.push(b);
+      }
+      /* 保证下一列每个节点都至少有一条入边（不然会出现到不了的节点） */
+      for (const b of 到们) {
+        const 乙 = 节点.find(n => n.id === b);
+        if (!节点.some(n => n.通.includes(b))) {
+          const 随便 = 节点.find(n => 源.includes(n.id));
+          if (随便) 随便.通.push(b);
+        }
+      }
+    }
+    /* 出口永远可达：最后一列的每个节点都连出口（上面的规则可能漏掉） */
+    for (const n of 节点.filter(n => n.列 === 肉鸽数值.每层列数 - 1)) if (!n.通.includes(出口)) n.通.push(出口);
+    return { 节点, 起点, 出口 };
+  },
+  /* 战棋：3 层航区 + 第 4 层终点（蓝色大肥鱼）。这里：前 3 层走到出口就上一层，第 4 层的出口是终点 Boss。 */
+  出口类型(层) { return 层 >= 4 ? 'Boss' : '出口'; },
+  抽节点类型(列, 层, r) {
+    const 表 = 列 === 0
+      ? [['战斗', 6], ['招募', 2], ['补给', 2]]
+      : [['战斗', 4], ['精英', 4], ['奇遇', 2]];
+    const 总 = 表.reduce((a, [, w]) => a + w, 0);
+    let x = r() * 总;
+    for (const [类型, w] of 表) { if ((x -= w) < 0) return 类型; }
+    return '战斗';
+  },
+
+  /* ---------------- 移动 ---------------- */
+  当前节点() { const R = this.RUN; return R && R.地图 ? R.地图.节点.find(n => n.id === R.当前) : null; },
+  能去的() {
+    const n = this.当前节点();
+    if (!n) return [];
+    return n.通.map(id => this.RUN.地图.节点.find(x => x.id === id)).filter(x => x && !x.已过);
+  },
+  /** 走到一个相邻节点，并结算它。返回节点类型（给界面决定开哪个屏）。 */
+  移动(id) {
+    const R = this.RUN;
+    if (!R) return null;
+    const 可 = this.能去的().map(n => n.id);
+    if (!可.includes(id)) return null;
+    const n = R.地图.节点.find(x => x.id === id);
+    R.当前 = id;
+    this.存档();
+    return n.类型;
+  },
+  /** 节点结算完成（战斗打完 / 招募完 / 补给完）：标记已过，准备去下一层或继续走 */
+  节点完成() {
+    const R = this.RUN;
+    const n = this.当前节点();
+    if (!n) return;
+    n.已过 = true;
+    if (n.类型 === '出口') this.下一层();
+    this.存档();
+  },
+
+  /* ---------------- 战斗节点的结果 ---------------- */
+  /** 战斗结束（从界面回调）：胜 → 奖励；败 → 按剩下的敌人数扣作战耐久（战棋的规则）。 */
+  战斗结束(结果, 类型, 战报) {
+    const R = this.RUN;
+    if (!R) return null;
+    const 是胜 = 结果 === '胜';
+    if (是胜) {
+      const 希望 = 类型 === 'Boss' ? 肉鸽数值.Boss希望 : (类型 === '精英' ? 肉鸽数值.精英希望 : 肉鸽数值.胜利希望);
+      R.希望 += 希望;
+      R.源碳 += 肉鸽数值.胜利源碳;
+      R.场次++;
+      this.记(`${节点类型表[类型] ? 节点类型表[类型].名 : 类型}胜利：希望 +${希望}、源碳 +${肉鸽数值.胜利源碳}`);
+      this.节点完成();
+      return { 胜: true, 希望, 源碳: 肉鸽数值.胜利源碳 };
+    }
+    const 扣 = this.失败耐久(战报);
+    R.耐久 -= 扣;
+    this.记(`战斗失败：作战耐久 −${扣}（按剩下的敌人数算，剩 ${R.耐久}）`);
+    if (R.耐久 <= 0) { this.失败('作战耐久耗尽'); return { 胜: false, 结束: true, 扣 }; }
+    /* 失败不通过节点：留在原地（可以再挑别的路，或者再打一次） */
+    this.存档();
+    return { 胜: false, 扣 };
+  },
+
+  /* ---------------- 招募 / 补给 / 奇遇 ---------------- */
+  /** 招募（战棋：花希望——精锐 5 / 骨干 3 / 普通 0；招到 Lv10；队伍上限 12；不能重复） */
+  招募(键) {
+    const R = this.RUN;
+    if (!R) return { ok: false, why: '没有进行中的局' };
+    if (R.队伍.length >= 肉鸽数值.队伍上限) return { ok: false, why: `队伍已经满了（${肉鸽数值.队伍上限} 台）` };
+    if (R.队伍.some(m => m.键 === 键)) return { ok: false, why: '这位机师已经在队里了' };
+    const 费 = 肉鸽数值.招募费[tierOf(键)] || 0;
+    if (R.希望 < 费) return { ok: false, why: `希望不够（要 ${费}，只有 ${R.希望}）` };
+    R.希望 -= 费;
+    R.队伍.push({ 键, 等级: 肉鸽数值.招募等级 });
+    if (R.出击.length < 肉鸽数值.出击上限) R.出击.push(键);
+    this.记(`招募 ${键}（Lv${肉鸽数值.招募等级}，花希望 ${费}）`);
+    this.节点完成();
+    return { ok: true, 费 };
+  },
+  /** 出击名单（最多 5 台，前 3 后 2）：加/减一台 */
+  切换出击(键) {
+    const R = this.RUN;
+    if (!R) return false;
+    if (R.出击.includes(键)) R.出击 = R.出击.filter(k => k !== 键);
+    else {
+      if (R.出击.length >= 肉鸽数值.出击上限) return false;
+      if (!R.队伍.some(m => m.键 === 键)) return false;
+      R.出击.push(键);
+    }
+    this.存档();
+    return true;
+  },
+  补给() {
+    const R = this.RUN;
+    if (!R) return null;
+    R.源碳 += 肉鸽数值.补给源碳;
+    this.记(`补给：源碳 +${肉鸽数值.补给源碳}`);
+    this.节点完成();
+    return 肉鸽数值.补给源碳;
+  },
+  奇遇(选) {
+    const R = this.RUN;
+    if (!R) return null;
+    if (选 === '源碳') R.源碳 += 肉鸽数值.奇遇源碳; else R.希望 += 肉鸽数值.奇遇希望;
+    this.记(`奇遇：${选 === '源碳' ? `源碳 +${肉鸽数值.奇遇源碳}` : `希望 +${肉鸽数值.奇遇希望}`}`);
+    this.节点完成();
+    return true;
+  },
+
+  /* ---------------- 层 ---------------- */
+  下一层() {
+    const R = this.RUN;
+    R.层++;
+    R.场次 = 0;
+    R.地图 = this.生成层(R);
+    R.当前 = R.地图.起点;
+    this.记(`—— 进入第 ${R.层} 层 ——`);
+    this.存档();
+    return R.层;
+  },
+  失败耐久(战报){ const 剩 = 战报 && 战报.敌方 ? 战报.敌方.filter(u => u.hp > 0).length : 1; return Math.max(1, 剩); },
+  失败(原因) {
+    this.进行中 = false;
+    this.记(`本局结束：${原因}`);
+    this.清存档();
+    return 原因;
+  },
+  通关() { this.进行中 = false; this.记('通关！'); this.清存档(); },
+
+  /* ---------------- 日志 ---------------- */
+  记(文字) { if (this.RUN) this.RUN.日志.push({ 回合: this.RUN.层, 文本: 文字, 时间: Date.now() }); },
+
+  /* ---------------- 存档（关掉页面能继续） ---------------- */
+  存档() {
+    if (!this.RUN) return false;
+    try {
+      const 存 = { RUN: this.RUN, 进行中: this.进行中 };
+      if (typeof localStorage !== 'undefined' && localStorage.setItem) localStorage.setItem(存档键, JSON.stringify(存));
+      return true;
+    } catch (e) { return false; }
+  },
+  读存档() {
+    try {
+      if (typeof localStorage === 'undefined' || !localStorage.getItem) return null;
+      const s = localStorage.getItem(存档键);
+      if (!s) return null;
+      const 存 = JSON.parse(s);
+      if (!存 || !存.RUN || !存.RUN.地图) return null;
+      this.RUN = 存.RUN;
+      this.进行中 = !!存.进行中;
+      return this.RUN;
+    } catch (e) { return null; }
+  },
+  有存档() { return !!this.读存档(); },
+  清存档() {
+    try { if (typeof localStorage !== 'undefined' && localStorage.removeItem) localStorage.removeItem(存档键); } catch (e) {}
+  },
+};
+/* ============================================================================
+ * 肉鸽界面（方案第 7 / 8.1 节）：分队 → 大地图 → 节点（战斗 / 招募 / 补给 / 奇遇）→ 出口
+ * ----------------------------------------------------------------------------
+ * 大地图不做格子贴图（方案第 2 节：格子地图丢掉），做成**一列一列的节点按钮**：
+ *   最上面是层数 / 希望 / 源碳 / 作战耐久，中间是这一层的节点（起点在最左，出口在最右），
+ *   只能点「当前节点连着的、还没走过的」节点。
+ * 招募 / 战前编队直接用 M3 那套**拖动**（界面.拖动开始 / 拖动放下）。
+ * 战斗节点进入自动战斗（M3 的内核），打完回到大地图。
+ * ========================================================================== */
+
+const 肉鸽界面 = {
+  分队ID: null,
+  提示: '',
+
+  /* ---------------- 菜单上的入口 ---------------- */
+  最近存档() { return 肉鸽.读存档(); },
+
+  /* ---------------- 分队选择 ---------------- */
+  分队屏() {
+    const 表 = [{ 名: '无', 说明: '不挑分队：招募券完全随机。' }]
+      .concat(CLASSES.map(k => ({ 名: k, 说明: `${k}分队：招募券一半概率出「${k}」券。` })))
+      .concat(FACTIONS.map(f => ({ 名: f, 说明: `${f}分队：招募券一半概率出「${f}」券。` })));
+    const 卡 = 表.map(x => `<button class="pick${this.分队ID === x.名 ? ' on' : ''}" data-act="选分队:${x.名}">
+      <b>${x.名}</b><small>${x.说明}</small></button>`).join('');
+    return `<section class="card">
+      <h3>选分队（方案第 7 节）<span class="small">分队决定招募券的倾向；队伍上限 ${肉鸽数值.队伍上限} 台（前 3 后 2）</span></h3>
+      <div class="picks">${卡}</div>
+      <div class="acts">
+        <button class="primary" data-act="开新局"${this.分队ID ? '' : ' disabled'}>出发（新的一局）→</button>
+        <button data-act="回菜单">回菜单</button>
+      </div>
+      ${this.提示 ? `<p class="warn small">${this.提示}</p>` : ''}
+      <p class="small">开局队伍是默认五人队（雷萨 / 蕾卡 / 提耶利亚 / 洛克昂 / Feena，Lv10）。</p>
+    </section>`;
+  },
+
+  /* ---------------- 大地图 ---------------- */
+  大地图屏() {
+    const R = 肉鸽.RUN;
+    if (!R) return '<section class="card"><p>还没有进行中的局。</p><a href="#" data-act="回菜单">回菜单</a></section>';
+    const 当前 = 肉鸽.当前节点();
+    const 可去 = new Set(肉鸽.能去的().map(n => n.id));
+    const 列 = [];
+    for (let c = -1; c <= 肉鸽数值.每层列数; c++) {
+      const 本列 = R.地图.节点.filter(n => n.列 === c).sort((a, b) => a.序 - b.序);
+      if (!本列.length) continue;
+      列.push(`<div class="rv-col">${本列.map(n => {
+        const 型 = 节点类型表[n.类型] || { 名: n.类型, 色: '#8a99ab' };
+        const 态 = n.id === R.当前 ? ' here' : (n.已过 ? ' done' : (可去.has(n.id) ? ' can' : ''));
+        const 动 = 可去.has(n.id) ? ` data-act="去节点:${n.id}"` : '';
+        return `<button class="rv-node${态}" style="--fc:${型.色}"${动} title="${型.名}">
+          <b>${型.名}</b><small>${c < 0 ? '起点' : (n.类型 === '出口' ? `去第 ${R.层 + 1} 层` : `第 ${c + 1} 站`)}</small></button>`;
+      }).join('')}</div>`);
+    }
+    const 队伍 = R.队伍.map(m => `${allyName(m.键)}(${m.键} Lv${m.等级})`).join('、');
+    const 战斗类 = ['战斗', '精英', 'Boss'].includes(当前 && 当前.类型);
+    return `<section class="card">
+      <h3>第 ${R.层} 层 · 大地图<span class="small">点一个亮着的节点走过去</span></h3>
+      <div class="rv-bar2">
+        <span class="rv-chip">希望 <b>${R.希望}</b></span>
+        <span class="rv-chip">源碳结晶 <b>${R.源碳}</b></span>
+        <span class="rv-chip${R.耐久 <= 30 ? ' warn' : ''}">作战耐久 <b>${R.耐久}</b></span>
+        <span class="rv-chip">本层第 <b>${R.场次 + 1}</b> 场</span>
+        <span class="rv-chip">种子 <b>${R.种子}</b></span>
+      </div>
+      <div class="rv-map2">${列.join('')}</div>
+      <p class="small">队伍：${队伍}</p>
+      <div class="acts">
+        ${战斗类 ? `<button class="primary" data-act="打这一场">打这一场（${节点类型表[当前.类型].名}）→</button>` : ''}
+        ${当前 && 当前.类型 === '招募' ? `<button class="primary" data-act="去招募">招募 →</button>` : ''}
+        ${当前 && 当前.类型 === '补给' ? `<button class="primary" data-act="补给">领取补给 →</button>` : ''}
+        ${当前 && 当前.类型 === '奇遇' ? `<button class="primary" data-act="去奇遇">看看奇遇 →</button>` : ''}
+        <button data-act="存个档">存档</button>
+        <button data-act="放弃本局">放弃本局</button>
+      </div>
+      ${this.提示 ? `<p class="warn small">${this.提示}</p>` : ''}
+      <p class="small">日志：${R.日志.slice(-3).map(x => x.文本).join('　|　')}</p>
+    </section>`;
+  },
+
+  /* ---------------- 招募（拖动） ---------------- */
+  招募屏() {
+    const R = 肉鸽.RUN;
+    if (!R) return '';
+    const 已有 = new Set(R.队伍.map(m => m.键));
+    const 候选 = ALLY_T.filter(t => !已有.has(t.mech));
+    const 卡 = 候选.map(t => {
+      const p = 界面.预览(t.mech, 招募等级(R.层));
+      return `<button class="pick" data-act="招募:${t.mech}" data-drag="候选:${t.mech}" style="--fc:${势力色(t.mech)}">
+        <b>${t.pilot}</b><small>${t.mech} · ${t.tags.战斗分类} · ${t.tags.势力}</small>
+        <span class="nums">速 ${p.速度} · HP ${p.hp}</span></button>`;
+    }).join('');
+    const 队 = R.队伍.map((m, i) => `<div class="rv-row"><span class="nm">${allyName(m.键)}<small>${m.键} · Lv${m.等级}</small></span></div>`).join('');
+    return `<section class="card">
+      <h3>招募<span class="small">队伍 ${R.队伍.length} / ${肉鸽数值.队伍上限}（满了就不能再招）</span></h3>
+      <div class="编队屏">
+        <div class="col 候选" data-drop="候选">
+          <h3>可招募的机师（${候选.length} 名）<span class="small">点一下或者拖过来就招募（Lv${招募等级(R.层)}）</span></h3>
+          <div class="picks">${卡}</div>
+        </div>
+        <div class="col 站位">
+          <h3>当前队伍（${R.队伍.length} / ${肉鸽数值.队伍上限}）</h3>
+          ${队 || '<p class="small">还没有人。</p>'}
+          <div class="acts"><button data-act="回大地图">回大地图</button></div>
+        </div>
+      </div>
+      ${this.提示 ? `<p class="warn small">${this.提示}</p>` : ''}
+    </section>`;
+  },
+
+  /* ---------------- 奇遇 ---------------- */
+  奇遇屏() {
+    return `<section class="card">
+      <h3>奇遇</h3>
+      <p>路上遇到一支友军残骸。你要：</p>
+      <div class="acts">
+        <button class="primary" data-act="奇遇:希望">收拢士气（希望 +${肉鸽数值.奇遇希望}）</button>
+        <button class="primary" data-act="奇遇:源碳">回收结晶（源碳 +${肉鸽数值.奇遇源碳}）</button>
+        <button data-act="回大地图">离开</button>
+      </div>
+    </section>`;
+  },
+
+  /* ---------------- 本局结束 ---------------- */
+  肉鸽结算屏() {
+    const R = 肉鸽.RUN;
+    if (!R) return '<section class="card"><p>本局已结束。</p></section>';
+    return `<section class="card end ${R.耐久 > 0 ? 'win' : 'lose'}">
+      <div class="eyebrow">${R.耐久 > 0 ? '本局结束' : '作战失败'}</div>
+      <h2>走到第 ${R.层} 层</h2>
+      <ul>
+        <li>希望：<b>${R.希望}</b>　源碳结晶：<b>${R.源碳}</b>　作战耐久：<b>${R.耐久}</b></li>
+        <li>队伍：<b>${R.队伍.length}</b> 台　藏品：<b>${R.藏品.length}</b> 件</li>
+        <li>种子：<b>${R.种子}</b></li>
+      </ul>
+      <div class="acts"><button class="primary" data-act="回菜单">回菜单</button><button data-act="去分队">再来一局</button></div>
+    </section>`;
+  },
+};
+
+/* 小队成员的显示名（肉鸽界面用） */
+function allyName(键) { const t = tplOf(键); return t ? t.pilot : 键; }
 /* ============================================================================
  * 播放引擎（方案 8.1：动画只影响播放，不影响结果）
  * ----------------------------------------------------------------------------
@@ -2216,6 +2729,7 @@ const 界面 = {
   提示: '',
   显示单位: null,                 // 播放阶段用的「这一回合开始时」的快照
   战报: null,                     // 结算用的小结
+  肉鸽战斗: null,                 // 正在打的这一场是哪个肉鸽节点（打完回调 肉鸽.战斗结束）
   种子: null,
   手动播放: false,                // 测试用：播放引擎不排计时器，自己 tick
   跳过动画总是: false,
@@ -2375,6 +2889,21 @@ const 界面 = {
       case '点敌人': return this.点敌人(Number(参));
       case '点队友': return this.点队友(Number(参));
       case '大招': return this.切大招(Number(参));
+      /* M4 肉鸽 */
+      case '去分队': return this.开屏('分队');
+      case '选分队': return this.选分队(参);
+      case '开新局': return this.开新局();
+      case '继续上一局': return this.继续上一局();
+      case '回大地图': return this.开屏('大地图');
+      case '去节点': return this.去节点(参);
+      case '打这一场': return this.打这一场();
+      case '去招募': return this.开屏('招募');
+      case '招募': return this.招募(参);
+      case '补给': return this.领补给();
+      case '去奇遇': return this.开屏('奇遇');
+      case '奇遇': return this.选奇遇(参);
+      case '存个档': return this.存个档();
+      case '放弃本局': return this.放弃本局();
       default: return null;
     }
   },
@@ -2405,17 +2934,22 @@ const 界面 = {
 
   /* ---------------- 菜单 ---------------- */
   菜单屏() {
+    const 有存档 = !!肉鸽.读存档();
     return `<section class="card menu">
-      <h3>机甲指挥 · M3 指令与意图</h3>
-      <p>自动战斗回合制 RPG：把机体摆进<b>前排 / 后排</b>（各 2 排 × 3 列），每回合给每台机体下一条<b>大方向指令</b>，这一回合按速度自动打完。</p>
+      <h3>机甲指挥 · M4 肉鸽</h3>
+      <p>自动战斗回合制 RPG：把机体摆进<b>前排 / 后排</b>（前 3 后 2），每回合给每台机体下一条<b>大方向指令</b>，这一回合按速度自动打完。</p>
       <ul>
-        <li><b>指令</b>（方案第 4 节）：进攻（默认）/ <b>集火</b>▶敌人 / <b>守护</b>▶队友 / 防御 / 换位；每台还能设「大招：自动 / 保留」。</li>
-        <li><b>敌人意图</b>（方案 5.3）：指令阶段敌人头上会写它这一回合打算打谁、用什么、预计多少伤害——照着它下指令。</li>
-        <li><b>职业特色</b>（方案 6.3）：重装嘲讽、近卫击破再动、尖兵首次被击闪避 +20、狙击打后排无惩罚且暴击 +10、指挥同排命中 +10、特种命中后目标防御 −20。</li>
-        <li>机体图标在 <b>M5</b>，现在用势力颜色的方块 + 短名。</li>
+        <li><b>肉鸽</b>（方案第 7 节）：选分队 → 大地图走节点（作战 / 精英 / Boss / 招募 / 补给 / 奇遇）→ 层出口；
+          希望 / 源碳结晶 / 作战耐久，<b>关掉页面能继续</b>（存档）。</li>
+        <li><b>战斗</b>：指令阶段（进攻 / 集火 / 守护 / 防御 / 换位 + 大招开关）→ 看敌人意图 →「开打 ▶」自动打完。</li>
+        <li><b>练习</b>：不进肉鸽，直接用编队界面挑一队打一场（试数值用）。</li>
       </ul>
-      <div class="acts"><button class="primary" data-act="去编队">开始编队 →</button></div>
-      <p class="small">想直接看一场：点「开始编队」→「默认五人队」→「开战」→「开打 ▶」。</p>
+      <div class="acts">
+        <button class="primary" data-act="去分队">新的一局（肉鸽）→</button>
+        ${有存档 ? `<button data-act="继续上一局">继续上一局（第 ${肉鸽.读存档().层} 层）</button>` : ''}
+        <button data-act="去编队">练习：直接编队打一场</button>
+      </div>
+      <p class="small">机体图标在 M5，现在用势力颜色的方块 + 短名。</p>
     </section>`;
   },
 
@@ -2660,6 +3194,15 @@ const 界面 = {
       结果: c.result ? c.result.结果 : '败', 原因: c.result ? c.result.原因 : '—',
       回合数: c.turn, 记录: c.log, 我方: c.allies, 敌方: c.enemies, 种子: c.种子,
     };
+    /* 肉鸽里的战斗：把结果交回肉鸽（发奖励 / 扣作战耐久），然后回大地图 */
+    if (this.肉鸽战斗) {
+      const 这次 = this.肉鸽战斗;
+      this.肉鸽战斗 = null;
+      const r = 肉鸽.战斗结束(this.战报.结果, 这次.类型, this.战报);
+      this.阶段 = '结算';
+      this.开屏(r && r.结束 ? '肉鸽结算' : '大地图');
+      return;
+    }
     this.阶段 = '结算';
     this.开屏('结算');
   },
@@ -2729,6 +3272,71 @@ const 界面 = {
     return this.设某指令(位, { 保留大招: !c.保留大招 });
   },
 
+  /* ---------------- 肉鸽：把 92-肉鸽界面.js 的画面接进来 ---------------- */
+  分队屏() { return 肉鸽界面.分队屏(); },
+  大地图屏() { return 肉鸽界面.大地图屏(); },
+  招募屏() { return 肉鸽界面.招募屏(); },
+  奇遇屏() { return 肉鸽界面.奇遇屏(); },
+  肉鸽结算屏() { return 肉鸽界面.肉鸽结算屏(); },
+
+  选分队(名) { 肉鸽界面.分队ID = 名; 肉鸽界面.提示 = ''; this.刷(); return 名; },
+  开新局() {
+    if (!肉鸽界面.分队ID) { 肉鸽界面.提示 = '先挑一个分队。'; this.刷(); return false; }
+    肉鸽.新的一局(肉鸽界面.分队ID);
+    this.开屏('大地图');
+    return true;
+  },
+  继续上一局() {
+    const R = 肉鸽.读存档();
+    if (!R) { this.开屏('菜单'); return false; }
+    this.开屏('大地图');
+    return true;
+  },
+  去节点(id) {
+    const 类型 = 肉鸽.移动(id);
+    if (!类型) return false;
+    this.刷();
+    /* 走到哪一类节点就开哪个屏（战斗类留在原地，等玩家点「打这一场」） */
+    if (类型 === '招募') this.开屏('招募');
+    else if (类型 === '奇遇') this.开屏('奇遇');
+    else if (类型 === '补给') this.领补给();
+    else if (类型 === '出口') { 肉鸽.节点完成(); this.开屏('大地图'); }   // 走到出口就进下一层
+    return 类型;
+  },
+  打这一场() {
+    if (!肉鸽.进行中) return false;
+    const R = 肉鸽.RUN;
+    const 条目 = 肉鸽.抽当前编成();
+    if (!条目) { 肉鸽界面.提示 = `第 ${R.层} 层没有「${肉鸽.当前战斗类型()}」的编成，写进编成表再打。`; this.开屏('大地图'); return false; }
+    const 我方 = R.队伍.map((m, i) => ({ 键: m.键, 位: Math.min(i, SLOTS - 1), 等级: m.等级 }));
+    const 敌方 = 编成到单位(条目, R.场次).map(u => ({ 键: u.key, 位: u.slot, 等级: u.lv }));
+    this.种子 = (R.种子 + R.层 * 131 + R.场次 * 17) >>> 0;
+    this.肉鸽战斗 = { 类型: 肉鸽.当前战斗类型(), 条目 };
+    this.ctx = 开局(我方, 敌方, this.种子);
+    this.指令 = {};
+    this.选中位 = null; this.选目标 = null; this.提示 = '';
+    this.显示单位 = null; this.战报 = null;
+    this.阶段 = '指令';
+    this.开屏('战斗');
+    return this.ctx;
+  },
+  招募(键) {
+    const R = 肉鸽.RUN;
+    if (!R) return false;
+    if (R.队伍.length >= 肉鸽数值.队伍上限) { 肉鸽界面.提示 = `队伍已经满了（${肉鸽数值.队伍上限} 台）。`; this.开屏('招募'); return false; }
+    if (R.队伍.some(m => m.键 === 键)) { 肉鸽界面.提示 = '这位机师已经在队里了。'; this.开屏('招募'); return false; }
+    const 停 = 肉鸽.当前节点();
+    const 之前 = R.场次;
+    肉鸽.招募(键);                          // 内部会 节点完成()（含存档）
+    if (停) { /* 招募完直接回大地图 */ }
+    this.开屏('大地图');
+    return true;
+  },
+  领补给() { 肉鸽.补给(); this.开屏('大地图'); return true; },
+  选奇遇(选) { 肉鸽.奇遇(选); this.开屏('大地图'); return true; },
+  存个档() { const ok = 肉鸽.存档(); 肉鸽界面.提示 = ok ? '已存档（关掉页面也能继续）。' : '存档失败（浏览器不让存？）'; this.开屏('大地图'); return ok; },
+  放弃本局() { 肉鸽.失败('玩家放弃'); this.开屏('肉鸽结算'); return true; },
+
   /* ---------------- 编队动作 ---------------- */
   选人(键) { this.编队.选中 = this.编队.选中 === 键 ? null : 键; this.刷(); return this.编队.选中; },
   放位(位) {
@@ -2774,6 +3382,8 @@ const G = {
 
   /* ---- 界面 / 播放（M2） ---- */
   界面, 播放, FACTION_COL, 势力色,
+  /* ---- 肉鸽（M4） ---- */
+  肉鸽, 肉鸽界面, 肉鸽数值, 存档键, 节点类型表, 抽编成, 选编成, 行列数,
 
   /* ---- 战斗内核（M1 / M3） ---- */
   开局, 设指令, 算意图, 打一回合,   // M3：一回合一个回合地打（玩家的指令每回合都可能改）
