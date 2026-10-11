@@ -82,8 +82,24 @@ function rowBlockPenalty(kind, 目标位, 活着的位, attacker, 目标) {
   if (秘银取消被挡(attacker, 目标)) return 0;  // ★ 作战岗兑现过的标定敌机 → 取消 −20（只对我方 + 只对已兑现）
   return -20;
 }
-/* 方案 6.3 的职业特色都只对我方生效（敌人按梯队，没有「职业」）。 */
-const 职业是 = (u, k) => !!u && u.side === 'ally' && !!(u.tags && u.tags.战斗分类 === k);
+/* 方案 6.3 的职业特色。★ **2026-10-11 改成对称**（作者：「敌人也吃职业特色」）：
+ *   改前 = `u.side === 'ally' && u.tags.战斗分类 === k`（**只对我方生效**，敌人按梯队）；
+ *   现在 = 我方认 `tags.战斗分类`，敌方认 `71-改动.js` 的 `战斗结构.敌方职业`（查不到 = 没有特色）。
+ *   一个参数控制：`战斗结构.对称职业特色`（默认 true；显式写 false 就退回改前的口径）。
+ *   出处（战棋同款规则）：`17b-角色机制.js` 的六条职业特效本来就不分敌我。
+ *   ★ 没有 `side` 的裸对象（某些测试造的假单位）仍然按「我方」算 → 老写法逐字不变。 */
+function 战斗分类Of(u) {
+  if (!u) return null;
+  const t = (u.tags && u.tags.战斗分类) || null;
+  if (t) return t;
+  if (u.side === 'enemy') return 敌方职业(u.key);
+  return null;
+}
+const 职业是 = (u, k) => {
+  if (!u) return false;
+  if (u.side && u.side !== 'ally' && !对称职业特色开()) return false;
+  return 战斗分类Of(u) === k;
+};
 
 /** 范围武器的落点：area 决定打哪些格子（没写 area 默认 row）。返回**升序**的 slot 数组。
  *  新几何（作者 2026-10-10 拍板，配置在 05-阵型.js）：

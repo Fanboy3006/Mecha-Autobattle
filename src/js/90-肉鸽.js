@@ -292,7 +292,7 @@ const 肉鸽 = {
   /* ---------------- 开局 ---------------- */
   新的一局(分队, 种子) {
     const 种 = (种子 >>> 0) || (Math.floor(Date.now() % 900000) + 100000);
-    const 队伍 = 默认五人队.map(x => ({ 键: x.键, 等级: 10 }));   // 队伍（名册，上限 12）
+    const 队伍 = 默认五人队.map(x => ({ 键: x.键, 等级: 10, hp比: null }));   // 队伍（名册，上限 12）；`hp比` = HP 继承（null = 满血）
     const RUN = {
       版本: 存档版本, 种子: 种, t0: Date.now(),
       分队: 分队 || '无',
@@ -629,6 +629,11 @@ const 肉鸽 = {
   结算休整(选) {
     const R = this.RUN;
     if (!R) return null;
+    /* ★ HP 继承（作者 2026-10-11）：**休整是「战斗之间唯一能回血的地方」**（另一处是战斗内的修理）——
+       所以不管玩家在休整这一格选哪一项（耐久 / 晋升 / 希望 / 跳过），**休息本身都会回血**。
+       回血比例 = `战斗结构.HP继承.休整回血比例`（初稿 35%），给**名册上每一台**，走 `休整回血()`。
+       没有 RUN / 关掉开关 → 返回 null，日志一行都不写（与改前逐字相同）。 */
+    const 回血 = this.休整回血();
     if (选 === '耐久') {
       R.耐久 += 肉鸽数值.休整耐久;
       this.记(`休整：作战耐久 +${肉鸽数值.休整耐久}（现在 ${R.耐久}）`);
@@ -645,7 +650,7 @@ const 肉鸽 = {
       this.记('休整：这一格直接跳过（没有休息）');
     }
     this.节点完成();
-    return { ok: true, 选: 选 || '跳过', 耐久: R.耐久, 希望: R.希望, 减价: R.下次晋升减价 };
+    return { ok: true, 选: 选 || '跳过', 耐久: R.耐久, 希望: R.希望, 减价: R.下次晋升减价, 回血 };
   },
 
   /** 侵蚀源（第 2 层起）：**一场硬仗 + 额外奖励**。
@@ -672,6 +677,9 @@ const 肉鸽 = {
     const R = this.RUN;
     if (!R) return null;
     const 是胜 = 结果 === '胜';
+    /* ★ HP 继承（作者 2026-10-11）：**先**把这一场打完的血量写回名册（胜败都写 ——
+       打输了也要带着伤走），后面发奖励 / 扣耐久都不影响它。没有 RUN / 关掉开关 → 返回 0，什么都不做。 */
+    const 带伤 = this.记战斗HP(战报);
     const 发经验 = () => {
       const x = 肉鸽数值.战斗经验[格类型] || 0;
       if (x) this.经验(x, (节点类型表[格类型] ? 节点类型表[格类型].名 : 格类型) + '结算');
@@ -790,7 +798,7 @@ const 肉鸽 = {
     if (R.希望 < 费) return { ok: false, why: `希望不够（要 ${费}，只有 ${R.希望}）` };
     R.希望 -= 费;
     记希望来源(R, '支出', 费);
-    R.队伍.push({ 键, 等级: 肉鸽数值.招募等级 });
+    R.队伍.push({ 键, 等级: 肉鸽数值.招募等级, hp比: null });   // 新招的机师满血（HP 继承的 `hp比` 缺省 = 满血）
     if (R.出击.length < this.出击上限()) R.出击.push(键);
     this.记(`招募 ${键}（Lv${肉鸽数值.招募等级}，花希望 ${费}）`);
     /* 招募之后：把还没用掉的教范藏品用掉（照战棋 23b:130-134 的 relicPendingPromo） */
@@ -855,6 +863,71 @@ const 肉鸽 = {
     return R ? R.结局 : '通关';
   },
 
+  /* ---------------- ★ HP 继承（作者 2026-10-11：「同一次出击的队伍带着伤打下一场」） ----------------
+   * 口径与参数在 `71-改动.js` 的 `战斗结构.HP继承`；这里只做三件事：
+   *   ① **记比例**：名册每一条一个 `hp比`（0–1，`null` / 缺省 = 满血）；
+   *   ② 战斗结束把 `战报` 里每台的 `hp / maxHp` 写回名册（`记战斗HP`）；
+   *   ③ 休整节点给全名册回血（`休整回血`）。
+   * ★ **只有这一条链路**：没有 `RUN` 的战斗（菜单固定战斗 / `simulate()` / `tools/balance.mjs` /
+   *   各测试）根本不经过这里 → 仍然是满血（`tests/run.js` 有一段盯着）。
+   * ★ 记**比例**而不是绝对 HP：藏品 / 势力会改 `maxHp`（`93-藏品.js:530-534`），
+   *   记比例才能让「伤」在两次战斗之间保持同一个百分比。 */
+  /** 名册里这一台现在的 HP 比例（0–1；`null` = 满血 = 老口径）。
+   *  坏值（NaN / 越界 / 不是数字）一律当满血，不崩。 */
+  名册HP比(键) {
+    const R = this.RUN;
+    if (!R || !HP继承开()) return null;
+    const m = (R.队伍 || []).find(x => x.键 === 键);
+    if (!m || m.hp比 == null) return null;
+    const v = Number(m.hp比);
+    return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : null;
+  },
+  /** 战斗结束：把 `战报`（`{我方: 参战的单位[]}`）里每台的 `hp / maxHp` 写回名册。
+   *  返回写回去的台数。**修理**在战斗里加的血就在这个 `hp` 里 → 修理真的能带回大地图。 */
+  记战斗HP(战报) {
+    const R = this.RUN;
+    if (!R || !HP继承开() || !战报 || !战报.我方) return 0;
+    let n = 0;
+    for (const u of 战报.我方) {
+      const m = (R.队伍 || []).find(x => x.键 === u.key);
+      if (!m) continue;
+      const 满 = u.maxHp > 0 ? u.maxHp : 1;
+      m.hp比 = Math.max(0, Math.min(1, Math.max(0, u.hp) / 满));
+      n++;
+    }
+    return n;
+  },
+  /** 休整节点：给**名册上每一台**回 `战斗结构.HP继承.休整回血比例`（初稿 35%）的最大 HP。
+   *  ★ 口径（初稿·待作者调）：**在名册里就算**（没出击的也一起休息），回血按「比例」加，
+   *    所以满血的不会被回超过 100%。返回 `{台数, 回复比例, 名字们}`。 */
+  休整回血() {
+    const R = this.RUN;
+    if (!R || !HP继承开()) return null;
+    const c = HP继承参数();
+    const 比例 = Number.isFinite(Number(c.休整回血比例)) ? Number(c.休整回血比例) : 0.35;
+    const 名字们 = [];
+    for (const m of (R.队伍 || [])) {
+      const 前 = m.hp比 == null ? 1 : Math.max(0, Math.min(1, Number(m.hp比)));
+      if (前 >= 1) continue;
+      m.hp比 = Math.min(1, 前 + 比例);
+      名字们.push(`${m.键} ${Math.round(前 * 100)}% → ${Math.round(m.hp比 * 100)}%`);
+    }
+    this.记(`休整：全队回血 ${Math.round(比例 * 100)}% 最大 HP${名字们.length ? `（${名字们.join('、')}）` : '（全队本来就是满血）'}`);
+    return { 台数: 名字们.length, 回复比例: 比例, 名字们 };
+  },
+  /** 大地图 / 编队屏那一行「队伍状态」：`N/M 台满血 · 最惨的一台剩 X%`（满血时返回 null）。 */
+  队伍HP行() {
+    const R = this.RUN;
+    if (!R || !HP继承开()) return null;
+    const 队 = R.队伍 || [];
+    if (!队.length) return null;
+    const 比 = 队.map(m => (m.hp比 == null ? 1 : Math.max(0, Math.min(1, Number(m.hp比)))));
+    const 满 = 比.filter(x => x >= 0.999).length;
+    if (满 === 队.length) return null;
+    const 最惨 = Math.min(...比);
+    return `带伤 ${队.length - 满}/${队.length} 台 · 最惨的一台剩 ${Math.round(最惨 * 100)}%（休整 / 修理才能回）`;
+  },
+
   /* ---------------- 日志 ---------------- */
   记(文字) { if (this.RUN) this.RUN.日志.push({ 层: this.RUN.层, 文本: 文字, 时间: Date.now() }); },
 
@@ -906,6 +979,13 @@ const 肉鸽 = {
       /* Set 不能进 JSON：读回来补上（界面用） */
       this.RUN.已走过集 = new Set(this.RUN.已走过 || []);
       this.RUN.已揭开集 = new Set(this.RUN.已揭开 || []);
+      /* ★ HP 继承（2026-10-11）：旧存档（加 `hp比` 之前存的那一版）**没有这个字段** →
+         安全补成「满血」；坏值（NaN / 越界）也一并夹回来，不崩、也不会把 HP 算成 NaN。 */
+      for (const m of (this.RUN.队伍 || [])) {
+        if (m.hp比 == null) { m.hp比 = null; continue; }
+        const v = Number(m.hp比);
+        m.hp比 = Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : null;
+      }
       return this.RUN;
     } catch (e) { return null; }
   },

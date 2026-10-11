@@ -237,8 +237,11 @@ function expectedDamage(att, def, w, opts = {}) {
 }
 
 /* ---------- 武器可用性（13-武器可用性.js:7-16 / 18-31 的数值部分） ---------- */
-const START_CD_ULT = 3;   // 大招（unlock ≥ 20）开场冷却 3 回合
-const startCdOf = w => w.startCd != null ? w.startCd : (w.unlock >= 20 ? START_CD_ULT : 0);
+const START_CD_ULT = 3;   // 大招（unlock ≥ 20）开场冷却 3 回合 ← **改前的兜底值**
+/* ★ 2026-10-11 大招变稀缺（作者：「大招：保留」这个开关要真的有意义）：
+   开场冷却从写死的 3 改成读 `71-改动.js` 的 `战斗结构.大招冷却.开场`（初稿 5 回合 → 第 6 回合才能放）；
+   数据里**显式写了 `startCd`** 的武器（例如敌人的大招）仍然听数据的，不走这条。 */
+const startCdOf = w => w.startCd != null ? w.startCd : (w.unlock >= 20 ? 大招开场冷却() : 0);
 
 /* 第一期不做的武器（方案 6.2）：带 special 的特殊武器全部不用，
    例外是方案明确要保留的「多段」（special === 'multi'），以及 **2026-10-11 放行的 `chain`**。
@@ -273,10 +276,14 @@ function usableWeapons(u, ctx) {
   });
 }
 
-/** 用掉一次：普通冷却 + 次数 −1（开场冷却由 readyTurn 管，不在这里） */
+/** 用掉一次：普通冷却 + 次数 −1（开场冷却由 readyTurn 管，不在这里）
+ *  ★ 2026-10-11 大招变稀缺：**大招**（`unlock ≥ 20`）的普通冷却至少 `战斗结构.大招冷却.普通`
+ *  （初稿 3 回合），数据里写了更长的就听数据的。敌人自己的大招不走这条（它们的 `cd` 写在数据里、
+ *  `unlock` 是 1）→ 只有我方大招被拉长，「大招：保留」这个开关因此才有意义。 */
 function spendWeapon(u, entry) {
   if (!entry) return;
-  if (entry.t.cd) entry.cd = entry.t.cd;
+  const 冷却 = entry.t.unlock >= 20 ? Math.max(entry.t.cd || 0, 大招普攻冷却()) : (entry.t.cd || 0);
+  if (冷却) entry.cd = 冷却;
   if (entry.uses != null) entry.uses--;
 }
 

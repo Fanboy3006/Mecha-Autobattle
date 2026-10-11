@@ -91,10 +91,18 @@ const 守护者 = (ctx, 被守护) => {
   for (const [位, g] of 表) if (g.守护对象 === 被守护 && g.hp > 0) return g;
   return null;
 };
-/** 重装（方案 6.3）：在前排时，敌方的单体攻击 50% 概率改打它。 */
+/** 重装（方案 6.3）：在前排时，**对方的**单体攻击 50% 概率改打它。
+ *  ★ 2026-10-11 改成对称（作者：「敌人也吃职业特色」）：改前写死「只在我方打我方时生效」
+ *    （`攻击者.side !== 'enemy' || 原目标.side !== 'ally'` → return null），
+ *    现在**双方都走同一条**：候选 = 被打那一方（`otherSide(攻击者.side)`）里
+ *    **前排的重装**（我方的重装按 `tags.战斗分类`，敌方的重装按 `战斗结构.敌方职业`）。
+ *  判定函数 `职业是()` 在 `30-射程.js`（一个参数 `战斗结构.对称职业特色` 控制，默认对称）。
+ *  ★ 顺序没变：**候选为空时一次随机数都不消耗**（`ctx.rng()` 在候选判完之后才调），
+ *    所以「对方前排没有重装」的战斗与改前逐字相同。 */
 function 嘲讽(ctx, 攻击者, 原目标) {
-  if (攻击者.side !== 'enemy' || 原目标.side !== 'ally') return null;
-  const 候选 = livingOf('ally', ctx).filter(u => 职业是(u, '重装') && unitRow(u) === ROW_FRONT && u !== 原目标 && u.hp > 0);
+  const 守方 = otherSide(攻击者.side);
+  if (原目标.side !== 守方) return null;
+  const 候选 = livingOf(守方, ctx).filter(u => 职业是(u, '重装') && unitRow(u) === ROW_FRONT && u !== 原目标 && u.hp > 0);
   if (!候选.length) return null;
   if (ctx.rng() >= 0.5) return null;                  // 50%（走带种子的随机数）
   候选.sort((a, b) => b.hp - a.hp || a.slot - b.slot);  // 并列时血多的（决定性）
@@ -134,14 +142,19 @@ function 回合开始(ctx) {
      ★ 没有月球王国 / 没有 `steadfast` 的机体 → 这个函数什么都不写（空循环），公式逐字不变。 */
   判定月球不动(ctx, 势力参数('月球王国'));
 
-  /* 2. 指挥（方案 6.3）：回合开始时，同一排的队友命中 +10（本回合） */
-  for (const c of livingOf('ally', ctx)) {
-    if (!职业是(c, '指挥')) continue;
-    const 同排 = livingOf('ally', ctx).filter(t => t !== c && unitRow(t) === unitRow(c));
-    if (!同排.length) continue;
-    for (const t of 同排) 换同源增益(t, '指挥', { hit: 10 });
-    pushLog(ctx, `〔指挥〕${c.name} 让同一排的队友命中 +10（本回合）：${同排.map(t => t.name).join('、')}`,
-      Object.assign({ 类型: '指挥', 单位: c.key, 目标: 同排.map(t => t.key), 目标位们: 同排.map(t => t.slot), 目标方们: 同排.map(t => t.side) }, 谁(c)));
+  /* 2. 指挥（方案 6.3）：回合开始时，同一排的队友命中 +10（本回合）
+     ★ 2026-10-11 改成对称（作者：「敌人也吃职业特色」）：改前只扫我方（`livingOf('ally')`），
+       现在**两边都扫** —— 敌方的指挥（`战斗结构.敌方职业` 里的 `captain`）给同排敌人 +10 命中。
+       这一条**不消耗随机数**，所以没有指挥敌人的战斗与改前逐字相同。 */
+  for (const 方 of ['ally', 'enemy']) {
+    for (const c of livingOf(方, ctx)) {
+      if (!职业是(c, '指挥')) continue;
+      const 同排 = livingOf(方, ctx).filter(t => t !== c && unitRow(t) === unitRow(c));
+      if (!同排.length) continue;
+      for (const t of 同排) 换同源增益(t, '指挥', { hit: 10 });
+      pushLog(ctx, `〔指挥〕${c.name} 让同一排的队友命中 +10（本回合）：${同排.map(t => t.name).join('、')}`,
+        Object.assign({ 类型: '指挥', 单位: c.key, 目标: 同排.map(t => t.key), 目标位们: 同排.map(t => t.slot), 目标方们: 同排.map(t => t.side) }, 谁(c)));
+    }
   }
 
   /* 3. 防御的回报：上一回合选了「防御」的，这一回合开始回复 5% 最大 HP（方案第 4 节） */
@@ -372,8 +385,10 @@ function resolveAction(actor, action, ctx) {
     if (t.hp <= 0) continue;
     let 实际 = t, 按防御 = false;
 
-    if (!isAreaKind(kind) && actor.side === 'enemy') {
-      const g = 守护者(ctx, t);
+    if (!isAreaKind(kind)) {
+      /* 守护是**我方的指令**（守护替队友挨打），敌人不会下这条指令 → 只有敌方攻击时才查守护者。
+         ★ 2026-10-11 对称职业特色之后，「重装嘲讽」这一半**双方都查**（见 `嘲讽()` 的注释）。 */
+      const g = actor.side === 'enemy' ? 守护者(ctx, t) : null;
       if (g) {
         实际 = g; 按防御 = true;
         pushLog(ctx, `〔守护〕${g.name} 替 ${t.name} 挡下这一击（按防御结算）`, Object.assign({ 类型: '守护', 目标: g.key, 原目标: t.key }, 谁(g), 谁目标(g)));
@@ -554,6 +569,9 @@ function 算意图(ctx) {
       命中修正: a && a.被挡 ? -20 : 0,
       /* Boss：这一发是不是大技能、现在第几阶段、还是这一回合在蓄力（界面上看得见节奏） */
       大技能: !!(a && a.大技能),
+      /* ★ 2026-10-11 新加：这一发是不是**大招**（我方 unlock ≥ 20 的那批 + 敌方 `战斗结构.敌方大招`
+         装上去的那批，判定在 `50-AI.js` 的 `isUltimate()`）。界面上标 ★，玩家能看到「这一回合要扛住什么」。 */
+      大招: !!(a && a.weapon && isUltimate(a.weapon)),
       Boss: !!bp,
       Boss阶段: bp ? bp.第几阶段 : null,
       蓄力: !a && !!bp,

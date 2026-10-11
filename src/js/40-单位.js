@@ -42,8 +42,12 @@ function levelUp(u, heal = false) {
 /* ---------- 造一台机体 ----------
  * `强化` = **敌方强度倍率**（作者 2026-10-11 拍板的难度调整；默认 1 = 不强化）。
  * 只有敌人会用到它，值由 `70-编成.js` 的 `编成到单位()` / `编成波次到单位()` 按编成条目的
- * 「层 + 梯队」算好（常量与理由在 `71-改动.js` 的「难度调整」段）。 */
-function makeUnit(键, side, slot, lv, 强化 = 1) {
+ * 「层 + 梯队」算好（常量与理由在 `71-改动.js` 的「难度调整」段）。
+ * `当前HP比` = **HP 继承**（2026-10-11 作者：「同一次出击的队伍带着伤打下一场」）：
+ * 0–1 的比例，默认 `null` = **满血**（改前的老口径逐字不变）。
+ * ★ 只有肉鸽那条路（`80-界面.js` 的 `打这一场()`）会传它，别的调用点（菜单固定战斗 /
+ *   `simulate()` / `tools/balance.mjs` / 测试）**一个字节都不变**（`tests/run.js` 有一段盯着）。 */
+function makeUnit(键, side, slot, lv, 强化 = 1, 当前HP比 = null) {
   const tpl = side === 'ally' ? tplOf(键) : ENEMY_T[键];
   if (!tpl) throw new Error(`编成里出现了不认识的${side === 'ally' ? '角色键' : '敌人键'}：${键}`);
   const u = Object.assign({}, tpl, {
@@ -71,12 +75,16 @@ function makeUnit(键, side, slot, lv, 强化 = 1) {
     应用敌方强化(u, Number(强化), { 来源: '编成（层 × 梯队）' });
     u.强化 = Number(强化);
   }
+  /* ★ HP 继承（2026-10-11）：**放在最后** —— 上面任何一步（升级 / 强化）都可能改过 `maxHp`，
+     按比例算出来的才是「这一台现在还剩多少」。传 `null` = 满血，与改前**逐字相同**。 */
+  u.hp = 按比例算HP(u.maxHp, 当前HP比, HP继承参数());
   return u;
 }
 
 /* ---------- 造一整队 ----------
  * 编成条目的写法：{键:'B1', 位:0, 等级:10}（键 / 位 / 等级 都可以省略，
- * 位默认按顺序摆，等级默认：我方 10，敌人按第 1 层普通作战的等级曲线）。 */
+ * 位默认按顺序摆，等级默认：我方 10，敌人按第 1 层普通作战的等级曲线）。
+ * `hp`（可选，0–1 的比例）= **HP 继承**（肉鸽那条路会带上；不写 = 满血）。 */
 const 默认等级 = (键, side) => side === 'ally' ? 10 : (runEnemyLv('battle', 1, 0) + TIER_LV[tierOfEnemy(键)]);
 
 function makeUnits(编成, side) {
@@ -87,6 +95,8 @@ function makeUnits(编成, side) {
     if (位 < 0 || 位 >= SLOTS) throw new Error(`编成里的位置 ${位} 越界（只有 0–${SLOTS - 1}）`);
     /* `s.强化` = 敌方强度倍率（只有敌人会被 `70-编成.js` 写上；没有 = 1 = 不强化） */
     const 强化 = s.强化 != null ? s.强化 : (s.敌方强度 && s.敌方强度.倍率) || 1;
-    return makeUnit(键, side, 位, 等级, 强化);
+    /* `s.hp` = HP 比例（0–1，**肉鸽那条路才传**；不写 = null = 满血） */
+    const 比例 = s.hp != null ? s.hp : (s.hp比 != null ? s.hp比 : null);
+    return makeUnit(键, side, 位, 等级, 强化, 比例);
   });
 }
