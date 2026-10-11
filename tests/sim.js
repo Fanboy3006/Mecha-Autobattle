@@ -101,13 +101,13 @@ else ok(`第 1 层普通编成：${编成.length} 条`);
 const 队伍 = G.默认五人队;
 const 敌 = G.编成到单位(编成[0], 0);
 const 波次 = G.编成波次到单位(编成[0], 0);      // 敌方增援波次（作者 2026-10-10：被击坠后可以增援）
-const 甲 = G.simulate(队伍, 敌.map(u => ({ 键: u.key, 位: u.slot, 等级: u.lv })), null, 20261010, { 波次 });
-const 乙 = G.simulate(队伍, 敌.map(u => ({ 键: u.key, 位: u.slot, 等级: u.lv })), null, 20261010, { 波次 });
+const 甲 = G.simulate(队伍, G.敌方规格组(敌), null, 20261010, { 波次 });
+const 乙 = G.simulate(队伍, G.敌方规格组(敌), null, 20261010, { 波次 });
 const s甲 = JSON.stringify({ 结果: 甲.结果, 回合数: 甲.回合数, 记录: 甲.记录 });
 const s乙 = JSON.stringify({ 结果: 乙.结果, 回合数: 乙.回合数, 记录: 乙.记录 });
 if (s甲 === s乙) ok(`同种子同结果：${甲.结果} · ${甲.回合数} 回合 · ${甲.记录.length} 条记录（两次逐字相同）`);
 else bad('同一种子两次结果不一致（有随机数没走 ctx.rng？）');
-const 丙 = G.simulate(队伍, 敌.map(u => ({ 键: u.key, 位: u.slot, 等级: u.lv })), null, 20261011);
+const 丙 = G.simulate(队伍, G.敌方规格组(敌), null, 20261011);
 if (JSON.stringify(丙.记录) !== s甲) ok('换个种子结果就不一样（随机数确实在起作用）');
 else info('换种子结果一样（可能这一场太碾压，不算错）');
 
@@ -130,7 +130,7 @@ const 统计 = [];
 for (const e of 编成) {
   let 胜 = 0, 回合和 = 0, 败因 = {};
   for (let i = 0; i < N; i++) {
-    const 敌军 = G.编成到单位(e, 0).map(u => ({ 键: u.key, 位: u.slot, 等级: u.lv }));
+    const 敌军 = G.敌方规格组(G.编成到单位(e, 0));
     const r = G.simulate(队伍, 敌军, null, 1000 + i, { 波次: G.编成波次到单位(e, 0) });   // 种子固定，结果可复现
     if (r.结果 === '胜') 胜++;
     else 败因[r.原因] = (败因[r.原因] || 0) + 1;

@@ -541,10 +541,14 @@ function 应用藏品我方(我方, 藏品们) {
       if (n <= 2) { 合计.dmg = (合计.dmg || 0) + 50; 合计.armorPct = (合计.armorPct || 0) + 30; }
       else if (n >= 4) 合计.dmg = (合计.dmg || 0) - 15;
     }
-    if (!Object.keys(合计).length) continue;
+    /* ★ 杠杆 ①（作者 2026-10-11 拍板「四个杠杆都可以用」）：**同类加成设叠加上限** ——
+       求和之后、贴到单位身上之前夹一次（上限表在 `71-改动.js` 的 `难度调整.藏品同类上限.我方`）。
+       ★ 这是上限不是打折：没超过上限的组合一个字节都不变。 */
+    const 夹过 = 藏品合计封顶(合计, 难度调整.藏品同类上限.我方);
+    if (!Object.keys(夹过).length) continue;
     u.buffs = (u.buffs || []).filter(b => b.src !== '藏品');
-    u.buffs.push(Object.assign({ src: '藏品', 剩余: 999 }, 合计));
-    u.藏品加成 = 合计;
+    u.buffs.push(Object.assign({ src: '藏品', 剩余: 999 }, 夹过));
+    u.藏品加成 = 夹过;
   }
   return 我方.filter(u => u.藏品加成).length;
 }
@@ -567,10 +571,13 @@ function 应用藏品敌方(敌方, 我方, 藏品们) {
     }
   }
   if (!Object.keys(合计).length) return 0;
+  /* ★ 杠杆 ①：**敌方身上的减益**也设幅度上限（`71-改动.js` 的 `难度调整.藏品同类上限.敌方`：
+     敌方命中最多 −20、敌方装甲最多 −50%）—— 也是「没超过就不变」。 */
+  const 夹过 = 藏品合计封顶(合计, 难度调整.藏品同类上限.敌方);
   for (const e of 敌方) {
     e.buffs = (e.buffs || []).filter(b => b.src !== '藏品');
-    e.buffs.push(Object.assign({ src: '藏品', 剩余: 999 }, 合计));
-    e.藏品加成 = 合计;
+    e.buffs.push(Object.assign({ src: '藏品', 剩余: 999 }, 夹过));
+    e.藏品加成 = 夹过;
   }
   return 敌方.length;
 }

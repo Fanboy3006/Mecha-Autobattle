@@ -39,8 +39,11 @@ function levelUp(u, heal = false) {
   }
 }
 
-/* ---------- 造一台机体 ---------- */
-function makeUnit(键, side, slot, lv) {
+/* ---------- 造一台机体 ----------
+ * `强化` = **敌方强度倍率**（作者 2026-10-11 拍板的难度调整；默认 1 = 不强化）。
+ * 只有敌人会用到它，值由 `70-编成.js` 的 `编成到单位()` / `编成波次到单位()` 按编成条目的
+ * 「层 + 梯队」算好（常量与理由在 `71-改动.js` 的「难度调整」段）。 */
+function makeUnit(键, side, slot, lv, 强化 = 1) {
   const tpl = side === 'ally' ? tplOf(键) : ENEMY_T[键];
   if (!tpl) throw new Error(`编成里出现了不认识的${side === 'ally' ? '角色键' : '敌人键'}：${键}`);
   const u = Object.assign({}, tpl, {
@@ -57,6 +60,17 @@ function makeUnit(键, side, slot, lv) {
   });
   while (u.lv < lv) levelUp(u, true);
   u.hp = u.maxHp;
+  /* ★ 敌方强度（`ENEMY_SCALE` 的「强度」那一半 · 作者 2026-10-11 拍板的难度调整）：
+     按「层 + 梯队」给的倍率，乘在 威力 / 装甲 / 防御 / HP / 精准 上。
+     常量、公式形状、出处与实测理由全部写在 `71-改动.js` 的「难度调整」段；
+     **公式一个字没改**，`10-数据.js`（战棋复制件）也一个字节没改（缩放的是单位自己的武器副本）。
+     ★ 倍率 = 1（第 1 层 / 默认 1 / 手搭的敌方规格没写 `强化`）→ **这一整段不进**，与改前逐字相同；
+     ★ 我方（`side !== 'enemy'`）永远不会走到这一段。 */
+  u.强化 = 1;
+  if (side === 'enemy' && Number(强化) > 1.0001) {
+    应用敌方强化(u, Number(强化), { 来源: '编成（层 × 梯队）' });
+    u.强化 = Number(强化);
+  }
   return u;
 }
 
@@ -71,6 +85,8 @@ function makeUnits(编成, side) {
     const 位 = s.位 != null ? s.位 : (s.slot != null ? s.slot : i);
     const 等级 = s.等级 || s.lv || 默认等级(键, side);
     if (位 < 0 || 位 >= SLOTS) throw new Error(`编成里的位置 ${位} 越界（只有 0–${SLOTS - 1}）`);
-    return makeUnit(键, side, 位, 等级);
+    /* `s.强化` = 敌方强度倍率（只有敌人会被 `70-编成.js` 写上；没有 = 1 = 不强化） */
+    const 强化 = s.强化 != null ? s.强化 : (s.敌方强度 && s.敌方强度.倍率) || 1;
+    return makeUnit(键, side, 位, 等级, 强化);
   });
 }

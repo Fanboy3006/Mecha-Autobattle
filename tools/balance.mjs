@@ -258,7 +258,7 @@ function 跑组队() {
           const 条目 = 候选[ci];
           let 条胜 = 0, 条回合 = 0, 条血 = 0;
           for (let i = 0; i < 每档; i++) {
-            const 敌军 = g.编成到单位(条目, 0).map(u => ({ 键: u.key, 位: u.slot, 等级: u.lv }));
+            const 敌军 = g.敌方规格组(g.编成到单位(条目, 0));
             const r = 打一场(五人队(lv), 敌军, 场种子(2, lv, 层 * 100 + ci, i));
             if (r.结果 === '胜') { 胜++; 条胜++; }
             回合 += r.回合数; 条回合 += r.回合数;
@@ -811,7 +811,7 @@ function 跑作弊() {
         const 逐条 = [];
         for (let ci = 0; ci < 候选.length; ci++) {
           const 条目 = 候选[ci];
-          const 敌军 = g.编成到单位(条目, 0).map(u => ({ 键: u.key, 位: u.slot, 等级: u.lv }));
+          const 敌军 = g.敌方规格组(g.编成到单位(条目, 0));
           const 波次 = g.编成波次到单位(条目, 0);
           let 条胜 = 0, 条回合 = 0, 条血 = 0;
           for (let i = 0; i < 每档; i++) {
