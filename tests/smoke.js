@@ -19,7 +19,7 @@
 import { readFileSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { assemble } from '../tools/assemble-src.mjs';
+import { 拼接主体 } from '../tools/build-src.mjs';   // M5：生成物 = shell + css + js + ART/AUDIO 素材，共用同一个函数
 import { loadPage } from './lib/dom-stub.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -40,8 +40,8 @@ const info = m => console.log('    · ' + m);
 console.log('冒烟测试：机甲指挥\n\n[1] 生成物与源文件同步');
 let body = null;
 try {
-  body = lf(assemble(join(ROOT, 'src'))).replace(/\n+$/, '') + '\n';
-  ok(`源文件（src/shell.html + css + js）能拼出游戏主体：${body.split('\n').length - 1} 行`);
+  body = 拼接主体();
+  ok(`源文件（src/shell.html + css + js + art + audio）能拼出游戏主体：${body.split('\n').length - 1} 行`);
 } catch (e) { bad(`拼接失败：${e.message}`); }
 
 if (body) {
@@ -62,6 +62,13 @@ if (html) {
     ['<div class="app">', '游戏标记 .app'],
     ['id="ver"', '版本文字 #ver'],
     ['id="ms"', '里程碑文字 #ms'],
+    ['id="btnSound"', '声音开关按钮 #btnSound'],
+    /* M5：素材块真的被注入进去了（标记 + 素材本体） */
+    ['<!-- ===== ART:mech-icons BEGIN', 'ART 素材块标记'],
+    ['root.MechIcons = api', '机体图标素材本体'],
+    ['<!-- ===== AUDIO BEGIN', 'AUDIO 素材块标记'],
+    ['globalThis.MechAudio', '音乐播放层本体'],
+    ['MA.openRoom = openRoom', '音乐鉴赏页本体'],
   ];
   const miss = need.filter(([s]) => !html.includes(s)).map(([, n]) => n);
   if (miss.length) bad('index.html 里缺少：' + miss.join('、'));
@@ -100,7 +107,7 @@ else {
   ok('window.__game 已暴露');
   const checks = [
     ['version', v => typeof v === 'string' && /^\d+\.\d+\.\d+$/.test(v)],
-    ['milestone', v => v === 'M3'],
+    ['milestone', v => v === 'M5'],
     ['ready', v => v === true],
     ['slots', v => v === 5],                                  // 作者 2026-10-10：暂时「前 3 后 2」= 5 格
     ['rows', v => v === 2],
@@ -115,6 +122,11 @@ else {
     // M2 的界面与播放
     ['界面', v => v && typeof v.开屏 === 'function' && typeof v.开战 === 'function'],
     ['播放', v => v && typeof v.载入 === 'function' && typeof v.tick === 'function'],
+    // M5 的美术与音乐
+    ['MechIcons', v => v && typeof v.build === 'function' && typeof v.draw === 'function'],   // ART 块注入成功
+    ['MechAudio', v => v && typeof v.play === 'function' && typeof v.themeOf === 'function'], // AUDIO 块注入成功
+    ['图标', v => v && typeof v.卡 === 'function'],
+    ['音乐', v => v && typeof v.场景切换 === 'function'],
   ];
   for (const [name, test] of checks) {
     const v = G[name];

@@ -10,13 +10,27 @@
   <header class="bar">
     <div class="brand">
       <span class="mark">机甲指挥</span>
-      <span class="ver">试作版 <span id="ver">v0.2.0</span> · <span id="ms">M2</span> 战斗画面</span>
+      <span class="ver">试作版 <span id="ver">v0.5.0</span> · <span id="ms">M5</span> 美术和音乐</span>
     </div>
     <div class="hud" id="hud"></div>
     <div class="ctrl" id="ctrl"></div>
+    <!-- 声音开关（M5）：读不到本地版权曲时整体不可用，按钮由 96-音乐.js 隐藏 -->
+    <button class="sndbtn" id="btnSound" aria-pressed="true" title="声音开关（按 M）">声音</button>
   </header>
   <main class="main" id="screen"></main>
 </div>
+
+<!-- 音乐文件的基准路径（M5）：audio/local-music.js 读 window.MECHA_MUSIC_BASE。
+     index.html 在仓库根（audio/）、src/artifact-fragment.html 在 src/ 里（../audio/），同一段文字两边都对。 -->
+<script>
+window.MECHA_MUSIC_BASE = (typeof location !== 'undefined' && String(location.pathname || '').indexOf('/src/') >= 0) ? '../audio/' : 'audio/';
+</script>
+
+<!-- ===== ART:mech-icons BEGIN（自动生成，请勿手改；源文件 art/mech-icons.js）===== -->
+<!-- ===== ART:mech-icons END ===== -->
+
+<!-- ===== AUDIO BEGIN（自动生成，请勿手改；源文件 audio/local-music.js + audio/music-room.js）===== -->
+<!-- ===== AUDIO END ===== -->
 
 <script>
 <!-- @include js/00-head.js -->
@@ -31,9 +45,11 @@
 <!-- @include js/50-AI.js -->
 <!-- @include js/60-战斗.js -->
 <!-- @include js/70-编成.js -->
+<!-- @include js/78-图标.js -->
 <!-- @include js/90-肉鸽.js -->
 <!-- @include js/92-肉鸽界面.js -->
 <!-- @include js/85-播放.js -->
 <!-- @include js/80-界面.js -->
+<!-- @include js/96-音乐.js -->
 <!-- @include js/99-boot.js -->
 </script>

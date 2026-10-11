@@ -26,7 +26,7 @@
 | 伤害公式（v0.42 平滑曲线 `statCoef` / `atkStat`、装甲、防御、暴击 ×2、弱点 / 抗性、能量屏障 / λ 力场 / 护盾） | 关卡编辑器、规则试玩场、战术挑战、教学关 |
 | 升级加点（每级 +2、晋升 +25）、开场冷却（大招 3 回合） | 地图炮的方向选择 |
 | 肉鸽外壳：分队、招募券、希望、源碳结晶、作战耐久、层与节点大地图（`26` / `28` / `29` / `30`）、零件、藏品框架、存档（v0.42.2） | 侵蚀场（它们大多改地形，等以后重新设计） |
-| 美术 `art/mech-icons.js`（矢量图标，`MI.draw / MI.makeSprite`）+ 像素精灵 `art/pixel/`；配色按势力 / 职业查表 | 战棋的地形贴图 |
+| 美术 `art/mech-icons.js`（矢量图标，`MI.draw / MI.makeSprite`），配色按势力 / 职业查表（**M5 已复制**）；像素精灵 `art/pixel/` 这一期没带过来 | 战棋的地形贴图 |
 | 音乐 `audio/local-music.js`（`MechAudio`）+ `audio/music-room.js` + `audio/SUNO/*.mp3`；「放大招才切主题曲」照旧 | `audio/` 根目录的版权 mp3、`图片库/`——**绝不复制进新仓库** |
 | 构建方式：`src/js/` 片段拼成单文件 HTML | Playwright 测试（本机装不上，见第 4 节） |
 
@@ -96,7 +96,30 @@
 - 这一版是**简化版**：地图是一列一列节点（战棋是 6×4 网格 + BFS + 推进剂）、少几种节点、藏品只有框架（32 件纯数值待接）、
   晋升 / 零件 / 侵蚀场 / 战前编队没做 —— 清单在 `协作/任务板.md` 的 M4 段。
 
-**下一个里程碑：M5 美术和音乐**（复制 `art/mech-icons.js` + `audio/`；顺手把 32 件纯数值藏品接进数值），见第 5 节。**M4 之后没做的**见任务板 M4 段的「和战棋不一样的地方」。
+**M5（美术和音乐）已交付，等作者试**：
+
+- **素材照方案 8.2 搬**（旧仓库只读，一个字节都没改）：`art/mech-icons.js`（153KB 原创矢量图标，**原样**）
+  + `art/README.md` / `art/图标待办.md` / `art/preview.html`；`audio/local-music.js` + `audio/music-room.js`（**原样**）
+  + `audio/SUNO/*.mp3`（9 首 Suno 曲）。**没复制**：`audio/` 根目录的版权 mp3、`图片库/`、
+  `audio/SUNO/*.download`（没下完的残留）、旧合成层 `audio/score.js` / `mech-audio.js`。
+- **构建注入**：`src/shell.html` 里写好 `ART:mech-icons` / `AUDIO` 两对空标记，`tools/build-src.mjs` 把素材原样内联进
+  `src/artifact-fragment.html` 与 `index.html`；素材里出现 `</script` 就**报错退出、不写文件**（手工验过：退出码 1）。
+  工具导出 `拼接主体()`，`tests/smoke.js` 直接 import 它算生成物，同步检查仍然严格。
+- **图标**：新 `src/js/78-图标.js`——`MI.build(id, {pal, plate, role, size})` + `MI.draw(ctx, prims, size, x, y)`
+  画在 2 倍离屏 canvas 上、`toDataURL()` 内联成 `<img class="mi">`，按图标 id + 调色板缓存；
+  编队列表 / 编队格子 / 战斗双方 / 招募列表 / 队伍行全部换成真图标。挑图规则照战棋 `20-绘制.js:424-451`：
+  专属图标 →（我方）按战斗分类 /（敌方）按体型飞行借原型剪影 → 兜底退回**势力色方块 + 短名**。
+  实测我方 34 名 + 敌方 29 种全都有图（专属 21 / 借原型 42 / 退方块 0）。
+- **音乐**：新 `src/js/96-音乐.js`——菜单 `title`；大地图 / 编队（分队 / 招募 / 奇遇）`mapStrategy`；
+  战斗 `allyPhase`（**敌方行动不切曲**）；Boss 战 `boss`；结算不切曲；
+  **放大招时切成那台机体的主题曲、保持到本回合结束**（在播放层判定，没动引擎记录格式）。
+  顶栏有声音开关（按钮 + `M` 键 + 存 localStorage），菜单有「音乐鉴赏」入口（`audio/music-room.js`）。
+  读不到曲子 / 没有 `Audio` / 没有 `AudioContext` 时**整体静音、按钮隐藏、一个异常都不抛**。
+- 新测试 `tests/art_audio.js`（9 段，见任务板 M5 段）；六套测试 + `--check` 全过。
+
+**下一个里程碑：M6 平衡工具**（`node tools/balance.mjs`），见第 5 节。
+M5 里**没接**的：**32 件纯数值藏品接进数值**（下一轮，等 Claude 的换算方案）、像素精灵 `art/pixel/`。
+**M4 之后没做的**见任务板 M4 段的「和战棋不一样的地方」；**M5 自己定的几处**见任务板 M5 段。
 M1 遗留的未决事项只剩一条：**修理策略**（现在是「有伤就修」）；「精英 / 头目编成要有挑战」留给 M4 + M6。
 M3 里自己定的几处（职业特色只给我方、指挥的「同一排」= 同一横排、嘲讽只对敌方单体且守护优先）
 也记在 `协作/任务板.md` 的 M3 段里，作者觉得不对随时改。
@@ -115,14 +138,21 @@ M3 里自己定的几处（职业特色只给我方、指挥的「同一排」= 
 | `src/artifact-fragment.html` | **生成物** | 片段版（没有 `<html>/<head>/<body>`），以后发 claude.ai Artifact 用 |
 | `index.html`（仓库根） | **生成物** | 可直接双击打开的完整页面；`tools/build-src.mjs` 把 shell 拼出来的内容插到标记 `<!-- ===== 游戏主体 BEGIN ... -->` / `END` 之间 |
 | `tools/assemble-src.mjs` | 源文件 | 拼接规则（读 `shell.html` 里的 include 行） |
-| `tools/build-src.mjs` | 源文件 | 生成两份 HTML；`--check` 只检查、不写文件 |
+| `tools/build-src.mjs` | 源文件 | 生成两份 HTML（**M5 起负责把 `art/mech-icons.js` 和 `audio/local-music.js` + `music-room.js` 注入 ART / AUDIO 块**）；`--check` 只检查、不写文件；导出 `拼接主体()` 给 `tests/smoke.js` 共用 |
 | `tools/specials.mjs` | 源文件 | 生成 `docs/特技换算待办.md`（机械列清单，不含换算方案） |
-| `tests/lib/dom-stub.mjs` | 源文件 | 无依赖的 DOM / Canvas 替身（三个测试共用） |
+| `art/mech-icons.js` | **素材源文件**（M5 从战棋原样复制） | 原创机体矢量图标（24 个图标 / 10 套调色板），对外是全局 `MechIcons`（`MI.build / MI.draw / MI.makeSprite / ICON_BY_MECH / FACTION_PAL`）。**改素材改这里**，别改 HTML |
+| `art/README.md`、`art/图标待办.md`、`art/preview.html` | 素材（原样复制） | 素材说明 / 待办 / 双击可看的图标对照表 |
+| `audio/local-music.js`、`audio/music-room.js` | **素材源文件**（M5 从战棋原样复制） | 音乐播放层 `MechAudio`（全局）+ 音乐鉴赏页；**不改这两个文件**，接线在 `src/js/96-音乐.js` |
+| `audio/SUNO/*.mp3` | 素材（原样复制） | 作者用 Suno 生成的曲子（进仓库）。**`audio/` 根目录的版权 mp3 绝不进仓库**（`.gitignore` 已排除） |
+| `tests/lib/dom-stub.mjs` | 源文件 | 无依赖的 DOM / Canvas 替身（各测试共用） |
 | `tests/smoke.js` | 源文件 | 冒烟测试；不依赖 Playwright |
 | `tests/sim.js` | 源文件 | 战斗内核测试（固定种子可复现 + 胜率 + 公式对照） |
 | `tests/battle_ui.js` | 源文件 | 界面测试（编队 / 战斗屏 / 指令阶段 / 播放方式不影响结果 / 结算） |
 | `tests/commands.js` | 源文件 | M3 验收：集火 / 守护 / 意图一致 / 防御 / 换位 / 职业特色 / 大招开关 |
 | `tests/run.js` | 源文件 | M4 验收：编成表 / 选分队开局 / 走到第 1 层出口 / 存档→读档 / 失败扣耐久 |
+| `tests/art_audio.js` | 源文件 | M5 验收：MI 接口 / 画图不抛 / 挑图规则与方块兜底 / 三个画面真有图标 / 音乐接口与场景映射 / **无音频环境降级** / 放大招切主题曲 / 假浏览器验证曲子指向仓库里的文件 |
+| `src/js/78-图标.js` | 源文件 | 图标层：机体键 → 图标 id → 调色板 → 离屏 canvas → dataURL（缓存），挑不出来退方块 + 短名 |
+| `src/js/96-音乐.js` | 源文件 | 音乐接线：场景切曲（方案 8.2）/ 放大招切主题曲 / 声音开关（顶栏按钮 + `M` 键）/ 音乐鉴赏页入口 |
 | `src/js/90-肉鸽.js` `src/js/92-肉鸽界面.js` | 源文件 | 肉鸽外壳：RUN / 分队 / 节点地图 / 移动 / 节点结算 / 奖励 / 存档 / 界面 |
 | `协作/任务板.md` | 源文件 | 每个里程碑记「做完了什么、怎么试」 |
 | `协作/协作日志.md` | 源文件 | 每次交付记一条 |
@@ -131,7 +161,9 @@ M3 里自己定的几处（职业特色只给我方、指挥的「同一排」= 
 
 - **只改源文件**。`index.html` 和 `src/artifact-fragment.html` 是生成物，**不要手改**，改完源文件跑构建。
 - 加新脚本：文件放进 `src/js/`，在 `src/shell.html` 对应位置加一行 `<!-- @include js/文件名.js -->`。
-- 现在还没有 `art/`、`audio/` 目录，**M5** 才会把旧项目的 `art/mech-icons.js`、`audio/local-music.js` 等复制过来。
+- 改**素材**（机体图标 / 音乐接线）：图标改 `art/mech-icons.js`（对战棋是只读复制，但在这个仓库里它是素材源文件）；
+  `audio/local-music.js`、`audio/music-room.js` 是**原样复制、不改**，场景接线写在 `src/js/96-音乐.js`。
+  改完都要跑 `node tools/build-src.mjs` 重新注入（`src/shell.html` 里的 `ART` / `AUDIO` 标记之间是生成区）。
 
 ## 4. 怎么改代码 / 构建 / 测试
 
@@ -143,11 +175,13 @@ node tests/sim.js                 # 战斗内核（M1）：固定种子跑两遍
 node tests/battle_ui.js           # 界面（M2）：编队 / 战斗屏 / 指令阶段 / 播放方式不影响结果 / 结算
 node tests/commands.js            # 指令与职业特色（M3）：集火 / 守护 / 意图 / 防御 / 换位 / 职业特色 / 大招开关
 node tests/run.js                 # 肉鸽（M4）：编成表 / 开局 / 走到第 1 层出口 / 存档→读档 / 失败扣耐久
+node tests/art_audio.js           # 美术与音乐（M5）：MI 接口 / 画图 / 挑图规则 / 图标接线 / 音乐接口与场景映射 / 无音频降级 / 放大招切主题曲
 node tools/specials.mjs           # 重新生成 docs/特技换算待办.md
 ```
 
 - 改完源文件**必须**跑 `node tools/build-src.mjs`，否则双击 `index.html` 看到的还是旧版本。
 - 提交前跑一次 `--check`，确认生成物没落后于源文件。
+- **六套测试**（smoke / sim / battle_ui / commands / run / art_audio）都要过；改素材（`art/`、`audio/`）也算改源文件，同样要跑构建。
 - M1 起会有 `node tests/sim.js`（固定种子跑两遍比对 + 胜率表）。
 - **不要用浏览器自带的 `alert` / `confirm` / `prompt`**：claude.ai 页面和桌面应用会拦截它们（`confirm` 直接返回 false），
   按钮会像没反应一样。要确认用 `await ask(标题, 说明, 确认按钮文字)`，要选东西用 `await dlg(html)`（沿用旧项目的做法）。
@@ -161,7 +195,7 @@ node tools/specials.mjs           # 重新生成 docs/特技换算待办.md
 | **M2** 战斗画面 | 已完成，见第 2 节 | 作者能从菜单进一场固定的测试战斗并打完 |
 | **M3** 指令和意图 | 已完成，见第 2 节 | 测试：守护确实替队友挨打；集火确实打指定目标；意图和实际行动一致 |
 | **M4** 肉鸽 | 已完成（简化版），见第 2 节 | 能从选分队一路打到第 1 层出口；关掉页面能继续 |
-| **M5** 美术和音乐 | 第 8.2 节（复制 `art/`、`audio/`） | 机体有图标；有音乐；放大招切主题曲 |
+| **M5** 美术和音乐 | 已完成，见第 2 节 | `node tests/art_audio.js`：机体有图标（我方 34 + 敌方 29 全都有）、有音乐（场景切曲）、放大招切主题曲 |
 | **M6** 平衡工具 | `node tools/balance.mjs`：每名角色 Lv10 / Lv20 / Lv30 单挑和组队对标准编成的胜率、平均伤害，输出一张表 | 表格生成；交给 Claude 审 |
 
 - 每个里程碑的提交说明以 `[M1]` 这样开头。
@@ -253,9 +287,7 @@ node tools/specials.mjs           # 重新生成 docs/特技换算待办.md
 
 ## 10. 之后的重点（不要提前做）
 
-- **M4 肉鸽**：敌人编成表放 `src/js/编成.js`，每层一张表，每条 = 一组敌人和站位（例如 `{层:1, 类型:'普通', 前:['hound','hound'], 后:['drone']}`）；
-  战斗节点从对应层 / 类型里随机抽一条，敌人等级沿用 `runEnemyLv`、强度沿用 `ENEMY_SCALE`。藏品只带纯数值类，零件只带大地图上用的。
-- **M5 美术音乐**：`art/mech-icons.js` 由 `build-src.mjs` 照战棋的方式注入；场景对应音乐
-  开场菜单 = `title`、大地图 / 编队 = `mapStrategy`、战斗中 = `allyPhase`（敌方行动不切曲）、Boss 战 = `boss`，**放大招时切主题曲并保持到本回合结束**。
-- **M6 平衡工具**：`node tools/balance.mjs` 出胜率 / 平均伤害表，交给 Claude 审、用来调数值。
+- **M6 平衡工具**：`node tools/balance.mjs` 出胜率 / 平均伤害表，交给 Claude 审、用来调数值；精英 / 头目的编成强度也在这时候配。
+- **M5 剩的**（作者说了再做）：**32 件纯数值藏品接进数值**（要顺给 `dmgCore` 加一个「伤害加成」入口，换算方案由 Claude 出）；
+  像素精灵 `art/pixel/`（方案 8.2 提到过，这一期只带了矢量图标）；多文件发布包（`build-artifact.mjs` 那套，新项目还没有）。
 - 长期：带种子随机数是为了让「固定种子 → 相同结果」可复现，将来换引擎时能当验收标准用。

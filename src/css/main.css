@@ -178,3 +178,36 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .rv-node.can{opacity:1;border-style:solid;cursor:pointer;box-shadow:0 0 0 1px color-mix(in srgb,var(--fc) 60%,transparent)}
 .rv-node.can:hover{border-color:var(--accent)}
 .rv-node.here{opacity:1;border-style:solid;outline:2px solid var(--accent)}
+
+/* ============================================================================
+ * M5：机体图标和声音开关
+ * ----------------------------------------------------------------------------
+ * 图标是 art/mech-icons.js 的原创矢量图形，由 78-图标.js 画成 dataURL 内联在 <img> 里；
+ * 画不出来时退成 `.mic.fb`（势力色方块 + 短名）。
+ * ========================================================================== */
+.mic{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;border-radius:4px;overflow:hidden}
+.mic img{display:block;width:100%;height:100%}
+.mic.fb{background:var(--fc);color:#0b1016;font-family:var(--font-d);font-weight:700;font-size:11px}
+.uc .head{flex-direction:row;align-items:center;gap:6px}
+.uc .head .nm{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.uc .head .nm b{font-size:13px}
+.uc .head .nm small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pick .pk-top,.slot .pk-top,.rv-row .pk-top{display:flex;align-items:center;gap:7px;min-width:0;width:100%}
+.pk-nm{display:flex;flex-direction:column;line-height:1.2;min-width:0;text-align:left}
+.pk-nm b{font-size:13px}
+.pk-nm small{color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sndbtn{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:6px 12px;margin-left:8px}
+.sndbtn:hover{border-color:var(--muted)}
+.sndbtn[aria-pressed="false"]{color:var(--muted)}
+.sndbtn.on{border-color:var(--accent);color:var(--accent)}
+
+/* 弹窗骨架：音乐鉴赏页（audio/music-room.js）自己只带页面内的样式，
+   外面的 .modal / .dlg / .btn / .eyebrow 这些壳儿从战棋的 main.css:154-168 搬最小一份过来。 */
+.modal[hidden]{display:none}
+.modal{position:fixed;inset:0;background:rgba(6,9,13,.72);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
+.dlg{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px;width:min(720px,100%);max-height:90vh;overflow:auto;box-sizing:border-box;color:var(--fg)}
+.dlg h2{margin:2px 0 6px;font-size:22px}
+.dlg .eyebrow{font-family:var(--font-d);letter-spacing:.2em;color:var(--enemy);font-size:13px}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:6px 12px;color:var(--fg)}
+.btn:hover:not(:disabled){border-color:var(--muted)}
+.btn:disabled{opacity:.4;cursor:not-allowed}

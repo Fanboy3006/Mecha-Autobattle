@@ -64,7 +64,7 @@ const 界面 = {
   },
 
   /* ---------------- 屏幕切换 ---------------- */
-  开屏(名) { this.屏 = 名; this.刷(); return this; },
+  开屏(名) { this.屏 = 名; this.刷(); 音乐.场景切换(名); return this; },   // M5：切屏跟着换曲子（方案 8.2）
 
   刷() {
     const 屏 = $('#screen');
@@ -211,6 +211,9 @@ const 界面 = {
       case '奇遇': return this.选奇遇(参);
       case '存个档': return this.存个档();
       case '放弃本局': return this.放弃本局();
+      /* M5 美术和音乐 */
+      case '音乐鉴赏': return this.去音乐鉴赏();
+      case '声音': return 音乐.切开关();
       default: return null;
     }
   },
@@ -243,7 +246,7 @@ const 界面 = {
   菜单屏() {
     const 有存档 = !!肉鸽.读存档();
     return `<section class="card menu">
-      <h3>机甲指挥 · M4 肉鸽</h3>
+      <h3>机甲指挥 · M5 美术和音乐</h3>
       <p>自动战斗回合制 RPG：把机体摆进<b>前排 / 后排</b>（前 3 后 2），每回合给每台机体下一条<b>大方向指令</b>，这一回合按速度自动打完。</p>
       <ul>
         <li><b>肉鸽</b>（方案第 7 节）：选分队 → 大地图走节点（作战 / 精英 / Boss / 招募 / 补给 / 奇遇）→ 层出口；
@@ -255,8 +258,12 @@ const 界面 = {
         <button class="primary" data-act="去分队">新的一局（肉鸽）→</button>
         ${有存档 ? `<button data-act="继续上一局">继续上一局（第 ${肉鸽.读存档().层} 层）</button>` : ''}
         <button data-act="去编队">练习：直接编队打一场</button>
+        <button data-act="音乐鉴赏">音乐鉴赏</button>
       </div>
-      <p class="small">机体图标在 M5，现在用势力颜色的方块 + 短名。</p>
+      <p class="small">M5 美术和音乐：机体图标是原创矢量素材（<code>art/mech-icons.js</code>）；
+        音乐按场景切（菜单 = 主题曲、大地图 / 编队 = 战略、战斗中 = 我方回合、Boss 战 = Boss 曲），
+        <b>放大招</b>时切成那台机体的主题曲、保持到本回合结束。右上角是声音开关（按 <b>M</b> 也行）；
+        读不到曲子时自动静音、按钮隐藏。</p>
     </section>`;
   },
 
@@ -269,7 +276,7 @@ const 界面 = {
       const p = this.预览(t.mech, B.等级);
       const 已上 = B.出击.some(x => x.键 === t.mech);
       return `<button class="pick${B.选中 === t.mech ? ' on' : ''}${已上 ? ' used' : ''}" data-act="选人:${t.mech}" data-drag="候选:${t.mech}" style="--fc:${势力色(t.mech)}">
-        <b>${t.pilot}</b><small>${t.mech} · ${t.tags.战斗分类} · ${t.tags.势力}</small>
+        <span class="pk-top">${图标.卡(t.mech, 'ally', 图标.尺寸.列表)}<span class="pk-nm"><b>${t.pilot}</b><small>${t.mech} · ${t.tags.战斗分类} · ${t.tags.势力}</small></span></span>
         <span class="nums">速 ${p.速度} · HP ${p.hp}${p.大招.length ? ` · 大招 ${p.大招.length}` : ''}</span>
       </button>`;
     }).join('');
@@ -286,7 +293,7 @@ const 界面 = {
         const p = this.预览(占.键, B.等级);
         行格.get(r).push(`<button class="slot filled" data-act="取回:${位}" data-drag="位:${位}" data-drop="${位}" style="--fc:${势力色(占.键)}">
           <span class="pos">${位名(位)}</span>
-          <b>${this.单位名(占.键, 'ally')}</b><small>${占.键} · 速 ${p.速度}</small>
+          <span class="pk-top">${图标.卡(占.键, 'ally', 图标.尺寸.格)}<span class="pk-nm"><b>${this.单位名(占.键, 'ally')}</b><small>${占.键} · 速 ${p.速度}</small></span></span>
           <span class="nums">HP ${p.hp}</span></button>`);
       } else {
         行格.get(r).push(`<button class="slot" data-act="放位:${位}" data-drop="${位}"><span class="pos">${位名(位)}</span><b>空位</b><small>${行名(r)}</small></button>`);
@@ -384,7 +391,7 @@ const 界面 = {
     const 选中 = 方 === 'ally' && this.选中位 === u.slot ? ' sel' : '';
     return `<div class="uc${u.hp <= 0 ? ' down' : ''}${选中}" id="u-${方}-${u.slot}" data-side="${方}" data-slot="${u.slot}" style="--fc:${色}"${动}>
       <span class="pos">${位名(u.slot)}</span>
-      <div class="head"><b>${u.name}</b><small>${u.key} · 速 ${speedOf(u)}</small></div>
+      <div class="head">${图标.卡(u.key, 方, 图标.尺寸.卡)}<div class="nm"><b>${u.name}</b><small>${u.key} · 速 ${speedOf(u)}</small></div></div>
       <div class="bar hp"><i style="width:${hp}%"></i></div>
       <div class="nums">HP ${Math.max(0, u.hp)} / ${u.maxHp}${u.shieldHp ? ` · 盾 ${u.shieldHp}` : ''}</div>
       <div class="tags">${(u.tags && u.tags.战斗分类) || ''}${u.weapons && u.weapons.filter(e => isUltimate(e.t)).length ? ' · 大招' : ''}</div>
@@ -456,6 +463,7 @@ const 界面 = {
 
   /** 这一回合播放完了：分出胜负就去结算，否则回到指令阶段（指令留着）。 */
   回合播完() {
+    音乐.回合结束();                 // M5：主题曲只保持到本回合结束（方案 8.2）
     if (this.ctx.result) return this.到结算();
     this.阶段 = '指令';
     this.选中位 = null;
@@ -478,6 +486,7 @@ const 界面 = {
 
   /** 播放一条记录：攻击者冲一下（并加一圈光）、受击方闪白 + 飘伤害数字，再追一行战斗记录。 */
   播一步(ev, p) {
+    音乐.看记录(ev);                 // M5：我方放大招就切这台机体的主题曲（保持到本回合结束）
     if (ev && ev.目标方 != null) this.刷卡(ev.目标方, ev.目标位, { 伤害: ev.伤害, 暴击: ev.暴击 > 0 });
     const 屏 = $('#screen');
     const 旧的 = 屏 && 屏.querySelectorAll ? 屏.querySelectorAll('.uc.act') : [];
@@ -643,6 +652,15 @@ const 界面 = {
   选奇遇(选) { 肉鸽.奇遇(选); this.开屏('大地图'); return true; },
   存个档() { const ok = 肉鸽.存档(); 肉鸽界面.提示 = ok ? '已存档（关掉页面也能继续）。' : '存档失败（浏览器不让存？）'; this.开屏('大地图'); return ok; },
   放弃本局() { 肉鸽.失败('玩家放弃'); this.开屏('肉鸽结算'); return true; },
+
+  /* ---------------- M5：音乐 ---------------- */
+  /** 音乐鉴赏页（audio/music-room.js 的画面）：菜单进，关闭后回到菜单屏。 */
+  去音乐鉴赏() {
+    const ok = 音乐.打开鉴赏页();
+    this.提示 = ok ? '' : (音乐.提示 || '音乐鉴赏页不可用。');
+    this.刷();
+    return ok;
+  },
 
   /* ---------------- 编队动作 ---------------- */
   选人(键) { this.编队.选中 = this.编队.选中 === 键 ? null : 键; this.刷(); return this.编队.选中; },

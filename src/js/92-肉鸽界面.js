@@ -87,10 +87,10 @@ const 肉鸽界面 = {
     const 卡 = 候选.map(t => {
       const p = 界面.预览(t.mech, 招募等级(R.层));
       return `<button class="pick" data-act="招募:${t.mech}" data-drag="候选:${t.mech}" style="--fc:${势力色(t.mech)}">
-        <b>${t.pilot}</b><small>${t.mech} · ${t.tags.战斗分类} · ${t.tags.势力}</small>
+        <span class="pk-top">${图标.卡(t.mech, 'ally', 图标.尺寸.列表)}<span class="pk-nm"><b>${t.pilot}</b><small>${t.mech} · ${t.tags.战斗分类} · ${t.tags.势力}</small></span></span>
         <span class="nums">速 ${p.速度} · HP ${p.hp}</span></button>`;
     }).join('');
-    const 队 = R.队伍.map((m, i) => `<div class="rv-row"><span class="nm">${allyName(m.键)}<small>${m.键} · Lv${m.等级}</small></span></div>`).join('');
+    const 队 = R.队伍.map((m, i) => `<div class="rv-row"><span class="pk-top">${图标.卡(m.键, 'ally', 图标.尺寸.列表)}<span class="pk-nm"><b>${allyName(m.键)}</b><small>${m.键} · Lv${m.等级}</small></span></span></div>`).join('');
     return `<section class="card">
       <h3>招募<span class="small">队伍 ${R.队伍.length} / ${肉鸽数值.队伍上限}（满了就不能再招）</span></h3>
       <div class="编队屏">
