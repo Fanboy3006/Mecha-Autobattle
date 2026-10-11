@@ -197,10 +197,13 @@ const START_CD_ULT = 3;   // 大招（unlock ≥ 20）开场冷却 3 回合
 const startCdOf = w => w.startCd != null ? w.startCd : (w.unlock >= 20 ? START_CD_ULT : 0);
 
 /* 第一期不做的武器（方案 6.2）：带 special 的特殊武器全部不用，
-   只有「多段」是方案明确要保留的，所以 special === 'multi' 放行。 */
+   例外是方案明确要保留的「多段」（special === 'multi'）。
+   另一个例外是作者 2026-10-10 定的两条支援：Feena 的「月光祝福」（buff）和「再动」（grant）——
+   没有伤害的支援武器，用 buff / grant 字段标记。 */
 function weaponPlayable(w) {
   if (w.fire === 'passive' || w.fire === 'device') return false;
   if (w.special && w.special !== 'multi') return false;
+  if (w.fire === 'support' && !hasSupportField(w)) return false;   // 召唤 / 烟雾 / 回复% 之类的支援第一期不做
   return true;
 }
 
@@ -213,7 +216,7 @@ function usableWeapons(u, ctx) {
     if (e.uses != null && e.uses <= 0) return false;
     if (e.cd > 0) return false;
     if (ctx && ctx.turn != null && ctx.turn < e.readyTurn) return false;
-    if (!(w.power > 0) && !isHealKind(rangeKindOf(w))) return false;
+    if (!(w.power > 0) && !isHealKind(rangeKindOf(w)) && !isSupportKind(rangeKindOf(w))) return false;
     return true;
   });
 }

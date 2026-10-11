@@ -166,6 +166,89 @@ for (const 键 of ['B1', 'B2', 'CB2', 'CB4', 'M1']) {
   }
 }
 
+/* ============================ [7] 支援与大招（Feena 的三条，作者 2026-10-10 定） ============================ */
+console.log('\n[7] Feena：月光祝福（增益）/ 残月的余响 / 再动');
+const 队伍20 = [
+  { 键: 'B2', 位: 0, 等级: 20 },   // 尖兵，速度最高，会抢在 Feena 之前行动 → 有「再动」目标
+  { 键: 'B1', 位: 1, 等级: 20 },
+  { 键: 'CB2', 位: 3, 等级: 20 },
+  { 键: 'CB4', 位: 4, 等级: 20 },
+  { 键: 'M1', 位: 5, 等级: 20 },   // Feena（指挥）
+];
+const 敌军20 = [
+  { 键: 'grunt', 位: 0, 等级: 5 }, { 键: 'shield', 位: 1, 等级: 5 },
+  { 键: 'drone', 位: 3, 等级: 5 }, { 键: 'sniper', 位: 4, 等级: 5 },
+];
+
+/* ---- 7a. 不跳过开场冷却：第 1 回合「再动」还不能用，她只能放月光祝福 ---- */
+const 甲B = G.makeUnits(队伍20, 'ally'), 乙B = G.makeUnits(敌军20, 'enemy');
+const ctxB = G.newBattle(甲B, 乙B, null, G.mulberry32(20261010));
+G.runTurn(ctxB);
+const 增益B = ctxB.log.filter(x => x.类型 === '增益');
+const 再动B = ctxB.log.filter(x => x.类型 === '再动');
+if (增益B.length) {
+  ok(`月光祝福放了 ${增益B.length} 次：${增益B[0].文本}`);
+  if (增益B.every(x => Array.isArray(x.目标) && !x.目标.includes('M1'))) ok('目标是全体队友且不含自己');
+  else bad('月光祝福的目标里出现了自己');
+  const 有buff = 甲B.find(u => u.key === 'B2');
+  const b = (有buff.buffs || []).find(x => x.src === '月光祝福');
+  if (b && b.eva === 15 && b.hit === 15) ok(`增益确实挂到队友身上（B2：闪避 +${b.eva}、命中 +${b.hit}），命中率会吃到它`);
+  else bad(`队友身上没有月光祝福的增益：${JSON.stringify(b)}`);
+  G.endTurn(ctxB);
+  if (!(有buff.buffs || []).some(x => x.src === '月光祝福')) ok('回合结束后增益消失（「持续到本回合结束」生效）');
+  else bad('回合结束后增益还在');
+} else bad('Feena 第 1 回合没放月光祝福（支援类武器没进 AI 的可用列表？）');
+if (!再动B.length) ok('第 1 回合没有「再动」（开场冷却 3 回合，第 4 回合才可用）');
+else bad('第 1 回合就放出了「再动」，开场冷却没生效');
+
+/* ---- 7b. 跳过「再动」的开场冷却，专门验它的效果 ---- */
+const 甲C = G.makeUnits(队伍20, 'ally'), 乙C = G.makeUnits(敌军20, 'enemy');
+const ctxC = G.newBattle(甲C, 乙C, null, G.mulberry32(20261010));
+for (const u of 甲C) for (const e of u.weapons) if (e.t.grant) e.readyTurn = 1;   // 只改这一条，其他照规则
+let 护栏 = 0;
+while (!ctxC.result && ctxC.turn <= 12 && 护栏++ < 40) {
+  G.runTurn(ctxC);
+  if (ctxC.result) break;
+  if (ctxC.turn >= 12) { ctxC.result = { 结果: '败', 原因: '12 回合' }; break; }
+  G.endTurn(ctxC); ctxC.turn++;
+}
+const 录C = ctxC.log;
+const 再动C = 录C.filter(x => x.类型 === '再动');
+const 余响 = 录C.filter(x => x.类型 === '残月余响');
+console.log(`    跳过开场冷却那一场打了 ${ctxC.turn} 回合：再动 ${再动C.length} 次、残月的余响 ${余响.length} 次`);
+if (再动C.length) {
+  const e0 = 再动C[0];
+  const 该回合该单位 = 录C.filter(x => x.回合 === e0.回合 && x.单位 === e0.目标 && ['攻击', '修理', '增益'].includes(x.类型));
+  if (该回合该单位.length >= 2) ok(`再动生效：${e0.目标} 在第 ${e0.回合} 回合行动了 ${该回合该单位.length} 次（${e0.文本}）`);
+  else bad(`再动没生效：${e0.目标} 在第 ${e0.回合} 回合只行动了 ${该回合该单位.length} 次`);
+  const 重复 = 再动C.filter(x => 再动C.filter(y => y.回合 === x.回合 && y.目标 === x.目标).length > 1);
+  if (!重复.length) ok('同一名队友一回合最多被再动一次（不会无限连锁）');
+  else bad(`有队友一回合被再动多次：${重复.map(x => `${x.回合}/${x.目标}`).join('、')}`);
+} else bad('跳过开场冷却后「再动」还是没放出来');
+
+/* ---- 7c. 残月的余响：被动、行动结束后自动放、只打敌方前排 ---- */
+if (余响.length) {
+  const 位 = 余响.map(x => x.位);
+  if (位.every(s => s < G.cols)) ok(`残月的余响只打敌方前排（${位.length} 台次，格子 ${[...new Set(位)].join('/')}）`);
+  else bad(`残月的余响打到了后排：格子 ${位.join('、')}`);
+  ok(`残月的余响是 Feena 放的，每次行动结束后都会自动放：${余响[0].文本}`);
+} else bad('残月的余响一次都没放（被动自动释放没接上？）');
+
+/* ---- 7d. Lv30 的「满月·月蚀」：数据里写明「冷却好时代替残月的余响」，一回合只放一把 ---- */
+const A30 = G.makeUnits([{ 键: 'M1', 位: 5, 等级: 30 }, { 键: 'B2', 位: 0, 等级: 30 }], 'ally');
+const B30 = G.makeUnits([{ 键: 'grunt', 位: 0, 等级: 10 }, { 键: 'shield', 位: 1, 等级: 10 }], 'enemy');
+const ctx30 = G.newBattle(A30, B30, null, G.mulberry32(5));
+G.runTurn(ctx30);
+const 名30 = [...new Set(ctx30.log.filter(x => x.类型 === '残月余响').map(x => x.武器))];
+if (名30.length <= 1) ok(`一回合只自动放一把余响类武器（本回合：${名30.join('、') || '无'}）`);
+else bad(`一回合放了多把余响类武器：${名30.join('、')}`);
+
+/* ---- 7e. 开场冷却：大招（unlock ≥ 20）在第 4 回合之前不能用 ---- */
+const 大招名 = G.ALLY_T.flatMap(t => t.weapons.filter(w => w.unlock >= 20 && G.rangeKindOf(w) && w.power > 0).map(w => w.name));
+const 早放 = 录C.filter(x => x.类型 === '攻击' && 大招名.includes(x.武器) && x.回合 < 4);
+if (早放.length) bad(`有 ${早放.length} 次大招在第 4 回合之前就放了（开场冷却 3 回合没生效）：${早放.map(x => `第${x.回合}回合 ${x.武器}`).join('、')}`);
+else ok('开场冷却生效：第 4 回合之前没有出现大招');
+
 /* ============================ 结果 ============================ */
 console.log(`\nERRS [${errs.join(' | ')}]`);
 console.log(fails ? `共 ${fails} 项失败` : '战斗内核测试全部通过');

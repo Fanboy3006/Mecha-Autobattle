@@ -29,10 +29,14 @@ const G = {
   makeUnit,              // 单个：{键, 位, 等级}
   speedOf, livingOf, unitRow, frontAlive,
   expectedDamage, resolveAttack, usableWeapons, healAmount, weaponPlayable, wv,
+  /* 引擎内部（给测试驱动一场战斗用） */
+  newBattle, runTurn, endTurn, checkResult, aiAction, enemyAction, grantTargetOf, runAutoCast, actionOrder,
   /* 射程换算 / 公式（给测试和以后的界面用） */
   rangeKindOf, rowReachable, rowBlockPenalty, areaSlots, ROW_FRONT, ROW_BACK,
+  isAreaKind, isHealKind, isSupportKind, KIND_SUPPORT,
   statCoef, hitRate, critRate, dmgCore, critMul, isSure,
   编成表, 选编成, 编成到单位, 默认五人队, 类型到Kind,
+  月光祝福范围, 残月余响范围, 再动,
   /* ---- 数据（方便在控制台里查看） ---- */
   ALLY_T, ENEMY_T, CLASSES, FACTIONS, TIER, TIER_NAME, tierOf, AIM_BY_CLASS, ENEMY_TIER, tierOfEnemy, runEnemyLv,
   boot,

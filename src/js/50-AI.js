@@ -42,7 +42,7 @@ function betterTarget(a, b) {
 function weaponPool(actor, ctx) {
   const pool = usableWeapons(actor, ctx).filter(e => {
     const kind = rangeKindOf(e.t);
-    return kind !== null && !isHealKind(kind);       // passive / device / 修理 不参与「进攻」
+    return kind !== null && !isHealKind(kind) && !isSupportKind(kind);   // 被动 / 修理 / 支援 不参与「进攻」
   });
   const ults = pool.filter(e => ultAllowed(actor, e.t));
   return ults.length ? ults : pool;                  // 大招优先（方案 5.1.1）
@@ -137,11 +137,51 @@ function chooseHeal(actor, ctx) {
   return { kind: 'heal', weapon: e.t, target, entry: e };
 }
 
-/* ---------- 我方一台机体的动作（M1 只有「进攻」，指令系统在 M3） ---------- */
+/* ---------- 支援类武器（加增益 / 再动）----------
+ * 作者 2026-10-10 定：Feena 的「月光祝福」要做进去（全体队友不含自己、到本回合结束），
+ * 她的大招「再动」= 让本回合已经行动过、期望伤害最高的队友立刻再行动一次。
+ * 方案第 4 节明写「大招开关自动 = 冷却好了就放」，所以这里先挑能放的大招，再挑普通增援。 */
+function grantTargetOf(actor, ctx) {
+  const done = livingOf(actor.side, ctx).filter(u => u !== actor && u.actedTurn === ctx.turn && u.grantedTurn !== ctx.turn);
+  if (!done.length) return null;
+  let best = null;
+  for (const u of done) {
+    const a = chooseAttack(u, ctx);
+    const v = a ? a.expected : 0;
+    if (!best || v > best.v || (v === best.v && u.slot < best.u.slot)) best = { u, v };
+  }
+  return best.u;
+}
+
+function chooseSupport(actor, ctx) {
+  const pool = usableWeapons(actor, ctx).filter(e => isSupportKind(rangeKindOf(e.t)));
+  if (!pool.length) return null;
+  const ults = pool.filter(e => ultAllowed(actor, e.t));
+  const 有序 = (ults.length ? ults : []).concat(pool.filter(e => !ults.includes(e)));
+  for (const e of 有序) {
+    if (e.t.grant) {
+      const t = grantTargetOf(actor, ctx);
+      // 还没人行动过就没人能「再动」，这时退回去放增益
+      if (t) return { kind: 'grant', weapon: e.t, target: t, entry: e };
+      continue;
+    }
+    if (e.t.buff) {
+      const mates = livingOf(actor.side, ctx).filter(u => u !== actor);
+      if (mates.length) return { kind: 'buff', weapon: e.t, targets: mates, entry: e };
+    }
+  }
+  return null;
+}
+
+/* ---------- 我方一台机体的动作 ----------
+ * 顺序：修理 → 进攻 → 支援。方案只写了「进攻」怎么挑；没有攻击手段的机体（例如
+ * 第一期的 Feena）走到最后一步，用她唯一能做的事（月光祝福 / 再动），而不是直接跳过。 */
 function aiAction(actor, ctx) {
   const heal = chooseHeal(actor, ctx);
   if (heal) return heal;
-  return chooseAttack(actor, ctx);
+  const atk = chooseAttack(actor, ctx);
+  if (atk) return atk;
+  return chooseSupport(actor, ctx);
 }
 
 /* ---------- 5.2 敌方 ---------- */

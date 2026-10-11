@@ -20,6 +20,10 @@
  * ========================================================================== */
 
 const KIND_MELEE = '近战', KIND_DIRECT = '直射', KIND_INDIRECT = '曲射', KIND_AREA = '范围', KIND_HEAL = '修理';
+/* 支援类（加增益 / 再动）：方案 3.3 的表里 `support`（伤害类）算「范围」，
+   但作者 2026-10-10 定了要做的两种支援（Feena 的月光祝福、再动）没有伤害，
+   所以单独判成「支援」，不参与「进攻」的武器挑选。 */
+const KIND_SUPPORT = '支援';
 
 /* 排号：0 = 前排（靠近敌人）、1 = 后排（方案 3.1） */
 const ROW_FRONT = 0, ROW_BACK = 1;
@@ -37,11 +41,16 @@ const RANGE_KIND = {
 function rangeKindOf(w) {
   const fire = w && w.fire;
   if (fire === 'passive' || fire === 'device') return null;
+  // 没有伤害的支援武器（带 buff / grant 字段）单算一类
+  if (fire === 'support' && (w.buff || w.grant)) return KIND_SUPPORT;
   return RANGE_KIND[fire] || KIND_DIRECT;   // 没写 fire 的按直射处理（wp() 的默认值也是 direct）
 }
 
 const isAreaKind = kind => kind === KIND_AREA;
 const isHealKind = kind => kind === KIND_HEAL;
+const isSupportKind = kind => kind === KIND_SUPPORT;
+/* 带支援字段的支援武器（方案 3.3 之外，作者 2026-10-10 定） */
+const hasSupportField = w => !!(w && (w.buff || w.grant));
 
 /** 这个类型能不能打到指定那一排。frontAlive = 敌方前排是否还有人。 */
 function rowReachable(kind, targetRow, frontAlive) {

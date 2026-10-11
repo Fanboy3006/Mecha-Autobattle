@@ -39,14 +39,66 @@ function actionOrder(ctx) {
 /* ---------- 一个单位行动一次 ---------- */
 function actOnce(u, ctx) {
   if (u.hp <= 0) return;
+  u.actedTurn = ctx.turn;              // 「再动」要知道谁这一回合已经行动过
   const action = u.side === 'ally' ? aiAction(u, ctx) : enemyAction(u, ctx);
-  if (!action) { pushLog(ctx, `${u.name} 没有能打到人的武器，跳过`, { 类型: '跳过', 单位: u.key }); return; }
-  resolveAction(u, action, ctx);
+  if (action) resolveAction(u, action, ctx);
+  else pushLog(ctx, `${u.name} 没有能打到人的武器，跳过`, { 类型: '跳过', 单位: u.key });
+  runAutoCast(u, ctx);                 // 残月的余响：行动结束后自动释放（被动）
 }
 
-/* ---------- 结算一个动作（攻击 / 修理） ---------- */
+/* ---------- 增益：同一个来源只留一份（避免每回合叠成天文数字） ---------- */
+function 换同源增益(u, src, buff) {
+  u.buffs = (u.buffs || []).filter(b => b.src !== src);
+  u.buffs.push(Object.assign({ src, 剩余: 1 }, buff));
+}
+
+/* ---------- 残月的余响（被动；范围由作者 2026-10-10 定为「敌方前排」） ----------
+ * 战棋里它是「自身 4 格 + 4 格内月球王国队友的射程延伸」，没有格子之后按作者的决定改成敌方前排。
+ * 数据里是 fire:'passive'（必中）、物理、威力 3200（Lv30 5400）、unlock 20；
+ * 她还有一把 Lv30 的「满月·月蚀」，数据里写明「冷却好时代替残月的余响自动释放」，
+ * 所以这里按解锁等级挑**最高的那一把**放，不会同一回合两把一起放。 */
+function runAutoCast(u, ctx) {
+  if (u.echoTurn === ctx.turn) return;
+  const pool = u.weapons.filter(e => e.t.special === 'echo' && u.lv >= e.t.unlock && e.cd <= 0);
+  if (!pool.length) return;
+  pool.sort((a, b) => a.t.unlock - b.t.unlock);
+  const e = pool[pool.length - 1], w = e.t;
+  const foes = livingOf(otherSide(u.side), ctx);
+  const targets = 残月余响范围 === '敌方前排' ? foes.filter(t => unitRow(t) === ROW_FRONT) : foes;
+  if (!targets.length) return;
+  u.echoTurn = ctx.turn;
+  if (w.cd) e.cd = w.cd;
+  for (const t of targets) {
+    if (t.hp <= 0) continue;
+    const rec = resolveAttack(u, t, w, ctx, {});
+    pushLog(ctx, `〔${w.name}〕${rec.文本}`, Object.assign({ 类型: '残月余响', 单位: u.key, 目标: t.key, 位: t.slot, 武器: w.name }, rec.字段));
+  }
+}
+
+/* ---------- 结算一个动作（攻击 / 修理 / 支援） ---------- */
 function resolveAction(actor, action, ctx) {
   const w = action.weapon;
+
+  /* 支援①：加增益（月光祝福）。作者 2026-10-10 定：全体队友（不含自己）、到本回合结束。 */
+  if (action.kind === 'buff') {
+    const buff = wv(actor, w, 'buff') || w.buff || {};
+    for (const t of action.targets) 换同源增益(t, w.name, buff);
+    spendWeapon(actor, action.entry, ctx);
+    pushLog(ctx, `${actor.name}【${w.name}】→ ${action.targets.map(t => t.name).join('、')}：${Object.entries(buff).map(([k, v]) => `${k} ${v > 0 ? '+' : ''}${v}`).join('、')}（到本回合结束）`,
+      { 类型: '增益', 单位: actor.key, 武器: w.name, 目标: action.targets.map(t => t.key) });
+    return;
+  }
+
+  /* 支援②：再动（作者 2026-10-10 定的最小版：让本回合已行动过、期望伤害最高的队友立刻再行动一次） */
+  if (action.kind === 'grant') {
+    const t = action.target;
+    t.grantedTurn = ctx.turn;
+    ctx.again.push(t);
+    spendWeapon(actor, action.entry, ctx);
+    pushLog(ctx, `${actor.name}【${w.name}】→ ${t.name}：再行动一次`, { 类型: '再动', 单位: actor.key, 目标: t.key });
+    return;
+  }
+
   if (action.kind === 'heal') {
     const amount = healAmount(actor, w);
     const before = action.target.hp;
@@ -96,8 +148,20 @@ function runTurn(ctx) {
     if (u.side === 'ally') runOverwatch(u, ctx);     // 我方第一个行动的人会被压制射击
     if (u.hp <= 0) continue;
     actOnce(u, ctx);
+    drainAgain(ctx);                                 // 「再动」的队友立刻行动
     ctx.result = checkResult(ctx);
     if (ctx.result) return;
+  }
+}
+
+/* ---------- 再动：被「再动」的队友立刻行动一次 ----------
+ * 每名队友每回合最多被再动一次（grantedTurn），所以不会无限连锁。 */
+function drainAgain(ctx) {
+  while (ctx.again.length) {
+    const g = ctx.again.shift();
+    if (g.hp <= 0 || ctx.result) continue;
+    actOnce(g, ctx);
+    ctx.result = checkResult(ctx);
   }
 }
 
@@ -112,12 +176,12 @@ function checkResult(ctx) {
 
 /* ---------- 开场 ---------- */
 function newBattle(allies, enemies, commands, rng) {
-  const ctx = { turn: 1, allies, enemies, commands: commands || {}, rng, log: [], result: null };
+  const ctx = { turn: 1, allies, enemies, commands: commands || {}, rng, log: [], result: null, again: [] };
   for (const u of livingUnits(ctx)) {
-    u.weapons = u.weapons.map(e => Object.assign({}, e, {
-      // 大招开场冷却 3 回合（方案第 4 节）
-      cd: isUltimate(e.t) ? ULT_START_CD : (e.t.cd || 0),
-    }));
+    /* 开场冷却**只由 readyTurn 管**（= 1 + startCdOf(w)，规则见 13-武器可用性.js）：
+       开场冷却 3 回合 = 第 4 回合才能用；普通冷却 cd 开场一律是 0。
+       不要把大招的 cd 也设成 3 —— 那是同一件事做两遍，会让大招到第 7 回合才出来。 */
+    u.weapons = u.weapons.map(e => Object.assign({}, e, { cd: 0 }));
   }
   pushLog(ctx, `战斗开始：我方 ${allies.length} 台 vs 敌方 ${enemies.length} 台`, { 类型: '开始' });
   return ctx;

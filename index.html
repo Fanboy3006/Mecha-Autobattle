@@ -683,6 +683,42 @@ const tplOf = m => ALLY_T.find(t => t.mech === m);
 /* 我方按战斗分类的初始命中（敌人默认 160）。方案 6.1：精准沿用战棋的 AIM_BY_CLASS */
 const AIM_BY_CLASS = { 狙击: 180, 尖兵: 170, 近卫: 165, 特种: 165, 指挥: 160, 重装: 150 };
 /* ============================================================================
+ * 新项目对数据的改动（作者 2026-10-10 口头定的三条）
+ * ----------------------------------------------------------------------------
+ * 战棋那份数据（`10-数据.js`）是**原样复制**的，一个字都不改；
+ * 新项目要改的地方全部写在这个文件里，这样以后跟战棋对账时能一眼看出差在哪。
+ *
+ * 三条决定：
+ *   1. Feena（M1）的支援武器「月光祝福」**要做进去**（方案 6.2 原本说第一期不做支援类）：
+ *      新范围 = 全体队友（不含自己）、持续到本回合结束（没有格子了，原「菱形 4 格」没有对应物）；
+ *      数值照数据：闪避 +15、命中 +15；Lv20 再加防御 +20、暴击 +10；Lv30 闪避命中 +20、防御 +30、暴击 +15。
+ *   2. 她的大招「残月的余响」**要做**，范围从「自身 4 格 + 4 格内月球王国队友的射程延伸」
+ *      改成**敌方前排**（数据里的威力 3200 / Lv30 5400、必中、物理都照旧）。
+ *   3. 她的另一个大招 = **让队友再动一次**（战棋里是指挥技能，数据表 COMMANDS 里没有这条）。
+ *      先做最小版：大招（开场冷却 3 回合）、目标 = 本回合已经行动过、期望伤害最高的队友，立刻再行动一次。
+ * ========================================================================== */
+
+/* 前两条的「新范围」在这里登记，实现分别在 60-战斗.js 的 resolveAction / runAutoCast */
+const 月光祝福范围 = '全体队友（不含自己）、到本回合结束';
+const 残月余响范围 = '敌方前排';
+
+/* 第三条：给 Feena 加一把支援武器「再动」。
+   unlock 20 = 大招（13-武器可用性.js 的规则：大招开场冷却 3 回合、Lv20 才能用）。
+   名字先叫「再动」，作者要改随时改。 */
+const 再动 = {
+  name: '再动',
+  fire: 'support',
+  grant: true,          // 支援类里「让队友再行动」这一种（不是伤害，也不是加增益）
+  unlock: 20,
+  cd: 0,
+  dmgType: '—',
+  desc: '（新项目新增，作者 2026-10-10 定）让本回合已经行动过的一名队友立刻再行动一次。',
+};
+{
+  const feena = ALLY_T.find(t => t.mech === 'M1');
+  if (feena && !feena.weapons.some(w => w.grant)) feena.weapons.push(再动);
+}
+/* ============================================================================
  * 射程换算：能打到哪一排（方案 3.3）
  * ----------------------------------------------------------------------------
  * 战棋里每把武器都有 `fire`（melee / direct / indirect / map / support / heal /
@@ -704,6 +740,10 @@ const AIM_BY_CLASS = { 狙击: 180, 尖兵: 170, 近卫: 165, 特种: 165, 指�
  * ========================================================================== */
 
 const KIND_MELEE = '近战', KIND_DIRECT = '直射', KIND_INDIRECT = '曲射', KIND_AREA = '范围', KIND_HEAL = '修理';
+/* 支援类（加增益 / 再动）：方案 3.3 的表里 `support`（伤害类）算「范围」，
+   但作者 2026-10-10 定了要做的两种支援（Feena 的月光祝福、再动）没有伤害，
+   所以单独判成「支援」，不参与「进攻」的武器挑选。 */
+const KIND_SUPPORT = '支援';
 
 /* 排号：0 = 前排（靠近敌人）、1 = 后排（方案 3.1） */
 const ROW_FRONT = 0, ROW_BACK = 1;
@@ -721,11 +761,16 @@ const RANGE_KIND = {
 function rangeKindOf(w) {
   const fire = w && w.fire;
   if (fire === 'passive' || fire === 'device') return null;
+  // 没有伤害的支援武器（带 buff / grant 字段）单算一类
+  if (fire === 'support' && (w.buff || w.grant)) return KIND_SUPPORT;
   return RANGE_KIND[fire] || KIND_DIRECT;   // 没写 fire 的按直射处理（wp() 的默认值也是 direct）
 }
 
 const isAreaKind = kind => kind === KIND_AREA;
 const isHealKind = kind => kind === KIND_HEAL;
+const isSupportKind = kind => kind === KIND_SUPPORT;
+/* 带支援字段的支援武器（方案 3.3 之外，作者 2026-10-10 定） */
+const hasSupportField = w => !!(w && (w.buff || w.grant));
 
 /** 这个类型能不能打到指定那一排。frontAlive = 敌方前排是否还有人。 */
 function rowReachable(kind, targetRow, frontAlive) {
@@ -959,10 +1004,13 @@ const START_CD_ULT = 3;   // 大招（unlock ≥ 20）开场冷却 3 回合
 const startCdOf = w => w.startCd != null ? w.startCd : (w.unlock >= 20 ? START_CD_ULT : 0);
 
 /* 第一期不做的武器（方案 6.2）：带 special 的特殊武器全部不用，
-   只有「多段」是方案明确要保留的，所以 special === 'multi' 放行。 */
+   例外是方案明确要保留的「多段」（special === 'multi'）。
+   另一个例外是作者 2026-10-10 定的两条支援：Feena 的「月光祝福」（buff）和「再动」（grant）——
+   没有伤害的支援武器，用 buff / grant 字段标记。 */
 function weaponPlayable(w) {
   if (w.fire === 'passive' || w.fire === 'device') return false;
   if (w.special && w.special !== 'multi') return false;
+  if (w.fire === 'support' && !hasSupportField(w)) return false;   // 召唤 / 烟雾 / 回复% 之类的支援第一期不做
   return true;
 }
 
@@ -975,7 +1023,7 @@ function usableWeapons(u, ctx) {
     if (e.uses != null && e.uses <= 0) return false;
     if (e.cd > 0) return false;
     if (ctx && ctx.turn != null && ctx.turn < e.readyTurn) return false;
-    if (!(w.power > 0) && !isHealKind(rangeKindOf(w))) return false;
+    if (!(w.power > 0) && !isHealKind(rangeKindOf(w)) && !isSupportKind(rangeKindOf(w))) return false;
     return true;
   });
 }
@@ -1142,7 +1190,7 @@ function betterTarget(a, b) {
 function weaponPool(actor, ctx) {
   const pool = usableWeapons(actor, ctx).filter(e => {
     const kind = rangeKindOf(e.t);
-    return kind !== null && !isHealKind(kind);       // passive / device / 修理 不参与「进攻」
+    return kind !== null && !isHealKind(kind) && !isSupportKind(kind);   // 被动 / 修理 / 支援 不参与「进攻」
   });
   const ults = pool.filter(e => ultAllowed(actor, e.t));
   return ults.length ? ults : pool;                  // 大招优先（方案 5.1.1）
@@ -1237,11 +1285,51 @@ function chooseHeal(actor, ctx) {
   return { kind: 'heal', weapon: e.t, target, entry: e };
 }
 
-/* ---------- 我方一台机体的动作（M1 只有「进攻」，指令系统在 M3） ---------- */
+/* ---------- 支援类武器（加增益 / 再动）----------
+ * 作者 2026-10-10 定：Feena 的「月光祝福」要做进去（全体队友不含自己、到本回合结束），
+ * 她的大招「再动」= 让本回合已经行动过、期望伤害最高的队友立刻再行动一次。
+ * 方案第 4 节明写「大招开关自动 = 冷却好了就放」，所以这里先挑能放的大招，再挑普通增援。 */
+function grantTargetOf(actor, ctx) {
+  const done = livingOf(actor.side, ctx).filter(u => u !== actor && u.actedTurn === ctx.turn && u.grantedTurn !== ctx.turn);
+  if (!done.length) return null;
+  let best = null;
+  for (const u of done) {
+    const a = chooseAttack(u, ctx);
+    const v = a ? a.expected : 0;
+    if (!best || v > best.v || (v === best.v && u.slot < best.u.slot)) best = { u, v };
+  }
+  return best.u;
+}
+
+function chooseSupport(actor, ctx) {
+  const pool = usableWeapons(actor, ctx).filter(e => isSupportKind(rangeKindOf(e.t)));
+  if (!pool.length) return null;
+  const ults = pool.filter(e => ultAllowed(actor, e.t));
+  const 有序 = (ults.length ? ults : []).concat(pool.filter(e => !ults.includes(e)));
+  for (const e of 有序) {
+    if (e.t.grant) {
+      const t = grantTargetOf(actor, ctx);
+      // 还没人行动过就没人能「再动」，这时退回去放增益
+      if (t) return { kind: 'grant', weapon: e.t, target: t, entry: e };
+      continue;
+    }
+    if (e.t.buff) {
+      const mates = livingOf(actor.side, ctx).filter(u => u !== actor);
+      if (mates.length) return { kind: 'buff', weapon: e.t, targets: mates, entry: e };
+    }
+  }
+  return null;
+}
+
+/* ---------- 我方一台机体的动作 ----------
+ * 顺序：修理 → 进攻 → 支援。方案只写了「进攻」怎么挑；没有攻击手段的机体（例如
+ * 第一期的 Feena）走到最后一步，用她唯一能做的事（月光祝福 / 再动），而不是直接跳过。 */
 function aiAction(actor, ctx) {
   const heal = chooseHeal(actor, ctx);
   if (heal) return heal;
-  return chooseAttack(actor, ctx);
+  const atk = chooseAttack(actor, ctx);
+  if (atk) return atk;
+  return chooseSupport(actor, ctx);
 }
 
 /* ---------- 5.2 敌方 ---------- */
@@ -1349,14 +1437,66 @@ function actionOrder(ctx) {
 /* ---------- 一个单位行动一次 ---------- */
 function actOnce(u, ctx) {
   if (u.hp <= 0) return;
+  u.actedTurn = ctx.turn;              // 「再动」要知道谁这一回合已经行动过
   const action = u.side === 'ally' ? aiAction(u, ctx) : enemyAction(u, ctx);
-  if (!action) { pushLog(ctx, `${u.name} 没有能打到人的武器，跳过`, { 类型: '跳过', 单位: u.key }); return; }
-  resolveAction(u, action, ctx);
+  if (action) resolveAction(u, action, ctx);
+  else pushLog(ctx, `${u.name} 没有能打到人的武器，跳过`, { 类型: '跳过', 单位: u.key });
+  runAutoCast(u, ctx);                 // 残月的余响：行动结束后自动释放（被动）
 }
 
-/* ---------- 结算一个动作（攻击 / 修理） ---------- */
+/* ---------- 增益：同一个来源只留一份（避免每回合叠成天文数字） ---------- */
+function 换同源增益(u, src, buff) {
+  u.buffs = (u.buffs || []).filter(b => b.src !== src);
+  u.buffs.push(Object.assign({ src, 剩余: 1 }, buff));
+}
+
+/* ---------- 残月的余响（被动；范围由作者 2026-10-10 定为「敌方前排」） ----------
+ * 战棋里它是「自身 4 格 + 4 格内月球王国队友的射程延伸」，没有格子之后按作者的决定改成敌方前排。
+ * 数据里是 fire:'passive'（必中）、物理、威力 3200（Lv30 5400）、unlock 20；
+ * 她还有一把 Lv30 的「满月·月蚀」，数据里写明「冷却好时代替残月的余响自动释放」，
+ * 所以这里按解锁等级挑**最高的那一把**放，不会同一回合两把一起放。 */
+function runAutoCast(u, ctx) {
+  if (u.echoTurn === ctx.turn) return;
+  const pool = u.weapons.filter(e => e.t.special === 'echo' && u.lv >= e.t.unlock && e.cd <= 0);
+  if (!pool.length) return;
+  pool.sort((a, b) => a.t.unlock - b.t.unlock);
+  const e = pool[pool.length - 1], w = e.t;
+  const foes = livingOf(otherSide(u.side), ctx);
+  const targets = 残月余响范围 === '敌方前排' ? foes.filter(t => unitRow(t) === ROW_FRONT) : foes;
+  if (!targets.length) return;
+  u.echoTurn = ctx.turn;
+  if (w.cd) e.cd = w.cd;
+  for (const t of targets) {
+    if (t.hp <= 0) continue;
+    const rec = resolveAttack(u, t, w, ctx, {});
+    pushLog(ctx, `〔${w.name}〕${rec.文本}`, Object.assign({ 类型: '残月余响', 单位: u.key, 目标: t.key, 位: t.slot, 武器: w.name }, rec.字段));
+  }
+}
+
+/* ---------- 结算一个动作（攻击 / 修理 / 支援） ---------- */
 function resolveAction(actor, action, ctx) {
   const w = action.weapon;
+
+  /* 支援①：加增益（月光祝福）。作者 2026-10-10 定：全体队友（不含自己）、到本回合结束。 */
+  if (action.kind === 'buff') {
+    const buff = wv(actor, w, 'buff') || w.buff || {};
+    for (const t of action.targets) 换同源增益(t, w.name, buff);
+    spendWeapon(actor, action.entry, ctx);
+    pushLog(ctx, `${actor.name}【${w.name}】→ ${action.targets.map(t => t.name).join('、')}：${Object.entries(buff).map(([k, v]) => `${k} ${v > 0 ? '+' : ''}${v}`).join('、')}（到本回合结束）`,
+      { 类型: '增益', 单位: actor.key, 武器: w.name, 目标: action.targets.map(t => t.key) });
+    return;
+  }
+
+  /* 支援②：再动（作者 2026-10-10 定的最小版：让本回合已行动过、期望伤害最高的队友立刻再行动一次） */
+  if (action.kind === 'grant') {
+    const t = action.target;
+    t.grantedTurn = ctx.turn;
+    ctx.again.push(t);
+    spendWeapon(actor, action.entry, ctx);
+    pushLog(ctx, `${actor.name}【${w.name}】→ ${t.name}：再行动一次`, { 类型: '再动', 单位: actor.key, 目标: t.key });
+    return;
+  }
+
   if (action.kind === 'heal') {
     const amount = healAmount(actor, w);
     const before = action.target.hp;
@@ -1406,8 +1546,20 @@ function runTurn(ctx) {
     if (u.side === 'ally') runOverwatch(u, ctx);     // 我方第一个行动的人会被压制射击
     if (u.hp <= 0) continue;
     actOnce(u, ctx);
+    drainAgain(ctx);                                 // 「再动」的队友立刻行动
     ctx.result = checkResult(ctx);
     if (ctx.result) return;
+  }
+}
+
+/* ---------- 再动：被「再动」的队友立刻行动一次 ----------
+ * 每名队友每回合最多被再动一次（grantedTurn），所以不会无限连锁。 */
+function drainAgain(ctx) {
+  while (ctx.again.length) {
+    const g = ctx.again.shift();
+    if (g.hp <= 0 || ctx.result) continue;
+    actOnce(g, ctx);
+    ctx.result = checkResult(ctx);
   }
 }
 
@@ -1422,12 +1574,12 @@ function checkResult(ctx) {
 
 /* ---------- 开场 ---------- */
 function newBattle(allies, enemies, commands, rng) {
-  const ctx = { turn: 1, allies, enemies, commands: commands || {}, rng, log: [], result: null };
+  const ctx = { turn: 1, allies, enemies, commands: commands || {}, rng, log: [], result: null, again: [] };
   for (const u of livingUnits(ctx)) {
-    u.weapons = u.weapons.map(e => Object.assign({}, e, {
-      // 大招开场冷却 3 回合（方案第 4 节）
-      cd: isUltimate(e.t) ? ULT_START_CD : (e.t.cd || 0),
-    }));
+    /* 开场冷却**只由 readyTurn 管**（= 1 + startCdOf(w)，规则见 13-武器可用性.js）：
+       开场冷却 3 回合 = 第 4 回合才能用；普通冷却 cd 开场一律是 0。
+       不要把大招的 cd 也设成 3 —— 那是同一件事做两遍，会让大招到第 7 回合才出来。 */
+    u.weapons = u.weapons.map(e => Object.assign({}, e, { cd: 0 }));
   }
   pushLog(ctx, `战斗开始：我方 ${allies.length} 台 vs 敌方 ${enemies.length} 台`, { 类型: '开始' });
   return ctx;
@@ -1543,10 +1695,14 @@ const G = {
   makeUnit,              // 单个：{键, 位, 等级}
   speedOf, livingOf, unitRow, frontAlive,
   expectedDamage, resolveAttack, usableWeapons, healAmount, weaponPlayable, wv,
+  /* 引擎内部（给测试驱动一场战斗用） */
+  newBattle, runTurn, endTurn, checkResult, aiAction, enemyAction, grantTargetOf, runAutoCast, actionOrder,
   /* 射程换算 / 公式（给测试和以后的界面用） */
   rangeKindOf, rowReachable, rowBlockPenalty, areaSlots, ROW_FRONT, ROW_BACK,
+  isAreaKind, isHealKind, isSupportKind, KIND_SUPPORT,
   statCoef, hitRate, critRate, dmgCore, critMul, isSure,
   编成表, 选编成, 编成到单位, 默认五人队, 类型到Kind,
+  月光祝福范围, 残月余响范围, 再动,
   /* ---- 数据（方便在控制台里查看） ---- */
   ALLY_T, ENEMY_T, CLASSES, FACTIONS, TIER, TIER_NAME, tierOf, AIM_BY_CLASS, ENEMY_TIER, tierOfEnemy, runEnemyLv,
   boot,
