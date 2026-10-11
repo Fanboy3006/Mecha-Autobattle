@@ -29,7 +29,7 @@ const 肉鸽界面 = {
     const 卡 = 表.map(x => `<button class="pick${this.分队ID === x.名 ? ' on' : ''}" data-act="选分队:${x.名}">
       <b>${x.名}</b><small>${x.说明}</small></button>`).join('');
     return `<section class="card">
-      <h3>选分队（方案第 7 节）<span class="small">分队决定招募券的倾向；队伍上限 ${肉鸽数值.队伍上限} 台（上阵 9 格阵型，出击上限 ${出击上限初值} → ${出击上限顶} 台，随等级解锁）</span></h3>
+      <h3>选分队（方案第 7 节）<span class="small">分队决定招募券的倾向；队伍上限 ${肉鸽数值.队伍上限} 台（上阵 9 格阵型，出击上限 ${出击上限初值} 台起、肉鸽部队每 ${每几级加一台} 级 +1、最多 ${出击上限顶} 台）</span></h3>
       <div class="picks">${卡}</div>
       <div class="acts">
         <button class="primary" data-act="开新局"${this.分队ID ? '' : ' disabled'}>出发（新的一局）→</button>
@@ -83,12 +83,16 @@ const 肉鸽界面 = {
     const 队伍 = R.队伍.map(m => `${allyName(m.键)}(${m.键} Lv${m.等级})`).join('、');
     const 菜单 = 肉鸽.格菜单();
     const 按钮 = 菜单.map(a => `<button class="${a.灰 ? '' : 'primary'}" data-act="${a.动}"${a.灰 ? ' disabled' : ''}>${a.名}</button>`).join('');
+    /* 肉鸽等级 → 出击上限（作者 2026-10-10 第二次拍板：起始 3 台、每 3 级 +1、封顶 6） */
+    const 上限 = 出击上限提示(R.等级);
     return `<section class="card">
       <h3>第 ${R.层 === 4 ? '终点' : R.层 + ' / 3'} 层 · 网格大地图
         <span class="small">点一个亮着的格子走过去（可以跳格：一次点远的格子就按最短路径走）</span></h3>
       <div class="rv-bar2">
         <span class="rv-chip${R.推进剂 <= 0 ? ' warn' : ''}">推进剂 <b>${R.推进剂}</b> / ${推进剂上限(R)}</span>
         <span class="rv-chip">层数 <b>${R.层 === 4 ? '终点' : R.层 + ' / 3'}</b></span>
+        <span class="rv-chip">部队 <b>Lv${R.等级}</b> <small>${R.经验} / ${升级门槛(R.等级) ?? '—'}</small></span>
+        <span class="rv-chip">出击上限 <b>${上限.上限}</b> 台${上限.到顶 ? ' <small>（已到顶）</small>' : `<small>再升到 Lv${上限.解锁等级} 加 1 台</small>`}</span>
         <span class="rv-chip">希望 <b>${R.希望}</b></span>
         <span class="rv-chip">源碳结晶 <b>${R.源碳}</b></span>
         <span class="rv-chip${R.耐久 <= 3 ? ' warn' : ''}">作战耐久 <b>${R.耐久}</b></span>
@@ -138,7 +142,7 @@ const 肉鸽界面 = {
     }).join('') || '<p class="small">名册是空的。</p>';
     const 次序 = 清单.filter(x => x.到).sort((a, b) => a.价 - b.价);
     return `<section class="card">
-      <h3>晋升<span class="small">希望 <b>${R.希望}</b> · 10 → 20 → 30，一次一档，不能跳级</span></h3>
+      <h3>晋升<span class="small">部队 Lv${R.等级}（出击上限 ${出击上限(R.等级)} 台） · 希望 <b>${R.希望}</b> · 10 → 20 → 30，一次一档，不能跳级</span></h3>
       <p class="small">价格照战棋（<code>22-输入.js:431</code> 的 <code>PRICE</code>）：
         <b>精锐 3 / 4</b>（S）、<b>骨干 2 / 3</b>（A）、<b>普通 1 / 2</b>（B）希望
         ${R.下次晋升减价 ? '　·　<b>休整过：这次晋升 −1 希望</b>' : ''}。
@@ -269,6 +273,7 @@ const 肉鸽界面 = {
       <h2>${通关 ? '走出混沌迷宫！' : (R.结局原因 || '作战失败')}</h2>
       <ul>
         <li>走到第 <b>${R.层}</b> 层${通关 ? '（终点）' : ''}　本层第 <b>${R.场次}</b> 场</li>
+        <li>部队：<b>Lv${R.等级}</b>（经验 ${R.经验}）　出击上限：<b>${出击上限(R.等级)}</b> 台</li>
         <li>希望：<b>${R.希望}</b>　源碳结晶：<b>${R.源碳}</b>　作战耐久：<b>${R.耐久}</b></li>
         <li>队伍：<b>${R.队伍.length}</b> 台　藏品：<b>${(R.藏品 || []).length}</b> 件</li>
         <li>推进剂：<b>${R.推进剂}</b> / ${推进剂上限(R)}　种子：<b>${R.种子}</b></li>
