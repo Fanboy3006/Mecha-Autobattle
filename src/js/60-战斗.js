@@ -317,11 +317,17 @@ function resolveAction(actor, action, ctx) {
   const 守护方 = actor.指令 === '守护' && actor.守护对象 ? 0.7 : 1;   // 守护者自己攻击伤害 −30%
   /* 站桩 Boss 脚本（61-Boss.js）：这一阶段的伤害倍率（没配脚本 = 1，与守护的 ×0.7 相乘） */
   /* ★ 势力特色 · **伤害倍率**（框架第 10 个数值钩子，`72-势力.js` 的 `势力伤害倍率()`；2026-10-11 新加）：
-     和上面两个倍率**挤在同一个口子**里相乘 —— 第一条用它的是**天人 TRANS-AM 的武器威力 ×1.3**
-     （战棋 `taPowMul`，`17b-角色机制.js:146`，那边接在 `15-战斗计算.js:36` 的 `wPow` 上乘**威力**；
-     我们落点的差异登记在 `71-改动.js` 的 `势力特色.天人.威力倍率落点`）。
+     和上面两个倍率**挤在同一个口子**里相乘 —— 作用在**公式算完之后**的逐段伤害上。
+     ★ 2026-10-11 作者拍板「天人的 ×1.3 **挪到威力**」之后，这个口子上**已经没有势力在用了**
+     （天人搬到了下面的 `威力倍率`）—— 钩子留着（后续势力随时可以用），恒 1。
      没有势力条目 / 倍率是 1 → `倍率` 与改动前**逐字相同**（`1 * 1 * 1`）。 */
   const 倍率 = 守护方 * Boss伤害倍率(actor) * 势力伤害倍率(actor, w);
+  /* ★ 势力特色 · **武器威力倍率**（框架第 14 个数值钩子，`72-势力.js` 的 `势力威力倍率()`；
+     作者 2026-10-11 拍板把天人的 ×1.3 挪到这里）—— 一路传进 `resolveAttack()`，
+     **乘在 `wv(att,w,'power')`（武器威力）上、进 `dmgCore()` 之前**，
+     和战棋 `15-战斗计算.js:36` 的 `wPow = round(wv(...) * taPowMul(u))` 同一个落点。
+     没有势力条目 / 倍率是 1 → 传下去的是 1，威力与改动前逐字相同。 */
+  const 威力倍率 = 势力威力倍率(actor, w);
   let 击破 = 0;
 
   for (const t of targets) {
@@ -346,7 +352,7 @@ function resolveAction(actor, action, ctx) {
     /* 被挡（作者 2026-10-10 拍板改成**按位**）：看**实际目标这一位**的阻挡位里还有没有活人。
        近战够不够得着由 AI 那边按 `rowReachable` 过滤，这里只管直射的 −20。 */
     const 活位 = livingOf(实际.side, ctx).map(x => x.slot);
-    const blockPenalty = isAreaKind(kind) ? 0 : rowBlockPenalty(kind, 实际.slot, 活位, actor);
+    const blockPenalty = isAreaKind(kind) ? 0 : rowBlockPenalty(kind, 实际.slot, 活位, actor, 实际);
     /* ★ 2026-10-11 新加的势力钩子 `势力攻击前(ctx, 攻击者, 目标, 武器)`（框架第 13 个，`72-势力.js`）：
        触发时机 = **这一发真的结算之前**（逐目标、`resolveAttack()` 之前、`spendWeapon()` 还没走）。
        第一条用它的是**秘银**：作战岗在这里**兑现**情报岗挂的标定（把 `debuffs` 里的 `pct` 打开）——
@@ -354,7 +360,7 @@ function resolveAction(actor, action, ctx) {
        ★ 没有势力条目 / 条目没写这个钩子 → 框架里是空循环，**公式与记录逐字不变**；
          实现里**不许消耗 `ctx.rng`**（在这个位置上动随机数会改整场结果）。 */
     势力攻击前(ctx, actor, 实际, w);
-    const rec = resolveAttack(actor, 实际, w, ctx, { blockPenalty, defending: 按防御, 伤害倍率: 倍率 });
+    const rec = resolveAttack(actor, 实际, w, ctx, { blockPenalty, defending: 按防御, 伤害倍率: 倍率, 威力倍率 });
     const 打死了 = 血 > 0 && 实际.hp <= 0;
     if (打死了) 击破++;
     pushLog(ctx, rec.文本, Object.assign({ 类型: '攻击', 单位: actor.key, 目标: 实际.key, 武器: w.name, 集火: !!action.集火, 守护挡下: 按防御, 原目标: 按防御 ? t.key : null, 原目标位: 按防御 ? t.slot : null }, 谁(actor), 谁目标(实际), rec.字段));

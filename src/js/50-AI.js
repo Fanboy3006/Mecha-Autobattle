@@ -76,7 +76,7 @@ function bestWeaponOn(actor, target, pool, 局面, ctx) {
     const kind = rangeKindOf(e.t);
     const trow = unitRow(target);
     if (!rowReachable(kind, trow, 局面.前排有人)) continue;
-    const 罚 = rowBlockPenalty(kind, target.slot, 局面.活位, actor);
+    const 罚 = rowBlockPenalty(kind, target.slot, 局面.活位, actor, target);
     const exp = expectedDamage(actor, target, e.t, { blockPenalty: 罚, turn: ctx && ctx.turn });
     if (!best || exp > best.exp) best = { entry: e, exp, 被挡: 罚 < 0 };
   }

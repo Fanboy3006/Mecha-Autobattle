@@ -271,7 +271,9 @@ const 特种降命中值 = 20;
  * opts：
  *   blockPenalty  直射打后排的 −20（方案 3.3）
  *   defending     这一下按防御结算（守护替队友挨打）
- *   伤害倍率       守护者本回合自己攻击时 ×0.7（方案第 4 节：伤害 −30%）
+ *   伤害倍率       守护者本回合自己攻击时 ×0.7（方案第 4 节：伤害 −30%）；**公式之后**逐段相乘
+ *   威力倍率       ★ 2026-10-11 作者拍板新加（天人 ×1.3 挪到威力）：**公式之前**乘在 `wv(att,w,'power')` 上
+ *                  （框架第 14 个钩子 `势力威力倍率()`，和战棋 `15-战斗计算.js:36` 的 `wPow` 同一个落点）
  * 职业特色（方案 6.3 + 作者 2026-10-10）：
  *   特种 = 武器命中后给对方挂「命中 −20」（持续到下回合结束，同一来源只留一份、不叠加）；
  *          作者原话：「推人其实还是可以设计，用来破坏对手的阵型，或者给对方上 DEBUFF，作为职业特色可以先设置降低命中率」；
@@ -280,6 +282,11 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
   const rng = ctx.rng;
   const blockPenalty = opts.blockPenalty || 0;
   const 倍率 = opts.伤害倍率 == null ? 1 : opts.伤害倍率;
+  /* ★ 威力倍率（框架第 14 个钩子，`72-势力.js` 的 `势力威力倍率()`；作者 2026-10-11 拍板「天人的 ×1.3 挪到威力」）：
+     乘在**武器威力**上（`wv(att, w, 'power') * 威力倍率`）、进 `dmgCore()` 之前 ——
+     和战棋 `15-战斗计算.js:36` 的 `wPow = round(wv(u,w,'power') * tierUp * taPowMul(u))` 同一个落点。
+     没有势力条目 / 倍率是 1 → 威力与改动前逐字相同（`wv(...) * 1`）。 */
+  const 威力倍率 = opts.威力倍率 == null ? 1 : opts.威力倍率;
   const sure = isSure(w);
   const hits = Math.max(1, w.hits || 1);
   const rolls = [];
@@ -291,7 +298,7 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
     const hit = sure || rng() * 100 < q;
     if (hit) {
       const cr = !sure && rng() * 100 < critRate(w, att);
-      const c = dmgCore(att, w, def, { power: wv(att, w, 'power'), crit: cr, preview: false, turn: ctx.turn, defending: opts.defending });
+      const c = dmgCore(att, w, def, { power: wv(att, w, 'power') * 威力倍率, crit: cr, preview: false, turn: ctx.turn, defending: opts.defending });
       const d = Math.round(c.dmg * 倍率);
       total += d; landed++; if (cr) crits++;
       rolls.push(`第 ${i + 1} 段（${sure ? '必中' : q + '%'}）${cr ? '暴击 ' : ''}${d}`);
