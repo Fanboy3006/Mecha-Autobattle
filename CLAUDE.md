@@ -487,6 +487,12 @@ node tools/specials.mjs           # 重新生成 docs/特技换算待办.md
 - 提交前跑一次 `--check`，确认生成物没落后于源文件。
 - **十五套测试**（smoke / sim / battle_ui / commands / run / comp / map / art_audio / boss / heal / relic / rank / **balance** / **grid** / **faction**）都要过；改素材（`art/`、`audio/`）也算改源文件，同样要跑构建。
 - M1 起会有 `node tests/sim.js`（固定种子跑两遍比对 + 胜率表）。
+- **测试里开新的一局一律带种子**：`界面.动作('开新局:<种子>')`（例如 `界面.动作('开新局:20261010')`，
+  `80-界面.js` 的 `开新局(种子)`；界面上点按钮不传参数 → 照旧用 `Date.now()` 现取，**游戏逻辑没改**）。
+  不传种子 = 每跑一次都是新地图 + 新战斗随机数，`tests/run.js`
+  第 [5] 段那场终点守军会有约 **1/30–1/90** 的概率打输（4 条断言红）→ **测试偶发红**（2026-10-11 已修）。
+  `tests/map.js` / `rank.js` / `boss.js` / `relic.js` 的老写法（先不带种子开一局、紧接着用显式种子覆盖并重建那一层）
+  不受影响；`tests/battle_ui.js` 的 `界面.开战()` 也已改成 `界面.开战(20261010)`。
 - **不要用浏览器自带的 `alert` / `confirm` / `prompt`**：claude.ai 页面和桌面应用会拦截它们（`confirm` 直接返回 false），
   按钮会像没反应一样。要确认用 `await ask(标题, 说明, 确认按钮文字)`，要选东西用 `await dlg(html)`（沿用旧项目的做法）。
 
