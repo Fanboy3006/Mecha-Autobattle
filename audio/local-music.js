@@ -32,21 +32,40 @@
     'Suno 月王国':   {file:'SUNO/SUNO 月王国.mp3',    lufs:-12.9, id:'moon'},
     'Suno 秘银':     {file:'SUNO/SUNO 秘银小队.mp3',  lufs:-13.8, id:'mithril'},
     'Suno 卫星国防军':     {file:'SUNO/SUNO 卫星国防军.mp3',      lufs:-14.9, id:'clyne'},
-    /* 还没有 Suno 版的，用作者本地的版权曲 */
-    '战略音乐1':     {file:'战略音乐1.mp3',  lufs:-15.5, alt:'Suno 主角'},
-    'BOSS BGM':      {file:'BOSS BGM.mp3',   lufs:-15.0, alt:'Suno 我方回合'},
+    /* ★ 2026-10-11 作者补的 8 首（Suno 生成，进仓库）。⚠ lufs 见下面那段注释：**还没实测**。 */
+    'Suno Boss':     {file:'SUNO/Suno Boss.mp3',      lufs:-13.5, id:'boss'},
+    'Suno 标题':     {file:'SUNO/Suno Title.mp3',     lufs:-13.5, id:'title'},
+    'Suno 通关':     {file:'SUNO/Suno Victory.mp3',   lufs:-13.5, id:'victory'},
+    'Suno 败北':     {file:'SUNO/Suno Defeat.mp3',    lufs:-13.5, id:'defeat'},
+    'SUNO 战略':     {file:'SUNO/SUNO 战略.mp3',      lufs:-13.5, id:'strategy'},
+    'SUNO 天人':     {file:'SUNO/SUNO 天人.mp3',      lufs:-13.5, id:'celestial'},
+    'Suno Feena':    {file:'SUNO/Suno Feena.mp3',     lufs:-13.5, id:'feena'},
+    'Suno Setsuna':  {file:'SUNO/Suno Setsuna.mp3',   lufs:-13.5, id:'setsuna'},
+    /* 作者本地版权曲：不进仓库，只留作退路（CUES 里已经一个都不指向它们了） */
+    '战略音乐1':     {file:'战略音乐1.mp3',  lufs:-15.5, alt:'SUNO 战略'},
+    'BOSS BGM':      {file:'BOSS BGM.mp3',   lufs:-15.0, alt:'Suno Boss'},
   };
-  /* 场景 → 曲目（作者 10-08 定，10-09 换 Suno）。null = 静音（胜利 / 失败暂时没有曲子） */
+  /* ★ 2026-10-11 作者补的 8 首：`lufs` 本该是**实测响度**，但这台机器量不了 ——
+     交接文档 T6 说的「用 Windows Media Foundation 转码再量」在这里走不通
+     （WinRT 的 `StorageFile` 被 DSH 沙箱拒：E_ACCESSDENIED），`msacm32.dll` 里也只注册了 PCM、
+     没有 mp3 解码器，浏览器 / ffmpeg 同样被沙箱挡住，`node_modules` 是空的也不联网。
+     所以那 8 首先统一用**临时值 −13.5**（= 现有 9 首实测值 −12.9 ~ −14.9 的中位数）。
+     耳朵验收之后按实测替换，两条路任选：
+       ① 你在 Suno / 任意音频软件里量一下，把 8 个数字给我（我写进这张表）；
+       ② 用游戏里的「音乐鉴赏」页给每首调 dB 偏移，调完点「复制设置」把那段文本发我（`tuning.exportText()`）。 */
+  /* 场景 → 曲目（作者 10-08 定，10-09 换 Suno；2026-10-11 把最后两首版权曲也换成了 Suno 曲）。
+     null = 不切曲（`nameOf()` 返回 null，播放层什么都不做）。 */
   const CUES = {
-    title:'Suno 主角', mapStrategy:'战略音乐1',
-    allyPhase:'Suno 我方回合', enemyPhase:'Suno 敌方回合', boss:'BOSS BGM',
-    victory:null, defeat:null,
+    title:'Suno 标题', mapStrategy:'SUNO 战略',
+    allyPhase:'Suno 我方回合', enemyPhase:'Suno 敌方回合', boss:'Suno Boss',
+    victory:'Suno 通关', defeat:'Suno 败北',
   };
   /* 主题曲（作者 10-08：像机战一样；10-09：只有放大招才切，保持到本回合结束）。先查机体代号，再查主势力；什么时候切在 31d */
   const THEMES = {
-    unit:    {B1:'Suno 主角'},                          // 雷萨
+    unit:    {B1:'Suno 主角', M1:'Suno Feena', CB1:'Suno Setsuna'},   // 雷萨 / Feena / 刹那（后两首是 2026-10-11 补的）
     faction: {'流星小队':'Suno 流星小队', 'ATX':'Suno ATX', '影世界':'Suno 影世界',
-              '月球王国':'Suno 月王国', '秘银':'Suno 秘银', '卫星国防军':'Suno 卫星国防军'},   // 天人还没有
+              '月球王国':'Suno 月王国', '秘银':'Suno 秘银', '卫星国防军':'Suno 卫星国防军',
+              '天人':'SUNO 天人'},   // ★ 2026-10-11 补上：7 个势力现在都有主题曲
   };
 
   /* 仓库里的页面（Claude hand off/src/index.html）从 ../../audio/ 读；试玩页由 build-artifact 设 MECHA_MUSIC_BASE = 'music/'、MECHA_MUSIC_FLAT = true，按 id 读 music/<id>.mp3 */

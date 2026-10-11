@@ -219,33 +219,35 @@ else {
 }
 
 {
-  /* ★ 2026-10-11：`场景曲` 多了第三个参数「赢了」（只在结算两屏有意义）；
-     「战斗」那一行给的是**这场战斗的第一首**（我方阶段）—— 敌方阶段由 `音乐.切阶段` 按出手方切，
-     所以这里断言的是「默认 / 第一次」的曲子，真的按出手方切在下面的 [8] 段验。 */
+  /* ★ 2026-10-11：`场景曲` 的第三个参数是**这一场的结果**（`'胜'` / `'败'` / `null`，
+     只在结算两屏有意义）；「战斗」那一行给的是**这场战斗的第一首**（我方阶段）——
+     敌方阶段由 `音乐.切阶段` 按出手方切，所以这里断言的是「默认 / 第一次」的曲子，
+     真的按出手方切在下面的 [8] 段验。 */
   const 映射 = [
-    ['菜单', false, 'title', '开场菜单 = title'],
-    ['大地图', false, 'mapStrategy', '大地图 = mapStrategy'],
+    ['菜单', false, 'title', '开场菜单 = title（现在是专门的「Suno 标题」）'],
+    ['大地图', false, 'mapStrategy', '大地图 = mapStrategy（「SUNO 战略」）'],
     ['编队', false, 'mapStrategy', '编队 = mapStrategy'],
     ['分队', false, 'mapStrategy', '分队 / 招募 / 奇遇这些肉鸽外壳画面 = mapStrategy'],
     ['招募', false, 'mapStrategy', '招募 = mapStrategy'],
     ['奇遇', false, 'mapStrategy', '奇遇 = mapStrategy'],
     ['战斗', false, 'allyPhase', '战斗从我方回合起 = allyPhase（敌方阶段由看记录的出手方切，见 [8]）'],
-    ['战斗', true, 'boss', 'Boss 战 = boss'],
+    ['战斗', true, 'boss', 'Boss 战 = boss（现在是专门的「Suno Boss」）'],
   ];
   const 错 = 映射.filter(([屏, boss, 想]) => 场景曲(屏, boss) !== 想);
   if (!错.length) ok(`场景映射 ${映射.length} 条全对：${映射.map(m => `${m[0]}${m[1] ? '(Boss)' : ''}→${m[2] || '不切'}`).join('、')}`);
   else bad('场景映射不对：' + 错.map(m => `${m[0]} → ${场景曲(m[0], m[1])}（想 ${m[2]}）`).join('；'));
 
-  /* ★ 2026-10-11 作者拍板：结算屏赢的时候放 victory，输 / 没打完都不切曲（defeat 还是 null） */
+  /* ★ 2026-10-11 作者补了专门的通关 / 败北曲：赢了 → victory、输了 → defeat、没打完 → 不切曲 */
   const 结算映射 = [
-    ['结算', true, 'victory', '打完赢了 → victory（作者拍板：先用「Suno 主角」顶上）'],
-    ['结算', false, null, '打输了 → 不切曲（留在原曲上）'],
-    ['结算', undefined, null, '没有战报（还没打完）→ 不切曲'],
-    ['肉鸽结算', true, 'victory', '本局通关 → victory'],
-    ['肉鸽结算', false, null, '耐久耗尽 / 玩家放弃 → 不切曲'],
+    ['结算', '胜', 'victory', '打完赢了 → victory（「Suno 通关」）'],
+    ['结算', '败', 'defeat', '打输了 → defeat（「Suno 败北」，以前是「不切曲」）'],
+    ['结算', null, null, '没有战报（还没打完）→ 不切曲'],
+    ['肉鸽结算', '胜', 'victory', '本局通关 → victory'],
+    ['肉鸽结算', '败', 'defeat', '耐久耗尽 / 玩家放弃 → defeat'],
+    ['肉鸽结算', null, null, '既没通关也没失败 → 不切曲'],
   ];
-  const 结算错 = 结算映射.filter(([屏, 赢了, 想]) => 场景曲(屏, false, 赢了) !== 想);
-  if (!结算错.length) ok(`结算两屏 ${结算映射.length} 条全对：${结算映射.map(m => `${m[0]}${m[1] === undefined ? '(无战报)' : m[1] ? '(赢)' : '(输)'}→${m[2] || '不切'}`).join('、')}`);
+  const 结算错 = 结算映射.filter(([屏, 结果, 想]) => 场景曲(屏, false, 结果) !== 想);
+  if (!结算错.length) ok(`结算两屏 ${结算映射.length} 条全对：${结算映射.map(m => `${m[0]}${m[1] === null ? '(无战报)' : m[1] === '胜' ? '(赢)' : '(输)'}→${m[2] || '不切'}`).join('、')}`);
   else bad('结算两屏的映射不对：' + 结算错.map(m => `${m[0]}(${m[1]}) → ${场景曲(m[0], false, m[1])}（想 ${m[2]}）`).join('；'));
 
   界面.开屏('菜单');
@@ -346,11 +348,13 @@ console.log('\n[8] 放大招切主题曲、保持到本回合结束（方案 8.2
   else bad(`势力主题曲没生效（${势力曲}）`);
   音乐.回合结束();
 
-  /* 8c：★ 2026-10-11 作者拍板：**我方回合 / 敌方回合分开切曲**（判定只看记录的出手方）
+  /* 8c：★ 2026-10-11 作者拍板：**我方 / 敌方回合分开切曲**，且**每回合只在第一次换方时切一次**
+     （长战斗里一回合真的会换好几次方：`我方→敌方→我方→敌方→我方`，一变更就切会抖得厉害）。
      注意：`看记录` 只有「切到主题曲」时才返回 cue —— 阶段曲切没切要看 `音乐.当前曲`。 */
   界面.开屏('战斗');                                   // 练习模式这条编成不是 Boss → 走敌我阶段
   音乐.主题 = null;
   音乐.阶段方 = 'ally';                                // 从「我方阶段」这个已知状态起（白盒复位，方便逐条断言）
+  音乐.本回合切过阶段 = false;                          // 本回合还没切过（正常由 `回合结束` / `场景切换` 复位）
   界面.ctx = { allies: [{ slot: 0, key: 'B1', weapons: [{ t: { name: '近战斩击', unlock: 1 } }] }], enemies: [{ slot: 0, key: 'grunt' }] };
   音乐.看记录({ 类型: '攻击', 单位方: 'enemy', 单位位: 0, 武器: '机枪' });
   if (音乐.阶段方 === 'enemy' && 音乐.当前曲 === 'enemyPhase') ok(`敌方出手 → 切 ${音乐.当前曲}（「Suno 敌方回合」这首曲子终于有人用了）`);
@@ -359,13 +363,19 @@ console.log('\n[8] 放大招切主题曲、保持到本回合结束（方案 8.2
   音乐.看记录({ 类型: '跳过', 单位方: 'enemy', 单位位: 0 });
   if (音乐.当前曲 === 'enemyPhase' && 音乐.刷曲() === 'enemyPhase') ok('敌方**连着**出手不重复切（`刷曲` 说就是同一首）');
   else bad(`同一个方连着出手切了：${音乐.当前曲}`);
+  /* ★ 新规矩（作者 2026-10-11）：本回合**已经切过一次** → 这次换方**什么都不做**
+     （连阶段方都不改，下一条记录再按「同一个方」跳过）—— 长战斗里一回合会换好几次方，一变更就切就抖 */
   音乐.看记录({ 类型: '攻击', 单位方: 'ally', 单位位: 0, 武器: '近战斩击' });
-  if (音乐.阶段方 === 'ally' && 音乐.当前曲 === 'allyPhase') ok(`我方再出手 → 切回 ${音乐.当前曲}`);
-  else bad(`我方出手没有切回 allyPhase（阶段方 ${音乐.阶段方} / 当前曲 ${音乐.当前曲}）`);
+  if (音乐.阶段方 === 'enemy' && 音乐.当前曲 === 'enemyPhase') ok('我方出手 → **本回合不再换曲**（每回合只切第一次换方；阶段方也保持不变）');
+  else bad(`本回合第二次换方还是动了（阶段方 ${音乐.阶段方} / 当前曲 ${音乐.当前曲}）`);
   音乐.看记录({ 类型: '攻击', 单位方: 'enemy', 单位位: 0, 武器: '机枪' });
+  音乐.看记录({ 类型: '修理', 单位方: 'ally', 单位位: 0, 回复: 100 });     // 敌方段里我方修理
+  音乐.看记录({ 类型: '增益', 单位方: 'ally', 单位位: 0 });
+  if (音乐.阶段方 === 'enemy' && 音乐.当前曲 === 'enemyPhase') ok('我方**修理 / 增益**不算「换回我方」（按还在敌方段处理，不会抖一下曲子）');
+  else bad(`我方辅助动作把阶段弄乱了（阶段方 ${音乐.阶段方} / 当前曲 ${音乐.当前曲}）`);
   音乐.回合结束();
-  if (音乐.当前曲 === 'enemyPhase') ok('本回合在敌方阶段结束 → 保持 enemyPhase（回合结束只把主题曲放回场景曲）');
-  else bad(`敌方阶段结束时切错了（当前曲 ${音乐.当前曲}）`);
+  if (音乐.当前曲 === 'enemyPhase' && 音乐.本回合切过阶段 === false) ok('本回合结束：曲子保持这个阶段（enemyPhase），「本回合切过」复位 → 下一回合可以再切一次');
+  else bad(`回合结束时的状态不对（当前曲 ${音乐.当前曲} / 本回合切过 ${音乐.本回合切过阶段}）`);
 
   /* 8b：真打一场 Boss 战，看规则在实战里真的触发 */
   界面.开屏('编队');
@@ -375,16 +385,19 @@ console.log('\n[8] 放大招切主题曲、保持到本回合结束（方案 8.2
   界面.开战(20261010);
   if (音乐.是Boss战 === true && 音乐.当前曲 === 'boss') ok(`Boss 战认出来了：场景曲 = ${音乐.当前曲}`);
   else bad(`Boss 战没有切到 boss（是Boss战 ${音乐.是Boss战} / 当前曲 ${音乐.当前曲}）`);
-  let 大招记录 = 0, 主题切换 = 0, 回合护栏 = 0;
+  let 大招记录 = 0, 主题切换 = 0, 回合护栏 = 0, 阶段切过 = 0, 见过阶段方 = 0, 被打断 = 0;
   const 见过的主题 = new Set();
   while (界面.阶段 !== '结算' && 回合护栏++ < 14) {
     界面.开打();
     let n = 0;
     while (播放.在放() && n++ < 100000) {
       const ev = 播放.事件()[播放.位置];
-      const 前 = 音乐.主题;
+      const 前 = 音乐.主题, 阶段前 = 音乐.阶段方, 曲前 = 音乐.当前曲;
       音乐.看记录(ev);                     // 这里手动调 tick()，绕过 `播一步` 钩子 → 自己补这一次「看记录」
       播放.tick();
+      if (阶段前 !== null && 阶段前 !== 音乐.阶段方) 见过阶段方++;
+      /* Boss 战整场一首：出手方记下来了，但曲子不能被**阶段曲**顶掉（主题曲还是允许的） */
+      if (曲前 === 'boss' && (音乐.当前曲 === 'allyPhase' || 音乐.当前曲 === 'enemyPhase')) 被打断++;
       if (ev && ev.类型 === '攻击' && ev.单位方 === 'ally') {
         const u = 界面.ctx.allies.find(x => x.slot === ev.单位位);
         const e = u && (u.weapons || []).find(x => x.t && x.t.name === ev.武器);
@@ -399,12 +412,14 @@ console.log('\n[8] 放大招切主题曲、保持到本回合结束（方案 8.2
   if (主题切换 > 0 && [...见过的主题].every(c => c.startsWith('theme:'))) ok(`放一次大招切一次主题曲：${主题切换} 次，全部是 theme: 开头的主题曲`);
   else bad(`实战里没有切到主题曲（${主题切换} 次）`);
   /* ★ 2026-10-11：Boss 战**整场一首**（`boss`），不跟着敌我阶段来回切。
-     注意：`到结算` 会把屏切到「结算」，`刷曲` 随后把当前曲换成 victory —— 所以这条要在那之前断言。 */
-  if (音乐.阶段方 !== null && 音乐.当前曲 === 'boss') ok(`Boss 战里出手方照样记着（阶段方 ${音乐.阶段方}），但曲子整场都是 ${音乐.当前曲}`);
-  else bad(`Boss 战的阶段 / 曲子不对（阶段方 ${音乐.阶段方} / 当前曲 ${音乐.当前曲}）`);
+     注意：`到结算` 会把屏切到「结算」，`场景切换` 顺手清掉阶段账 —— 所以要在**循环里**数。 */
+  if (见过阶段方 > 0) ok(`Boss 战里出手方真的换过 ${见过阶段方} 次（阶段账在走）`);
+  else bad('Boss 战里阶段方一次都没变过，这段没验到');
+  if (被打断 === 0) ok('Boss 战整场没被阶段曲顶掉过（曲子一直是 boss）');
+  else bad(`Boss 战里曲子被阶段曲顶掉了 ${被打断} 次`);
   const 这一场胜 = !!(界面.战报 && 界面.战报.结果 === '胜');
-  const 结算该放 = 场景曲('结算', true, 这一场胜);
-  if (结算该放 === (这一场胜 ? 'victory' : null)) ok(`这一场打完（${界面.战报 ? 界面.战报.结果 : '—'}）→ 结算屏${这一场胜 ? '放 victory' : '不切曲'}`);
+  const 结算该放 = 场景曲('结算', true, 这一场胜 ? '胜' : '败');
+  if (结算该放 === (这一场胜 ? 'victory' : 'defeat')) ok(`这一场打完（${界面.战报 ? 界面.战报.结果 : '—'}）→ 结算屏放 ${结算该放}`);
   else bad(`结算屏该放的曲子不对：${结算该放}`);
   if (音乐.主题 === null) ok('这一场打完（本回合结束）主题曲已经放回场景曲');
   else bad(`打完还挂着主题曲：${音乐.主题}`);
@@ -436,9 +451,14 @@ console.log('\n[8b] 真打一场**普通**战斗（★ 2026-10-11：我方 / 敌
         const e = u && (u.weapons || []).find(x => x.t && x.t.name === ev.武器);
         if (e && e.t.unlock >= 20) 这次大招++;
       }
-      音乐.看记录(ev);                     // 手动 tick() 绕过了 `播一步` 钩子 → 自己补这一次「看记录」
+      /* 这一段**不要**手动调 `看记录`：没开「跳过动画」，`播放.tick()` 自己会走 `播一步` 钩子
+         （Boss 那一段相反：它开了「跳过动画」，钩子只在结尾报一次 null，所以要手动补） */
       播放.tick();
-      if (音乐.当前曲 !== 曲前) { 换曲++; 这次换++; 本回合曲.push(音乐.当前曲); if (走过的曲[走过的曲.length - 1] !== 音乐.当前曲) 走过的曲.push(音乐.当前曲); }
+      /* 只数**阶段曲之间的切换**：`victory` / `defeat` 是「到结算」切屏切的，不算阶段，
+         `theme:` 是放大招切的，也不算 */
+      if (音乐.当前曲 !== 曲前 && (音乐.当前曲 === 'allyPhase' || 音乐.当前曲 === 'enemyPhase')) {
+        换曲++; 这次换++; 本回合曲.push(音乐.当前曲);
+      }
       if (!ev || !ev.单位方) continue;
       出手方++;
       方向.add(ev.单位方);
@@ -447,8 +467,8 @@ console.log('\n[8b] 真打一场**普通**战斗（★ 2026-10-11：我方 / 敌
     }
     逐回合.push(`第${档}回合 ${本回合曲.map(c => c === null ? '（不切）' : c).join('→')}`);
     if (这次换 > 一回合最多换几次) 一回合最多换几次 = 这次换;
-    /* 一回合里最多：我方一段 + 敌方一段（2 次阶段曲）+ 每次我方大招切一次主题曲 */
-    if (这次换 > 2 + 这次大招) bad(`第 ${档} 回合换了 ${这次换} 次曲（上限 2 + 大招 ${这次大招}）`);
+    /* 一回合最多切 1 次阶段曲（★ 2026-10-11 作者拍板）+ 每次我方大招切一次主题曲 */
+    if (这次换 > 1 + 这次大招) bad(`第 ${档} 回合换了 ${这次换} 次曲（上限 1 次阶段 + 大招 ${这次大招}）`);
   }
   info(`普通战斗实战：${档 - 1} 个回合打完（${界面.战报 ? 界面.战报.结果 : '—'}），带出手方的记录 ${出手方} 条、出手方 ${[...方向].join(' + ') || '无'}`);
   info(`逐回合切曲：${逐回合.join(' ｜ ')}`);
@@ -457,30 +477,34 @@ console.log('\n[8b] 真打一场**普通**战斗（★ 2026-10-11：我方 / 敌
   else bad('实战里一次都没切到 enemyPhase，这段没验到');
   if (见过我方 > 0) ok(`实战里也真的切回过我方阶段曲（allyPhase 出现过 ${见过我方} 次）`);
   else bad('实战里一次都没切到 allyPhase');
-  if (一回合最多换几次 <= 2) ok(`一回合里最多换 ${一回合最多换几次} 次阶段曲（我方一段 + 敌方一段，**不是一发一换**）`);
+  if (一回合最多换几次 <= 1) ok(`一回合里最多换 ${一回合最多换几次} 次阶段曲（★ 每回合只在第一次换方时切一次，**不是一发一换 / 也不是一变更就切**）`);
   else bad(`一回合里阶段曲换太多次了：${一回合最多换几次} 次`);
 
-  /* ★ 结算屏：赢了才放 victory（输了不切曲） */
-  界面.战报 = { 结果: '胜' };
+  /* ★ 结算屏：赢了放 victory、输了放 defeat（★ 2026-10-11 作者补了这两首曲子）。
+     战报要够 `结算屏()` 画得出来（它要读 我方 / 敌方），否则会抛异常。 */
+  const 假战报 = 结果 => ({ 结果, 原因: '测试', 回合数: 1, 记录: [], 种子: 1, 我方: [{ hp: 1 }], 敌方: [{ hp: 0 }] });
+  界面.战报 = 假战报('胜');
   音乐.当前曲 = null;
   界面.开屏('结算');
-  if (音乐.当前曲 === 'victory') ok(`打完赢了 → 开屏('结算') 切到 ${音乐.当前曲}（作者拍板：先用「Suno 主角」顶上）`);
+  if (音乐.当前曲 === 'victory') ok(`打完赢了 → 开屏('结算') 切到 ${音乐.当前曲}（「Suno 通关」）`);
   else bad(`赢了没有切到 victory（当前曲 ${音乐.当前曲}）`);
-  界面.战报 = { 结果: '败' };
+  界面.战报 = 假战报('败');
   音乐.当前曲 = null;                          // 假装现在放的是别的曲子
   界面.开屏('结算');
-  if (音乐.当前曲 === null) ok('打输了 → **不切曲**（`刷曲` 一条都没发出去）');
-  else bad(`输了居然切了曲：${音乐.当前曲}`);
-  /* 肉鸽结算屏：只有「通关」才算赢 */
-  肉鸽.RUN = { 结局: '通关' };
+  if (音乐.当前曲 === 'defeat') ok(`打输了 → 切到 ${音乐.当前曲}（「Suno 败北」；以前是「不切曲」）`);
+  else bad(`输了没切到 defeat（当前曲 ${音乐.当前曲}）`);
+  /* 肉鸽结算屏：通关算赢、失败算输。用一局**真空的** RUN 来试（界面要读 队伍 / 藏品 等字段）。 */
+  const 真RUN = 肉鸽.RUN;
+  肉鸽.RUN = 肉鸽.新的一局('无', 24680);
+  肉鸽.RUN.结局 = '通关';
   音乐.当前曲 = null; 界面.开屏('肉鸽结算');
   if (音乐.当前曲 === 'victory') ok(`肉鸽本局**通关** → ${音乐.当前曲}`);
   else bad(`通关没有切到 victory（${音乐.当前曲}）`);
-  肉鸽.RUN = { 结局: '失败' };
+  肉鸽.RUN.结局 = '失败';
   音乐.当前曲 = null; 界面.开屏('肉鸽结算');
-  if (音乐.当前曲 === null) ok('肉鸽本局失败 / 玩家放弃 → 不切曲');
-  else bad(`肉鸽失败居然切了曲：${音乐.当前曲}`);
-  肉鸽.RUN = null;
+  if (音乐.当前曲 === 'defeat') ok(`肉鸽本局失败 / 玩家放弃 → ${音乐.当前曲}`);
+  else bad(`肉鸽失败没切到 defeat（${音乐.当前曲}）`);
+  肉鸽.RUN = 真RUN;
 }
 
 /* ============================ [9] 装上假浏览器：音乐真的指向仓库里的曲子 ============================ */
@@ -527,28 +551,62 @@ console.log('\n[9] 装上「假浏览器」（有 location / URL / Audio）以�
   else bad(`播放层没有探测到曲子：${JSON.stringify(MA2 && MA2.state())}`);
   MA2.unlock();                                  // 浏览器里由第一次点击 / 按键触发
   音2.场景切换('菜单');
-  const 菜单曲 = 根页.播过.filter(x => /Suno%20%E4%B8%BB%E8%A7%92|Suno 主角/.test(x.src));
-  if (菜单曲.length && 菜单曲[菜单曲.length - 1].在) ok(`菜单曲指向仓库里真实的文件：${decodeURIComponent(菜单曲[菜单曲.length - 1].src).replace(/^file:\/\/\//, '')}`);
-  else bad(`菜单曲没指向真实文件：${JSON.stringify(菜单曲)}`);
-  音2.场景切换('大地图');                         // mapStrategy = 作者本地的版权曲（仓库里没有）→ 退到 alt
-  if (MA2.state().track === 'Suno 主角') ok(`大地图的版权曲读不到 → 自动退到 alt（现在放 ${MA2.state().track}）`);
-  else bad(`版权曲读不到时没有退到 alt（现在 ${MA2.state().track}）`);
-  MA2.play('boss');                              // ★ 2026-10-11 起 boss = 「Suno 影世界」（进仓库的曲子）
+  const 菜单曲 = 根页.播过.filter(x => /Suno%20Title|Suno Title/.test(x.src));
+  if (MA2.state().track === 'Suno 标题' && 菜单曲.length && 菜单曲[菜单曲.length - 1].在)
+    ok(`标题曲指向仓库里真实的文件：${decodeURIComponent(菜单曲[菜单曲.length - 1].src).replace(/^file:\/\/\//, '')}`);
+  else bad(`标题曲没指向真实文件（现在 ${MA2.state().track} / ${JSON.stringify(菜单曲)}）`);
+  音2.场景切换('大地图');                         // mapStrategy = 「SUNO 战略」（2026-10-11 起不再指向版权曲）
+  if (MA2.state().track === 'SUNO 战略') ok(`大地图现在是进仓库的 Suno 曲：${MA2.state().track}`);
+  else bad(`大地图曲子不对（现在 ${MA2.state().track}）`);
+  MA2.play('boss');                              // ★ 2026-10-11 作者补了专门的 Boss 曲
   const Boss曲 = 根页.播过[根页.播过.length - 1];
-  if (MA2.state().track === 'Suno 影世界' && Boss曲.在 && decodeURIComponent(Boss曲.src).includes('audio/SUNO/'))
-    ok(`Boss 曲也指向仓库里真实的 Suno 曲子：${decodeURIComponent(Boss曲.src).replace(/^file:\/\/\//, '')}`);
+  if (MA2.state().track === 'Suno Boss' && Boss曲.在 && decodeURIComponent(Boss曲.src).includes('audio/SUNO/'))
+    ok(`Boss 曲指向仓库里真实的 Suno 曲子：${decodeURIComponent(Boss曲.src).replace(/^file:\/\/\//, '')}`);
   else bad(`Boss 曲不对（现在 ${MA2.state().track} / ${JSON.stringify(Boss曲)}）`);
-  MA2.play('victory');                           // victory = 「Suno 主角」（同一首曲子，换个 cue 进）
-  if (MA2.state().track === 'Suno 主角') ok(`结算的 victory 曲就是 ${MA2.state().track}（作者拍板先用它顶上）`);
+  MA2.play('victory');                           // victory = 「Suno 通关」
+  if (MA2.state().track === 'Suno 通关') ok(`结算的 victory 曲是 ${MA2.state().track}`);
   else bad(`victory 曲不对（现在 ${MA2.state().track}）`);
+  MA2.play('defeat');                            // defeat = 「Suno 败北」（以前是 null）
+  if (MA2.state().track === 'Suno 败北') ok(`结算的 defeat 曲是 ${MA2.state().track}（以前没有曲子）`);
+  else bad(`defeat 曲不对（现在 ${MA2.state().track}）`);
   MA2.play('allyPhase');
   const 战曲 = 根页.播过[根页.播过.length - 1];
   if (战曲.在 && decodeURIComponent(战曲.src).includes('audio/SUNO/')) ok('战斗曲也指向 audio/SUNO/ 下的真实文件');
   else bad(`战斗曲不对：${JSON.stringify(战曲)}`);
-  /* 版权曲的条目还留着（只当退路），但 CUES 里已经没有一处指向它们了 */
-  const 版权曲cue = Object.keys(MA2.CUES).filter(k => !MA2.TRACKS[MA2.CUES[k]] || !MA2.TRACKS[MA2.CUES[k]].id);
+  /* ★ CUES 里已经没有一处指向版权曲了，而且**每一个 cue 的曲子文件都真的在仓库里** */
+  const 版权曲cue = Object.keys(MA2.CUES).filter(k => {
+    const n = MA2.CUES[k];
+    return n !== null && (!MA2.TRACKS[n] || !MA2.TRACKS[n].id);
+  });
   if (版权曲cue.length === 0) ok(`场景表 ${Object.keys(MA2.CUES).length} 个 cue 现在**全部**指向进仓库的 Suno 曲子（版权曲只留在 TRACKS 里当退路）`);
   else bad(`这些 cue 还指向版权曲：${版权曲cue.join('、')}`);
+  /* 逐条把「场景表里的 cue」真正 play 一遍，看它指向的文件在不在仓库里 */
+  const 缺文件 = [];
+  for (const k of Object.keys(MA2.CUES)) {
+    const n = MA2.CUES[k]; if (!n) continue;
+    MA2.play(k);
+    const 最后 = 根页.播过[根页.播过.length - 1];
+    if (!最后 || !最后.在) 缺文件.push(`${k} → ${n}`);
+  }
+  if (!缺文件.length) ok(`场景表里每个 cue 都指向仓库里真实存在的文件（${Object.keys(MA2.CUES).length} 个 cue 逐个 play 验过）`);
+  else bad('这些 cue 指向的文件不在仓库里：' + 缺文件.join('、'));
+  /* 主题曲表：7 个势力 + 3 台机体，全部也要指向真实文件 */
+  const 主题表 = [];
+  for (const f in MA2.THEMES.faction) 主题表.push(['势力 ' + f, MA2.THEMES.faction[f]]);
+  for (const u in MA2.THEMES.unit) 主题表.push(['机体 ' + u, MA2.THEMES.unit[u]]);
+  const 主题缺 = [];
+  for (const [谁, n] of 主题表) {
+    if (!MA2.TRACKS[n] || !MA2.TRACKS[n].id) 主题缺.push(`${谁} → ${n}（不在 TRACKS 里）`);
+    else {
+      MA2.play('theme:' + n);
+      const 最后 = 根页.播过[根页.播过.length - 1];
+      if (!最后 || !最后.在) 主题缺.push(`${谁} → ${n}（文件读不到）`);
+    }
+  }
+  if (!主题缺.length) ok(`主题曲表 ${主题表.length} 条（${Object.keys(MA2.THEMES.faction).length} 个势力 + ${Object.keys(MA2.THEMES.unit).length} 台机体）全部指向仓库里真实的文件`);
+  else bad('主题曲表有问题：' + 主题缺.join('、'));
+  if (MA2.THEMES.faction['天人'] === 'SUNO 天人') ok('天人（CB）终于有势力曲了（以前 CB1–CB5 放大招不切曲）');
+  else bad(`天人的势力曲不对：${MA2.THEMES.faction['天人']}`);
 
   /* 片段版（src/artifact-fragment.html）在 src/ 里，基准路径要自己变成 ../audio/ */
   const 片页 = 假浏览器('file:///F:/DSH-mecha/mecha-autobattle/src/artifact-fragment.html');
