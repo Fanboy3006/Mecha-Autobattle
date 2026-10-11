@@ -480,6 +480,7 @@ node tests/faction.js             # 势力特色六件（第 [1]–[14] 段）�
 node tools/balance.mjs            # 平衡工具（M6）：单挑表 + 组队表全跑，写 docs/平衡表.md（约 2 秒）
 node tools/balance.mjs --quick    # 省时：组队表每档 5 场（默认 30）、单挑表每级 5 场（默认 10）
 node tools/balance.mjs --char=B1 --lv=20   # 单点查询（顺带打逐条记录）
+node tools/balance.mjs --cheat    # ★ 作弊上限口径（作者 2026-10-11 点名要的）：我方 Lv30 满编 9 台 + 能影响战斗的藏品全带 + 每回合「会玩」的指令策略，对每一档 × 每一层出胜率 / 平均回合 / 剩余 HP，写 docs/难度-上限表.md（**不动 docs/平衡表.md**；--quick 省时）
 node tools/specials.mjs           # 重新生成 docs/特技换算待办.md
 ```
 
