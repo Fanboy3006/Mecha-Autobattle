@@ -16,6 +16,7 @@ const 肉鸽界面 = {
   分队ID: null,
   提示: '',
   最近格: null,          // 上一次点的格子（悬停说明用）
+  用零件中: null,         // 正在使用中的零件下标（null = 没在用）—— 点了之后地图上高亮它的目标格
 
   /* ---------------- 菜单上的入口 ---------------- */
   最近存档() { return 肉鸽.读存档(); },
@@ -46,6 +47,9 @@ const 肉鸽界面 = {
     const 当前格 = 肉鸽.当前格();
     const 距离 = 全距离(R);                                  // 不算推进剂上限，用来提示「走过去要几步」
     const 能去 = new Set(肉鸽.能去的().map(n => n.k));
+    /* 正在用零件：地图上高亮这件零件能去的格（走这些格不花推进剂，见 94-零件.js 的 用零件） */
+    const 用中 = (this.用零件中 != null) ? (R.零件 || [])[this.用零件中] : null;
+    const 零件可去 = new Set(用中 ? 零件目标(用中) : []);
     const 已走过 = new Set(R.已走过 || []);
     const 已揭开 = new Set(R.已揭开 || []);
     const 守军已清 = (() => { const 守 = R.地图.格[R.地图.守军]; return !守 || 守.已过 || 守.类型 === '空'; })();
@@ -56,10 +60,12 @@ const 肉鸽界面 = {
       const 步 = 距离.get(k);
       const 是当前 = k === R.当前;
       const 可 = 能去.has(k);
-      const 态 = 是当前 ? ' here' : (n.已过 ? ' done' : (可 ? ' can' : (已走过.has(k) ? ' walked' : '')));
-      const 动 = 可 ? ` data-act="去节点:${k}"` : '';
+      const 件可 = 零件可去.has(k);
+      const 态 = 是当前 ? ' here' : (n.已过 ? ' done' : (件可 ? ' can' : (可 ? ' can' : (已走过.has(k) ? ' walked' : ''))));
+      const 动 = (件可 || 可) ? ` data-act="去节点:${k}"` : '';
       let 小字 = '';
       if (是当前) 小字 = '你在这里';
+      else if (件可) 小字 = `零件 →（不花推进剂）`;
       else if (可 && 步 != null) 小字 = `${步} 步 · ${步} 推进剂`;
       else if (n.已过) 小字 = '已通过';
       else if (步 != null) 小字 = `太远（${步} 步 > ${R.推进剂}）`;
@@ -91,15 +97,96 @@ const 肉鸽界面 = {
         <span class="rv-chip">种子 <b>${R.种子}</b></span>
       </div>
       ${R.推进剂 <= 0 ? '<p class="warn small">推进剂已经用光：这一格结算完就会触发<b>追击战</b>（战棋 30:34）。</p>' : ''}
+      ${用中 ? `<p class="warn small">正在使用零件【${零件表[用中.k].名}】：点地图上<b>高亮的格子</b>落下去（不花推进剂）。
+        再点一次「使用」可以取消。</p>` : ''}
       <div class="gmap">${行们.join('')}</div>
       <p class="small">当前格：<b>${当前格 ? (节点类型表[当前格.类型] || {}).名 : '—'}</b>${当前格 ? `（${坐标文字(当前格)}）` : ''}${守军已清 ? '' : '　·　出口守军还没打掉，打掉它出口才放行'}　·　图例：${图例Html()}</p>
       <div class="acts">${按钮 || '<span class="small">这一格没有可做的事，往别的格子走吧。</span>'}
+        <button data-act="去晋升">晋升（希望 ${R.希望}）</button>
         <button data-act="存个档">存档</button><button data-act="放弃本局">放弃本局</button></div>
       ${this.提示 ? `<p class="warn small">${this.提示}</p>` : ''}
       <p class="small">队伍（${R.队伍.length} / ${肉鸽数值.队伍上限}）：${队伍}</p>
+      ${队伍卡片Html()}
+      ${零件卡片Html()}
       ${藏品卡片Html()}
       ${界面.弹窗控件Html()}
       <p class="small">日志：${R.日志.slice(-4).map(x => `第${x.层}层 ${x.文本}`).join('　|　')}</p>
+    </section>`;
+  },
+
+  /* ---------------- 晋升（10 → 20 → 30） ----------------
+     照战棋 `29-渲染.js:62-70` 的 `teamCard()`：名册每行一个「→Lv20（N）」按钮，
+     `N > RUN.hope` 时 `disabled`；底部一行写「晋升价格：精锐 3 / 4，骨干 2 / 3，普通 1 / 2 希望」。
+     每一行**把升完之后的属性变化列出来**（HP / 装甲 / 防御 / 机动 / 速度），点一下就升。 */
+  晋升屏() {
+    const R = 肉鸽.RUN;
+    if (!R) return '<section class="card"><p>还没有进行中的局。</p><a href="#" data-act="回菜单">回菜单</a></section>';
+    const 清单 = 肉鸽.晋升清单();
+    const 行 = 清单.map(x => {
+      const 变 = x.属性
+        ? `HP ${x.属性.前.maxHp} → <b>${x.属性.后.maxHp}</b>　装甲 ${x.属性.前.armor} → <b>${x.属性.后.armor}</b>` +
+          `　防御 ${x.属性.前.defense} → <b>${x.属性.后.defense}</b>　机动 ${x.属性.前.mov} → <b>${x.属性.后.mov}</b>` +
+          `　速度 ${x.属性.前.速度} → <b>${x.属性.后.速度}</b>`
+        : '（Lv30 到顶，没有下一档）';
+      const 动 = ` data-act="晋升:${x.键}"`;
+      return `<div class="rv-row"><span class="rv-tier ${x.档}">${x.档名}</span>
+        <span class="nm"><b>${x.名}</b><small>${x.键} · Lv${x.等级}${x.到 ? ` → Lv${x.到}` : ''}</small>
+          <br><small style="margin-left:0">${变}</small></span>
+        ${x.到 ? `<button class="rv-btn"${动}${x.能升 ? '' : ' disabled'}>晋升（${x.价} 希望）</button>`
+               : '<button class="rv-btn" disabled>已到顶</button>'}
+        ${x.理由 && x.到 ? `<small style="color:var(--enemy)">${x.理由}</small>` : ''}</div>`;
+    }).join('') || '<p class="small">名册是空的。</p>';
+    const 次序 = 清单.filter(x => x.到).sort((a, b) => a.价 - b.价);
+    return `<section class="card">
+      <h3>晋升<span class="small">希望 <b>${R.希望}</b> · 10 → 20 → 30，一次一档，不能跳级</span></h3>
+      <p class="small">价格照战棋（<code>22-输入.js:431</code> 的 <code>PRICE</code>）：
+        <b>精锐 3 / 4</b>（S）、<b>骨干 2 / 3</b>（A）、<b>普通 1 / 2</b>（B）希望
+        ${R.下次晋升减价 ? '　·　<b>休整过：这次晋升 −1 希望</b>' : ''}。
+        战棋的晋升还要用掉一张同类招募券（<code>27-开局.js:86</code>），本仓库的券系统还没做，所以这一版**只花希望**。</p>
+      <div class="rv-card"><h3>名册（${R.队伍.length} / ${肉鸽数值.队伍上限}）</h3>${行}</div>
+      <p class="small">全场最便宜的下一档：${次序.length ? `${次序[0].名} Lv${次序[0].等级} → Lv${次序[0].到}（${次序[0].价} 希望）` : '（都已经 Lv30 了）'}</p>
+      <div class="acts"><button class="primary" data-act="回大地图">回大地图</button>
+        <button data-act="存个档">存档</button></div>
+      ${this.提示 ? `<p class="warn small">${this.提示}</p>` : ''}
+      ${界面.弹窗控件Html()}
+    </section>`;
+  },
+
+  /* ---------------- 零件（大地图上用的那几个） ----------------
+     持有数 + 每件一句效果 + 点「使用」→ 回大地图点高亮格（见 94-零件.js 的 零件目标 / 用零件）。 */
+  零件屏() {
+    const R = 肉鸽.RUN;
+    if (!R) return '<section class="card"><p>还没有进行中的局。</p></section>';
+    const 们 = R.零件 || [];
+    const 上限 = R.零件箱 || 零件箱初值;
+    const 行 = 们.map((p, i) => {
+      const P = 零件表[p.k] || { 名: p.k, 类: '—', 效果: '' };
+      const 目标数 = 零件目标(p).length;
+      return `<div class="rv-row"><span class="nm"><b>${P.名}</b>
+        <small> · ${P.类}${p.uses != null ? ` · 剩 ${p.uses} 次` : (p.value != null ? ` · 估价 ${p.value}` : '')}</small>
+        <br><small style="margin-left:0">${P.说明}</small>
+        <br><small style="margin-left:0">→ ${P.效果}${P.用 ? `（现在能去 ${目标数} 格）` : '【这一版用不了】'}</small></span>
+        <button class="rv-btn" data-act="使用零件:${i}"${P.用 ? '' : ' disabled'}>使用 →</button></div>`;
+    }).join('') || '<p class="small">还没有零件。</p>';
+    const 全 = Object.keys(零件表).map(k => {
+      const P = 零件表[k];
+      return `<div class="rv-row"><span class="nm"><b>${P.名}</b><small> · ${P.类} · ${P.价} 源碳</small>
+        <br><small style="margin-left:0">${P.说明}</small>
+        <br><small style="margin-left:0">${P.用 ? '✓ ' + P.效果 : '✗ ' + (P.用不了 || '这一版不做')}</small>
+        ${P.换义 ? `<br><small style="margin-left:0">换义：${P.换义}</small>` : ''}</span></div>`;
+    }).join('');
+    return `<section class="card">
+      <h3>零件<span class="small">零件箱 ${们.length} / ${上限} · 照战棋 <code>23-零件.js:4-18</code></span></h3>
+      <p class="small">战棋的零件<b>全是大地图上用的</b>（移动 / 传送 / 理财），战斗里一件都没有 ——
+        所以这一版做的就是这一批。来源照战棋：<b>精英 / Boss 战必给 1 件</b>、
+        <b>普通战 35%</b>（<code>31-战斗.js:293</code>）、<b>遗迹给 1 件</b>（<code>30:79</code>）。</p>
+      <div class="rv-card"><h3>手上的零件</h3>${行}</div>
+      <p class="small">用法：点「使用」→ 回大地图 → 点高亮的格子（<b>不花推进剂</b>，照战棋 <code>30:6-16</code>；
+        次数用光就自动消失）。</p>
+      <div class="acts"><button class="primary" data-act="回大地图">回大地图</button>
+        <button data-act="去晋升">晋升</button><button data-act="存个档">存档</button></div>
+      ${this.提示 ? `<p class="warn small">${this.提示}</p>` : ''}
+      <details><summary class="small">战棋零件全表（13 件，逐条标了能不能用）</summary><div class="rv-card">${全}</div></details>
     </section>`;
   },
 
@@ -193,6 +280,27 @@ const 肉鸽界面 = {
 
 /* 小队成员的显示名（肉鸽界面用） */
 function allyName(键) { const t = tplOf(键); return t ? t.pilot : 键; }
+
+/** 大地图上的「队伍」卡片：每台机体的**当前等级与属性**（晋升之后这里会真的变）。
+ *  属性一律问 `重算名册属性()`（它走的是 `makeUnit` → `levelUp`，和战斗里同一套规则）。 */
+function 队伍卡片Html() {
+  const R = 肉鸽 && 肉鸽.RUN;
+  if (!R) return '';
+  const 们 = 重算名册属性() || [];
+  const 行 = 们.map(x => {
+    const t = tplOf(x.键) || {};
+    const 出击 = (R.出击 || []).includes(x.键);
+    const 到 = 晋升目标(x.等级);
+    const 价 = 到 ? 晋升要多少(x.键, 到, R) : 0;
+    return `<div class="rv-row"><span class="rv-tier ${tierOf(x.键)}">${TIER_NAME[tierOf(x.键)] || '普通'}</span>
+      <span class="nm"><b>${t.pilot || x.键}</b><small>${x.键} · ${(t.tags || {}).战斗分类 || '—'} · ${出击 ? '出击名单' : '待命'}</small>
+        <br><small style="margin-left:0">Lv${x.等级}　HP ${x.后.maxHp}　装甲 ${x.后.armor}　防御 ${x.后.defense}　机动 ${x.后.mov}　速度 ${x.后.速度}</small></span>
+      ${到 ? `<button class="rv-btn" data-act="晋升:${x.键}"${R.希望 >= 价 ? '' : ' disabled'}>→Lv${到}（${价}）</button>` : '<small>Lv30</small>'}</div>`;
+  }).join('') || '<p class="small">名册是空的。</p>';
+  return `<div class="rv-card"><h3>队伍（${R.队伍.length} / ${肉鸽数值.队伍上限}）<span class="small">点右边的按钮直接晋升（花希望）</span></h3>${行}
+    <p class="small">招募价格：精锐 5、骨干 3、普通免费。晋升价格（战棋 <code>22-输入.js:431</code>）：
+      精锐 3 / 4、骨干 2 / 3、普通 1 / 2 希望${R.下次晋升减价 ? '（休整过：下次晋升 −1 希望）' : ''}。</p></div>`;
+}
 
 /* 格子坐标（1 起数，和战棋 30-移动与节点.js:41 的写法一致） */
 function 坐标文字(n) { return `(${n.列 + 1}, ${n.行 + 1})`; }
