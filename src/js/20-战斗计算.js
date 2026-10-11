@@ -49,15 +49,19 @@ const shieldOn = u => !!u && u.shield > 0 && u.shieldHp > 0;
 const lsLeft = (u, turn) => u.lsTurn !== turn ? 2 : 2 - (u.lsCount || 0);   // λ 力场：每回合 2 次
 
 /* ---------- 命中 / 暴击 ---------- */
+/* 职业特色（方案 6.3）也在这里生效：
+ *   尖兵：每回合第一次被攻击时闪避 +20（打完这一下就把这一回合的加成用掉）；
+ *   狙击：打后排没有被挡惩罚（在 30-射程.js 的 rowBlockPenalty 里）、暴击率 +10。 */
 function hitRate(att, w, def, opts = {}) {
   if (isSure(w)) return { hit: 100, raw: 100, eva: 0, sure: true };
-  const eva = Math.max(0, def.eva - (def.dodgePen || 0)) + buffSum(def, 'eva') + (def.moveEva || 0);
+  const 尖兵闪 = (职业是(def, '尖兵') && def.尖兵闪避Turn !== opts.turn) ? 20 : 0;
+  const eva = Math.max(0, def.eva - (def.dodgePen || 0)) + buffSum(def, 'eva') + (def.moveEva || 0) + 尖兵闪;
   const h = (opts.baseHit ?? w.hit) - eva + Math.round(((att.aim ?? 160) - 160) / 2) + buffSum(att, 'hit') + (opts.blockPenalty || 0);
-  return { hit: clamp(Math.round(h), 0, 100), raw: Math.round(h), eva };
+  return { hit: clamp(Math.round(h), 0, 100), raw: Math.round(h), eva, 尖兵闪 };
 }
 function critRate(w, att) {
   if (isSure(w)) return 0;
-  return clamp(10 + ((att && att.critBase) || 0) + (w.critMod || 0) + buffSum(att, 'crit'), 0, 100);
+  return clamp(10 + ((att && att.critBase) || 0) + (w.critMod || 0) + buffSum(att, 'crit') + (职业是(att, '狙击') ? 10 : 0), 0, 100);
 }
 
 /* ---------- 弱点 / 抗性 ---------- */
@@ -84,7 +88,8 @@ function weakList(def, w, o = {}) {
  * 第一期只保留数值类，带特技的条目（地形 / 正面装甲 / GN 全盾 / 光束反射 /
  * SEED 防御 / λ 驱动器 / 减伤）**不做**，等 Claude 出换算方案（方案 6.2）。 */
 const REDUCTIONS = [
-  { id: 'guard', name: '防御姿态', stage: 2, applies: c => !!c.def.defending, def: () => 50 },
+  /* 「防御」指令 / 守护替人挨打：这一下按防御结算 → 防御值 +50（方案第 4 节） */
+  { id: 'guard', name: '防御姿态', stage: 2, applies: c => !!c.defending, def: () => 50 },
   { id: 'physRed', name: '物理减免', stage: 2, applies: c => c.w.dmgType === '物理' && buffSum(c.def, 'physRed') > 0, def: c => buffSum(c.def, 'physRed') },
   { id: 'buffDef', name: '防御增益', stage: 2, applies: c => buffSum(c.def, 'def') !== 0, def: c => buffSum(c.def, 'def') },
   {
@@ -126,6 +131,8 @@ function dmgCore(att, w, def, o = {}) {
   const c = {
     att, def, w, preview: o.preview !== false, crit: !!o.crit, turn: o.turn || 0,
     defMul: defMul(def), steps: [], nullified: false,
+    /* 这一下是不是按防御结算：单位的「防御」指令，或替队友挡下的那一下（方案第 4 节） */
+    defending: !!o.defending || !!def.defending,
   };
   const special = w.dmgType === '特殊', ign = !!w.ignoreDef, useStat = o.useStat !== false;
 
@@ -233,23 +240,31 @@ const healAmount = (u, w) => Math.round(w.power * u.shoot / 100);   // 17-战斗
 
 /* ---------- 一次普通攻击的结算（第一期唯一的攻击路径） ----------
  * 随机数全部走 ctx.rng（带种子，方案 6.1）。返回一条战斗记录用的文本 + 字段。
- * 多段：w.hits 段，每段独立判定命中与暴击；武器写了 w.step 时命中后逐段递减命中（战棋 multi 的做法）。 */
+ * 多段：w.hits 段，每段独立判定命中与暴击；武器写了 w.step 时命中后逐段递减命中（战棋 multi 的做法）。
+ * opts：
+ *   blockPenalty  直射打后排的 −20（方案 3.3）
+ *   defending     这一下按防御结算（守护替队友挨打）
+ *   伤害倍率       守护者本回合自己攻击时 ×0.7（方案第 4 节：伤害 −30%）
+ * 职业特色（方案 6.3）：特种的武器命中后目标防御值 −20（到下回合结束）；尖兵每回合第一次被攻击闪避 +20。 */
 function resolveAttack(att, def, w, ctx, opts = {}) {
   const rng = ctx.rng;
   const blockPenalty = opts.blockPenalty || 0;
+  const 倍率 = opts.伤害倍率 == null ? 1 : opts.伤害倍率;
   const sure = isSure(w);
   const hits = Math.max(1, w.hits || 1);
   const rolls = [];
   let total = 0, landed = 0, crits = 0, p = w.hit;
+  const 尖兵加成 = (职业是(def, '尖兵') && def.尖兵闪避Turn !== ctx.turn) ? 20 : 0;
 
   for (let i = 0; i < hits; i++) {
-    const q = hitRate(att, w, def, { baseHit: p, blockPenalty }).hit;
+    const q = hitRate(att, w, def, { baseHit: p, blockPenalty, turn: ctx.turn }).hit;
     const hit = sure || rng() * 100 < q;
     if (hit) {
       const cr = !sure && rng() * 100 < critRate(w, att);
-      const c = dmgCore(att, w, def, { power: wv(att, w, 'power'), crit: cr, preview: false, turn: ctx.turn });
-      total += c.dmg; landed++; if (cr) crits++;
-      rolls.push(`第 ${i + 1} 段（${sure ? '必中' : q + '%'}）${cr ? '暴击 ' : ''}${c.dmg}`);
+      const c = dmgCore(att, w, def, { power: wv(att, w, 'power'), crit: cr, preview: false, turn: ctx.turn, defending: opts.defending });
+      const d = Math.round(c.dmg * 倍率);
+      total += d; landed++; if (cr) crits++;
+      rolls.push(`第 ${i + 1} 段（${sure ? '必中' : q + '%'}）${cr ? '暴击 ' : ''}${d}`);
       if (c.nullified) break;
       if (w.step) p -= w.step;
     } else {
@@ -260,6 +275,14 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
   }
 
   def.hp = Math.max(0, def.hp - total);
+  /* 尖兵：这一回合的「第一次被攻击闪避 +20」用掉了 */
+  if (尖兵加成) def.尖兵闪避Turn = ctx.turn;
+  /* 特种：命中后目标防御值 −20，持续到下回合结束（同一个来源只留一份，不叠加） */
+  if (landed && 职业是(att, '特种')) {
+    def.buffs = (def.buffs || []).filter(b => b.src !== '特种');
+    def.buffs.push({ src: '特种', def: -20, 剩余: 2 });
+  }
+
   const 段 = hits > 1 ? `${landed}/${hits} 段 ` : '';
   return {
     文本: landed

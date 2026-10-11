@@ -100,7 +100,7 @@ else {
   ok('window.__game 已暴露');
   const checks = [
     ['version', v => typeof v === 'string' && /^\d+\.\d+\.\d+$/.test(v)],
-    ['milestone', v => v === 'M2'],
+    ['milestone', v => v === 'M3'],
     ['ready', v => v === true],
     ['slots', v => v === 6],                                  // 方案 3.1：双方各 2 排 × 3 列
     ['rows', v => v === 2],

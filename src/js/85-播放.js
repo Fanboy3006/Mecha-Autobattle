@@ -33,8 +33,10 @@ const 播放 = {
     this.快进 = false;
     this.当前 = null;
     this.单位 = {};
+    /* 血条从**这一回合开始时**的状态开始走（打一回合之后传进来的快照就是这个状态） */
     for (const u of 战报.我方.concat(战报.敌方)) {
-      this.单位[u.side + ':' + u.slot] = { hp: u.maxHp, maxHp: u.maxHp, shieldHp: u.shield || 0, 死: false };
+      const 满 = u.maxHp, 血 = u.hp != null ? u.hp : 满;
+      this.单位[u.side + ':' + u.slot] = { hp: 血, maxHp: 满, shieldHp: u.shieldHp != null ? u.shieldHp : (u.shield || 0), 死: 血 <= 0 };
     }
     return this;
   },

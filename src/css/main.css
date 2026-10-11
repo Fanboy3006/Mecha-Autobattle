@@ -122,8 +122,23 @@ h3 .small{margin-left:6px;font-weight:400}
 #log li.sys{border-color:var(--accent);color:var(--accent)}
 #log .t{font-family:var(--font-m);color:var(--muted);margin-right:6px}
 
-/* ---------- 结算 ---------- */
-.card.end .eyebrow{font-family:var(--font-d);letter-spacing:.2em;font-size:13px;color:var(--enemy)}
+/* ---------- M3：指令阶段 ---------- */
+button:disabled{opacity:.4;cursor:not-allowed}
+.warn{color:var(--enemy)}
+.uc[data-act]{cursor:pointer}
+.uc[data-act]:hover{border-color:var(--muted)}
+.uc.sel{outline:2px solid var(--accent);outline-offset:-2px}
+.uc .cmd{font-family:var(--font-m);font-size:10px;color:var(--accent);margin-top:2px}
+.uc .intent{font-family:var(--font-m);font-size:10px;color:#ffb38a;margin-top:2px}
+.cmdpanel{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:8px;margin-bottom:10px}
+.cmdpanel h3{margin:0 0 6px}
+.cmdpanel p{margin:4px 0 0}
+.cmds{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:2px}
+#log li.sys2{border-color:var(--accent);color:var(--accent);opacity:.9}
+.filters .mini,.cmds .mini{cursor:pointer}
+.cmdpanel .mini.on{border-color:var(--accent);color:var(--accent)}
+
+/* ---------- 结算 ---------- */.card.end .eyebrow{font-family:var(--font-d);letter-spacing:.2em;font-size:13px;color:var(--enemy)}
 .card.end.win .eyebrow{color:var(--good)}
 .card.end h2{font-family:var(--font-d);letter-spacing:.06em;font-size:30px;margin:2px 0 10px}
 .card.end ul{margin:0;padding-left:18px}

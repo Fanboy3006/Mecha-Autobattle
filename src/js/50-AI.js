@@ -42,7 +42,9 @@ function betterTarget(a, b) {
 function weaponPool(actor, ctx) {
   const pool = usableWeapons(actor, ctx).filter(e => {
     const kind = rangeKindOf(e.t);
-    return kind !== null && !isHealKind(kind) && !isSupportKind(kind);   // 被动 / 修理 / 支援 不参与「进攻」
+    if (kind === null || isHealKind(kind) || isSupportKind(kind)) return false;   // 被动 / 修理 / 支援 不参与「进攻」
+    if (isUltimate(e.t) && actor.holdUlt) return false;   // 大招开关「保留」= 这一回合不放（方案第 4 节）
+    return true;
   });
   const ults = pool.filter(e => ultAllowed(actor, e.t));
   return ults.length ? ults : pool;                  // 大招优先（方案 5.1.1）
@@ -50,13 +52,13 @@ function weaponPool(actor, ctx) {
 
 /* 一台机体对某个敌人最划算的（武器, 期望伤害）。
  * frontAliveNow：敌方前排是否还有人（决定近战能不能够到后排、直射有没有被挡）。 */
-function bestWeaponOn(actor, target, pool, frontAliveNow) {
+function bestWeaponOn(actor, target, pool, frontAliveNow, ctx) {
   let best = null;
   for (const e of pool) {
     const kind = rangeKindOf(e.t);
     const trow = unitRow(target);
     if (!rowReachable(kind, trow, frontAliveNow)) continue;
-    const exp = expectedDamage(actor, target, e.t, { blockPenalty: rowBlockPenalty(kind, trow, frontAliveNow) });
+    const exp = expectedDamage(actor, target, e.t, { blockPenalty: rowBlockPenalty(kind, trow, frontAliveNow, actor), turn: ctx && ctx.turn });
     if (!best || exp > best.exp) best = { entry: e, exp };
   }
   return best;
@@ -67,7 +69,7 @@ function pickSingleTarget(actor, foes, pool, ctx) {
   const frontAliveNow = frontAlive(foes);
   let best = null;
   for (const t of foes) {
-    const w = bestWeaponOn(actor, t, pool, frontAliveNow);
+    const w = bestWeaponOn(actor, t, pool, frontAliveNow, ctx);
     if (!w) continue;
     const score = targetScore(w.exp, t);
     if (betterTarget(score, best && best.score)) best = { target: t, entry: w.entry, exp: w.exp, score };
@@ -98,6 +100,17 @@ function chooseAttack(actor, ctx) {
   if (!foes.length) return null;
   const pool = weaponPool(actor, ctx);
   if (!pool.length) return null;
+
+  /* 「集火 ▶ 目标」（方案第 4 节）：玩家点了谁就打谁；打不到（例如近战够不到后排）
+     就按「进攻」处理，继续往下走。 */
+  if (actor.指令 === '集火') {
+    const 指定 = (actor.指定目标 && actor.指定目标.hp > 0) ? actor.指定目标
+      : (actor.指定目标位 != null ? foes.find(t => t.slot === actor.指定目标位) : null);
+    if (指定) {
+      const w = bestWeaponOn(actor, 指定, pool, frontAlive(foes), ctx);
+      if (w) return { kind: 'attack', weapon: w.entry.t, target: 指定, expected: w.exp, entry: w.entry, 集火: true };
+    }
+  }
 
   const areaPool = pool.filter(e => isAreaKind(rangeKindOf(e.t)));
   const singlePool = pool.filter(e => !isAreaKind(rangeKindOf(e.t)));
@@ -186,10 +199,10 @@ function aiAction(actor, ctx) {
 
 /* ---------- 5.2 敌方 ---------- */
 /* 敌方的「战斗分类」：模板的 tags.战斗分类；没有就按武器推断。 */
-function combatClassOf(u) {
+function combatClassOf(u, ctx) {
   const t = u.tags && u.tags.战斗分类;
   if (t) return t;
-  const kinds = usableWeapons(u, { turn: 1 }).map(e => rangeKindOf(e.t));
+  const kinds = usableWeapons(u, ctx || { turn: 1 }).map(e => rangeKindOf(e.t));
   if (kinds.every(k => k === KIND_MELEE)) return '近卫';
   if (kinds.some(k => k === KIND_INDIRECT)) return '狙击';
   return '重装';
@@ -201,7 +214,7 @@ function pickLowestHp(actor, foes, pool, ctx) {
   let best = null;
   for (const t of foes) {
     if (unitRow(t) !== ROW_FRONT) continue;
-    const w = bestWeaponOn(actor, t, pool, frontAliveNow);
+    const w = bestWeaponOn(actor, t, pool, frontAliveNow, ctx);
     if (!w) continue;
     if (!best || t.hp < best.target.hp) best = { target: t, entry: w.entry, exp: w.exp, score: targetScore(w.exp, t) };
   }
@@ -224,7 +237,7 @@ function enemyAction(actor, ctx) {
   const pool = weaponPool(actor, ctx);
   if (!pool.length) return null;
 
-  const cls = combatClassOf(actor);
+  const cls = combatClassOf(actor, ctx);
   const allMelee = pool.every(e => rangeKindOf(e.t) === KIND_MELEE);
 
   let pick = null;

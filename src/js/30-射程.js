@@ -58,10 +58,14 @@ function rowReachable(kind, targetRow, frontAlive) {
   return true;
 }
 
-/** 「被挡」的命中修正：直射打后排、而敌方前排还有人 → −20；其他情况 0。 */
-function rowBlockPenalty(kind, targetRow, frontAlive) {
+/** 「被挡」的命中修正：直射打后排、而敌方前排还有人 → −20；其他情况 0。
+ *  职业特色（方案 6.3）：我方的狙击打后排没有这个惩罚。 */
+function rowBlockPenalty(kind, targetRow, frontAlive, attacker) {
+  if (职业是(attacker, '狙击')) return 0;
   return (kind === KIND_DIRECT && targetRow === ROW_BACK && frontAlive) ? -20 : 0;
 }
+/* 方案 6.3 的职业特色都只对我方生效（敌人按梯队，没有「职业」）。 */
+const 职业是 = (u, k) => !!u && u.side === 'ally' && !!(u.tags && u.tags.战斗分类 === k);
 
 /** 范围武器的落点：area 决定打哪些格子（没写 area 默认 row）。返回 slot 数组。 */
 function areaSlots(w, row, col) {

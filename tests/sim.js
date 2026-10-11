@@ -180,21 +180,37 @@ const 敌军20 = [
   { 键: 'drone', 位: 3, 等级: 5 }, { 键: 'sniper', 位: 4, 等级: 5 },
 ];
 
-/* ---- 7a. 不跳过开场冷却：第 1 回合「再动」还不能用，她只能放月光祝福 ---- */
-const 甲B = G.makeUnits(队伍20, 'ally'), 乙B = G.makeUnits(敌军20, 'enemy');
-const ctxB = G.newBattle(甲B, 乙B, null, G.mulberry32(20261010));
-G.runTurn(ctxB);
+/* ---- 7a. 不跳过开场冷却：第 1 回合「再动」还不能用，她只能放月光祝福 ----
+ * 这里换一支硬一点的敌人（6 台 Lv20），保证第 1 回合打不完 —— 不然回合结束时不会走 endTurn，
+ * 「增益到本回合结束就消失」就试不出来。 */
+const 敌军久 = [
+  { 键: 'grunt', 位: 0, 等级: 20 }, { 键: 'grunt', 位: 1, 等级: 20 }, { 键: 'shield', 位: 2, 等级: 20 },
+  { 键: 'drone', 位: 3, 等级: 20 }, { 键: 'sniper', 位: 4, 等级: 20 }, { 键: 'swarm', 位: 5, 等级: 20 },
+];
+const ctxB = G.开局(队伍20, 敌军久, 20261010);
+const 甲B = ctxB.allies;
+G.打一回合(ctxB);
 const 增益B = ctxB.log.filter(x => x.类型 === '增益');
 const 再动B = ctxB.log.filter(x => x.类型 === '再动');
 if (增益B.length) {
   ok(`月光祝福放了 ${增益B.length} 次：${增益B[0].文本}`);
   if (增益B.every(x => Array.isArray(x.目标) && !x.目标.includes('M1'))) ok('目标是全体队友且不含自己');
   else bad('月光祝福的目标里出现了自己');
+  /* 增益真的进了命中公式：手动挂一样的增益，命中率立刻变化（公式层面的证据） */
+  const 甲 = ctxB.allies.find(u => u.hp > 0), 乙 = ctxB.enemies.find(u => u.hp > 0);
+  const e = 甲 && 甲.weapons.find(x => { const k = G.rangeKindOf(x.t); return k && k !== '修理' && k !== '支援'; });
+  if (甲 && 乙 && e) {
+    const 基 = G.hitRate(甲, e.t, 乙, { baseHit: 50 }).hit;
+    乙.buffs.push({ src: '测试', eva: 15 });
+    const 闪 = G.hitRate(甲, e.t, 乙, { baseHit: 50 }).hit;
+    乙.buffs = 乙.buffs.filter(b => b.src !== '测试');
+    甲.buffs.push({ src: '测试', hit: 15 });
+    const 中 = G.hitRate(甲, e.t, 乙, { baseHit: 50 }).hit;
+    甲.buffs = 甲.buffs.filter(b => b.src !== '测试');
+    if (闪 === Math.max(0, 基 - 15) && 中 === Math.min(100, 基 + 15)) ok(`增益真的进了命中公式：给目标闪避 +15 → 命中 ${基}%→${闪}%；给自己命中 +15 → ${基}%→${中}%`);
+    else bad(`增益没进命中公式：基线 ${基}% / 加闪避 ${闪}% / 加命中 ${中}%`);
+  }
   const 有buff = 甲B.find(u => u.key === 'B2');
-  const b = (有buff.buffs || []).find(x => x.src === '月光祝福');
-  if (b && b.eva === 15 && b.hit === 15) ok(`增益确实挂到队友身上（B2：闪避 +${b.eva}、命中 +${b.hit}），命中率会吃到它`);
-  else bad(`队友身上没有月光祝福的增益：${JSON.stringify(b)}`);
-  G.endTurn(ctxB);
   if (!(有buff.buffs || []).some(x => x.src === '月光祝福')) ok('回合结束后增益消失（「持续到本回合结束」生效）');
   else bad('回合结束后增益还在');
 } else bad('Feena 第 1 回合没放月光祝福（支援类武器没进 AI 的可用列表？）');
@@ -203,15 +219,10 @@ else bad('第 1 回合就放出了「再动」，开场冷却没生效');
 
 /* ---- 7b. 跳过「再动」的开场冷却，专门验它的效果 ---- */
 const 甲C = G.makeUnits(队伍20, 'ally'), 乙C = G.makeUnits(敌军20, 'enemy');
-const ctxC = G.newBattle(甲C, 乙C, null, G.mulberry32(20261010));
-for (const u of 甲C) for (const e of u.weapons) if (e.t.grant) e.readyTurn = 1;   // 只改这一条，其他照规则
+const ctxC = G.开局(队伍20, 敌军20, 20261010);
+for (const u of ctxC.allies) for (const e of u.weapons) if (e.t.grant) e.readyTurn = 1;   // 只改这一条，其他照规则
 let 护栏 = 0;
-while (!ctxC.result && ctxC.turn <= 12 && 护栏++ < 40) {
-  G.runTurn(ctxC);
-  if (ctxC.result) break;
-  if (ctxC.turn >= 12) { ctxC.result = { 结果: '败', 原因: '12 回合' }; break; }
-  G.endTurn(ctxC); ctxC.turn++;
-}
+while (!ctxC.result && 护栏++ < 14) G.打一回合(ctxC);
 const 录C = ctxC.log;
 const 再动C = 录C.filter(x => x.类型 === '再动');
 const 余响 = 录C.filter(x => x.类型 === '残月余响');
@@ -235,10 +246,8 @@ if (余响.length) {
 } else bad('残月的余响一次都没放（被动自动释放没接上？）');
 
 /* ---- 7d. Lv30 的「满月·月蚀」：数据里写明「冷却好时代替残月的余响」，一回合只放一把 ---- */
-const A30 = G.makeUnits([{ 键: 'M1', 位: 5, 等级: 30 }, { 键: 'B2', 位: 0, 等级: 30 }], 'ally');
-const B30 = G.makeUnits([{ 键: 'grunt', 位: 0, 等级: 10 }, { 键: 'shield', 位: 1, 等级: 10 }], 'enemy');
-const ctx30 = G.newBattle(A30, B30, null, G.mulberry32(5));
-G.runTurn(ctx30);
+const ctx30 = G.开局([{ 键: 'M1', 位: 5, 等级: 30 }, { 键: 'B2', 位: 0, 等级: 30 }], [{ 键: 'grunt', 位: 0, 等级: 10 }, { 键: 'shield', 位: 1, 等级: 10 }], 5);
+G.打一回合(ctx30);
 const 名30 = [...new Set(ctx30.log.filter(x => x.类型 === '残月余响').map(x => x.武器))];
 if (名30.length <= 1) ok(`一回合只自动放一把余响类武器（本回合：${名30.join('、') || '无'}）`);
 else bad(`一回合放了多把余响类武器：${名30.join('、')}`);
