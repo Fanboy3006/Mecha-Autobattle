@@ -364,6 +364,12 @@ function resolveAction(actor, action, ctx) {
     if (rec.字段.伤害 > 0) 势力友军攻击后(ctx, actor, 实际, rec.字段);
   }
   spendWeapon(actor, action.entry);
+  /* ★ 2026-10-11 新加的势力钩子 `势力武器用后(ctx, 使用者, 条目, 武器)`（框架第 12 个，`72-势力.js`）：
+     触发时机 = **这一把武器真的打出去了**、普通冷却刚设上（`spendWeapon()` 之后，只有「攻击」走得到这里）。
+     战棋的等价物是 `strikeResolved`（`17b-角色机制.js:87-91` 的 `evadeCdCut` 就在那个时机算，
+     而且那里的 `consume(w)` 也是出手一开始就把冷却设好）→ 第一条用它的是 **ATX**（余量一次性抵冷却）。
+     ★ 没有势力条目写它 → 空循环，一个字节都不变。 */
+  势力武器用后(ctx, actor, action.entry, w);
   return { 击破 };
 }
 
