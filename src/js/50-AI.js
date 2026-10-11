@@ -27,6 +27,12 @@ const ULT_UNLOCKS = [20, 30];
 const isUltimate = w => !!w && ULT_UNLOCKS.includes(w.unlock);
 const ultAllowed = (u, w) => isUltimate(w) && !u.holdUlt;
 
+/* ---------- 修理阈值（作者 2026-10-10 拍板） ----------
+ * 有人 HP 比例**低于这个值**时才优先修理；否则这个单位正常输出 / 上 debuff。
+ * 出处：作者 2026-10-10 拍板（原来 M1 写的是「有伤就修」，见任务板 M1 段第 5 条）。
+ * 要调就改这一个常量。0.6 = 60%。 */
+const 修理阈值 = 0.6;
+
 /* ---------- 5.1.2 目标优先级 ---------- */
 /* 「能击破的目标优先（多个时打 HP 最高的那个，不浪费）；没有能击破的，
  *   打「期望伤害 ÷ 目标当前 HP」最大的。」                                         */
@@ -143,13 +149,15 @@ function chooseAttack(actor, ctx) {
 }
 
 /* ---------- 修理：我方任意一台，优先 HP 比例最低的（方案 3.3） ----------
- * 方案没有写「什么时候该修理、而不是进攻」，这里先按最简单的一条实现：
- * 有能用修理武器、且场上有受伤队友（hp < maxHp）时就修理。等作者定策略。 */
+ * 什么时候该修理、而不是进攻：**有人 HP 比例低于 修理阈值（0.6 = 60%）时才修**，
+ * 否则返回 null、让 `aiAction` 往下走去正常出手（作者 2026-10-10 拍板，阈值在上面）。
+ * 注意：修理武器拿不拿得到由 `usableWeapons` / `weaponPlayable` 决定，这里**不额外卡条件**，
+ * 所以修理工在该修的时候一定拿得到修理武器（tests/heal.js 第 [2] 段盯着这一条）。 */
 function chooseHeal(actor, ctx) {
   const pool = usableWeapons(actor, ctx).filter(e => isHealKind(rangeKindOf(e.t)));
   if (!pool.length) return null;
   const mates = livingOf(actor.side, ctx);
-  const hurt = mates.filter(u => u.hp < u.maxHp);
+  const hurt = mates.filter(u => u.hp / u.maxHp < 修理阈值);
   if (!hurt.length) return null;
   hurt.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp) || a.slot - b.slot);
   const target = hurt[0];
@@ -194,8 +202,10 @@ function chooseSupport(actor, ctx) {
 }
 
 /* ---------- 我方一台机体的动作 ----------
- * 顺序：修理 → 进攻 → 支援。方案只写了「进攻」怎么挑；没有攻击手段的机体（例如
- * 第一期的 Feena）走到最后一步，用她唯一能做的事（月光祝福 / 再动），而不是直接跳过。 */
+ * 顺序：修理 → 进攻 → 支援。修理只在**有人 HP 比例低于 修理阈值（60%）**时才抢在进攻前面
+ * （作者 2026-10-10 拍板）；没人低于阈值就正常输出 / 上 debuff，一点血都不掉也不出手修。
+ * 方案只写了「进攻」怎么挑；没有攻击手段的机体（例如第一期的 Feena）走到最后一步，
+ * 用她唯一能做的事（月光祝福 / 再动），而不是直接跳过。 */
 function aiAction(actor, ctx) {
   const heal = chooseHeal(actor, ctx);
   if (heal) return heal;

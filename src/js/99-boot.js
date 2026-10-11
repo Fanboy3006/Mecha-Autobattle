@@ -39,6 +39,7 @@ const G = {
   expectedDamage, resolveAttack, usableWeapons, healAmount, weaponPlayable, wv,
   /* 引擎内部（给测试驱动一场战斗用） */
   endTurn, checkResult, aiAction, enemyAction, grantTargetOf, runAutoCast, actionOrder,
+  chooseHeal, 修理阈值,       // 修理策略（作者 2026-10-10：低于 60% 才修）——tests/heal.js 直接读它
   守护关系, 守护者, 嘲讽, 单位动作,
   /* 射程换算 / 公式（给测试和以后的界面用） */
   rangeKindOf, rowReachable, rowBlockPenalty, areaSlots, ROW_FRONT, ROW_BACK,
