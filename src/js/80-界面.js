@@ -184,7 +184,8 @@ const 界面 = {
       case '等级': return this.设等级(Number(参));
       case '势力': return this.设势力(参);
       case '编成': return this.设编成(Number(参));
-      case '开战': return this.开战();
+      case '开战': return this.肉鸽编队模式 ? this.从编队开战肉鸽() : this.开战();
+      case '备战': return this.准备肉鸽编队();
       case '开打': return this.开打();
       case '暂停': return this.暂停();
       case '二倍速': return this.二倍速();
@@ -202,6 +203,7 @@ const 界面 = {
       case '开新局': return this.开新局();
       case '继续上一局': return this.继续上一局();
       case '回大地图': return this.开屏('大地图');
+      case '备战': return this.准备肉鸽编队();
       case '去节点': return this.去节点(参);
       case '打这一场': return this.打这一场();
       case '去招募': return this.开屏('招募');
@@ -270,13 +272,17 @@ const 界面 = {
   /* ---------------- 编队 ---------------- */
   编队屏() {
     const B = this.编队;
+    /* 肉鸽里进战斗前会先走这一步：候选项是**名册**（RUN.队伍），不是全部 34 名 */
+    const 肉鸽模式 = !!this.肉鸽编队模式 && !!肉鸽.RUN;
     const 势力们 = ['全部'].concat(FACTIONS);
-    const 候选 = ALLY_T.filter(t => B.势力 === '全部' || inFaction(t, B.势力));
-    const 列表 = 候选.map(t => {
-      const p = this.预览(t.mech, B.等级);
+    const 候选 = 肉鸽模式
+      ? 肉鸽.RUN.队伍.map(m => Object.assign({}, tplOf(m.键), { 等级: m.等级 }))
+      : ALLY_T.filter(t => B.势力 === '全部' || inFaction(t, B.势力));
+    const 列表 = 候选.filter(t => t && t.mech).map(t => {
+      const p = this.预览(t.mech, t.等级 || B.等级);
       const 已上 = B.出击.some(x => x.键 === t.mech);
       return `<button class="pick${B.选中 === t.mech ? ' on' : ''}${已上 ? ' used' : ''}" data-act="选人:${t.mech}" data-drag="候选:${t.mech}" style="--fc:${势力色(t.mech)}">
-        <span class="pk-top">${图标.卡(t.mech, 'ally', 图标.尺寸.列表)}<span class="pk-nm"><b>${t.pilot}</b><small>${t.mech} · ${t.tags.战斗分类} · ${t.tags.势力}</small></span></span>
+        <span class="pk-top">${图标.卡(t.mech, 'ally', 图标.尺寸.列表)}<span class="pk-nm"><b>${t.pilot}</b><small>${t.mech} · ${t.tags.战斗分类} · ${t.tags.势力}${肉鸽模式 ? ` · Lv${t.等级}` : ''}</small></span></span>
         <span class="nums">速 ${p.速度} · HP ${p.hp}${p.大招.length ? ` · 大招 ${p.大招.length}` : ''}</span>
       </button>`;
     }).join('');
@@ -305,26 +311,29 @@ const 界面 = {
       return `<option value="${i}"${i === B.编成序号 ? ' selected' : ''}>${名}</option>`;
     }).join('');
     const 选中 = B.选中 ? this.预览(B.选中, B.等级) : null;
+    const 当前节点 = 肉鸽模式 ? 肉鸽.当前节点() : null;
     return `<section class="编队屏">
       <div class="col 候选" data-drop="候选">
-        <h3>机师（${候选.length} 名）<span class="small">拖到右边格子里，或者点一名再点格子；格子之间也能拖（互换）</span></h3>
-        <div class="filters">
+        <h3>${肉鸽模式 ? `名册（${候选.length} 台）` : `机师（${候选.length} 名）`}<span class="small">拖到右边格子里，或者点一名再点格子；格子之间也能拖（互换）</span></h3>
+        ${肉鸽模式 ? '' : `<div class="filters">
           ${[10, 20, 30].map(n => `<button class="mini${B.等级 === n ? ' on' : ''}" data-act="等级:${n}">Lv${n}</button>`).join('')}
           <span class="sep"></span>
           ${势力们.map(f => `<button class="mini${B.势力 === f ? ' on' : ''}" data-act="势力:${f}">${f}</button>`).join('')}
-        </div>
+        </div>`}
         <div class="picks">${列表}</div>
       </div>
       <div class="col 站位">
-        <h3>出击编队（${B.出击.length} / ${SLOTS}）</h3>
+        <h3>出击编队（${B.出击.length} / ${SLOTS}）<span class="small">上排 = 后排 2 格，下排 = 前排 3 格</span></h3>
         <div class="grid">${格.join('')}</div>
         <div class="acts">
-          <button data-act="默认五人队">默认五人队</button>
+          <button data-act="默认五人队">${肉鸽模式 ? '把名册前 5 台摆上' : '默认五人队'}</button>
           <button data-act="清空">清空</button>
         </div>
-        <h3>敌方编成<span class="small">（方案第 10 节第 4 条：这 3 条是初稿，等作者配）</span></h3>
-        <select id="编成选" data-act="编成" class="sel">${编成选项}</select>
-        <div class="acts"><button class="primary" data-act="开战">开战 →</button></div>
+        ${肉鸽模式 ? `<p class="small">这一场：第 ${肉鸽.RUN.层} 层 <b>${节点类型表[当前节点 && 当前节点.类型] ? 节点类型表[当前节点.类型].名 : '作战'}</b>（敌人由编成表随机抽；敌人等级按层数走）</p>
+          <div class="acts"><button class="primary" data-act="开战">开战 →</button><button data-act="回大地图">回大地图</button></div>`
+        : `<h3>敌方编成<span class="small">（方案第 10 节第 4 条：这 3 条是初稿，等作者配）</span></h3>
+          <select id="编成选" data-act="编成" class="sel">${编成选项}</select>
+          <div class="acts"><button class="primary" data-act="开战">开战 →</button></div>`}
         ${选中 ? `<p class="small">已选：${this.单位名(B.选中, 'ally')}（${B.选中}，速度 ${选中.速度}${选中.大招.length ? `，大招：${选中.大招.join('、')}，第 ${选中.开场} 回合起` : '，没有大招'}）</p>` : '<p class="small">还没选机师。</p>'}
       </div>
     </section>`;
@@ -624,8 +633,12 @@ const 界面 = {
     const R = 肉鸽.RUN;
     const 条目 = 肉鸽.抽当前编成();
     if (!条目) { 肉鸽界面.提示 = `第 ${R.层} 层没有「${肉鸽.当前战斗类型()}」的编成，写进编成表再打。`; this.开屏('大地图'); return false; }
-    const 我方 = R.队伍.map((m, i) => ({ 键: m.键, 位: Math.min(i, SLOTS - 1), 等级: m.等级 }));
+    /* 出击名单：优先用编队界面摆好的阵（RUN.出击阵 = [{键, 位}]），没有就用名册前几台 */
+    const 阵 = (R.出击阵 && R.出击阵.length) ? R.出击阵 : R.队伍.slice(0, 肉鸽数值.出击上限).map((m, i) => ({ 键: m.键, 位: i }));
+    const 等级 = 键 => { const m = R.队伍.find(x => x.键 === 键); return (m && m.等级) || 肉鸽数值.招募等级; };
+    const 我方 = 阵.map(x => ({ 键: x.键, 位: x.位, 等级: 等级(x.键) }));
     const 敌方 = 编成到单位(条目, R.场次).map(u => ({ 键: u.key, 位: u.slot, 等级: u.lv }));
+    this.肉鸽编队模式 = false;
     this.种子 = (R.种子 + R.层 * 131 + R.场次 * 17) >>> 0;
     this.肉鸽战斗 = { 类型: 肉鸽.当前战斗类型(), 条目 };
     this.ctx = 开局(我方, 敌方, this.种子);
@@ -635,6 +648,28 @@ const 界面 = {
     this.阶段 = '指令';
     this.开屏('战斗');
     return this.ctx;
+  },
+  /** 肉鸽：进战斗前先编队（方案 8.1 的第 3 条）——候选项是名册，摆进前 3 后 2 */
+  准备肉鸽编队() {
+    const R = 肉鸽.RUN;
+    if (!R) return false;
+    this.肉鸽编队模式 = true;
+    this.编队.选中 = null;
+    this.编队.出击 = (R.出击阵 && R.出击阵.length ? R.出击阵 : R.队伍.slice(0, 肉鸽数值.出击上限).map((m, i) => ({ 键: m.键, 位: i })))
+      .map(x => ({ 键: x.键, 位: x.位 }));
+    this.开屏('编队');
+    return this.编队.出击;
+  },
+  /** 编队界面点「开战」：把摆好的阵记进 RUN，再开始这一场战斗 */
+  从编队开战肉鸽() {
+    const R = 肉鸽.RUN;
+    if (!R) return false;
+    const 阵 = this.编队.出击.slice().sort((a, b) => a.位 - b.位);
+    if (!阵.length) { this.提示 = '先把机师拖进格子里。'; this.刷(); return false; }
+    R.出击阵 = 阵.map(x => ({ 键: x.键, 位: x.位 }));
+    R.出击 = 阵.map(x => x.键);
+    肉鸽.存档();
+    return this.打这一场();
   },
   招募(键) {
     const R = 肉鸽.RUN;
@@ -680,5 +715,11 @@ const 界面 = {
   设等级(n) { this.编队.等级 = n; this.预览缓存 = {}; this.刷(); return n; },
   设势力(f) { this.编队.势力 = f; this.刷(); return f; },
   设编成(i) { this.编队.编成序号 = Math.max(0, Math.min(编成表.length - 1, i || 0)); this.刷(); return this.编队.编成序号; },
-  默认五人队() { this.编队.出击 = 默认五人队.map(x => ({ 键: x.键, 位: x.位 })); this.刷(); return this.编队.出击; },
+  默认五人队() {
+    /* 肉鸽模式：把名册前几台摆上；练习模式：默认五人队 */
+    if (this.肉鸽编队模式 && 肉鸽.RUN) this.编队.出击 = 肉鸽.RUN.队伍.slice(0, 肉鸽数值.出击上限).map((m, i) => ({ 键: m.键, 位: i }));
+    else this.编队.出击 = 默认五人队.map(x => ({ 键: x.键, 位: x.位 }));
+    this.刷();
+    return this.编队.出击;
+  },
 };

@@ -66,7 +66,7 @@ const 肉鸽界面 = {
       <div class="rv-map2">${列.join('')}</div>
       <p class="small">队伍：${队伍}</p>
       <div class="acts">
-        ${战斗类 ? `<button class="primary" data-act="打这一场">打这一场（${节点类型表[当前.类型].名}）→</button>` : ''}
+        ${战斗类 ? `<button class="primary" data-act="备战">编队出战（${节点类型表[当前.类型].名}）→</button>` : ''}
         ${当前 && 当前.类型 === '招募' ? `<button class="primary" data-act="去招募">招募 →</button>` : ''}
         ${当前 && 当前.类型 === '补给' ? `<button class="primary" data-act="补给">领取补给 →</button>` : ''}
         ${当前 && 当前.类型 === '奇遇' ? `<button class="primary" data-act="去奇遇">看看奇遇 →</button>` : ''}
