@@ -33,7 +33,7 @@ function 编成到单位(条目, 场次 = 0) {
   const 前排 = 条目.前 || [], 后排 = 条目.后 || [];
   const 列表 = [];
   前排.forEach((键, i) => 列表.push({ 键, 位: i, 等级: runEnemyLv(kind, 条目.层, 场次) + TIER_LV[tierOfEnemy(键)] }));
-  后排.forEach((键, i) => 列表.push({ 键, 位: COLS + i, 等级: runEnemyLv(kind, 条目.层, 场次) + TIER_LV[tierOfEnemy(键)] }));
+  后排.forEach((键, i) => 列表.push({ 键, 位: slotOf(ROW_BACK, i), 等级: runEnemyLv(kind, 条目.层, 场次) + TIER_LV[tierOfEnemy(键)] }));
   return makeUnits(列表, 'enemy');
 }
 

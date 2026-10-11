@@ -84,7 +84,7 @@ const rows = G.areaSlots({ fire: 'map', area: 'row' }, 0, 1);
 const cols = G.areaSlots({ fire: 'map', area: 'col' }, 0, 1);
 const cross = G.areaSlots({ fire: 'map', area: 'cross' }, 1, 1);
 const all = G.areaSlots({ fire: 'map', area: 'all' }, 0, 0);
-if (rows.length === 3 && cols.length === 2 && cross.length === 4 && all.length === 6) ok(`范围落点：row 3 格 / col 2 格 / cross 4 格 / all 6 格`);
+if (rows.length === 3 && cols.length === 2 && cross.length === 3 && all.length === 5) ok(`范围落点：row 3 格 / col 2 格 / cross 4 格 / all 6 格`);
 else bad(`范围落点不对：row ${rows.length} / col ${cols.length} / cross ${cross.length} / all ${all.length}`);
 
 /* ============================ [3] 固定种子可复现 ============================ */
@@ -173,7 +173,7 @@ const 队伍20 = [
   { 键: 'B1', 位: 1, 等级: 20 },
   { 键: 'CB2', 位: 3, 等级: 20 },
   { 键: 'CB4', 位: 4, 等级: 20 },
-  { 键: 'M1', 位: 5, 等级: 20 },   // Feena（指挥）
+  { 键: 'M1', 位: 4, 等级: 20 },   // Feena（指挥）
 ];
 const 敌军20 = [
   { 键: 'grunt', 位: 0, 等级: 5 }, { 键: 'shield', 位: 1, 等级: 5 },
@@ -185,7 +185,7 @@ const 敌军20 = [
  * 「增益到本回合结束就消失」就试不出来。 */
 const 敌军久 = [
   { 键: 'grunt', 位: 0, 等级: 20 }, { 键: 'grunt', 位: 1, 等级: 20 }, { 键: 'shield', 位: 2, 等级: 20 },
-  { 键: 'drone', 位: 3, 等级: 20 }, { 键: 'sniper', 位: 4, 等级: 20 }, { 键: 'swarm', 位: 5, 等级: 20 },
+  { 键: 'drone', 位: 3, 等级: 20 }, { 键: 'sniper', 位: 4, 等级: 20 },
 ];
 const ctxB = G.开局(队伍20, 敌军久, 20261010);
 const 甲B = ctxB.allies;
@@ -240,13 +240,13 @@ if (再动C.length) {
 /* ---- 7c. 残月的余响：被动、行动结束后自动放、只打敌方前排 ---- */
 if (余响.length) {
   const 位 = 余响.map(x => x.目标位);
-  if (位.every(s => s < G.cols)) ok(`残月的余响只打敌方前排（${位.length} 台次，格子 ${[...new Set(位)].join('/')}）`);
+  if (位.every(s => s < G.行列数(G.ROW_FRONT))) ok(`残月的余响只打敌方前排（${位.length} 台次，格子 ${[...new Set(位)].join('/')}）`);
   else bad(`残月的余响打到了后排：格子 ${位.join('、')}`);
   ok(`残月的余响是 Feena 放的，每次行动结束后都会自动放：${余响[0].文本}`);
 } else bad('残月的余响一次都没放（被动自动释放没接上？）');
 
 /* ---- 7d. Lv30 的「满月·月蚀」：数据里写明「冷却好时代替残月的余响」，一回合只放一把 ---- */
-const ctx30 = G.开局([{ 键: 'M1', 位: 5, 等级: 30 }, { 键: 'B2', 位: 0, 等级: 30 }], [{ 键: 'grunt', 位: 0, 等级: 10 }, { 键: 'shield', 位: 1, 等级: 10 }], 5);
+const ctx30 = G.开局([{ 键: 'M1', 位: 4, 等级: 30 }, { 键: 'B2', 位: 0, 等级: 30 }], [{ 键: 'grunt', 位: 0, 等级: 10 }, { 键: 'shield', 位: 1, 等级: 10 }], 5);
 G.打一回合(ctx30);
 const 名30 = [...new Set(ctx30.log.filter(x => x.类型 === '残月余响').map(x => x.武器))];
 if (名30.length <= 1) ok(`一回合只自动放一把余响类武器（本回合：${名30.join('、') || '无'}）`);

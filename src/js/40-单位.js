@@ -13,8 +13,6 @@ const otherSide = s => s === 'ally' ? 'enemy' : 'ally';
 const unitRow = u => rowOfSlot(u.slot);
 const unitCol = u => colOfSlot(u.slot);
 const speedOf = u => Math.round(u.mov * 10 + u.eva / 2);      // 方案 3.2
-/* 格子的人话名字：前1 / 后3（界面上和战斗记录里都用它） */
-const 位名 = 位 => `${位 < COLS ? '前' : '后'}${位 % COLS + 1}`;
 /* 职业（方案 6.3）：职业特色只对我方生效，敌人按梯队。判定函数在 30-射程.js。 */
 const 战斗分类 = u => (u && u.tags && u.tags.战斗分类) || null;
 

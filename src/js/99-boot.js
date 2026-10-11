@@ -17,8 +17,8 @@ const G = {
   version: VERSION,
   milestone: MILESTONE,
   ready: false,
-  slots: SLOTS,          // 6：双方各 2 排 × 3 列（方案 3.1）
-  rows: ROWS, cols: COLS,
+  slots: SLOTS,          // 双方各几个位置（现在「前 3 后 2」= 5，阵型在 05-阵型.js 里配）
+  rows: ROWS, 行列数, 阵型表, 行名, 位名, 列上所有格,
   mulberry32,            // 带种子的随机数（方案 6.1）
 
   /* ---- 界面 / 播放（M2） ---- */

@@ -116,6 +116,23 @@ function 回合开始(ctx) {
   }
 }
 
+/* ---------- 换位：算出该换到哪个格子（作者 2026-10-10 定：按列对位） ----------
+ *   1. 同一列的另一排有这一格 → 就用它（对面有人就互换，空着就移过去）；
+ *   2. 没有对位格（前 3 后 2 时前排的第 3 列）→ 在本排里找空位，没空位就和本排第一个队友互换；
+ *   3. 本排也没有别的格子 → 返回 null（这次换位作罢）。 */
+function 换位目标(ctx, actor) {
+  const r = rowOfSlot(actor.slot), c = colOfSlot(actor.slot);
+  const 对排 = r === ROW_FRONT ? ROW_BACK : ROW_FRONT;
+  if (有这一列(对排, c)) return slotOf(对排, c);
+  const 占 = new Map(livingOf(actor.side, ctx).map(u => [u.slot, u]));
+  const 本排 = [];
+  for (let i = 0; i < 行列数(r); i++) 本排.push(slotOf(r, i));
+  const 空位 = 本排.filter(位 => 位 !== actor.slot && !占.has(位));
+  if (空位.length) return 空位[0];
+  const 队友位 = 本排.filter(位 => 位 !== actor.slot && 占.has(位));
+  return 队友位.length ? 队友位[0] : null;
+}
+
 /* ---------- 一个单位这次行动做什么 ---------- */
 function 单位动作(u, ctx) {
   if (u.side === 'enemy') return enemyAction(u, ctx);
@@ -204,14 +221,19 @@ function resolveAction(actor, action, ctx) {
     return 空;
   }
 
-  /* 换位（方案第 4 节）：和同一列另一排交换；对面是空位就直接移过去；本回合不攻击 */
+  /* 换位（方案第 4 节 + 作者 2026-10-10：按列对位）：和同一列的另一排交换；对面是空位就直接移过去；
+     前排多出来、后排没有对位的那一列（前 3 后 2 时的前 3），就在本排里换空位 / 换队友。本回合不攻击。 */
   if (action.kind === 'swap') {
-    const 列 = colOfSlot(actor.slot);
-    const 目标位 = actor.slot < COLS ? slotOf(ROW_BACK, 列) : slotOf(ROW_FRONT, 列);
+    const 目标位 = 换位目标(ctx, actor);
+    if (目标位 == null) {
+      pushLog(ctx, `${actor.name} 没有可以换的位置（作罢）`, Object.assign({ 类型: '换位', 结果: '作罢' }, 谁(actor)));
+      return 空;
+    }
     const 对方 = livingOf(actor.side, ctx).find(x => x.slot === 目标位);
-    if (对方) { const t = actor.slot; actor.slot = 对方.slot; 对方.slot = t; }
+    const 原 = actor.slot;
+    if (对方) { actor.slot = 对方.slot; 对方.slot = 原; }
     else actor.slot = 目标位;
-    pushLog(ctx, `${actor.name} 换位到 ${位名(actor.slot)}${对方 ? `（和 ${对方.name} 互换）` : ''}`, Object.assign({ 类型: '换位', 位: actor.slot }, 谁(actor)));
+    pushLog(ctx, `${actor.name} 换位到 ${位名(actor.slot)}${对方 ? `（和 ${对方.name} 互换）` : ''}`, Object.assign({ 类型: '换位', 位: actor.slot, 原: 原 }, 谁(actor)));
     return 空;
   }
 

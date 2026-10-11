@@ -102,9 +102,9 @@ else {
     ['version', v => typeof v === 'string' && /^\d+\.\d+\.\d+$/.test(v)],
     ['milestone', v => v === 'M3'],
     ['ready', v => v === true],
-    ['slots', v => v === 6],                                  // 方案 3.1：双方各 2 排 × 3 列
+    ['slots', v => v === 5],                                  // 作者 2026-10-10：暂时「前 3 后 2」= 5 格
     ['rows', v => v === 2],
-    ['cols', v => v === 3],
+    ['行列数', v => typeof v === 'function' && v(0) === 3 && v(1) === 2],   // 前排 3 格、后排 2 格
     // 带种子的随机数：同一种子必须给出同一串数（方案 6.1）
     ['mulberry32', v => typeof v === 'function' && v(12345)() === v(12345)()],
     // M1 的战斗内核：simulate(我方, 敌方, 指令, 种子) → 逐条战斗记录

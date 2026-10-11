@@ -92,7 +92,7 @@ h3 .small{margin-left:6px;font-weight:400}
 .战斗屏 .side.ally{border-top:3px solid var(--ally)}
 .战斗屏 .side.enemy{border-top:3px solid var(--enemy)}
 .战斗屏 .side h3{margin:0 0 8px}
-.战斗屏 .row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:6px}
+.战斗屏 .row{display:grid;grid-template-columns:repeat(var(--cols,3),1fr);gap:6px;margin-bottom:6px}
 .uc{position:relative;background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--fc);
   border-radius:6px;padding:5px 7px;min-height:74px;overflow:hidden;transition:transform .12s,box-shadow .12s,opacity .2s}
 .uc .pos{position:absolute;top:4px;right:6px;font-family:var(--font-m);font-size:10px;color:var(--muted)}
@@ -159,7 +159,15 @@ button:disabled{opacity:.4;cursor:not-allowed}
   .uc .head b{font-size:12px}
 }
 
-</style>
+
+/* ---------- 拖动（作者 2026-10-10） ---------- */
+.pick,.slot{touch-action:none;-webkit-user-select:none;user-select:none}
+.pick[draggable],.slot{cursor:grab}
+.dragghost{position:fixed;z-index:99;pointer-events:none;background:var(--panel2);border:1px solid var(--accent);
+  border-radius:4px;padding:3px 8px;font-size:12px;color:var(--fg);box-shadow:0 4px 14px rgba(0,0,0,.5)}
+/* 编队格子：每一排一行，列数由 05-阵型.js 的 --cols 决定（前排 3、后排 2） */
+.编队屏 .grid{display:flex;flex-direction:column;gap:6px}
+.编队屏 .grid .row{display:grid;grid-template-columns:repeat(var(--cols,3),1fr);gap:6px;margin:0}</style>
 
 <div class="app">
   <header class="bar">
@@ -207,9 +215,68 @@ function mulberry32(a) {
   };
 }
 
-/* ---------- 战场常量（方案 3.1：双方各 2 排 × 3 列） ---------- */
-const ROWS = 2, COLS = 3, SLOTS = ROWS * COLS;
-const ROW_NAME = ['前排', '后排'];
+/* ---------- 战场常量 ----------
+   站位在 `src/js/05-阵型.js` 里配置：作者 2026-10-10 定「暂时前 3 后 2」（共 5 格），之后会扩充阵型。
+   这里不再写死 ROWS / COLS / SLOTS，需要的地方从 05-阵型.js 取。 */
+/* ============================================================================
+ * 阵型（作者 2026-10-10 定：暂时「前 3 后 2」，之后会扩充阵型）
+ * ----------------------------------------------------------------------------
+ * 这里**只改这一个地方**就能换阵型：`阵型表` 里每行写「这一排有几格」。
+ * 格子编号 slot 从 0 开始，按排顺序排下来：
+ *   前 3 后 2 → 前排 = 0,1,2（前1 前2 前3）· 后排 = 3,4（后1 后2），共 5 格
+ *   以后要改「前 4 后 2」「前 3 后 3」，把列数改掉就行，引擎 / 界面 / 测试都从下面这些函数取。
+ *
+ * 参考：舰娘的阵型（陣形）里和前后排有关的是「かばう（替旗舰挡枪）」和一个叫「警戒陣」的分工——
+ * 5 只时是「主力艦 = 1–2 番艦（后）、警戒艦 = 3–5 番艦（前）」，靠前的替靠后的挡枪。
+ * 舰娘没有严格的「一列对一列」规则，所以「换位」按作者的话做成**按列对位**：
+ * 前排第 c 列 ↔ 后排第 c 列；前排多出来、后排没有对位的那一列，就在本排里换空位/换队友。
+ * ========================================================================== */
+
+const 阵型表 = [
+  { 名: '前排', 列数: 3 },
+  { 名: '后排', 列数: 2 },
+];
+
+const 阵型 = (() => {
+  const 行 = [];
+  let 起 = 0;
+  for (let i = 0; i < 阵型表.length; i++) {
+    行.push({ 名: 阵型表[i].名, 行: i, 列数: 阵型表[i].列数, 起 });
+    起 += 阵型表[i].列数;
+  }
+  return { 行, 总格数: 起 };
+})();
+
+const ROWS = 阵型.行.length;          // 有几排
+const SLOTS = 阵型.总格数;            // 一共几个位置（双方各这么多）
+const ROW_FRONT = 0, ROW_BACK = 1;    // 排版：0 = 前排（靠敌人）、1 = 后排
+
+const 行列数 = i => 阵型.行[i].列数;
+/* 最宽的那一排有几格：界面画格子时用它，保证每张卡片一样宽 */
+const 最大列数 = Math.max(...阵型.行.map(r => r.列数));
+const 行首格 = i => 阵型.行[i].起;
+const 行名 = i => 阵型.行[i].名;
+/** slot → 第几排 */
+function rowOfSlot(slot) {
+  let r = 0;
+  while (r < ROWS - 1 && slot >= 行首格(r + 1)) r++;
+  return r;
+}
+/** slot → 这一排的第几列（0 起） */
+const colOfSlot = slot => slot - 行首格(rowOfSlot(slot));
+/** （排, 列）→ slot */
+const slotOf = (row, col) => 行首格(row) + col;
+/** 这一排有没有这一列（前 3 后 2 时，后排没有第 3 列） */
+const 有这一列 = (row, col) => col >= 0 && col < 行列数(row);
+/** 格子的人话名字：前1 / 后2 */
+const 位名 = slot => `${行名(rowOfSlot(slot))}${colOfSlot(slot) + 1}`;
+
+/** 某一列上所有真实的格子（前 3 后 2 时：前列0+后列0、前列1+后列1、前列2 只有自己） */
+function 列上所有格(col) {
+  const out = [];
+  for (let r = 0; r < ROWS; r++) if (有这一列(r, col)) out.push(slotOf(r, col));
+  return out;
+}
 /* ============================================================================
  * 数据：角色 / 机体 / 敌人 / 武器（从机甲战棋复制，方案第 2 节）
  * ----------------------------------------------------------------------------
@@ -819,7 +886,7 @@ const 再动 = {
  *   heal       修理     我方任意一台，优先 HP 比例最低的
  *   passive / device    第一期不做（方案 6.2）
  *
- * 站位是 2 排 × 3 列（方案 3.1）：格子编号 slot = row * COLS + col，
+ * 站位在 05-阵型.js 里配（作者 2026-10-10：暂时「前 3 后 2」，之后会扩充）：slot 从 0 开始按排数下来，
  * row 0 = 前排、1 = 后排；前排靠近敌人。
  * ========================================================================== */
 
@@ -829,8 +896,7 @@ const KIND_MELEE = '近战', KIND_DIRECT = '直射', KIND_INDIRECT = '曲射', K
    所以单独判成「支援」，不参与「进攻」的武器挑选。 */
 const KIND_SUPPORT = '支援';
 
-/* 排号：0 = 前排（靠近敌人）、1 = 后排（方案 3.1） */
-const ROW_FRONT = 0, ROW_BACK = 1;
+/* 排号 ROW_FRONT / ROW_BACK 和格子编号都在 05-阵型.js 里（阵型可扩充） */
 
 const RANGE_KIND = {
   melee: KIND_MELEE,
@@ -871,28 +937,28 @@ function rowBlockPenalty(kind, targetRow, frontAlive, attacker) {
 /* 方案 6.3 的职业特色都只对我方生效（敌人按梯队，没有「职业」）。 */
 const 职业是 = (u, k) => !!u && u.side === 'ally' && !!(u.tags && u.tags.战斗分类 === k);
 
-/** 范围武器的落点：area 决定打哪些格子（没写 area 默认 row）。返回 slot 数组。 */
+/** 范围武器的落点：area 决定打哪些格子（没写 area 默认 row）。返回 slot 数组。
+ *  阵型是「前 3 后 2」（可扩充），所以一排有几格由 05-阵型.js 决定：
+ *   - row   = 那一整排；
+ *   - col   = 同一列上的格子（前列0+后列0、前列1+后列1；前列2 后排没有对位，就只有自己）；
+ *   - cross = 目标格 + 同排左右相邻 + 另一排同列（有的话）；
+ *   - all   = 全部。 */
 function areaSlots(w, row, col) {
   const area = (w && w.area) || 'row';
   const out = [];
   for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
+    for (let c = 0; c < 行列数(r); c++) {
       let hit = false;
       if (area === 'all') hit = true;
       else if (area === 'row') hit = r === row;
       else if (area === 'col') hit = c === col;
-      // cross = 目标格 + 上下左右相邻格
-      else if (area === 'cross') hit = (r === row && c === col) || (r === row && Math.abs(c - col) === 1) || (c === col && Math.abs(r - row) === 1);
-      if (hit) out.push(r * COLS + c);
+      else if (area === 'cross') hit = (r === row && Math.abs(c - col) <= 1) || (c === col && Math.abs(r - row) === 1);
+      if (hit) out.push(slotOf(r, c));
     }
   }
   return out;
 }
 
-/** slot → 排 / 列 */
-const rowOfSlot = slot => Math.floor(slot / COLS);
-const colOfSlot = slot => slot % COLS;
-const slotOf = (row, col) => row * COLS + col;
 /* ============================================================================
  * 战斗计算（方案 6.1）· 照抄机甲战棋的数值部分
  * ----------------------------------------------------------------------------
@@ -1201,8 +1267,6 @@ const otherSide = s => s === 'ally' ? 'enemy' : 'ally';
 const unitRow = u => rowOfSlot(u.slot);
 const unitCol = u => colOfSlot(u.slot);
 const speedOf = u => Math.round(u.mov * 10 + u.eva / 2);      // 方案 3.2
-/* 格子的人话名字：前1 / 后3（界面上和战斗记录里都用它） */
-const 位名 = 位 => `${位 < COLS ? '前' : '后'}${位 % COLS + 1}`;
 /* 职业（方案 6.3）：职业特色只对我方生效，敌人按梯队。判定函数在 30-射程.js。 */
 const 战斗分类 = u => (u && u.tags && u.tags.战斗分类) || null;
 
@@ -1642,6 +1706,23 @@ function 回合开始(ctx) {
   }
 }
 
+/* ---------- 换位：算出该换到哪个格子（作者 2026-10-10 定：按列对位） ----------
+ *   1. 同一列的另一排有这一格 → 就用它（对面有人就互换，空着就移过去）；
+ *   2. 没有对位格（前 3 后 2 时前排的第 3 列）→ 在本排里找空位，没空位就和本排第一个队友互换；
+ *   3. 本排也没有别的格子 → 返回 null（这次换位作罢）。 */
+function 换位目标(ctx, actor) {
+  const r = rowOfSlot(actor.slot), c = colOfSlot(actor.slot);
+  const 对排 = r === ROW_FRONT ? ROW_BACK : ROW_FRONT;
+  if (有这一列(对排, c)) return slotOf(对排, c);
+  const 占 = new Map(livingOf(actor.side, ctx).map(u => [u.slot, u]));
+  const 本排 = [];
+  for (let i = 0; i < 行列数(r); i++) 本排.push(slotOf(r, i));
+  const 空位 = 本排.filter(位 => 位 !== actor.slot && !占.has(位));
+  if (空位.length) return 空位[0];
+  const 队友位 = 本排.filter(位 => 位 !== actor.slot && 占.has(位));
+  return 队友位.length ? 队友位[0] : null;
+}
+
 /* ---------- 一个单位这次行动做什么 ---------- */
 function 单位动作(u, ctx) {
   if (u.side === 'enemy') return enemyAction(u, ctx);
@@ -1730,14 +1811,19 @@ function resolveAction(actor, action, ctx) {
     return 空;
   }
 
-  /* 换位（方案第 4 节）：和同一列另一排交换；对面是空位就直接移过去；本回合不攻击 */
+  /* 换位（方案第 4 节 + 作者 2026-10-10：按列对位）：和同一列的另一排交换；对面是空位就直接移过去；
+     前排多出来、后排没有对位的那一列（前 3 后 2 时的前 3），就在本排里换空位 / 换队友。本回合不攻击。 */
   if (action.kind === 'swap') {
-    const 列 = colOfSlot(actor.slot);
-    const 目标位 = actor.slot < COLS ? slotOf(ROW_BACK, 列) : slotOf(ROW_FRONT, 列);
+    const 目标位 = 换位目标(ctx, actor);
+    if (目标位 == null) {
+      pushLog(ctx, `${actor.name} 没有可以换的位置（作罢）`, Object.assign({ 类型: '换位', 结果: '作罢' }, 谁(actor)));
+      return 空;
+    }
     const 对方 = livingOf(actor.side, ctx).find(x => x.slot === 目标位);
-    if (对方) { const t = actor.slot; actor.slot = 对方.slot; 对方.slot = t; }
+    const 原 = actor.slot;
+    if (对方) { actor.slot = 对方.slot; 对方.slot = 原; }
     else actor.slot = 目标位;
-    pushLog(ctx, `${actor.name} 换位到 ${位名(actor.slot)}${对方 ? `（和 ${对方.name} 互换）` : ''}`, Object.assign({ 类型: '换位', 位: actor.slot }, 谁(actor)));
+    pushLog(ctx, `${actor.name} 换位到 ${位名(actor.slot)}${对方 ? `（和 ${对方.name} 互换）` : ''}`, Object.assign({ 类型: '换位', 位: actor.slot, 原: 原 }, 谁(actor)));
     return 空;
   }
 
@@ -1943,7 +2029,7 @@ function 编成到单位(条目, 场次 = 0) {
   const 前排 = 条目.前 || [], 后排 = 条目.后 || [];
   const 列表 = [];
   前排.forEach((键, i) => 列表.push({ 键, 位: i, 等级: runEnemyLv(kind, 条目.层, 场次) + TIER_LV[tierOfEnemy(键)] }));
-  后排.forEach((键, i) => 列表.push({ 键, 位: COLS + i, 等级: runEnemyLv(kind, 条目.层, 场次) + TIER_LV[tierOfEnemy(键)] }));
+  后排.forEach((键, i) => 列表.push({ 键, 位: slotOf(ROW_BACK, i), 等级: runEnemyLv(kind, 条目.层, 场次) + TIER_LV[tierOfEnemy(键)] }));
   return makeUnits(列表, 'enemy');
 }
 
@@ -2158,6 +2244,85 @@ const 界面 = {
     挂($('#screen'), 'click', '[data-act]');
     挂($('#screen'), 'change', 'select[data-act]');
     挂($('#ctrl'), 'click', '[data-act]');
+
+    /* 拖动（作者 2026-10-10）：用 pointer 事件，鼠标和手指都能拖（HTML5 的 drag 在手机上不行）。
+       编队界面用；M4 的招募 / 编队界面直接复用这一套。 */
+    const 屏 = $('#screen');
+    if (屏 && !屏._接了拖) {
+      屏._接了拖 = true;
+      屏.addEventListener('pointerdown', e => {
+        const el = e.target && e.target.closest ? e.target.closest('[data-drag]') : null;
+        if (!el) return;
+        const [类型, 值] = String(el.getAttribute('data-drag')).split(':');
+        this.拖动开始(类型, 值, e);
+        if (e.preventDefault) e.preventDefault();
+      });
+      屏.addEventListener('pointermove', e => { if (this.拖动) this.拖动到(e.clientX, e.clientY); });
+      屏.addEventListener('pointerup', e => {
+        if (!this.拖动) return;
+        const el = e.target && e.target.closest ? e.target.closest('[data-drop]') : null;
+        this.拖动放下(el ? el.getAttribute('data-drop') : null);
+      });
+    }
+  },
+
+  /* ---------------- 拖动：候选 ⇄ 格子，格子 ⇄ 格子 ---------------- */
+  拖动: null,                     // {类型:'候选'|'位', 值, 幽灵}
+  拖动开始(类型, 值, 事件) {
+    this.拖动 = { 类型, 值 };
+    if (事件 && typeof document !== 'undefined' && document.createElement) {
+      const 幽灵 = document.createElement('div');
+      幽灵.className = 'dragghost';
+      const 键 = 类型 === '候选' ? 值 : ((this.编队.出击.find(x => x.位 === Number(值)) || {}).键);
+      幽灵.textContent = this.单位名(键, 'ally') || '拖动中';
+      if (document.body && document.body.appendChild) document.body.appendChild(幽灵);
+      this.拖动.幽灵 = 幽灵;
+      this.拖动到(事件.clientX, 事件.clientY);
+    }
+    return this.拖动;
+  },
+  拖动到(x, y) {
+    const g = this.拖动 && this.拖动.幽灵;
+    if (g && g.style) { g.style.left = ((x || 0) + 10) + 'px'; g.style.top = ((y || 0) + 10) + 'px'; }
+    return this.拖动;
+  },
+  /** 松手：落在格子上就放进去 / 挪过去；落在候选区（或空白处）就是取回 */
+  拖动放下(位) {
+    const d = this.拖动;
+    if (!d) return false;
+    this.拖动 = null;
+    if (d.幽灵 && d.幽灵.remove) d.幽灵.remove();
+    if (位 == null || 位 === '候选' || 位 === '') return d.类型 === '位' ? this.取回(Number(d.值)) : false;
+    const 位号 = Number(位);
+    if (d.类型 === '候选') return this.拖入(d.值, 位号);
+    return this.挪位(Number(d.值), 位号);
+  },
+  /** 把一名机师拖进某个格子：格子里原来的人被挤回候选列表 */
+  拖入(键, 位) {
+    const B = this.编队;
+    if (位 < 0 || 位 >= SLOTS) return false;
+    if (B.出击.some(x => x.键 === 键)) this.挪位(B.出击.find(x => x.键 === 键).位, 位);
+    else {
+      if (B.出击.some(x => x.位 === 位)) B.出击 = B.出击.filter(x => x.位 !== 位);
+      if (B.出击.length >= SLOTS) { this.提示 = `出击位置已经满了（${SLOTS} 格）。`; this.刷(); return false; }
+      B.出击.push({ 键, 位 });
+      this.刷();
+    }
+    this.提示 = '';
+    return true;
+  },
+  /** 格子 → 格子：目标有人就互换，空着就移过去 */
+  挪位(从位, 到位) {
+    const B = this.编队;
+    if (从位 === 到位) return false;
+    const 甲 = B.出击.find(x => x.位 === 从位);
+    if (!甲) return false;
+    const 乙 = B.出击.find(x => x.位 === 到位);
+    if (乙) 乙.位 = 从位;
+    甲.位 = 到位;
+    this.提示 = '';
+    this.刷();
+    return true;
   },
 
   /** 界面上的所有动作都走这里（浏览器里由按钮点，测试里直接调用）。 */
@@ -2237,33 +2402,39 @@ const 界面 = {
     const 列表 = 候选.map(t => {
       const p = this.预览(t.mech, B.等级);
       const 已上 = B.出击.some(x => x.键 === t.mech);
-      return `<button class="pick${B.选中 === t.mech ? ' on' : ''}${已上 ? ' used' : ''}" data-act="选人:${t.mech}" style="--fc:${势力色(t.mech)}">
+      return `<button class="pick${B.选中 === t.mech ? ' on' : ''}${已上 ? ' used' : ''}" data-act="选人:${t.mech}" data-drag="候选:${t.mech}" style="--fc:${势力色(t.mech)}">
         <b>${t.pilot}</b><small>${t.mech} · ${t.tags.战斗分类} · ${t.tags.势力}</small>
         <span class="nums">速 ${p.速度} · HP ${p.hp}${p.大招.length ? ` · 大招 ${p.大招.length}` : ''}</span>
       </button>`;
     }).join('');
     const 格 = [];
-    /* 前排在下面（靠近敌人那一侧），后排在上面 */
-    for (const 位 of [3, 4, 5, 0, 1, 2]) {
+    /* 前排在下面（靠近敌人那一侧），后排在上面；每一排一行，列数从阵型配置取 */
+    const 格序 = [];
+    for (let r = ROWS - 1; r >= 0; r--) for (let c = 0; c < 行列数(r); c++) 格序.push(slotOf(r, c));
+    const 行格 = new Map();
+    for (const 位 of 格序) {
+      const r = rowOfSlot(位);
+      if (!行格.has(r)) 行格.set(r, []);
       const 占 = B.出击.find(x => x.位 === 位);
       if (占) {
         const p = this.预览(占.键, B.等级);
-        格.push(`<button class="slot filled" data-act="取回:${位}" style="--fc:${势力色(占.键)}">
+        行格.get(r).push(`<button class="slot filled" data-act="取回:${位}" data-drag="位:${位}" data-drop="${位}" style="--fc:${势力色(占.键)}">
           <span class="pos">${位名(位)}</span>
           <b>${this.单位名(占.键, 'ally')}</b><small>${占.键} · 速 ${p.速度}</small>
           <span class="nums">HP ${p.hp}</span></button>`);
       } else {
-        格.push(`<button class="slot" data-act="放位:${位}"><span class="pos">${位名(位)}</span><b>空位</b><small>${位 < COLS ? '前排' : '后排'}</small></button>`);
+        行格.get(r).push(`<button class="slot" data-act="放位:${位}" data-drop="${位}"><span class="pos">${位名(位)}</span><b>空位</b><small>${行名(r)}</small></button>`);
       }
     }
+    for (const [r, 列表] of 行格) 格.push(`<div class="row" style="--cols:${最大列数}">${列表.join('')}</div>`);
     const 编成选项 = 编成表.map((e, i) => {
       const 名 = `第${e.层}层 ${e.类型}｜前 ${(e.前 || []).join('+') || '—'} / 后 ${(e.后 || []).join('+') || '—'}`;
       return `<option value="${i}"${i === B.编成序号 ? ' selected' : ''}>${名}</option>`;
     }).join('');
     const 选中 = B.选中 ? this.预览(B.选中, B.等级) : null;
     return `<section class="编队屏">
-      <div class="col 候选">
-        <h3>机师（${候选.length} 名）<span class="small">点一名 → 再点右边的格子放入</span></h3>
+      <div class="col 候选" data-drop="候选">
+        <h3>机师（${候选.length} 名）<span class="small">拖到右边格子里，或者点一名再点格子；格子之间也能拖（互换）</span></h3>
         <div class="filters">
           ${[10, 20, 30].map(n => `<button class="mini${B.等级 === n ? ' on' : ''}" data-act="等级:${n}">Lv${n}</button>`).join('')}
           <span class="sep"></span>
@@ -2294,9 +2465,9 @@ const 界面 = {
     const 敌方单位 = 指令阶段 ? this.ctx.enemies : (this.显示单位 ? this.显示单位.敌方 : this.ctx.enemies);
     const 意图 = 指令阶段 ? 算意图(this.ctx) : [];
     const 排 = (列表, 方, 从后往前) => {
-      const 行 = 从后往前 ? [ROW_BACK, ROW_FRONT] : [ROW_FRONT, ROW_BACK];
-      return 行.map(r => `<div class="row">${[0, 1, 2].map(c => {
-        const 位 = r * COLS + c;
+      const 行序 = 从后往前 ? [ROW_BACK, ROW_FRONT] : [ROW_FRONT, ROW_BACK];
+      return 行序.map(r => `<div class="row" style="--cols:${行列数(r)}">${Array.from({ length: 行列数(r) }, (_, c) => {
+        const 位 = slotOf(r, c);
         const u = 列表.find(x => x.slot === 位);
         return u ? this.单位卡(u, 方, 意图.find(i => i.单位位 === 位), 指令阶段) : `<div class="uc empty"><span class="pos">${位名(位)}</span></div>`;
       }).join('')}</div>`).join('');
@@ -2572,8 +2743,8 @@ const G = {
   version: VERSION,
   milestone: MILESTONE,
   ready: false,
-  slots: SLOTS,          // 6：双方各 2 排 × 3 列（方案 3.1）
-  rows: ROWS, cols: COLS,
+  slots: SLOTS,          // 双方各几个位置（现在「前 3 后 2」= 5，阵型在 05-阵型.js 里配）
+  rows: ROWS, 行列数, 阵型表, 行名, 位名, 列上所有格,
   mulberry32,            // 带种子的随机数（方案 6.1）
 
   /* ---- 界面 / 播放（M2） ---- */

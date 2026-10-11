@@ -15,7 +15,7 @@
  *   heal       修理     我方任意一台，优先 HP 比例最低的
  *   passive / device    第一期不做（方案 6.2）
  *
- * 站位是 2 排 × 3 列（方案 3.1）：格子编号 slot = row * COLS + col，
+ * 站位在 05-阵型.js 里配（作者 2026-10-10：暂时「前 3 后 2」，之后会扩充）：slot 从 0 开始按排数下来，
  * row 0 = 前排、1 = 后排；前排靠近敌人。
  * ========================================================================== */
 
@@ -25,8 +25,7 @@ const KIND_MELEE = '近战', KIND_DIRECT = '直射', KIND_INDIRECT = '曲射', K
    所以单独判成「支援」，不参与「进攻」的武器挑选。 */
 const KIND_SUPPORT = '支援';
 
-/* 排号：0 = 前排（靠近敌人）、1 = 后排（方案 3.1） */
-const ROW_FRONT = 0, ROW_BACK = 1;
+/* 排号 ROW_FRONT / ROW_BACK 和格子编号都在 05-阵型.js 里（阵型可扩充） */
 
 const RANGE_KIND = {
   melee: KIND_MELEE,
@@ -67,25 +66,25 @@ function rowBlockPenalty(kind, targetRow, frontAlive, attacker) {
 /* 方案 6.3 的职业特色都只对我方生效（敌人按梯队，没有「职业」）。 */
 const 职业是 = (u, k) => !!u && u.side === 'ally' && !!(u.tags && u.tags.战斗分类 === k);
 
-/** 范围武器的落点：area 决定打哪些格子（没写 area 默认 row）。返回 slot 数组。 */
+/** 范围武器的落点：area 决定打哪些格子（没写 area 默认 row）。返回 slot 数组。
+ *  阵型是「前 3 后 2」（可扩充），所以一排有几格由 05-阵型.js 决定：
+ *   - row   = 那一整排；
+ *   - col   = 同一列上的格子（前列0+后列0、前列1+后列1；前列2 后排没有对位，就只有自己）；
+ *   - cross = 目标格 + 同排左右相邻 + 另一排同列（有的话）；
+ *   - all   = 全部。 */
 function areaSlots(w, row, col) {
   const area = (w && w.area) || 'row';
   const out = [];
   for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
+    for (let c = 0; c < 行列数(r); c++) {
       let hit = false;
       if (area === 'all') hit = true;
       else if (area === 'row') hit = r === row;
       else if (area === 'col') hit = c === col;
-      // cross = 目标格 + 上下左右相邻格
-      else if (area === 'cross') hit = (r === row && c === col) || (r === row && Math.abs(c - col) === 1) || (c === col && Math.abs(r - row) === 1);
-      if (hit) out.push(r * COLS + c);
+      else if (area === 'cross') hit = (r === row && Math.abs(c - col) <= 1) || (c === col && Math.abs(r - row) === 1);
+      if (hit) out.push(slotOf(r, c));
     }
   }
   return out;
 }
 
-/** slot → 排 / 列 */
-const rowOfSlot = slot => Math.floor(slot / COLS);
-const colOfSlot = slot => slot % COLS;
-const slotOf = (row, col) => row * COLS + col;

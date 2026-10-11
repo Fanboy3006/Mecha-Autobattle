@@ -87,7 +87,7 @@ h3 .small{margin-left:6px;font-weight:400}
 .战斗屏 .side.ally{border-top:3px solid var(--ally)}
 .战斗屏 .side.enemy{border-top:3px solid var(--enemy)}
 .战斗屏 .side h3{margin:0 0 8px}
-.战斗屏 .row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:6px}
+.战斗屏 .row{display:grid;grid-template-columns:repeat(var(--cols,3),1fr);gap:6px;margin-bottom:6px}
 .uc{position:relative;background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--fc);
   border-radius:6px;padding:5px 7px;min-height:74px;overflow:hidden;transition:transform .12s,box-shadow .12s,opacity .2s}
 .uc .pos{position:absolute;top:4px;right:6px;font-family:var(--font-m);font-size:10px;color:var(--muted)}
@@ -154,3 +154,12 @@ button:disabled{opacity:.4;cursor:not-allowed}
   .uc .head b{font-size:12px}
 }
 
+
+/* ---------- 拖动（作者 2026-10-10） ---------- */
+.pick,.slot{touch-action:none;-webkit-user-select:none;user-select:none}
+.pick[draggable],.slot{cursor:grab}
+.dragghost{position:fixed;z-index:99;pointer-events:none;background:var(--panel2);border:1px solid var(--accent);
+  border-radius:4px;padding:3px 8px;font-size:12px;color:var(--fg);box-shadow:0 4px 14px rgba(0,0,0,.5)}
+/* 编队格子：每一排一行，列数由 05-阵型.js 的 --cols 决定（前排 3、后排 2） */
+.编队屏 .grid{display:flex;flex-direction:column;gap:6px}
+.编队屏 .grid .row{display:grid;grid-template-columns:repeat(var(--cols,3),1fr);gap:6px;margin:0}

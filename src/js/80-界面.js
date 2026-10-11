@@ -89,6 +89,85 @@ const 界面 = {
     挂($('#screen'), 'click', '[data-act]');
     挂($('#screen'), 'change', 'select[data-act]');
     挂($('#ctrl'), 'click', '[data-act]');
+
+    /* 拖动（作者 2026-10-10）：用 pointer 事件，鼠标和手指都能拖（HTML5 的 drag 在手机上不行）。
+       编队界面用；M4 的招募 / 编队界面直接复用这一套。 */
+    const 屏 = $('#screen');
+    if (屏 && !屏._接了拖) {
+      屏._接了拖 = true;
+      屏.addEventListener('pointerdown', e => {
+        const el = e.target && e.target.closest ? e.target.closest('[data-drag]') : null;
+        if (!el) return;
+        const [类型, 值] = String(el.getAttribute('data-drag')).split(':');
+        this.拖动开始(类型, 值, e);
+        if (e.preventDefault) e.preventDefault();
+      });
+      屏.addEventListener('pointermove', e => { if (this.拖动) this.拖动到(e.clientX, e.clientY); });
+      屏.addEventListener('pointerup', e => {
+        if (!this.拖动) return;
+        const el = e.target && e.target.closest ? e.target.closest('[data-drop]') : null;
+        this.拖动放下(el ? el.getAttribute('data-drop') : null);
+      });
+    }
+  },
+
+  /* ---------------- 拖动：候选 ⇄ 格子，格子 ⇄ 格子 ---------------- */
+  拖动: null,                     // {类型:'候选'|'位', 值, 幽灵}
+  拖动开始(类型, 值, 事件) {
+    this.拖动 = { 类型, 值 };
+    if (事件 && typeof document !== 'undefined' && document.createElement) {
+      const 幽灵 = document.createElement('div');
+      幽灵.className = 'dragghost';
+      const 键 = 类型 === '候选' ? 值 : ((this.编队.出击.find(x => x.位 === Number(值)) || {}).键);
+      幽灵.textContent = this.单位名(键, 'ally') || '拖动中';
+      if (document.body && document.body.appendChild) document.body.appendChild(幽灵);
+      this.拖动.幽灵 = 幽灵;
+      this.拖动到(事件.clientX, 事件.clientY);
+    }
+    return this.拖动;
+  },
+  拖动到(x, y) {
+    const g = this.拖动 && this.拖动.幽灵;
+    if (g && g.style) { g.style.left = ((x || 0) + 10) + 'px'; g.style.top = ((y || 0) + 10) + 'px'; }
+    return this.拖动;
+  },
+  /** 松手：落在格子上就放进去 / 挪过去；落在候选区（或空白处）就是取回 */
+  拖动放下(位) {
+    const d = this.拖动;
+    if (!d) return false;
+    this.拖动 = null;
+    if (d.幽灵 && d.幽灵.remove) d.幽灵.remove();
+    if (位 == null || 位 === '候选' || 位 === '') return d.类型 === '位' ? this.取回(Number(d.值)) : false;
+    const 位号 = Number(位);
+    if (d.类型 === '候选') return this.拖入(d.值, 位号);
+    return this.挪位(Number(d.值), 位号);
+  },
+  /** 把一名机师拖进某个格子：格子里原来的人被挤回候选列表 */
+  拖入(键, 位) {
+    const B = this.编队;
+    if (位 < 0 || 位 >= SLOTS) return false;
+    if (B.出击.some(x => x.键 === 键)) this.挪位(B.出击.find(x => x.键 === 键).位, 位);
+    else {
+      if (B.出击.some(x => x.位 === 位)) B.出击 = B.出击.filter(x => x.位 !== 位);
+      if (B.出击.length >= SLOTS) { this.提示 = `出击位置已经满了（${SLOTS} 格）。`; this.刷(); return false; }
+      B.出击.push({ 键, 位 });
+      this.刷();
+    }
+    this.提示 = '';
+    return true;
+  },
+  /** 格子 → 格子：目标有人就互换，空着就移过去 */
+  挪位(从位, 到位) {
+    const B = this.编队;
+    if (从位 === 到位) return false;
+    const 甲 = B.出击.find(x => x.位 === 从位);
+    if (!甲) return false;
+    const 乙 = B.出击.find(x => x.位 === 到位);
+    if (乙) 乙.位 = 从位;
+    甲.位 = 到位;
+    this.提示 = '';
+    this.刷();
+    return true;
   },
 
   /** 界面上的所有动作都走这里（浏览器里由按钮点，测试里直接调用）。 */
@@ -168,33 +247,39 @@ const 界面 = {
     const 列表 = 候选.map(t => {
       const p = this.预览(t.mech, B.等级);
       const 已上 = B.出击.some(x => x.键 === t.mech);
-      return `<button class="pick${B.选中 === t.mech ? ' on' : ''}${已上 ? ' used' : ''}" data-act="选人:${t.mech}" style="--fc:${势力色(t.mech)}">
+      return `<button class="pick${B.选中 === t.mech ? ' on' : ''}${已上 ? ' used' : ''}" data-act="选人:${t.mech}" data-drag="候选:${t.mech}" style="--fc:${势力色(t.mech)}">
         <b>${t.pilot}</b><small>${t.mech} · ${t.tags.战斗分类} · ${t.tags.势力}</small>
         <span class="nums">速 ${p.速度} · HP ${p.hp}${p.大招.length ? ` · 大招 ${p.大招.length}` : ''}</span>
       </button>`;
     }).join('');
     const 格 = [];
-    /* 前排在下面（靠近敌人那一侧），后排在上面 */
-    for (const 位 of [3, 4, 5, 0, 1, 2]) {
+    /* 前排在下面（靠近敌人那一侧），后排在上面；每一排一行，列数从阵型配置取 */
+    const 格序 = [];
+    for (let r = ROWS - 1; r >= 0; r--) for (let c = 0; c < 行列数(r); c++) 格序.push(slotOf(r, c));
+    const 行格 = new Map();
+    for (const 位 of 格序) {
+      const r = rowOfSlot(位);
+      if (!行格.has(r)) 行格.set(r, []);
       const 占 = B.出击.find(x => x.位 === 位);
       if (占) {
         const p = this.预览(占.键, B.等级);
-        格.push(`<button class="slot filled" data-act="取回:${位}" style="--fc:${势力色(占.键)}">
+        行格.get(r).push(`<button class="slot filled" data-act="取回:${位}" data-drag="位:${位}" data-drop="${位}" style="--fc:${势力色(占.键)}">
           <span class="pos">${位名(位)}</span>
           <b>${this.单位名(占.键, 'ally')}</b><small>${占.键} · 速 ${p.速度}</small>
           <span class="nums">HP ${p.hp}</span></button>`);
       } else {
-        格.push(`<button class="slot" data-act="放位:${位}"><span class="pos">${位名(位)}</span><b>空位</b><small>${位 < COLS ? '前排' : '后排'}</small></button>`);
+        行格.get(r).push(`<button class="slot" data-act="放位:${位}" data-drop="${位}"><span class="pos">${位名(位)}</span><b>空位</b><small>${行名(r)}</small></button>`);
       }
     }
+    for (const [r, 列表] of 行格) 格.push(`<div class="row" style="--cols:${最大列数}">${列表.join('')}</div>`);
     const 编成选项 = 编成表.map((e, i) => {
       const 名 = `第${e.层}层 ${e.类型}｜前 ${(e.前 || []).join('+') || '—'} / 后 ${(e.后 || []).join('+') || '—'}`;
       return `<option value="${i}"${i === B.编成序号 ? ' selected' : ''}>${名}</option>`;
     }).join('');
     const 选中 = B.选中 ? this.预览(B.选中, B.等级) : null;
     return `<section class="编队屏">
-      <div class="col 候选">
-        <h3>机师（${候选.length} 名）<span class="small">点一名 → 再点右边的格子放入</span></h3>
+      <div class="col 候选" data-drop="候选">
+        <h3>机师（${候选.length} 名）<span class="small">拖到右边格子里，或者点一名再点格子；格子之间也能拖（互换）</span></h3>
         <div class="filters">
           ${[10, 20, 30].map(n => `<button class="mini${B.等级 === n ? ' on' : ''}" data-act="等级:${n}">Lv${n}</button>`).join('')}
           <span class="sep"></span>
@@ -225,9 +310,9 @@ const 界面 = {
     const 敌方单位 = 指令阶段 ? this.ctx.enemies : (this.显示单位 ? this.显示单位.敌方 : this.ctx.enemies);
     const 意图 = 指令阶段 ? 算意图(this.ctx) : [];
     const 排 = (列表, 方, 从后往前) => {
-      const 行 = 从后往前 ? [ROW_BACK, ROW_FRONT] : [ROW_FRONT, ROW_BACK];
-      return 行.map(r => `<div class="row">${[0, 1, 2].map(c => {
-        const 位 = r * COLS + c;
+      const 行序 = 从后往前 ? [ROW_BACK, ROW_FRONT] : [ROW_FRONT, ROW_BACK];
+      return 行序.map(r => `<div class="row" style="--cols:${行列数(r)}">${Array.from({ length: 行列数(r) }, (_, c) => {
+        const 位 = slotOf(r, c);
         const u = 列表.find(x => x.slot === 位);
         return u ? this.单位卡(u, 方, 意图.find(i => i.单位位 === 位), 指令阶段) : `<div class="uc empty"><span class="pos">${位名(位)}</span></div>`;
       }).join('')}</div>`).join('');
