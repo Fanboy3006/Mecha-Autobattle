@@ -27,7 +27,7 @@
  * ========================================================================== */
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { loadPage } from './lib/dom-stub.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -110,10 +110,13 @@ console.log('[1] SEED 参数与战棋逐字对账（`17b-角色机制.js:187-240
     if (typeof G[名] === 'function') ok(`框架钩子 \`${名}()\` 在 \`window.__game\` 上（后面 4 个势力共用）`);
     else bad(`\`${名}\` 没有暴露 / 不是函数`);
   }
-  /* 2026-10-11：第二件（流星小队）/ 第三件（月球王国）也进了同一张表 → 这里从「1 个条目」改成「三个都在」 */
+  /* 2026-10-11：第二件（流星小队）/ 第三件（月球王国）/ 第四件（天人 TRANS-AM）也进了同一张表
+     → 这里从「1 个条目」改成「四件都在」 */
   const 表里 = Object.keys(G.势力特色表);
-  if (表里.length === 3 && G.势力特色表['卫星国防军'] && G.势力特色表['流星小队'] && G.势力特色表['月球王国']) ok(`\`势力特色表\` 现在有 3 个条目（${表里.join('、')}）——后面 3 个势力往同一张表加`);
-  else bad(`势力特色表的内容不对：${JSON.stringify(表里)}`);
+  if (表里.length === 4 && G.势力特色表['卫星国防军'] && G.势力特色表['流星小队']
+    && G.势力特色表['月球王国'] && G.势力特色表['天人']) {
+    ok(`\`势力特色表\` 现在有 4 个条目（${表里.join('、')}）——后面 2 个势力往同一张表加`);
+  } else bad(`势力特色表的内容不对：${JSON.stringify(表里)}`);
 }
 
 /* ============================ [2] 每回合真的 +5 ============================ */
@@ -835,6 +838,296 @@ console.log('\n[10] 月球王国：Feena 光环（相邻位队友大 buff）+ �
   else bad(`(i) Feena 的卡不对：${(html.match(/月光环绕[^<]*/g) || []).join(' / ')}`);
   if (!/undefined|NaN/.test(html)) ok('(i) 战斗屏 HTML 里没有 undefined / NaN');
   else bad('(i) 战斗屏 HTML 里出现了 undefined / NaN');
+}
+
+/* ========== [11] 天人 · TRANS-AM（作者 2026-10-11 拍板：持续 2 回合 / CD 3 回合） ==========
+ * 作者原话（`协作/势力特色落地决定.md` 第 4 条）：
+ *   「战棋原版：持续 3 回合、威力 ×1.3 / 闪避 +15、冷却 10。
+ *     **作者拍板：持续 2 回合、CD 3 回合**（其余倍数先照战棋 ×1.3 / 闪避 +15，标初稿）。
+ *     落地要点：12 回合上限下 CD 3 是能开出多次的；记录里要能看出「开 / 关 / 冷却中」。」
+ * 逐字出处（战棋 `Claude hand off/src/js/`，只读）：
+ *   `17b-角色机制.js:122-147`（TA_LEN/TA_CD `:126`、taActive/taAfter/taReadyTurn/canTA `:127-138`、
+ *     taButton `:139-145`、taPowMul `:146`、taMovAdd `:147`）、
+ *   `03-能力与减免管线.js:14`（逐字描述 + Lv10 等级门）/`:130`（`transAm:{eva:…15…}`）、
+ *   `15-战斗计算.js:36`（`wPow = … * taPowMul(u)`）。
+ * 这一段按任务书的六件事来：① 参数与战棋逐字对账（含作者改的持续 2 / CD 3）；
+ *   ② 持续真的 2 回合（第 1 回合开、第 2 回合仍生效、第 3 回合失效，贴回合号）；
+ *   ③ CD 真的 3 回合（贴下一轮开启的回合号）；④ 威力 ×1.3 / 闪避 +15 真的进公式（贴伤害与命中前后数字）；
+ *   ⑤ 只对我方生效（含拉塞 CB5 开不了）；⑥ 同种子两次逐字相同。 */
+console.log('\n[11] 天人 · TRANS-AM（作者 2026-10-11 拍板：持续 2 回合 / CD 3 回合；威力 ×1.3 / 闪避 +15 照战棋）');
+{
+  const p = G.势力特色['天人'];
+  const 枪 = { name: '试作直射枪', fire: 'direct', hit: 100, dmgType: '物理', power: 1000, stat: '射击', range: [1, 1], upgrades: [] };
+  const 天人队 = [{ 键: 'CB1', 位: 0, 等级: 10 }, { 键: 'CB2', 位: 1, 等级: 10 }, { 键: 'CB3', 位: 2, 等级: 10 }, { 键: 'CB4', 位: 3, 等级: 10 }];
+
+  /* ---- (a) 参数与战棋逐字对账（含作者改的两处：持续 2 / CD 3） ---- */
+  const 对账 = [
+    ['持续回合', 'TA_LEN（战棋 = 3）→ ★ 作者改成 2', 2, '17b-角色机制.js:126 + 协作/势力特色落地决定.md 第 4 条'],
+    ['冷却回合', 'TA_CD（战棋 = 10）→ ★ 作者改成 3', 3, '17b-角色机制.js:126 + 协作/势力特色落地决定.md 第 4 条'],
+    ['威力倍率', 'taPowMul：taActive ? 1.3 : 1（逐字）', 1.3, '17b:146（接线 15-战斗计算.js:36 的 wPow）'],
+    ['闪避加成', 'TRAIT_FX.transAm.eva：taActive ? 15 : 0（逐字）', 15, '03-能力与减免管线.js:130'],
+    ['解锁等级', 'ABIL.transAm.lv = 10（等级门）', 10, '03-能力与减免管线.js:14（门在 03:140 的 abilOn）'],
+  ];
+  for (const [字段, 战棋名, 值, 出处] of 对账) {
+    if (p[字段] === 值) ok(`${字段} = ${JSON.stringify(p[字段])}（${战棋名}）　出处 ${出处}`);
+    else bad(`${字段} = ${JSON.stringify(p[字段])}，预期 ${JSON.stringify(值)}（${出处}）`);
+  }
+  if (p.特技 === 'transAm' && p.自动开启 === true && p.初稿 === true) {
+    ok(`按数据里的 \`abilities: ['${p.特技}']\` 查（不手写名单）、**自动开启**（${p.自动开启}）、整条标了「初稿」`);
+  } else bad(`特技 / 自动开启 / 初稿标记不对：${JSON.stringify({ 特技: p.特技, 自动开启: p.自动开启, 初稿: p.初稿 })}`);
+  info(`出处登记：${p.出处}`);
+  info(`威力倍率的落点（登记差异）：${p.威力倍率落点}`);
+  info(`未接项 ${p.未接项.length} 条（照抄登记、这一版不接）：${p.未接项.map(x => x.项.split('：')[0]).join('；')}`);
+  /* 未接项必须**照抄有出处**（不是我们瞎写）：每条都有「战棋」与「为什么不接」 */
+  if (p.未接项.length === 4 && p.未接项.every(x => x.项 && x.战棋 && x.为什么不接)) {
+    ok(`4 条未接项（移动 ±2 / 各人专属效果 / taOnly 专用招 / taMove）都写了战棋出处与不接的理由 —— **没有自己发明数值**`);
+  } else bad(`未接项登记不完整：${JSON.stringify(p.未接项.map(x => x.项))}`);
+
+  /* 成员：**按 10-数据.js 的 tags.势力 查**，并与 `协作/势力特色.md` 第 4.2 节的成员表逐行对 */
+  const 数据名册 = G.ALLY_T.filter(t => t.tags.势力 === '天人').map(t => ({ 键: t.mech, 机师: t.pilot, 分类: t.tags.战斗分类 }));
+  const 文档段 = 源码('协作\\势力特色.md').split('### 4.2 这个势力有哪些角色')[1].split('### 4.3')[0];
+  const 文档名册 = 文档段.split('\n')
+    .map(l => l.match(/^\|\s*(CB\d)\s*\|\s*([^|]+?)\s*\|[^|]*\|\s*([^|]+?)\s*\|/))
+    .filter(Boolean)
+    .map(m => ({ 键: m[1], 机师: m[2], 分类: m[3] }));
+  if (数据名册.length === 5 && JSON.stringify(数据名册) === JSON.stringify(文档名册)) {
+    ok(`数据里（\`tags.势力 === '天人'\`）正好 5 人，且与 \`协作/势力特色.md\` 第 4.2 节的成员表**逐行一致**：${数据名册.map(x => `${x.键} ${x.机师}(${x.分类})`).join('、')}`);
+  } else bad(`天人成员表对不上：数据 ${JSON.stringify(数据名册)} vs 文档 ${JSON.stringify(文档名册)}`);
+  /* 谁能开：按 abilities 查（照战棋 C8「拉塞不能开 TRANS-AM」） */
+  const 能开 = 数据名册.map(x => x.键).filter(k => G.有TRANSAM(G.makeUnit(k, 'ally', 0, 10), p));
+  if (JSON.stringify(能开) === JSON.stringify(['CB1', 'CB2', 'CB3', 'CB4'])) {
+    ok(`谁有开关按数据查：${能开.join('、')} 有 \`transAm\`，**CB5 拉塞没有**（照战棋 C8「拉塞不能开 TRANS-AM」，协作/势力特色.md:212）`);
+  } else bad(`有 transAm 的人不对：${JSON.stringify(能开)}`);
+  /* 与**战棋源码**逐字对一遍（只读旧仓库；本机没有旧仓库就只登记、不算失败） */
+  const 战棋根 = join(ROOT, '..', 'mecha-tactics', 'Claude hand off', 'src', 'js');
+  if (existsSync(战棋根)) {
+    const 战棋源 = f => readFileSync(join(战棋根, f), 'utf8');
+    const 逐字 = [
+      ['17b-角色机制.js', 'const TA_LEN = 3, TA_CD = 10;', '战棋原版常量（我们按作者的话改成 2 / 3）'],
+      ['17b-角色机制.js', 'const taPowMul = u => taActive(u) ? 1.3 : 1;', '威力 ×1.3 的逐字写法'],
+      ['17b-角色机制.js', 'u.taEnd = turn + TA_LEN', '启动时算结束回合（我们照这个形状）'],
+      ['17b-角色机制.js', 'const taReadyTurn = u => taOn(u) ? u.taEnd + TA_CD : 0;', '冷却到哪一回合（我们照这个形状）'],
+      ['03-能力与减免管线.js', 'transAm:{eva:u => taActive(u) ? 15 : 0', '闪避 +15 的逐字写法'],
+      ['15-战斗计算.js', '* taPowMul(u));', '×1.3 接在 wPow（威力）上 —— 我们落点的差异登记在参数表'],
+    ];
+    let 缺 = [];
+    for (const [f, 片段, 说明] of 逐字) {
+      if (!战棋源(f).includes(片段)) 缺.push(`${f}：${片段}`);
+      else info(`战棋 ${f} 里确实有「${片段}」（${说明}）`);
+    }
+    if (!缺.length) ok(`与战棋源码逐字对账：6 条片段全在（只读旧仓库，一个字节都没改）`);
+    else bad(`战棋源码里找不到这些片段：${缺.join('；')}`);
+  } else info('（本机没有旧仓库 `F:\\DSH-mecha\\mecha-tactics` → 跳过与战棋源码的逐字核对，只按上面的出处行号对账）');
+
+  /* 框架钩子：第 10 个数值钩子（伤害倍率）也在 __game 上 */
+  if (typeof G.势力伤害倍率 === 'function') ok('框架新钩子 `势力伤害倍率(u, w)` 在 `window.__game` 上（默认 1 → 别的战斗逐字不变）');
+  else bad('`势力伤害倍率` 没有暴露');
+
+  /* ---- (b)(c) 真的打一场：持续 2 回合 / CD 3 回合 / 真实回合号 ----
+     ★ 只把双方的 HP 顶高，让这一场**不会提前打完**（12 回合上限才看得到第 3 次开启）；
+       状态机与 HP 无关，改 HP 不影响这一段要看的数字。 */
+  const 跑一场 = 种子 => {
+    const ctx = G.开局(天人队, [{ 键: 'bluefish', 位: 0, 等级: 1 }], 种子);
+    for (const u of ctx.allies) { u.hp = u.maxHp = 999999; }
+    for (const u of ctx.enemies) { u.hp = u.maxHp = 99999999; }
+    const CB1 = ctx.allies.find(u => u.key === 'CB1');
+    const 状 = () => G.势力状态(CB1, '天人');
+    const 看 = 回合 => ({
+      回合, 激活: 状().激活, 剩余: 状().剩余回合, 冷却中: 状().冷却中, 冷却剩余: 状().冷却剩余,
+      启动回合: 状().启动回合, 结束回合: 状().结束回合, 冷却到回合: 状().冷却到回合, 第几次: 状().开启次数,
+    });
+    const 观 = [看(ctx.turn)];
+    for (let i = 0; i < 11 && !ctx.result; i++) { G.打一回合(ctx); 观.push(看(ctx.turn)); }
+    return { ctx, CB1, 观 };
+  };
+  const { ctx: cT, CB1: 刹, 观 } = 跑一场(20261011);
+  const 激活回合 = 观.filter(x => x.激活).map(x => x.回合);
+  const 冷却回合 = 观.filter(x => x.冷却中).map(x => x.回合);
+  console.log('    回合  状态          剩余  冷却剩余  启动回合  生效到  冷却到');
+  for (const x of 观) {
+    console.log(`    ${String(x.回合).padStart(3)}   ${(x.激活 ? 'TRANS-AM 中' : x.冷却中 ? '冷却中' : '待机').padEnd(12)}`
+      + `${String(x.剩余).padStart(3)}  ${String(x.冷却剩余).padStart(6)}  ${String(x.启动回合).padStart(7)}  ${String(x.结束回合 - 1).padStart(5)}  ${String(x.冷却到回合).padStart(5)}`);
+  }
+  info(`（这一段把双方 HP 顶高，只为了让 12 回合都走得完；状态机与 HP 无关）`);
+  if (JSON.stringify(激活回合) === JSON.stringify([1, 2, 6, 7, 11, 12])) {
+    ok(`② 持续真的 **2 回合**：第 1 回合开 → 第 ${激活回合[0]}、${激活回合[1]} 回合生效、第 3 回合**失效**（观里的「激活」回合号 = ${激活回合.join('、')}）`);
+  } else bad(`持续不是 2 回合：激活的回合号 = ${JSON.stringify(激活回合)}，预期 [1,2,6,7,11,12]`);
+  const 观3 = 观.find(x => x.回合 === 3), 观2 = 观.find(x => x.回合 === 2);
+  if (观2.激活 && 观2.剩余 === 1 && !观3.激活 && 观3.冷却中) {
+    ok(`② 第 2 回合仍生效（剩余 ${观2.剩余} 回合）、第 3 回合失效并进入冷却（第 3 回合冷却剩余 ${观3.冷却剩余} 回合）`);
+  } else bad(`第 2 / 3 回合的状态不对：第 2 回合 ${JSON.stringify(观2)}、第 3 回合 ${JSON.stringify(观3)}`);
+  const 启动录 = cT.log.filter(x => x.特色 === 'TRANS-AM' && x.结果 === '启动' && x.单位 === 'CB1').map(x => x.启动回合);
+  const 结束录 = cT.log.filter(x => x.特色 === 'TRANS-AM' && x.结果 === '结束' && x.单位 === 'CB1');
+  if (JSON.stringify(启动录) === JSON.stringify([1, 6, 11])) {
+    ok(`③ CD 真的 **3 回合**：12 回合上限里**开了 3 次** —— 真实回合号 **第 ${启动录.join('、')} 回合**（相邻两次相隔 ${启动录[1] - 启动录[0]} = 持续 ${p.持续回合} + 冷却 ${p.冷却回合}）`);
+  } else bad(`开启的回合号不对：${JSON.stringify(启动录)}，预期 [1,6,11]`);
+  if (结束录.length === 2 && 结束录[0].启动回合 === 1 && 结束录[0].冷却到回合 === 6 && 结束录[1].启动回合 === 6 && 结束录[1].冷却到回合 === 11) {
+    ok(`记录里看得出「关 / 冷却中」（战棋 taAfter / taReadyTurn 那一对）：第 3 回合与第 8 回合各写一条结束记录，例如「${结束录[0].文本}」`);
+  } else bad(`结束记录不对：${JSON.stringify(结束录.map(x => ({ 回合: x.回合, 启动: x.启动回合, 冷却到: x.冷却到回合 })))}`);
+  const 启动一条 = cT.log.find(x => x.特色 === 'TRANS-AM' && x.结果 === '启动' && x.单位 === 'CB1');
+  if (启动一条 && 启动一条.文本.startsWith('〔势力〕') && 启动一条.持续回合 === 2 && 启动一条.冷却回合 === 3 && 启动一条.威力倍率 === 1.3) {
+    ok(`启动记录带字段：持续 ${启动一条.持续回合} / 冷却 ${启动一条.冷却回合} / 威力倍率 ${启动一条.威力倍率} —— 「${启动一条.文本}」`);
+  } else bad(`启动记录字段不对：${JSON.stringify(启动一条)}`);
+  /* 4 台能在开的人**同回合一起开**（都按 CD 自动开，不用玩家点） */
+  const 各台 = 天人队.map(x => x.键).map(k => {
+    const u = cT.allies.find(y => y.key === k);
+    return `${u.name}×${G.势力状态(u, '天人').开启次数}`;
+  });
+  if (各台.every(s => s.endsWith('×3'))) ok(`③ 四台（刹那 / 洛克昂 / 阿雷路亚 / 提耶利亚）都是**自动开**、各自开了 3 次：${各台.join('、')}`);
+  else bad(`四台的开启次数不对：${各台.join('、')}`);
+
+  /* ---- (d) 威力 ×1.3 / 闪避 +15 **真的进公式**（贴前后数字） ---- */
+  const cD = G.开局([{ 键: 'CB2', 位: 0, 等级: 10 }], [{ 键: 'grunt', 位: 4, 等级: 10 }], 20261011);
+  const 狙 = cD.allies[0];
+  const 状D = G.势力状态(狙, '天人');
+  const 敌靶 = () => G.makeUnit('grunt', 'enemy', 4, 10);
+  const 敌枪 = 敌靶();
+  /* 闪避：`hitRate()` 的 eva 那一项 +15（战棋 03:130） */
+  状D.激活 = false; const 闪前 = G.hitRate(敌枪, 枪, 狙, { turn: 1 });
+  状D.激活 = true;  const 闪后 = G.hitRate(敌枪, 枪, 狙, { turn: 1 });
+  info(`洛克昂（CB2 · 狙击）Lv10：基础 eva ${狙.eva}；同一把直射枪（命中 100）打它：`);
+  info(`  关（未开 TRANS-AM）：命中原始值 ${闪前.raw}%（结算 ${闪前.hit}%、eva ${闪前.eva}）`);
+  info(`  开（TRANS-AM 中）  ：命中原始值 ${闪后.raw}%（结算 ${闪后.hit}%、eva ${闪后.eva}）　势力闪避 ${G.势力闪避(狙)}`);
+  if (闪后.eva === 闪前.eva + 15 && 闪后.raw === 闪前.raw - 15) {
+    ok(`④ 闪避 +15 真的进了 hitRate() 的公式：eva ${闪前.eva} → ${闪后.eva}、命中原始值 ${闪前.raw} → ${闪后.raw}（正好差 15）`);
+  } else bad(`闪避没进公式：eva ${闪前.eva} → ${闪后.eva}、raw ${闪前.raw} → ${闪后.raw}`);
+  /* 伤害：走 `resolveAction`（框架新钩子 `势力伤害倍率` 就挂在它上面，`60-战斗.js`）。
+     必中 + 不暴击（随机数走 ctx.rng：第 1 次判定命中、第 2 次判定暴击 → 0 / 0.999） */
+  let 摇 = 0;
+  cD.rng = () => (摇++ % 2 ? 0.999 : 0);
+  const 打一发 = () => {
+    const 靶 = 敌靶();
+    const 前 = cD.log.length;
+    G.resolveAction(狙, { kind: 'attack', weapon: 枪, target: 靶, entry: null }, cD);
+    const 录 = cD.log.slice(前).find(x => x.类型 === '攻击');
+    return 录;
+  };
+  状D.激活 = true;  const 录有 = 打一发();
+  状D.激活 = false; const 录无 = 打一发();
+  状D.激活 = true;   // 还原
+  const 比 = 录有.伤害 / 录无.伤害;
+  info(`同一发【${枪.name}】（威力 1000、必中、不暴击）打同一款量产机：`);
+  info(`  关（未开 TRANS-AM）：${录无.文本}`);
+  info(`  开（TRANS-AM 中）  ：${录有.文本}`);
+  info(`  倍率入口读到的值：\`势力伤害倍率(洛克昂, 枪)\` 现在是 ${G.势力伤害倍率(狙, 枪)}；开时口径 = 参数表里的 威力倍率 = 1.3`);
+  if (录有.伤害 === Math.round(录无.伤害 * 1.3) && Math.abs(比 - 1.3) < 0.001) {
+    ok(`④ 威力 ×1.3 真的进了公式：伤害 ${录无.伤害} → ${录有.伤害}（×${比.toFixed(3)}，= round(${录无.伤害} × 1.3)）`);
+  } else bad(`伤害没按 ×1.3 走：${录无.伤害} → ${录有.伤害}（比 ${比.toFixed(4)}，预期 ${Math.round(录无.伤害 * 1.3)}）`);
+  /* ★ 登记差异：战棋乘在 `wPow`（威力）上，我们走现成的「伤害倍率」口子（公式之后）→
+     `dmgCore` 本体前后**一模一样**，差的就是最后那一下 ×1.3。 */
+  const 靶器 = 敌靶();
+  const 干净 = { ...枪, power: 1000 };
+  状D.激活 = false; const d核心无 = G.dmgCore(狙, 干净, 靶器, { power: 1000, preview: true, turn: 1 }).dmg;
+  状D.激活 = true;  const d核心有 = G.dmgCore(狙, 干净, 靶器, { power: 1000, preview: true, turn: 1 }).dmg;
+  if (d核心无 === d核心有) {
+    ok(`★ 落点差异（如实登记）：\`dmgCore\` 本体前后一样（${d核心无} = ${d核心有}）—— 战棋把 ×1.3 乘在 \`wPow\`（威力，公式之前），我们走现成的「伤害倍率」口子（公式之后）；数值 1.3 逐字，位置差异写在参数表的 \`威力倍率落点\` 里`);
+  } else bad(`dmgCore 本体被改了：${d核心无} → ${d核心有}（框架说好不动公式的）`);
+  if (G.势力伤害倍率(狙, 枪) === 1.3) ok(`数值钩子直接读得到：\`势力伤害倍率(洛克昂, 枪)\` = ${G.势力伤害倍率(狙, 枪)}（关掉时 = 1）`);
+  else bad(`势力伤害倍率 不对：${G.势力伤害倍率(狙, 枪)}`);
+
+  /* ---- (e) 只对我方生效（含 CB5 拉塞开不了） ---- */
+  const cE = G.开局([{ 键: 'CB1', 位: 0, 等级: 10 }], [{ 键: 'grunt', 位: 4, 等级: 10 }], 5);
+  const 敌E = cE.enemies[0];
+  敌E.tags = Object.assign({}, 敌E.tags, { 势力: '天人' });
+  敌E.abilities = ['transAm'];                          // 连能力也挂上
+  G.势力开局(cE);                                        // 重新推一次（敌人不在 `势力在场()` 里）
+  if (G.势力名(敌E) === '天人' && !G.是我方势力(敌E, '天人')) ok('敌人的 `tags.势力` 确实写成了天人，但 `是我方势力()` 为假（`side === \'ally\'` 那道门）');
+  else bad('判定的门不对');
+  const 敌状 = (敌E.势力状态 || {}).天人 || {};
+  if (!敌状.激活 && G.势力伤害倍率(敌E, 枪) === 1 && G.势力闪避(敌E) === 0 && G.势力卡行(敌E) === '') {
+    ok(`⑤ 敌人一点不生效：状态机没给它建状态（激活 ${!!敌状.激活}）、伤害倍率 ${G.势力伤害倍率(敌E, 枪)}、势力闪避 ${G.势力闪避(敌E)}、卡行「${G.势力卡行(敌E)}」`);
+  } else bad(`⑤ 敌人被算了：${JSON.stringify({ 状: 敌状, 倍率: G.势力伤害倍率(敌E, 枪), 闪避: G.势力闪避(敌E), 卡行: G.势力卡行(敌E) })}`);
+  if (G.势力伤害倍率(cE.allies[0], 枪) === 1.3 && G.势力闪避(cE.allies[0]) === 15) ok('⑤ 同一场里我方的刹那照常开到（倍率 1.3 / 闪避 +15）——只屏蔽敌人，不是整套关掉');
+  else bad('⑤ 我方反而没开到');
+  /* 拉塞 CB5：天的人，但数据里没有 `transAm`（战棋 C8）→ 一次都不进状态机 */
+  const cL = G.开局([{ 键: 'CB5', 位: 0, 等级: 30 }], [{ 键: 'grunt', 位: 4, 等级: 10 }], 9);
+  const 拉 = cL.allies[0];
+  const 拉状 = (拉.势力状态 || {}).天人 || {};
+  if (G.有TRANSAM(拉, p) === false && 拉状.激活 !== true && !(拉状.开启次数 > 0) && 拉状.已推进回合 == null
+    && G.势力伤害倍率(拉, 枪) === 1 && G.势力闪避(拉) === 0 && G.势力卡行(拉) === '') {
+    ok(`⑤ 拉塞（CB5，天人但没有 \`transAm\`）：\`有TRANSAM()\` = false、**一次都没进状态机**（\`已推进回合\` ${拉状.已推进回合}、\`开启次数\` ${拉状.开启次数}）、`
+      + `倍率 ${G.势力伤害倍率(拉, 枪)}、闪避 ${G.势力闪避(拉)}、卡行「${G.势力卡行(拉)}」　照战棋 C8`);
+  } else bad(`⑤ 拉塞被算了：${JSON.stringify({ 有: G.有TRANSAM(拉, p), 状: 拉状, 倍率: G.势力伤害倍率(拉, 枪), 卡行: G.势力卡行(拉) })}`);
+
+  /* ---- (f) 同种子两次逐字相同 ---- */
+  const 跑 = 种子 => {
+    const ctx = G.开局(天人队, [{ 键: 'bluefish', 位: 0, 等级: 1 }], 种子);
+    for (let i = 0; i < 6 && !ctx.result; i++) G.打一回合(ctx);
+    return ctx;
+  };
+  const 甲 = 跑(20261011), 乙 = 跑(20261011);
+  if (JSON.stringify(甲.log) === JSON.stringify(乙.log)) ok(`⑥ 同种子跑 6 回合，${甲.log.length} 条记录逐字相同（开启 / 结束全走回合号，没有 \`Math.random\`）`);
+  else bad('⑥ 同种子两次结果不一致');
+  const 丙 = 跑(20261012);
+  if (JSON.stringify(丙.log) !== JSON.stringify(甲.log)) ok('⑥ 换种子结果就不一样（随机数确实在起作用）');
+  else info('⑥ 换种子记录一样（这一场太碾压时可能如此，不算错）');
+  const 势力录 = 甲.log.filter(x => x.特色 === 'TRANS-AM');
+  info(`这一场写了 ${势力录.length} 条 TRANS-AM 记录，例如「${(势力录[0] || {}).文本}」`);
+  for (const 文件 of ['src\\js\\72-势力.js', 'src\\js\\71-改动.js', 'src\\js\\60-战斗.js']) {
+    if (!/Math\.random/.test(源码(文件))) ok(`${文件} 里一处 \`Math.random\` 都没有`);
+    else bad(`${文件} 里出现了 Math.random`);
+  }
+
+  /* ---- (g) 一场真战斗：同种子「开 vs 关」（关掉 `启用` 做对照，不改任何数值） ---- */
+  const 编成条 = G.编成表.filter(x => x.层 === 2 && x.类型 === '精英')[0];
+  const 敌队 = G.编成到单位(编成条, 0).map(u => ({ 键: u.key, 位: u.slot, 等级: u.lv }));
+  const 打一场 = () => {
+    const r = G.simulate(天人队, 敌队, null, 20261011);
+    return {
+      结果: r.结果, 回合数: r.回合数,
+      攻击伤害: r.记录.reduce((a, x) => a + (x.类型 === '攻击' && x.单位方 === 'ally' ? (x.伤害 || 0) : 0), 0),
+      我方剩余: r.我方.reduce((a, u) => a + Math.max(0, u.hp), 0),
+      我方存活: r.我方.filter(u => u.hp > 0).length,
+      记录: r.记录,
+    };
+  };
+  let 带 = null, 不带 = null;
+  try {
+    p.启用 = true; 带 = 打一场();
+    p.启用 = false; 不带 = 打一场();
+  } finally { p.启用 = true; }                          // 一定要还原（后面的段落 / 别的测试都靠默认值）
+  info(`对照场：第 2 层精英「${编成条.考点}」（${敌队.length} 台，我方 4 台天人 Lv10、不下指令、同种子 ${20261011}）`);
+  info(`关掉这套特色（\`启用: false\`）：${不带.结果} · ${不带.回合数} 回合 · 我方攻击伤害 ${不带.攻击伤害} · 我方存活 ${不带.我方存活}/4 · 剩余 HP ${不带.我方剩余}`);
+  info(`带着这套特色（自动开）  ：${带.结果} · ${带.回合数} 回合 · 我方攻击伤害 ${带.攻击伤害} · 我方存活 ${带.我方存活}/4 · 剩余 HP ${带.我方剩余}`);
+  const 键 = x => `${x.单位}【${x.武器}】`;
+  const 首发表 = r => { const m = new Map(); for (const x of r.记录) if (x.类型 === '攻击' && x.伤害 > 0 && !m.has(键(x))) m.set(键(x), x); return m; };
+  const 表带 = 首发表(带), 表不带 = 首发表(不带), 更狠 = [], 更少 = [];
+  for (const [k, x] of 表带) {
+    if (!表不带.has(k)) continue;
+    if (x.伤害 > 表不带.get(k).伤害) 更狠.push(`${k} ${表不带.get(k).伤害} → ${x.伤害}`);
+    else if (x.伤害 < 表不带.get(k).伤害) 更少.push(`${k} ${表不带.get(k).伤害} → ${x.伤害}`);
+  }
+  if (更狠.length && !更少.length) {
+    ok(`(g) 同一台机体同一把武器的第一发**全部变狠**（${更狠.length} 处，一处都没变少）：${更狠.slice(0, 4).join('；')}`);
+  } else bad(`(g) 对照不对：更狠 ${更狠.length} 处、更少 ${更少.length} 处 ${JSON.stringify(更少.slice(0, 3))}`);
+  if (带.攻击伤害 > 不带.攻击伤害 && 带.我方剩余 >= 不带.我方剩余) {
+    ok(`(g) 整场看：我方攻击伤害 ${不带.攻击伤害} → ${带.攻击伤害}、剩余 HP ${不带.我方剩余} → ${带.我方剩余}（回合数 ${不带.回合数} → ${带.回合数}）`);
+  } else bad(`(g) 带了特色没变强：伤害 ${不带.攻击伤害} → ${带.攻击伤害}、剩余 ${不带.我方剩余} → ${带.我方剩余}`);
+
+  /* ---- (h) 战斗屏单位卡上的那一行（`80-界面.js` 的 `.faction`） ---- */
+  界面.手动播放 = true;
+  界面.清空();
+  界面.编队.出击 = [{ 键: 'CB1', 位: 0 }, { 键: 'CB2', 位: 1 }, { 键: 'CB5', 位: 4 }];
+  界面.开战(20261011);
+  const html = String(page.byId.get('screen') && page.byId.get('screen').innerHTML || '');
+  const 行数 = (html.match(/class="faction"/g) || []).length;
+  if (界面.屏 === '战斗' && 行数 === 2) ok(`(g) 战斗屏画了 ${行数} 行势力特色（CB1 / CB2 有；拉塞 CB5 没有 \`transAm\` → 不多画）`);
+  else bad(`(g) 战斗屏的势力行不对：屏 ${界面.屏}、${行数} 行`);
+  if (html.includes('TRANS-AM · 剩余 2 回合（威力 ×1.3、闪避 +15）')) ok('(g) 卡上写着「TRANS-AM · 剩余 2 回合（威力 ×1.3、闪避 +15）」（第 1 回合指令阶段，自动开出来的）');
+  else bad(`(g) 卡上没写 TRANS-AM 那一行：${(html.match(/TRANS-AM[^<]*/g) || []).join(' / ')}`);
+  if (!/undefined|NaN/.test(html)) ok('(g) 战斗屏 HTML 里没有 undefined / NaN');
+  else bad('(g) 战斗屏 HTML 里出现了 undefined / NaN');
+  /* 打完一回合 → 第 2 回合指令阶段：剩余 1 回合。
+     ★ 先把双方 HP 顶高（这一场本来第 1 回合就打完了，`endTurn` 不会跑 → 进不到第 2 回合）。 */
+  for (const u of 界面.ctx.enemies) { u.hp = u.maxHp = 99999999; }
+  for (const u of 界面.ctx.allies) { u.hp = u.maxHp = 999999; }
+  if (界面.开打()) {
+    const ctxUI = 界面.ctx;
+    const 状UI = G.势力状态(ctxUI.allies.find(u => u.key === 'CB1'), '天人');
+    if (ctxUI.turn === 2 && 状UI.激活 && 状UI.剩余回合 === 1) {
+      ok(`(g) 打完第 1 回合、进到第 2 回合的指令阶段：卡片读到的还是「剩余 1 回合」（回合结束推进下一回合 → 指令阶段看到的数字对得上当前回合）`);
+    } else bad(`(g) 第 2 回合指令阶段的状态不对：回合 ${ctxUI.turn}、${JSON.stringify(状UI)}`);
+  } else bad('(g) 界面.开打() 没打起来');
 }
 
 /* ============================ 结果 ============================ */

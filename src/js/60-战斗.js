@@ -316,7 +316,12 @@ function resolveAction(actor, action, ctx) {
   const targets = isAreaKind(kind) ? (action.hit || []) : [action.target];
   const 守护方 = actor.指令 === '守护' && actor.守护对象 ? 0.7 : 1;   // 守护者自己攻击伤害 −30%
   /* 站桩 Boss 脚本（61-Boss.js）：这一阶段的伤害倍率（没配脚本 = 1，与守护的 ×0.7 相乘） */
-  const 倍率 = 守护方 * Boss伤害倍率(actor);
+  /* ★ 势力特色 · **伤害倍率**（框架第 10 个数值钩子，`72-势力.js` 的 `势力伤害倍率()`；2026-10-11 新加）：
+     和上面两个倍率**挤在同一个口子**里相乘 —— 第一条用它的是**天人 TRANS-AM 的武器威力 ×1.3**
+     （战棋 `taPowMul`，`17b-角色机制.js:146`，那边接在 `15-战斗计算.js:36` 的 `wPow` 上乘**威力**；
+     我们落点的差异登记在 `71-改动.js` 的 `势力特色.天人.威力倍率落点`）。
+     没有势力条目 / 倍率是 1 → `倍率` 与改动前**逐字相同**（`1 * 1 * 1`）。 */
+  const 倍率 = 守护方 * Boss伤害倍率(actor) * 势力伤害倍率(actor, w);
   let 击破 = 0;
 
   for (const t of targets) {
