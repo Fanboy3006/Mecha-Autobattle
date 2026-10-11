@@ -92,6 +92,11 @@ const REDUCTIONS = [
   { id: 'guard', name: '防御姿态', stage: 2, applies: c => !!c.defending, def: () => 50 },
   { id: 'physRed', name: '物理减免', stage: 2, applies: c => c.w.dmgType === '物理' && buffSum(c.def, 'physRed') > 0, def: c => buffSum(c.def, 'physRed') },
   { id: 'buffDef', name: '防御增益', stage: 2, applies: c => buffSum(c.def, 'def') !== 0, def: c => buffSum(c.def, 'def') },
+  /* 「减伤」入口（藏品用；★ 这一版新加，出处见下面的说明）：
+   * 战棋把「减伤 %」算在 softRed 里、stage 2 加到**防御值**上（03-能力与减免管线.js:230-232、259），
+   * 那里写着 `Math.min(90, softRed(c))`。我们照抄这一条，只读 buffSum(def,'red')。
+   * **没有藏品的战斗 buffSum 是 0 → applies 为假 → 一行都不进步骤**，公式与改动前逐字相同。 */
+  { id: 'relicRed', name: '减伤', stage: 2, applies: c => buffSum(c.def, 'red') > 0, def: c => Math.min(90, buffSum(c.def, 'red')) },
   {
     id: 'barrier', name: '能量屏障', stage: 1,
     applies: c => abilOn(c.def, 'barrier') && c.def.barrierLeft > 0 && c.dmg <= 2500,
@@ -153,8 +158,13 @@ function dmgCore(att, w, def, o = {}) {
   let A = 0;
   if (!special && !ign) A = Math.round(effArmor(def) * c.defMul);
 
-  /* 3. 攻击能力值（战棋里还有特技 / 藏品 / 肉鸽的加成，第一期都没有） */
-  const atk = (useStat && att) ? atkStat(att, w) : 0;
+  /* 3. 攻击能力值（战棋里还有特技 / 藏品 / 肉鸽的加成，第一期都没有）
+   * ★ 这一版新加「伤害加成」入口（藏品用，出处：战棋 03-能力与减免管线.js:185-188 的 genMods ——
+   *   v0.37 起「伤害 +N%」改成「攻击能力值 +N」，所以这里加在 `atk` 上，不是最后乘伤害）。
+   *   加数只来自 buffSum(att,'dmg')，也就是藏品的 `src:'藏品'` 那条常驻 buff；
+   *   没有藏品时它是 0，`atk` 与改动前完全一样（tests/sim.js 的胜率表盯着这一条）。 */
+  const 伤害加成 = (useStat && att) ? buffSum(att, 'dmg') : 0;
+  const atk = ((useStat && att) ? atkStat(att, w) : 0) + 伤害加成;
 
   /* 4. 防御值：基础防御 + stage 2 的数值条目，整体 × 破防 */
   let D = 0; const dn = [];
@@ -171,7 +181,7 @@ function dmgCore(att, w, def, o = {}) {
   const coef = statCoef(atk, D), base = Math.max(0, W - A);
   c.dmg = Math.max(10, Math.round(base * coef));
   c.steps.push(`威力 ${W}${A ? ` − 装甲 ${A}` : ''} = ${base}${wn.length > 1 ? `（${wn.join('，')}）` : ''}`);
-  c.steps.push(`× statCoef（1 +（攻击 ${atk} − 防御 ${D}）/ 100）= ×${+coef.toFixed(2)}${dn.length ? `（防御：${dn.join('、')}）` : ''}`);
+  c.steps.push(`× statCoef（1 +（攻击 ${atk}${伤害加成 ? `（含伤害加成 +${伤害加成}）` : ''} − 防御 ${D}）/ 100）= ×${+coef.toFixed(2)}${dn.length ? `（防御：${dn.join('、')}）` : ''}`);
   c.steps.push(`= ${c.dmg}${base * coef < 10 ? '（命中后最少 10）' : ''}`);
 
   if (ign) { c.steps.push('无视防御：不经过屏障 / 力场 / 护盾'); return c; }

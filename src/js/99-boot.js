@@ -25,6 +25,10 @@ const G = {
   界面, 播放, FACTION_COL, 势力色,
   /* ---- 肉鸽（M4） ---- */
   肉鸽, 肉鸽界面, 肉鸽数值, 存档键, 节点类型表, 抽编成, 选编成, 行列数,
+  /* ---- 藏品（作者 2026-10-10 点名要做的「3 藏品」；数据在 93-藏品.js） ---- */
+  藏品表, 藏品纯数值32, 藏品接不了, 藏品价格, 藏品说明, 藏品名, 藏品清单, 藏品卡片Html,
+  藏品可抽池, 藏品候选, 抽藏品, 拿藏品, 战斗胜利发藏品, 藏品转源碳,
+  藏品开战, 应用藏品我方, 应用藏品敌方, 藏品单体效果, 藏品层数,
   /* ---- 美术 / 音乐（M5） ---- */
   图标, 音乐, 场景曲,        // 图标层（art/mech-icons.js）、音乐接线（audio/local-music.js）
   get MechIcons() { return 图标.取MI(); },   // 素材本体，给测试 / 控制台用
@@ -45,6 +49,7 @@ const G = {
   rangeKindOf, rowReachable, rowBlockPenalty, areaSlots, ROW_FRONT, ROW_BACK,
   isAreaKind, isHealKind, isSupportKind, KIND_SUPPORT,
   statCoef, hitRate, critRate, dmgCore, critMul, isSure, isUltimate,
+  effArmor, buffSum, defMul, statVal, atkStat, REDUCTIONS,   // 藏品测试要直接看公式里的量
   编成表, 选编成, 编成到单位, 默认五人队, 类型到Kind,
   月光祝福范围, 残月余响范围, 再动,
   /* ---- 站桩 Boss 脚本（方案 5.2 / 61-Boss.js） ---- */
