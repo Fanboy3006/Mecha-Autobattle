@@ -24,6 +24,10 @@ const ULT_START_CD = 3;       // 大招（unlock 20 / 30）开场冷却 3 回合
 function pushLog(ctx, text, extra) {
   ctx.log.push(Object.assign({ 回合: ctx.turn, 文本: text }, extra || {}));
 }
+/* 记录里带上「谁 / 打谁」的阵营与格子：界面回放要靠它画血条、闪白、飘伤害数字。
+   只用单位键不行——编成里常常有两台同名敌人（例如两个 grunt）。 */
+const 谁 = u => ({ 单位方: u.side, 单位位: u.slot });
+const 谁目标 = u => ({ 目标方: u.side, 目标位: u.slot });
 
 /* ---------- 行动顺序 ---------- */
 /* 速度从高到低；同速：我方先，再按列号（方案 3.2）。同速同列再按格子编号，保证决定性。 */
@@ -42,7 +46,7 @@ function actOnce(u, ctx) {
   u.actedTurn = ctx.turn;              // 「再动」要知道谁这一回合已经行动过
   const action = u.side === 'ally' ? aiAction(u, ctx) : enemyAction(u, ctx);
   if (action) resolveAction(u, action, ctx);
-  else pushLog(ctx, `${u.name} 没有能打到人的武器，跳过`, { 类型: '跳过', 单位: u.key });
+  else pushLog(ctx, `${u.name} 没有能打到人的武器，跳过`, Object.assign({ 类型: '跳过', 单位: u.key }, 谁(u)));
   runAutoCast(u, ctx);                 // 残月的余响：行动结束后自动释放（被动）
 }
 
@@ -71,7 +75,7 @@ function runAutoCast(u, ctx) {
   for (const t of targets) {
     if (t.hp <= 0) continue;
     const rec = resolveAttack(u, t, w, ctx, {});
-    pushLog(ctx, `〔${w.name}〕${rec.文本}`, Object.assign({ 类型: '残月余响', 单位: u.key, 目标: t.key, 位: t.slot, 武器: w.name }, rec.字段));
+    pushLog(ctx, `〔${w.name}〕${rec.文本}`, Object.assign({ 类型: '残月余响', 单位: u.key, 目标: t.key, 武器: w.name }, 谁(u), 谁目标(t), rec.字段));
   }
 }
 
@@ -85,7 +89,7 @@ function resolveAction(actor, action, ctx) {
     for (const t of action.targets) 换同源增益(t, w.name, buff);
     spendWeapon(actor, action.entry, ctx);
     pushLog(ctx, `${actor.name}【${w.name}】→ ${action.targets.map(t => t.name).join('、')}：${Object.entries(buff).map(([k, v]) => `${k} ${v > 0 ? '+' : ''}${v}`).join('、')}（到本回合结束）`,
-      { 类型: '增益', 单位: actor.key, 武器: w.name, 目标: action.targets.map(t => t.key) });
+      Object.assign({ 类型: '增益', 单位: actor.key, 武器: w.name, 目标: action.targets.map(t => t.key), 目标位们: action.targets.map(t => t.slot), 目标方们: action.targets.map(t => t.side) }, 谁(actor)));
     return;
   }
 
@@ -95,7 +99,7 @@ function resolveAction(actor, action, ctx) {
     t.grantedTurn = ctx.turn;
     ctx.again.push(t);
     spendWeapon(actor, action.entry, ctx);
-    pushLog(ctx, `${actor.name}【${w.name}】→ ${t.name}：再行动一次`, { 类型: '再动', 单位: actor.key, 目标: t.key });
+    pushLog(ctx, `${actor.name}【${w.name}】→ ${t.name}：再行动一次`, Object.assign({ 类型: '再动', 单位: actor.key, 目标: t.key }, 谁(actor), 谁目标(t)));
     return;
   }
 
@@ -104,9 +108,9 @@ function resolveAction(actor, action, ctx) {
     const before = action.target.hp;
     action.target.hp = Math.min(action.target.maxHp, action.target.hp + amount);
     spendWeapon(actor, action.entry, ctx);
-    pushLog(ctx, `${actor.name} 修理 ${action.target.name}，回复 ${action.target.hp - before}`, {
+    pushLog(ctx, `${actor.name} 修理 ${action.target.name}，回复 ${action.target.hp - before}`, Object.assign({
       类型: '修理', 单位: actor.key, 目标: action.target.key, 武器: w.name, 回复: action.target.hp - before,
-    });
+    }, 谁(actor), 谁目标(action.target)));
     return;
   }
 
@@ -120,7 +124,7 @@ function resolveAction(actor, action, ctx) {
     const trow = unitRow(t);
     const blockPenalty = isAreaKind(kind) ? 0 : rowBlockPenalty(kind, trow, frontAliveNow);
     const rec = resolveAttack(actor, t, w, ctx, { blockPenalty });
-    pushLog(ctx, rec.文本, Object.assign({ 类型: '攻击', 单位: actor.key, 目标: t.key, 武器: w.name }, rec.字段));
+    pushLog(ctx, rec.文本, Object.assign({ 类型: '攻击', 单位: actor.key, 目标: t.key, 武器: w.name }, 谁(actor), 谁目标(t), rec.字段));
   }
   spendWeapon(actor, action.entry, ctx);
 }
@@ -133,7 +137,7 @@ function runOverwatch(ally, ctx) {
     const action = enemyAction(e, ctx);
     if (!action) continue;
     e.overwatchFiredTurn = ctx.turn;
-    pushLog(ctx, `〔压制射击〕${e.name} 抢先开火`, { 类型: '压制射击', 单位: e.key, 目标: ally.key });
+    pushLog(ctx, `〔压制射击〕${e.name} 抢先开火`, Object.assign({ 类型: '压制射击', 单位: e.key, 目标: ally.key }, 谁(e), 谁目标(ally)));
     resolveAction(e, action, ctx);
   }
 }

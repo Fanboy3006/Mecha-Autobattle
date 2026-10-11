@@ -100,7 +100,7 @@ else {
   ok('window.__game 已暴露');
   const checks = [
     ['version', v => typeof v === 'string' && /^\d+\.\d+\.\d+$/.test(v)],
-    ['milestone', v => v === 'M1'],
+    ['milestone', v => v === 'M2'],
     ['ready', v => v === true],
     ['slots', v => v === 6],                                  // 方案 3.1：双方各 2 排 × 3 列
     ['rows', v => v === 2],
@@ -112,6 +112,9 @@ else {
     ['编成表', v => Array.isArray(v) && v.length > 0],
     ['默认五人队', v => Array.isArray(v) && v.length > 0],
     ['ALLY_T', v => Array.isArray(v) && v.length === 34],
+    // M2 的界面与播放
+    ['界面', v => v && typeof v.开屏 === 'function' && typeof v.开战 === 'function'],
+    ['播放', v => v && typeof v.载入 === 'function' && typeof v.tick === 'function'],
   ];
   for (const [name, test] of checks) {
     const v = G[name];

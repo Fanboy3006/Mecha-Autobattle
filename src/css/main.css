@@ -39,3 +39,103 @@ button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outli
 .card ul{margin:0 0 8px;padding-left:18px;display:flex;flex-direction:column;gap:3px}
 .small{font-size:12px;color:var(--muted)}
 code{font-family:var(--font-m);font-size:12px;color:var(--accent)}
+
+/* ============================================================================
+ * M2：菜单 / 编队 / 战斗 / 结算
+ * ========================================================================== */
+
+.hud{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.chip{display:flex;align-items:baseline;gap:6px;background:var(--panel);border:1px solid var(--line);padding:2px 10px;border-radius:4px}
+.chip .lbl{color:var(--muted);font-size:12px}
+.chip b{font-family:var(--font-m);font-size:15px;font-variant-numeric:tabular-nums}
+.ctrl button{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:6px 12px}
+.ctrl button:hover{border-color:var(--muted)}
+.ctrl button.on{border-color:var(--accent);color:var(--accent)}
+.primary{background:var(--accent);color:#1b1407;border-color:var(--accent);font-weight:700}
+
+.card .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.mini{font-size:12px;padding:2px 8px;border-radius:4px;border:1px solid var(--line);background:var(--panel2);color:var(--fg)}
+.mini.on{border-color:var(--accent);color:var(--accent)}
+.sel{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:4px;font:inherit;font-size:13px;padding:5px 6px;width:100%}
+h3 .small{margin-left:6px;font-weight:400}
+
+/* ---------- 编队 ---------- */
+.编队屏{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:14px;align-items:start}
+.编队屏 .col{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px}
+.编队屏 .filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;align-items:center}
+.编队屏 .filters .sep{width:8px}
+.picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:6px;max-height:62vh;overflow:auto;padding-right:2px}
+.pick{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;background:var(--panel2);
+  border:1px solid var(--line);border-left:4px solid var(--fc);border-radius:4px;padding:5px 8px;color:var(--fg)}
+.pick b{font-size:13px}
+.pick small{color:var(--muted);font-size:11px}
+.pick .nums{font-family:var(--font-m);font-size:11px;color:var(--accent)}
+.pick.on{outline:2px solid var(--accent)}
+.pick.used{opacity:.45}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0 10px}
+.slot{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-height:66px;background:var(--panel2);
+  border:1px dashed var(--line);border-radius:6px;padding:6px 8px;color:var(--fg);text-align:left}
+.slot .pos{font-family:var(--font-m);font-size:10px;color:var(--muted)}
+.slot b{font-size:13px}
+.slot small{font-size:11px;color:var(--muted)}
+.slot .nums{font-family:var(--font-m);font-size:11px;color:var(--accent)}
+.slot.filled{border-style:solid;border-left:4px solid var(--fc)}
+
+/* ---------- 战斗 ---------- */
+.战斗屏{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 320px;gap:12px;align-items:start}
+.战斗屏 .side{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px}
+.战斗屏 .side.ally{border-top:3px solid var(--ally)}
+.战斗屏 .side.enemy{border-top:3px solid var(--enemy)}
+.战斗屏 .side h3{margin:0 0 8px}
+.战斗屏 .row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:6px}
+.uc{position:relative;background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--fc);
+  border-radius:6px;padding:5px 7px;min-height:74px;overflow:hidden;transition:transform .12s,box-shadow .12s,opacity .2s}
+.uc .pos{position:absolute;top:4px;right:6px;font-family:var(--font-m);font-size:10px;color:var(--muted)}
+.uc .head{display:flex;flex-direction:column;line-height:1.25}
+.uc .head b{font-size:13px}
+.uc .head small{font-size:10px;color:var(--muted)}
+.uc .bar{height:5px;background:#0d131a;border-radius:3px;overflow:hidden;margin:4px 0 2px}
+.uc .bar i{display:block;height:100%;background:var(--good);transition:width .18s}
+.uc .nums{font-family:var(--font-m);font-size:10px;color:var(--muted)}
+.uc .tags{font-size:10px;color:var(--muted)}
+.uc.empty{border-style:dashed;border-left-color:var(--line);opacity:.5;display:flex;align-items:center;justify-content:center}
+.uc.down{opacity:.35;filter:grayscale(1)}
+.uc.hit{animation:hitflash .18s;box-shadow:0 0 0 2px color-mix(in srgb,var(--enemy) 70%,transparent)}
+.uc.hit.crit{box-shadow:0 0 0 3px var(--accent)}
+/* 攻击者向前冲一下（方案 8.1）：我方往右、敌方往左，都朝接触线方向 */
+.uc.act{animation:lunge .26s ease-out}
+.side.ally .uc.act{animation-name:lungeRight}
+.side.enemy .uc.act{animation-name:lungeLeft}
+@keyframes hitflash{50%{transform:translateX(3px)}}
+@keyframes lungeRight{40%{transform:translateX(7px)}}
+@keyframes lungeLeft{40%{transform:translateX(-7px)}}
+.float{position:absolute;right:6px;top:16px;font-family:var(--font-m);font-weight:700;font-size:15px;color:#fff;
+  text-shadow:0 1px 3px #000;animation:floatup .8s ease-out forwards}
+.float.crit{font-size:20px;color:var(--accent)}
+@keyframes floatup{to{transform:translateY(-18px);opacity:0}}
+.logcol{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px;display:flex;flex-direction:column;min-height:0}
+.logcol h3{margin:0 0 8px}
+#log{list-style:none;margin:0;padding:0;overflow:auto;max-height:64vh;display:flex;flex-direction:column;gap:5px;font-size:12px}
+#log li{border-left:2px solid var(--line);padding-left:8px}
+#log li.ally{border-color:var(--ally)}
+#log li.enemy{border-color:var(--enemy)}
+#log li.sys{border-color:var(--accent);color:var(--accent)}
+#log .t{font-family:var(--font-m);color:var(--muted);margin-right:6px}
+
+/* ---------- 结算 ---------- */
+.card.end .eyebrow{font-family:var(--font-d);letter-spacing:.2em;font-size:13px;color:var(--enemy)}
+.card.end.win .eyebrow{color:var(--good)}
+.card.end h2{font-family:var(--font-d);letter-spacing:.06em;font-size:30px;margin:2px 0 10px}
+.card.end ul{margin:0;padding-left:18px}
+.card.end li b{font-family:var(--font-m);color:var(--accent)}
+
+/* ---------- 手机宽度：单列，战斗记录放到下面 ---------- */
+@media (max-width:980px){
+  .编队屏{grid-template-columns:minmax(0,1fr)}
+  .战斗屏{grid-template-columns:minmax(0,1fr)}
+  .picks{max-height:none}
+  #log{max-height:32vh}
+  .uc{min-height:64px;padding:4px 6px}
+  .uc .head b{font-size:12px}
+}
+

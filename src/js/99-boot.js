@@ -1,19 +1,16 @@
 /* ============================================================================
  * 机甲指挥 · 收尾（boot）
  * ----------------------------------------------------------------------------
- * 1. 把顶栏上的版本 / 里程碑文字填上（让「页面打开了而且没报错」肉眼可见）；
- * 2. 关闭 `00-head.js` 打开的 IIFE，把调试接口挂到 `window.__game`。
- *
- * M1（战斗内核）还没有界面：战斗画面在 M2。这里把内核暴露出去，
- * 让 `node tests/sim.js` 能在没有浏览器的情况下跑一百场。
+ * 1. 把顶栏上的版本 / 里程碑文字填上；
+ * 2. 把界面点亮（菜单屏）；
+ * 3. 关闭 `00-head.js` 打开的 IIFE，把调试接口挂到 `window.__game`
+ *    （测试 `tests/smoke.js` / `tests/sim.js` / `tests/battle_ui.js` 都从这里取）。
  * ========================================================================== */
 
 function boot() {
   const verEl = $('#ver'); if (verEl) verEl.textContent = 'v' + VERSION;
   const msEl = $('#ms'); if (msEl) msEl.textContent = MILESTONE;
-  const cnt = $('#count'); if (cnt) {
-    cnt.textContent = `${ALLY_T.length} 名角色 · ${Object.keys(ENEMY_T).length} 种敌人 · ${Object.keys(ENEMY_TIER).reduce((n, k) => n + ENEMY_TIER[k].length, 0)} 个梯队敌人`;
-  }
+  界面.开屏('菜单');
 }
 
 const G = {
@@ -23,7 +20,11 @@ const G = {
   slots: SLOTS,          // 6：双方各 2 排 × 3 列（方案 3.1）
   rows: ROWS, cols: COLS,
   mulberry32,            // 带种子的随机数（方案 6.1）
-  /* ---- M1 战斗内核 ---- */
+
+  /* ---- 界面 / 播放（M2） ---- */
+  界面, 播放, FACTION_COL, 势力色,
+
+  /* ---- 战斗内核（M1） ---- */
   simulate,              // simulate(我方, 敌方, 指令, 种子) → {结果, 回合数, 记录, …}
   makeUnits,             // 编成数组 → 单位数组
   makeUnit,              // 单个：{键, 位, 等级}

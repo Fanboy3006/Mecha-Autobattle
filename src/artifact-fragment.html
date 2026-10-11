@@ -44,33 +44,118 @@ button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outli
 .card ul{margin:0 0 8px;padding-left:18px;display:flex;flex-direction:column;gap:3px}
 .small{font-size:12px;color:var(--muted)}
 code{font-family:var(--font-m);font-size:12px;color:var(--accent)}
+
+/* ============================================================================
+ * M2：菜单 / 编队 / 战斗 / 结算
+ * ========================================================================== */
+
+.hud{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.chip{display:flex;align-items:baseline;gap:6px;background:var(--panel);border:1px solid var(--line);padding:2px 10px;border-radius:4px}
+.chip .lbl{color:var(--muted);font-size:12px}
+.chip b{font-family:var(--font-m);font-size:15px;font-variant-numeric:tabular-nums}
+.ctrl button{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:6px 12px}
+.ctrl button:hover{border-color:var(--muted)}
+.ctrl button.on{border-color:var(--accent);color:var(--accent)}
+.primary{background:var(--accent);color:#1b1407;border-color:var(--accent);font-weight:700}
+
+.card .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.mini{font-size:12px;padding:2px 8px;border-radius:4px;border:1px solid var(--line);background:var(--panel2);color:var(--fg)}
+.mini.on{border-color:var(--accent);color:var(--accent)}
+.sel{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:4px;font:inherit;font-size:13px;padding:5px 6px;width:100%}
+h3 .small{margin-left:6px;font-weight:400}
+
+/* ---------- 编队 ---------- */
+.编队屏{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:14px;align-items:start}
+.编队屏 .col{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px}
+.编队屏 .filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;align-items:center}
+.编队屏 .filters .sep{width:8px}
+.picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:6px;max-height:62vh;overflow:auto;padding-right:2px}
+.pick{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;background:var(--panel2);
+  border:1px solid var(--line);border-left:4px solid var(--fc);border-radius:4px;padding:5px 8px;color:var(--fg)}
+.pick b{font-size:13px}
+.pick small{color:var(--muted);font-size:11px}
+.pick .nums{font-family:var(--font-m);font-size:11px;color:var(--accent)}
+.pick.on{outline:2px solid var(--accent)}
+.pick.used{opacity:.45}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0 10px}
+.slot{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-height:66px;background:var(--panel2);
+  border:1px dashed var(--line);border-radius:6px;padding:6px 8px;color:var(--fg);text-align:left}
+.slot .pos{font-family:var(--font-m);font-size:10px;color:var(--muted)}
+.slot b{font-size:13px}
+.slot small{font-size:11px;color:var(--muted)}
+.slot .nums{font-family:var(--font-m);font-size:11px;color:var(--accent)}
+.slot.filled{border-style:solid;border-left:4px solid var(--fc)}
+
+/* ---------- 战斗 ---------- */
+.战斗屏{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 320px;gap:12px;align-items:start}
+.战斗屏 .side{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px}
+.战斗屏 .side.ally{border-top:3px solid var(--ally)}
+.战斗屏 .side.enemy{border-top:3px solid var(--enemy)}
+.战斗屏 .side h3{margin:0 0 8px}
+.战斗屏 .row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:6px}
+.uc{position:relative;background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--fc);
+  border-radius:6px;padding:5px 7px;min-height:74px;overflow:hidden;transition:transform .12s,box-shadow .12s,opacity .2s}
+.uc .pos{position:absolute;top:4px;right:6px;font-family:var(--font-m);font-size:10px;color:var(--muted)}
+.uc .head{display:flex;flex-direction:column;line-height:1.25}
+.uc .head b{font-size:13px}
+.uc .head small{font-size:10px;color:var(--muted)}
+.uc .bar{height:5px;background:#0d131a;border-radius:3px;overflow:hidden;margin:4px 0 2px}
+.uc .bar i{display:block;height:100%;background:var(--good);transition:width .18s}
+.uc .nums{font-family:var(--font-m);font-size:10px;color:var(--muted)}
+.uc .tags{font-size:10px;color:var(--muted)}
+.uc.empty{border-style:dashed;border-left-color:var(--line);opacity:.5;display:flex;align-items:center;justify-content:center}
+.uc.down{opacity:.35;filter:grayscale(1)}
+.uc.hit{animation:hitflash .18s;box-shadow:0 0 0 2px color-mix(in srgb,var(--enemy) 70%,transparent)}
+.uc.hit.crit{box-shadow:0 0 0 3px var(--accent)}
+/* 攻击者向前冲一下（方案 8.1）：我方往右、敌方往左，都朝接触线方向 */
+.uc.act{animation:lunge .26s ease-out}
+.side.ally .uc.act{animation-name:lungeRight}
+.side.enemy .uc.act{animation-name:lungeLeft}
+@keyframes hitflash{50%{transform:translateX(3px)}}
+@keyframes lungeRight{40%{transform:translateX(7px)}}
+@keyframes lungeLeft{40%{transform:translateX(-7px)}}
+.float{position:absolute;right:6px;top:16px;font-family:var(--font-m);font-weight:700;font-size:15px;color:#fff;
+  text-shadow:0 1px 3px #000;animation:floatup .8s ease-out forwards}
+.float.crit{font-size:20px;color:var(--accent)}
+@keyframes floatup{to{transform:translateY(-18px);opacity:0}}
+.logcol{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px;display:flex;flex-direction:column;min-height:0}
+.logcol h3{margin:0 0 8px}
+#log{list-style:none;margin:0;padding:0;overflow:auto;max-height:64vh;display:flex;flex-direction:column;gap:5px;font-size:12px}
+#log li{border-left:2px solid var(--line);padding-left:8px}
+#log li.ally{border-color:var(--ally)}
+#log li.enemy{border-color:var(--enemy)}
+#log li.sys{border-color:var(--accent);color:var(--accent)}
+#log .t{font-family:var(--font-m);color:var(--muted);margin-right:6px}
+
+/* ---------- 结算 ---------- */
+.card.end .eyebrow{font-family:var(--font-d);letter-spacing:.2em;font-size:13px;color:var(--enemy)}
+.card.end.win .eyebrow{color:var(--good)}
+.card.end h2{font-family:var(--font-d);letter-spacing:.06em;font-size:30px;margin:2px 0 10px}
+.card.end ul{margin:0;padding-left:18px}
+.card.end li b{font-family:var(--font-m);color:var(--accent)}
+
+/* ---------- 手机宽度：单列，战斗记录放到下面 ---------- */
+@media (max-width:980px){
+  .编队屏{grid-template-columns:minmax(0,1fr)}
+  .战斗屏{grid-template-columns:minmax(0,1fr)}
+  .picks{max-height:none}
+  #log{max-height:32vh}
+  .uc{min-height:64px;padding:4px 6px}
+  .uc .head b{font-size:12px}
+}
+
 </style>
 
 <div class="app">
   <header class="bar">
     <div class="brand">
       <span class="mark">机甲指挥</span>
-      <span class="ver">试作版 <span id="ver">v0.0.1</span> · <span id="ms">M0</span> 仓库骨架</span>
+      <span class="ver">试作版 <span id="ver">v0.2.0</span> · <span id="ms">M2</span> 战斗画面</span>
     </div>
-    <div class="ctrl">
-      <button id="btnFight" disabled title="战斗画面在 M2">战斗（M2）</button>
-    </div>
+    <div class="hud" id="hud"></div>
+    <div class="ctrl" id="ctrl"></div>
   </header>
-  <main class="main">
-    <section class="card">
-      <h3>M1 · 战斗内核（还没有界面）</h3>
-      <p><b>机甲指挥</b>是从「机甲战棋」分叉出来的<b>自动战斗回合制 RPG</b>：玩家在肉鸽大地图上走格子、招募机师、拿藏品；遇到战斗时把机体摆进前排 / 后排，每回合给每台机体下一条指令，这一回合自动打完，看结果，再下下一回合的指令。</p>
-      <ul>
-        <li>站位：双方各 2 排 × 3 列，最多 6 台机体；前排全灭后后排不会自动前移。</li>
-        <li>回合：指令阶段 → 行动阶段（按速度从高到低自动结算）→ 回合结束；第 12 回合还没分出胜负 = 败。</li>
-        <li>射程按武器的 <code>fire</code> 换算成「能打到哪一排」：近战只能打前排，直射打后排被挡 −20 命中，曲射无惩罚，范围按 <code>area</code> 挑落点，修理优先修 HP 比例最低的队友。</li>
-        <li>指令：M1 全是「进攻」（方案 5.1 的 AI）；集火 / 守护 / 防御 / 换位和大招开关在 M3。</li>
-      </ul>
-      <p class="small">内核本身在 <code>src/js/</code> 里，还没接到界面上——<b>战斗画面 M2 才做</b>。现在要试就打开浏览器控制台，或者跑 <code>node tests/sim.js</code>：固定种子跑同一场两次结果必须完全一样，并打印 Lv10 五人队对第 1 层三种编成各 100 场的胜率。</p>
-      <p class="small" id="count"></p>
-      <p class="small">源文件在 <code>src/</code>，这个 <code>index.html</code> 是 <code>node tools/build-src.mjs</code> 生成的，不要手改。</p>
-    </section>
-  </main>
+  <main class="main" id="screen"></main>
 </div>
 
 <script>
@@ -89,8 +174,8 @@ code{font-family:var(--font-m);font-size:12px;color:var(--accent)}
 'use strict';
 
 /* ---------- 版本 / 里程碑（顶栏会显示，测试也会读） ---------- */
-const VERSION = '0.1.0';
-const MILESTONE = 'M1';
+const VERSION = '0.2.0';
+const MILESTONE = 'M2';
 
 /* ---------- 小工具 ---------- */
 const $ = s => document.querySelector(s);
@@ -1406,6 +1491,10 @@ const ULT_START_CD = 3;       // 大招（unlock 20 / 30）开场冷却 3 回合
 function pushLog(ctx, text, extra) {
   ctx.log.push(Object.assign({ 回合: ctx.turn, 文本: text }, extra || {}));
 }
+/* 记录里带上「谁 / 打谁」的阵营与格子：界面回放要靠它画血条、闪白、飘伤害数字。
+   只用单位键不行——编成里常常有两台同名敌人（例如两个 grunt）。 */
+const 谁 = u => ({ 单位方: u.side, 单位位: u.slot });
+const 谁目标 = u => ({ 目标方: u.side, 目标位: u.slot });
 
 /* ---------- 行动顺序 ---------- */
 /* 速度从高到低；同速：我方先，再按列号（方案 3.2）。同速同列再按格子编号，保证决定性。 */
@@ -1424,7 +1513,7 @@ function actOnce(u, ctx) {
   u.actedTurn = ctx.turn;              // 「再动」要知道谁这一回合已经行动过
   const action = u.side === 'ally' ? aiAction(u, ctx) : enemyAction(u, ctx);
   if (action) resolveAction(u, action, ctx);
-  else pushLog(ctx, `${u.name} 没有能打到人的武器，跳过`, { 类型: '跳过', 单位: u.key });
+  else pushLog(ctx, `${u.name} 没有能打到人的武器，跳过`, Object.assign({ 类型: '跳过', 单位: u.key }, 谁(u)));
   runAutoCast(u, ctx);                 // 残月的余响：行动结束后自动释放（被动）
 }
 
@@ -1453,7 +1542,7 @@ function runAutoCast(u, ctx) {
   for (const t of targets) {
     if (t.hp <= 0) continue;
     const rec = resolveAttack(u, t, w, ctx, {});
-    pushLog(ctx, `〔${w.name}〕${rec.文本}`, Object.assign({ 类型: '残月余响', 单位: u.key, 目标: t.key, 位: t.slot, 武器: w.name }, rec.字段));
+    pushLog(ctx, `〔${w.name}〕${rec.文本}`, Object.assign({ 类型: '残月余响', 单位: u.key, 目标: t.key, 武器: w.name }, 谁(u), 谁目标(t), rec.字段));
   }
 }
 
@@ -1467,7 +1556,7 @@ function resolveAction(actor, action, ctx) {
     for (const t of action.targets) 换同源增益(t, w.name, buff);
     spendWeapon(actor, action.entry, ctx);
     pushLog(ctx, `${actor.name}【${w.name}】→ ${action.targets.map(t => t.name).join('、')}：${Object.entries(buff).map(([k, v]) => `${k} ${v > 0 ? '+' : ''}${v}`).join('、')}（到本回合结束）`,
-      { 类型: '增益', 单位: actor.key, 武器: w.name, 目标: action.targets.map(t => t.key) });
+      Object.assign({ 类型: '增益', 单位: actor.key, 武器: w.name, 目标: action.targets.map(t => t.key), 目标位们: action.targets.map(t => t.slot), 目标方们: action.targets.map(t => t.side) }, 谁(actor)));
     return;
   }
 
@@ -1477,7 +1566,7 @@ function resolveAction(actor, action, ctx) {
     t.grantedTurn = ctx.turn;
     ctx.again.push(t);
     spendWeapon(actor, action.entry, ctx);
-    pushLog(ctx, `${actor.name}【${w.name}】→ ${t.name}：再行动一次`, { 类型: '再动', 单位: actor.key, 目标: t.key });
+    pushLog(ctx, `${actor.name}【${w.name}】→ ${t.name}：再行动一次`, Object.assign({ 类型: '再动', 单位: actor.key, 目标: t.key }, 谁(actor), 谁目标(t)));
     return;
   }
 
@@ -1486,9 +1575,9 @@ function resolveAction(actor, action, ctx) {
     const before = action.target.hp;
     action.target.hp = Math.min(action.target.maxHp, action.target.hp + amount);
     spendWeapon(actor, action.entry, ctx);
-    pushLog(ctx, `${actor.name} 修理 ${action.target.name}，回复 ${action.target.hp - before}`, {
+    pushLog(ctx, `${actor.name} 修理 ${action.target.name}，回复 ${action.target.hp - before}`, Object.assign({
       类型: '修理', 单位: actor.key, 目标: action.target.key, 武器: w.name, 回复: action.target.hp - before,
-    });
+    }, 谁(actor), 谁目标(action.target)));
     return;
   }
 
@@ -1502,7 +1591,7 @@ function resolveAction(actor, action, ctx) {
     const trow = unitRow(t);
     const blockPenalty = isAreaKind(kind) ? 0 : rowBlockPenalty(kind, trow, frontAliveNow);
     const rec = resolveAttack(actor, t, w, ctx, { blockPenalty });
-    pushLog(ctx, rec.文本, Object.assign({ 类型: '攻击', 单位: actor.key, 目标: t.key, 武器: w.name }, rec.字段));
+    pushLog(ctx, rec.文本, Object.assign({ 类型: '攻击', 单位: actor.key, 目标: t.key, 武器: w.name }, 谁(actor), 谁目标(t), rec.字段));
   }
   spendWeapon(actor, action.entry, ctx);
 }
@@ -1515,7 +1604,7 @@ function runOverwatch(ally, ctx) {
     const action = enemyAction(e, ctx);
     if (!action) continue;
     e.overwatchFiredTurn = ctx.turn;
-    pushLog(ctx, `〔压制射击〕${e.name} 抢先开火`, { 类型: '压制射击', 单位: e.key, 目标: ally.key });
+    pushLog(ctx, `〔压制射击〕${e.name} 抢先开火`, Object.assign({ 类型: '压制射击', 单位: e.key, 目标: ally.key }, 谁(e), 谁目标(ally)));
     resolveAction(e, action, ctx);
   }
 }
@@ -1649,21 +1738,526 @@ const 默认五人队 = [
   { 键: 'M1', 位: 4, 等级: 10 },    // 指挥 · Feena（月球王国）
 ];
 /* ============================================================================
+ * 播放引擎（方案 8.1：动画只影响播放，不影响结果）
+ * ----------------------------------------------------------------------------
+ * 做法：先用 `simulate()` 把整场**一次算完**（带种子、可复现），拿到的逐条记录
+ * 再按时间"放"出来——攻击者前冲、受击闪白、飘伤害数字。
+ * 二倍速 / 跳过动画只改播放速度，**不碰战斗结果**，所以同一种子无论怎么看结果一样。
+ *
+ * 记录里带的字段（60-战斗.js 写的）：
+ *   类型：开始 / 回合 / 攻击 / 修理 / 增益 / 再动 / 压制射击 / 残月余响 / 跳过 / 结束
+ *   单位 / 位、目标 / 目标位、伤害、目标剩余HP、回复、命中、暴击、段数
+ * ========================================================================== */
+
+const 每步毫秒 = 500;        // 方案 8.1：「每次行动 0.5 秒左右」
+const 快进毫秒 = 120;        // 回合标记 / 开始 / 结束这类没有动作的记录
+
+const 播放 = {
+  战报: null,
+  位置: 0,
+  单位: {},          // "side:slot" → {hp, maxHp, shieldHp, 死}
+  当前: null,
+  倍速: 1,
+  暂停中: false,
+  快进: false,
+  手动: false,       // 测试用：true 时不排计时器，由测试自己调 tick()
+  计时: null,
+  钩子: { 每步: null, 结束: null },
+
+  载入(战报) {
+    this.战报 = 战报;
+    this.位置 = 0;
+    this.倍速 = 1;
+    this.暂停中 = false;
+    this.快进 = false;
+    this.当前 = null;
+    this.单位 = {};
+    for (const u of 战报.我方.concat(战报.敌方)) {
+      this.单位[u.side + ':' + u.slot] = { hp: u.maxHp, maxHp: u.maxHp, shieldHp: u.shield || 0, 死: false };
+    }
+    return this;
+  },
+
+  事件() { return this.战报 ? this.战报.记录 : []; },
+  剩余() { return this.事件().length - this.位置; },
+  在放() { return !!this.战报 && this.位置 < this.事件().length; },
+
+  /** 开始播放。快进（跳过动画）时直接把剩下的记录全部应用掉。 */
+  开始() {
+    if (this.快进) return this.跳到结尾();
+    this.暂停中 = false;
+    this.排一次();
+    return this;
+  },
+  排一次() {
+    if (this.手动 || this.暂停中 || !this.在放()) return;
+    if (this.计时) clearTimeout(this.计时);
+    const ev = this.事件()[this.位置];
+    this.计时 = setTimeout(() => this.tick(), this.时长(ev) / this.倍速);
+  },
+  时长(ev) {
+    const t = ev && ev.类型;
+    return (t === '回合' || t === '开始' || t === '结束') ? 快进毫秒 : 每步毫秒;
+  },
+
+  /** 应用**一条**记录（浏览器里由计时器调，测试里手动调）。 */
+  tick() {
+    if (this.计时) { clearTimeout(this.计时); this.计时 = null; }
+    if (this.暂停中) return this;
+    if (!this.在放()) { this.收尾(); return this; }
+    const ev = this.事件()[this.位置];
+    this.当前 = ev;
+    this.应用(ev);
+    this.位置++;
+    if (this.钩子.每步) this.钩子.每步(ev, this);
+    if (this.在放()) this.排一次(); else this.收尾();
+    return this;
+  },
+
+  /** 把一条记录的效果落到 this.单位 上（只为了显示血条 / 闪白 / 飘字）。 */
+  应用(ev) {
+    if (!ev || ev.目标方 == null || ev.目标位 == null) return;
+    const 受 = this.单位[ev.目标方 + ':' + ev.目标位];
+    if (!受) return;
+    if (ev.目标剩余HP != null) { 受.hp = ev.目标剩余HP; 受.死 = 受.hp <= 0; }
+    else if (ev.回复 != null) 受.hp = Math.min(受.maxHp, 受.hp + ev.回复);
+  },
+
+  暂停() { this.暂停中 = true; if (this.计时) { clearTimeout(this.计时); this.计时 = null; } return this; },
+  继续() { if (this.暂停中) { this.暂停中 = false; this.排一次(); } return this; },
+  切倍速() { this.倍速 = this.倍速 === 1 ? 2 : 1; return this; },
+  设倍速(n) { this.倍速 = n; return this; },
+
+  /** 跳过动画：把剩下的记录全部应用完，直接到结算（结果不变）。 */
+  跳到结尾() {
+    if (!this.战报) return this;
+    while (this.在放()) { const ev = this.事件()[this.位置]; this.当前 = ev; this.应用(ev); this.位置++; }
+    this.当前 = null;
+    if (this.钩子.每步) this.钩子.每步(null, this);
+    this.收尾();
+    return this;
+  },
+
+  收尾() {
+    if (this.计时) { clearTimeout(this.计时); this.计时 = null; }
+    this.暂停中 = false;
+    if (this.钩子.结束) { const f = this.钩子.结束; this.钩子.结束 = null; f(this); }
+    return this;
+  },
+};
+/* ============================================================================
+ * 界面（方案 8.1）：菜单 → 编队 → 战斗 → 结算
+ * ----------------------------------------------------------------------------
+ * M2 的范围：**编队 + 战斗画面 + 播放控制**；指令面板 / 敌人意图 / 职业特色在 M3。
+ * 机体图标是 M5（复制 art/mech-icons.js），所以现在用势力配色的方块 + 短名代替。
+ *
+ * 三个画面：
+ *   菜单   ：进场，一句话说明 + 「开始编队」
+ *   编队   ：左边机师列表（按势力筛、Lv 10/20/30），右边 2×3 格子（点机师再点格子放入、
+ *            点已放的格子取回），显示每台的速度和大招；下面选敌方编成
+ *   战斗   ：左右各 2 排 × 3 列（中间那条缝是接触线，双方前排靠在一起）+ 右边战斗记录；
+ *            顶栏：回合数、开打、暂停、二倍速、跳过动画
+ *   结算   ：胜负、回合数、双方存活、种子（同一种子能重放）
+ *
+ * 事件都用 #screen 上的事件委托（data-act="动作:参数"），
+ * 这样每个画面的按钮不用逐个接线；测试里直接调用 界面 上的同名方法。
+ * ========================================================================== */
+
+/* 势力配色：战棋里那七套（原来在 art/mech-icons.js 的 FACTION_PAL 和规则面板的图例里），
+   图标在 M5 搬过来，先借用颜色把敌我 / 势力区分开。 */
+const FACTION_COL = {
+  影世界: '#8a6bd8', 月球王国: '#9fb7d8', 天人: '#4fc3a1', 卫星国防军: '#e88fb4',
+  流星小队: '#f2c14e', ATX: '#e8e6e1', 秘银: '#7d9a58',
+};
+const 势力色 = 键 => {
+  const t = tplOf(键);
+  return (t && FACTION_COL[t.tags.势力]) || '#8a99ab';
+};
+const 敌方色 = '#d9564b';
+
+const 界面 = {
+  屏: '菜单',                     // 菜单 / 编队 / 战斗 / 结算
+  编队: { 等级: 10, 出击: [], 选中: null, 编成序号: 0, 势力: '全部' },
+  战报: null,
+  种子: null,
+  手动播放: false,                // 测试用：播放引擎不排计时器，自己 tick
+  跳过动画总是: false,            // 「跳过动画」按下去以后，后面每场也直接跳到结尾（再按一次恢复）
+  预览缓存: {},
+
+  /* ---------------- 小工具 ---------------- */
+  位名: 位 => `${位 < COLS ? '前' : '后'}${位 % COLS + 1}`,
+  单位模板: (键, 方) => 方 === 'ally' ? tplOf(键) : ENEMY_T[键],
+  单位名: (键, 方) => { const t = 界面.单位模板(键, 方); return t ? (方 === 'ally' ? t.pilot : t.mech) : 键; },
+  单位短名: (键, 方) => { const t = 界面.单位模板(键, 方); return t ? (t.short || t.mech || 键) : 键; },
+
+  /** 预览一台机体在某等级下的关键数字（速度、HP、大招）——编队界面要用。 */
+  预览(键, 等级) {
+    const k = 键 + '@' + 等级;
+    if (!this.预览缓存[k]) {
+      const u = makeUnit(键, 'ally', 0, 等级);
+      const 大招 = u.weapons.filter(e => G_大招(e.t)).map(e => e.t.name);
+      this.预览缓存[k] = {
+        速度: speedOf(u), hp: u.maxHp, 大招,
+        开场: 大招.length ? Math.max(...u.weapons.filter(e => G_大招(e.t)).map(e => startCdOf(e.t))) + 1 : 0,
+        t: tplOf(键),
+      };
+    }
+    return this.预览缓存[k];
+  },
+
+  /* ---------------- 屏幕切换 ---------------- */
+  开屏(名) {
+    this.屏 = 名;
+    this.刷();
+    return this;
+  },
+
+  刷() {
+    const 屏 = $('#screen');
+    if (屏) 屏.innerHTML = this[this.屏 + '屏'] ? this[this.屏 + '屏']() : '';
+    const 顶 = $('#hud'); if (顶) 顶.innerHTML = this.顶栏();
+    const 控 = $('#ctrl'); if (控) 控.innerHTML = this.控件();
+    this.接线();
+    return this;
+  },
+
+  接线() {
+    const 屏 = $('#screen');
+    if (屏 && !屏._接了) {
+      屏._接了 = true;
+      屏.addEventListener('click', e => {
+        const el = e.target && e.target.closest ? e.target.closest('[data-act]') : null;
+        if (!el || el.tagName === 'SELECT') return;
+        const [动, 参] = String(el.getAttribute('data-act')).split(':');
+        this.动作(动, 参);
+      });
+      /* 下拉框（敌方编成）走 change：值在 el.value 里，不能靠 data-act 的参数 */
+      屏.addEventListener('change', e => {
+        const el = e.target && e.target.closest ? e.target.closest('select[data-act]') : null;
+        if (!el) return;
+        this.动作(String(el.getAttribute('data-act')).split(':')[0], el.value);
+      });
+    }
+    const 控 = $('#ctrl');
+    if (控 && !控._接了) {
+      控._接了 = true;
+      控.addEventListener('click', e => {
+        const el = e.target && e.target.closest ? e.target.closest('[data-act]') : null;
+        if (!el) return;
+        const [动, 参] = String(el.getAttribute('data-act')).split(':');
+        this.动作(动, 参);
+      });
+    }
+  },
+
+  /** 界面上的所有动作都走这里（浏览器里由按钮点，测试里直接调用）。 */
+  动作(动, 参) {
+    switch (动) {
+      case '去编队': return this.开屏('编队');
+      case '回菜单': return this.开屏('菜单');
+      case '选人': return this.选人(参);
+      case '放位': return this.放位(Number(参));
+      case '取回': return this.取回(Number(参));
+      case '默认五人队': return this.默认五人队();
+      case '清空': return this.清空();
+      case '等级': return this.设等级(Number(参));
+      case '势力': return this.设势力(参);
+      case '编成': return this.设编成(Number(参));
+      case '开战': return this.开战();
+      case '开打': return this.开打();
+      case '暂停': return this.暂停();
+      case '二倍速': return this.二倍速();
+      case '跳过': return this.跳过();
+      case '再来一场': return this.来一场(参);
+      default: return null;
+    }
+  },
+
+  /* ---------------- 顶栏 ---------------- */
+  顶栏() {
+    if (this.屏 === '战斗' || this.屏 === '结算') {
+      const b = this.战报;
+      return `<div class="chip"><span class="lbl">回合</span><b>${播放.战报 ? Math.min(播放.当前 ? 播放.当前.回合 : 1, MAX_TURN) : 1}</b></div>`
+        + (b ? `<div class="chip"><span class="lbl">种子</span><b>${b.种子}</b></div>` : '');
+    }
+    return `<div class="chip"><span class="lbl">机师</span><b>${ALLY_T.length}</b></div><div class="chip"><span class="lbl">敌人</span><b>${Object.keys(ENEMY_T).length}</b></div>`;
+  },
+  控件() {
+    if (this.屏 === '战斗') {
+      return `<button data-act="开打">开打</button>`
+        + `<button data-act="暂停">${播放.暂停中 ? '继续' : '暂停'}</button>`
+        + `<button data-act="二倍速"${播放.倍速 === 2 ? ' class="on"' : ''}>${播放.倍速 === 2 ? '二倍速 ✓' : '二倍速'}</button>`
+        + `<button data-act="跳过"${this.跳过动画总是 ? ' class="on"' : ''}>${this.跳过动画总是 ? '跳过动画 ✓' : '跳过动画'}</button>`
+        + `<button data-act="回菜单">回菜单</button>`;
+    }
+    if (this.屏 === '结算') return `<button data-act="再来一场">再来一场</button><button data-act="去编队">改编队</button><button data-act="回菜单">回菜单</button>`;
+    if (this.屏 === '编队') return `<button data-act="回菜单">回菜单</button>`;
+    return '';
+  },
+
+  /* ---------------- 菜单 ---------------- */
+  菜单屏() {
+    return `<section class="card menu">
+      <h3>机甲指挥 · M2 战斗画面</h3>
+      <p>自动战斗回合制 RPG：把机体摆进<b>前排 / 后排</b>（各 2 排 × 3 列），每回合下一批指令，这一回合按速度自动打完。</p>
+      <ul>
+        <li>M2 的画面：<b>编队 → 开打 → 自动打完 → 结算</b>，带播放 / 暂停 / 二倍速 / 跳过动画。</li>
+        <li>指令现在只有「进攻」（方案 5.1 的 AI 自己挑目标和武器）；集火 / 守护 / 防御 / 换位、敌人意图、职业特色在 <b>M3</b>。</li>
+        <li>机体图标在 <b>M5</b>，现在用势力颜色的方块 + 短名代替。</li>
+      </ul>
+      <div class="acts"><button class="primary" data-act="去编队">开始编队 →</button></div>
+      <p class="small">想直接看一场：点「开始编队」→「默认五人队」→「开打」。</p>
+    </section>`;
+  },
+
+  /* ---------------- 编队 ---------------- */
+  编队屏() {
+    const B = this.编队;
+    const 势力们 = ['全部'].concat(FACTIONS);
+    const 候选 = ALLY_T.filter(t => B.势力 === '全部' || inFaction(t, B.势力));
+    const 列表 = 候选.map(t => {
+      const p = this.预览(t.mech, B.等级);
+      const 已上 = B.出击.some(x => x.键 === t.mech);
+      return `<button class="pick${B.选中 === t.mech ? ' on' : ''}${已上 ? ' used' : ''}" data-act="选人:${t.mech}" style="--fc:${势力色(t.mech)}">
+        <b>${t.pilot}</b><small>${t.mech} · ${t.tags.战斗分类} · ${t.tags.势力}</small>
+        <span class="nums">速 ${p.速度} · HP ${p.hp}${p.大招.length ? ` · 大招 ${p.大招.length}` : ''}</span>
+      </button>`;
+    }).join('');
+    const 格 = [];
+    /* 前排在下面（靠近敌人那一侧），后排在上面 */
+    for (const 位 of [3, 4, 5, 0, 1, 2]) {
+      const 占 = B.出击.find(x => x.位 === 位);
+      if (占) {
+        const p = this.预览(占.键, B.等级);
+        格.push(`<button class="slot filled" data-act="取回:${位}" style="--fc:${势力色(占.键)}">
+          <span class="pos">${this.位名(位)}</span>
+          <b>${this.单位名(占.键, 'ally')}</b><small>${占.键} · 速 ${p.速度}</small>
+          <span class="nums">HP ${p.hp}</span></button>`);
+      } else {
+        格.push(`<button class="slot" data-act="放位:${位}"><span class="pos">${this.位名(位)}</span><b>空位</b><small>${位 < COLS ? '前排' : '后排'}</small></button>`);
+      }
+    }
+    const 编成选项 = 编成表.map((e, i) => {
+      const 名 = `第${e.层}层 ${e.类型}｜前 ${(e.前 || []).join('+') || '—'} / 后 ${(e.后 || []).join('+') || '—'}`;
+      return `<option value="${i}"${i === B.编成序号 ? ' selected' : ''}>${名}</option>`;
+    }).join('');
+    const 选中 = B.选中 ? this.预览(B.选中, B.等级) : null;
+    return `<section class="编队屏">
+      <div class="col 候选">
+        <h3>机师（${候选.length} 名）<span class="small">点一名 → 再点右边的格子放入</span></h3>
+        <div class="filters">
+          ${[10, 20, 30].map(n => `<button class="mini${B.等级 === n ? ' on' : ''}" data-act="等级:${n}">Lv${n}</button>`).join('')}
+          <span class="sep"></span>
+          ${势力们.map(f => `<button class="mini${B.势力 === f ? ' on' : ''}" data-act="势力:${f}">${f}</button>`).join('')}
+        </div>
+        <div class="picks">${列表}</div>
+      </div>
+      <div class="col 站位">
+        <h3>出击编队（${B.出击.length} / ${SLOTS}）</h3>
+        <div class="grid">${格.join('')}</div>
+        <div class="acts">
+          <button data-act="默认五人队">默认五人队</button>
+          <button data-act="清空">清空</button>
+        </div>
+        <h3>敌方编成<span class="small">（方案第 10 节第 4 条：这 3 条是初稿，等作者配）</span></h3>
+        <select id="编成选" data-act="编成" class="sel">${编成选项}</select>
+        <div class="acts"><button class="primary" data-act="开战">开战 →</button></div>
+        ${选中 ? `<p class="small">已选：${this.单位名(B.选中, 'ally')}（${B.选中}，速度 ${选中.速度}${选中.大招.length ? `，大招：${选中.大招.join('、')}，第 ${选中.开场} 回合起` : '，没有大招'}）</p>` : '<p class="small">还没选机师。</p>'}
+      </div>
+    </section>`;
+  },
+
+  /* ---------------- 战斗 ---------------- */
+  战斗屏() {
+    const b = this.战报;
+    if (!b) return '<section class="card"><p>还没有战斗。回菜单重新开始。</p></section>';
+    const 我方 = b.我方.slice().sort((a, c) => a.slot - c.slot);
+    const 敌方 = b.敌方.slice().sort((a, c) => a.slot - c.slot);
+    const 排 = (列表, 方, 从后往前) => {
+      const 行 = 从后往前 ? [ROW_BACK, ROW_FRONT] : [ROW_FRONT, ROW_BACK];
+      return 行.map(r => `<div class="row">${[0, 1, 2].map(c => {
+        const 位 = r * COLS + c;
+        const u = 列表.find(x => x.slot === 位);
+        return u ? this.单位卡(u, 方) : `<div class="uc empty"><span class="pos">${this.位名(位)}</span></div>`;
+      }).join('')}</div>`).join('');
+    };
+    return `<section class="战斗屏">
+      <div class="side ally">
+        <h3>我方 <span class="small">后排在上 · 前排贴住接触线</span></h3>
+        ${排(我方, 'ally', true)}
+      </div>
+      <div class="side enemy">
+        <h3>敌方 <span class="small">前排在上</span></h3>
+        ${排(敌方, 'enemy', false)}
+      </div>
+      <aside class="logcol">
+        <h3>战斗记录</h3>
+        <ol id="log"></ol>
+      </aside>
+    </section>`;
+  },
+
+  单位卡(u, 方) {
+    const 色 = 方 === 'ally' ? 势力色(u.key) : 敌方色;
+    const hp = Math.round(u.hp / u.maxHp * 100);
+    return `<div class="uc" id="u-${方}-${u.slot}" data-side="${方}" data-slot="${u.slot}" style="--fc:${色}">
+      <span class="pos">${this.位名(u.slot)}</span>
+      <div class="head"><b>${u.name}</b><small>${u.key} · 速 ${speedOf(u)}</small></div>
+      <div class="bar hp"><i style="width:${hp}%"></i></div>
+      <div class="nums">HP ${u.hp} / ${u.maxHp}${u.shieldHp ? ` · 盾 ${u.shieldHp}` : ''}</div>
+      <div class="tags">${(u.tags && u.tags.战斗分类) || ''}${u.weapons.filter(e => G_大招(e.t)).length ? ' · 大招' : ''}</div>
+    </div>`;
+  },
+
+  /* 播放每应用一条记录就刷一次这张卡：血条、已倒下、闪白、飘伤害数字。
+     真实浏览器里能看到动画；Node 的 DOM 替身里这些更新是无害的（不解析）。 */
+  刷卡(方, 位, 飘) {
+    const el = $(`#u-${方}-${位}`);
+    if (!el || !el.style) return;
+    const s = 播放.单位[方 + ':' + 位];
+    if (!s) return;
+    const i = el.querySelector ? el.querySelector('.bar.hp i') : null;
+    if (i && i.style) i.style.width = Math.max(0, Math.round(s.hp / s.maxHp * 100)) + '%';
+    const n = el.querySelector ? el.querySelector('.nums') : null;
+    if (n) n.textContent = `HP ${Math.max(0, s.hp)} / ${s.maxHp}${s.shieldHp ? ` · 盾 ${s.shieldHp}` : ''}`;
+    el.classList && el.classList.toggle('down', s.死);
+    el.classList && el.classList.add(飘 && 飘.暴击 ? 'hit crit' : 'hit');
+    if (飘 && 飘.伤害) el.innerHTML += `<span class="float${飘.暴击 ? ' crit' : ''}">${飘.伤害}</span>`;
+  },
+
+  /* ---------------- 战斗流程 ---------------- */
+  /** 由编队进入战斗：先一次算完整场（带种子、可复现），再交给播放引擎放出来。 */
+  开战(种子) {
+    const B = this.编队;
+    if (!B.出击.length) return false;
+    const 我方 = B.出击.slice().sort((a, b) => a.位 - b.位).map(x => ({ 键: x.键, 位: x.位, 等级: B.等级 }));
+    const 条目 = 编成表[B.编成序号];
+    const 敌方 = 编成到单位(条目, 0).map(u => ({ 键: u.key, 位: u.slot, 等级: u.lv }));
+    this.种子 = 种子 != null ? 种子 : Math.floor(Date.now() % 900000) + 100000;
+    this.战报 = simulate(我方, 敌方, null, this.种子);
+    this.开屏('战斗');
+    播放.载入(this.战报);
+    播放.手动 = !!this.手动播放;
+    播放.快进 = !!this.跳过动画总是;      // 「跳过动画」按过一次以后，后面每场都直接到结尾
+    播放.钩子.每步 = (ev, p) => this.播一步(ev, p);
+    播放.钩子.结束 = () => this.到结算();
+    return this.战报;
+  },
+
+  开打() {
+    if (!this.战报) return false;
+    if (!播放.在放()) {   // 已经放完了就重放同一场（同种子，结果一样）
+      播放.位置 = 0; this.刷();
+    }
+    this.刷();            // 先把我方 / 敌方的单位卡拉出来，再开始放
+    播放.钩子.每步 = (ev, p) => this.播一步(ev, p);
+    播放.钩子.结束 = () => this.到结算();
+    播放.开始();
+    this.刷顶栏();
+    return true;
+  },
+  暂停() { 播放.暂停中 ? 播放.继续() : 播放.暂停(); this.刷控件(); return 播放.暂停中; },
+  二倍速() { 播放.切倍速(); this.刷控件(); return 播放.倍速; },
+  /** 跳过动画：立刻跳到本场结尾；同时记住这个偏好，后面每场都直接到结尾。再按一次取消。 */
+  设跳过动画(开) {
+    this.跳过动画总是 = !!开;
+    if (this.跳过动画总是) { 播放.快进 = true; 播放.跳到结尾(); }
+    this.刷控件();
+    return this.跳过动画总是;
+  },
+  跳过() { return this.设跳过动画(!this.跳过动画总是); },
+
+  刷顶栏() { const t = $('#hud'); if (t) t.innerHTML = this.顶栏(); },
+  刷控件() { const t = $('#ctrl'); if (t) t.innerHTML = this.控件(); this.接线(); },
+
+  /** 播放一条记录：攻击者向前冲一下、受击方闪白 + 飘伤害数字，再往战斗记录里追一行。 */
+  播一步(ev, p) {
+    if (ev && ev.目标方 != null) this.刷卡(ev.目标方, ev.目标位, { 伤害: ev.伤害, 暴击: ev.暴击 > 0 });
+    /* 攻击者向前冲一下（方案 8.1）：先把上一张的冲劲清掉，再给这一张加上 */
+    const 攻击者 = ev && ev.单位方 != null ? $(`#u-${ev.单位方}-${ev.单位位}`) : null;
+    if (攻击者 && 攻击者.classList) {
+      const 屏 = $('#screen');
+      const 旧的 = 屏 && 屏.querySelectorAll ? 屏.querySelectorAll('.uc.act') : [];
+      for (const el of 旧的) el.classList && el.classList.remove('act');
+      攻击者.classList.add('act');
+    }
+    const 日志 = $('#log');
+    if (日志) {
+      const 行 = ev ? `<li class="${ev.类型 === '攻击' || ev.类型 === '残月余响' ? (ev.单位方 || '') : ev.类型 === '回合' ? 'sys' : ''}"><span class="t">${ev.回合}</span>${ev.文本}</li>`
+        : '<li class="sys">（播放结束）</li>';
+      日志.innerHTML += 行;
+      if (日志.scrollTop != null) 日志.scrollTop = 99999;
+    }
+    if (p) this.刷顶栏();
+  },
+
+  到结算() { this.开屏('结算'); },
+
+  /* ---------------- 结算 ---------------- */
+  结算屏() {
+    const b = this.战报;
+    if (!b) return '<section class="card"><p>这场还没打完。</p></section>';
+    const 胜 = b.结果 === '胜';
+    const 活 = b.我方.filter(u => u.hp > 0).length, 敌活 = b.敌方.filter(u => u.hp > 0).length;
+    return `<section class="card end ${胜 ? 'win' : 'lose'}">
+      <div class="eyebrow">${胜 ? '战斗胜利' : '战斗失败'}</div>
+      <h2>${b.结果} · ${b.原因}</h2>
+      <ul>
+        <li>回合数：<b>${b.回合数}</b></li>
+        <li>我方存活：<b>${活} / ${b.我方.length}</b>　敌方存活：<b>${敌活} / ${b.敌方.length}</b></li>
+        <li>战斗记录：<b>${b.记录.length}</b> 条</li>
+        <li>种子：<b>${b.种子}</b>（同种子同编队重放，结果完全一样）</li>
+      </ul>
+      <div class="acts">
+        <button class="primary" data-act="再来一场">再来一场（换种子）</button>
+        <button data-act="再来一场:${b.种子}">重放这一场（同种子）</button>
+        <button data-act="去编队">改编队</button>
+        <button data-act="回菜单">回菜单</button>
+      </div>
+    </section>`;
+  },
+  来一场(同种子) { const s = 同种子 ? Number(同种子) : null; this.开战(s); this.开打(); return this.战报; },
+
+  /* ---------------- 编队动作 ---------------- */
+  选人(键) { this.编队.选中 = this.编队.选中 === 键 ? null : 键; this.刷(); return this.编队.选中; },
+  放位(位) {
+    const B = this.编队;
+    if (!B.选中) return false;
+    if (B.出击.some(x => x.键 === B.选中)) return false;      // 同一台不重复上
+    const 旧 = B.出击.find(x => x.位 === 位);
+    if (旧) B.出击 = B.出击.filter(x => x.位 !== 位);
+    if (B.出击.length >= SLOTS) return false;
+    B.出击.push({ 键: B.选中, 位 });
+    this.刷();
+    return true;
+  },
+  取回(位) { this.编队.出击 = this.编队.出击.filter(x => x.位 !== 位); this.刷(); return true; },
+  清空() { this.编队.出击 = []; this.刷(); return true; },
+  设等级(n) { this.编队.等级 = n; this.预览缓存 = {}; 播放.战报 = 播放.战报; this.刷(); return n; },
+  设势力(f) { this.编队.势力 = f; this.刷(); return f; },
+  设编成(i) { this.编队.编成序号 = Math.max(0, Math.min(编成表.length - 1, i || 0)); this.刷(); return this.编队.编成序号; },
+  默认五人队() {
+    this.编队.出击 = 默认五人队.map(x => ({ 键: x.键, 位: x.位 }));
+    this.刷();
+    return this.编队.出击;
+  },
+};
+
+/* 界面里用到的两个小判断（写在最后，避免和引擎里的名字撞车） */
+function G_大招(w) { return isUltimate(w) && !!rangeKindOf(w); }
+/* ============================================================================
  * 机甲指挥 · 收尾（boot）
  * ----------------------------------------------------------------------------
- * 1. 把顶栏上的版本 / 里程碑文字填上（让「页面打开了而且没报错」肉眼可见）；
- * 2. 关闭 `00-head.js` 打开的 IIFE，把调试接口挂到 `window.__game`。
- *
- * M1（战斗内核）还没有界面：战斗画面在 M2。这里把内核暴露出去，
- * 让 `node tests/sim.js` 能在没有浏览器的情况下跑一百场。
+ * 1. 把顶栏上的版本 / 里程碑文字填上；
+ * 2. 把界面点亮（菜单屏）；
+ * 3. 关闭 `00-head.js` 打开的 IIFE，把调试接口挂到 `window.__game`
+ *    （测试 `tests/smoke.js` / `tests/sim.js` / `tests/battle_ui.js` 都从这里取）。
  * ========================================================================== */
 
 function boot() {
   const verEl = $('#ver'); if (verEl) verEl.textContent = 'v' + VERSION;
   const msEl = $('#ms'); if (msEl) msEl.textContent = MILESTONE;
-  const cnt = $('#count'); if (cnt) {
-    cnt.textContent = `${ALLY_T.length} 名角色 · ${Object.keys(ENEMY_T).length} 种敌人 · ${Object.keys(ENEMY_TIER).reduce((n, k) => n + ENEMY_TIER[k].length, 0)} 个梯队敌人`;
-  }
+  界面.开屏('菜单');
 }
 
 const G = {
@@ -1673,7 +2267,11 @@ const G = {
   slots: SLOTS,          // 6：双方各 2 排 × 3 列（方案 3.1）
   rows: ROWS, cols: COLS,
   mulberry32,            // 带种子的随机数（方案 6.1）
-  /* ---- M1 战斗内核 ---- */
+
+  /* ---- 界面 / 播放（M2） ---- */
+  界面, 播放, FACTION_COL, 势力色,
+
+  /* ---- 战斗内核（M1） ---- */
   simulate,              // simulate(我方, 敌方, 指令, 种子) → {结果, 回合数, 记录, …}
   makeUnits,             // 编成数组 → 单位数组
   makeUnit,              // 单个：{键, 位, 等级}

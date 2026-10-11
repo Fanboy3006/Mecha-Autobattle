@@ -10,27 +10,12 @@
   <header class="bar">
     <div class="brand">
       <span class="mark">机甲指挥</span>
-      <span class="ver">试作版 <span id="ver">v0.0.1</span> · <span id="ms">M0</span> 仓库骨架</span>
+      <span class="ver">试作版 <span id="ver">v0.2.0</span> · <span id="ms">M2</span> 战斗画面</span>
     </div>
-    <div class="ctrl">
-      <button id="btnFight" disabled title="战斗画面在 M2">战斗（M2）</button>
-    </div>
+    <div class="hud" id="hud"></div>
+    <div class="ctrl" id="ctrl"></div>
   </header>
-  <main class="main">
-    <section class="card">
-      <h3>M1 · 战斗内核（还没有界面）</h3>
-      <p><b>机甲指挥</b>是从「机甲战棋」分叉出来的<b>自动战斗回合制 RPG</b>：玩家在肉鸽大地图上走格子、招募机师、拿藏品；遇到战斗时把机体摆进前排 / 后排，每回合给每台机体下一条指令，这一回合自动打完，看结果，再下下一回合的指令。</p>
-      <ul>
-        <li>站位：双方各 2 排 × 3 列，最多 6 台机体；前排全灭后后排不会自动前移。</li>
-        <li>回合：指令阶段 → 行动阶段（按速度从高到低自动结算）→ 回合结束；第 12 回合还没分出胜负 = 败。</li>
-        <li>射程按武器的 <code>fire</code> 换算成「能打到哪一排」：近战只能打前排，直射打后排被挡 −20 命中，曲射无惩罚，范围按 <code>area</code> 挑落点，修理优先修 HP 比例最低的队友。</li>
-        <li>指令：M1 全是「进攻」（方案 5.1 的 AI）；集火 / 守护 / 防御 / 换位和大招开关在 M3。</li>
-      </ul>
-      <p class="small">内核本身在 <code>src/js/</code> 里，还没接到界面上——<b>战斗画面 M2 才做</b>。现在要试就打开浏览器控制台，或者跑 <code>node tests/sim.js</code>：固定种子跑同一场两次结果必须完全一样，并打印 Lv10 五人队对第 1 层三种编成各 100 场的胜率。</p>
-      <p class="small" id="count"></p>
-      <p class="small">源文件在 <code>src/</code>，这个 <code>index.html</code> 是 <code>node tools/build-src.mjs</code> 生成的，不要手改。</p>
-    </section>
-  </main>
+  <main class="main" id="screen"></main>
 </div>
 
 <script>
@@ -45,5 +30,7 @@
 <!-- @include js/50-AI.js -->
 <!-- @include js/60-战斗.js -->
 <!-- @include js/70-编成.js -->
+<!-- @include js/85-播放.js -->
+<!-- @include js/80-界面.js -->
 <!-- @include js/99-boot.js -->
 </script>
