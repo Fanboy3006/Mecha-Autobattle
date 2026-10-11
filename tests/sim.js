@@ -76,15 +76,21 @@ if (G.rowReachable('近战', G.ROW_BACK, true) === false) ok('近战打不到后
 else bad('近战居然能越过前排打后排');
 if (G.rowReachable('近战', G.ROW_BACK, false) === true) ok('前排全灭后近战可以打后排');
 else bad('前排全灭后近战仍打不到后排');
-if (G.rowBlockPenalty('直射', G.ROW_BACK, true) === -20) ok('直射打后排被挡：命中 −20');
+/* 被挡：作者 2026-10-10 拍板改成**按位**（后1 = 位 4 …… 后5 = 位 8；
+   参数 = `rowBlockPenalty(类型, 目标位, 那一方还活着的位, 攻击者)`）。 */
+if (G.rowBlockPenalty('直射', 5, [0], null) === -20) ok('直射打后2、它的阻挡位（前1 前2）里有人 → 命中 −20（打得到，不是打不到）');
 else bad('直射的「被挡」修正不对');
-if (G.rowBlockPenalty('曲射', G.ROW_BACK, true) === 0) ok('曲射打后排没有惩罚');
+if (G.rowBlockPenalty('直射', 5, [], null) === 0) ok('同一个后2 的阻挡位全灭 → 无惩罚');
+else bad('阻挡位全灭后还有惩罚');
+if (G.rowBlockPenalty('直射', 0, [0], null) === 0) ok('直射打前排永远不被自己挡');
+else bad('打前排不该有被挡惩罚');
+if (G.rowBlockPenalty('曲射', 5, [0], null) === 0) ok('曲射打后排没有惩罚（无视阻挡）');
 else bad('曲射不该有被挡惩罚');
 const rows = G.areaSlots({ fire: 'map', area: 'row' }, 0, 1);
 const cols = G.areaSlots({ fire: 'map', area: 'col' }, 0, 1);
 const cross = G.areaSlots({ fire: 'map', area: 'cross' }, 1, 1);
 const all = G.areaSlots({ fire: 'map', area: 'all' }, 0, 0);
-if (rows.length === 3 && cols.length === 2 && cross.length === 3 && all.length === 5) ok(`范围落点：row 3 格 / col 2 格 / cross 4 格 / all 6 格`);
+if (rows.length === 4 && cols.length === 3 && cross.length === 5 && all.length === 9) ok(`范围落点：row 4 格 / col 3 格（阻挡束 前2+后2+后3）/ cross 5 格 / all 9 格`);
 else bad(`范围落点不对：row ${rows.length} / col ${cols.length} / cross ${cross.length} / all ${all.length}`);
 
 /* ============================ [3] 固定种子可复现 ============================ */
@@ -94,8 +100,9 @@ if (编成.length !== 3) bad(`第 1 层普通编成应该有 3 条，实际 ${�
 else ok(`第 1 层普通编成：${编成.length} 条`);
 const 队伍 = G.默认五人队;
 const 敌 = G.编成到单位(编成[0], 0);
-const 甲 = G.simulate(队伍, 敌.map(u => ({ 键: u.key, 位: u.slot, 等级: u.lv })), null, 20261010);
-const 乙 = G.simulate(队伍, 敌.map(u => ({ 键: u.key, 位: u.slot, 等级: u.lv })), null, 20261010);
+const 波次 = G.编成波次到单位(编成[0], 0);      // 敌方增援波次（作者 2026-10-10：被击坠后可以增援）
+const 甲 = G.simulate(队伍, 敌.map(u => ({ 键: u.key, 位: u.slot, 等级: u.lv })), null, 20261010, { 波次 });
+const 乙 = G.simulate(队伍, 敌.map(u => ({ 键: u.key, 位: u.slot, 等级: u.lv })), null, 20261010, { 波次 });
 const s甲 = JSON.stringify({ 结果: 甲.结果, 回合数: 甲.回合数, 记录: 甲.记录 });
 const s乙 = JSON.stringify({ 结果: 乙.结果, 回合数: 乙.回合数, 记录: 乙.记录 });
 if (s甲 === s乙) ok(`同种子同结果：${甲.结果} · ${甲.回合数} 回合 · ${甲.记录.length} 条记录（两次逐字相同）`);
@@ -124,7 +131,7 @@ for (const e of 编成) {
   let 胜 = 0, 回合和 = 0, 败因 = {};
   for (let i = 0; i < N; i++) {
     const 敌军 = G.编成到单位(e, 0).map(u => ({ 键: u.key, 位: u.slot, 等级: u.lv }));
-    const r = G.simulate(队伍, 敌军, null, 1000 + i);      // 种子固定，结果可复现
+    const r = G.simulate(队伍, 敌军, null, 1000 + i, { 波次: G.编成波次到单位(e, 0) });   // 种子固定，结果可复现
     if (r.结果 === '胜') 胜++;
     else 败因[r.原因] = (败因[r.原因] || 0) + 1;
     回合和 += r.回合数;

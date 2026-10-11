@@ -8,7 +8,7 @@
  * 所以谁先谁后无所谓）：
  *   usableWeapons(u, ctx) → [{t: 模板武器, cd, uses, ...}]  「这台机体现在能用哪些武器」
  *   expectedDamage(att, def, w, opts) → 期望伤害（只用来比大小）
- *   unitRow(u) / livingOf(side, ctx) / frontAlive(side, ctx)
+ *   unitRow(u) / livingOf(side, ctx) / frontAlive(units) / 活位们(units)
  *   rangeKindOf / rowReachable / rowBlockPenalty / isAreaKind / isHealKind / areaSlots
  *
  * 方案里的对应关系：
@@ -63,29 +63,35 @@ function weaponPool(actor, ctx) {
   return ults.length ? ults : pool;                  // 大招优先（方案 5.1.1）
 }
 
+/* 目标那一方的「局面」：前排还有没有人（近战够不够得着）+ 还活着的位集合。
+ * ★ 作者 2026-10-10 拍板「按位阻挡」之后，直射有没有被挡**不能再只看「前排还有没有人」**——
+ *   要看**这个后排位的阻挡位**（`遮挡位()`）里还有没有活人，所以把活位一次性算好传下去。 */
+const 局面Of = foes => ({ 前排有人: frontAlive(foes), 活位: foes.map(u => u.slot) });
+
 /* 一台机体对某个敌人最划算的（武器, 期望伤害）。
- * frontAliveNow：敌方前排是否还有人（决定近战能不能够到后排、直射有没有被挡）。 */
-function bestWeaponOn(actor, target, pool, frontAliveNow, ctx) {
+ * 局面 = 上面那个 `{前排有人, 活位}`：决定近战能不能够到后排、直射有没有被挡（−20）。 */
+function bestWeaponOn(actor, target, pool, 局面, ctx) {
   let best = null;
   for (const e of pool) {
     const kind = rangeKindOf(e.t);
     const trow = unitRow(target);
-    if (!rowReachable(kind, trow, frontAliveNow)) continue;
-    const exp = expectedDamage(actor, target, e.t, { blockPenalty: rowBlockPenalty(kind, trow, frontAliveNow, actor), turn: ctx && ctx.turn });
-    if (!best || exp > best.exp) best = { entry: e, exp };
+    if (!rowReachable(kind, trow, 局面.前排有人)) continue;
+    const 罚 = rowBlockPenalty(kind, target.slot, 局面.活位, actor);
+    const exp = expectedDamage(actor, target, e.t, { blockPenalty: 罚, turn: ctx && ctx.turn });
+    if (!best || exp > best.exp) best = { entry: e, exp, 被挡: 罚 < 0 };
   }
   return best;
 }
 
 /* ---------- 普通目标（近战 / 直射 / 曲射） ---------- */
 function pickSingleTarget(actor, foes, pool, ctx) {
-  const frontAliveNow = frontAlive(foes);
+  const 局面 = 局面Of(foes);
   let best = null;
   for (const t of foes) {
-    const w = bestWeaponOn(actor, t, pool, frontAliveNow, ctx);
+    const w = bestWeaponOn(actor, t, pool, 局面, ctx);
     if (!w) continue;
     const score = targetScore(w.exp, t);
-    if (betterTarget(score, best && best.score)) best = { target: t, entry: w.entry, exp: w.exp, score };
+    if (betterTarget(score, best && best.score)) best = { target: t, entry: w.entry, exp: w.exp, score, 被挡: w.被挡 };
   }
   return best;
 }
@@ -120,8 +126,8 @@ function chooseAttack(actor, ctx) {
     const 指定 = (actor.指定目标 && actor.指定目标.hp > 0) ? actor.指定目标
       : (actor.指定目标位 != null ? foes.find(t => t.slot === actor.指定目标位) : null);
     if (指定) {
-      const w = bestWeaponOn(actor, 指定, pool, frontAlive(foes), ctx);
-      if (w) return { kind: 'attack', weapon: w.entry.t, target: 指定, expected: w.exp, entry: w.entry, 集火: true };
+      const w = bestWeaponOn(actor, 指定, pool, 局面Of(foes), ctx);
+      if (w) return { kind: 'attack', weapon: w.entry.t, target: 指定, expected: w.exp, entry: w.entry, 集火: true, 被挡: w.被挡 };
     }
   }
 
@@ -131,7 +137,7 @@ function chooseAttack(actor, ctx) {
   const cands = [];
   if (singlePool.length) {
     const s = pickSingleTarget(actor, foes, singlePool, ctx);
-    if (s) cands.push({ kind: 'attack', weapon: s.entry.t, target: s.target, expected: s.exp, score: s.score, entry: s.entry });
+    if (s) cands.push({ kind: 'attack', weapon: s.entry.t, target: s.target, expected: s.exp, score: s.score, entry: s.entry, 被挡: s.被挡 });
   }
   if (areaPool.length) {
     const a = pickAreaTarget(actor, foes, areaPool);
@@ -227,13 +233,13 @@ function combatClassOf(u, ctx) {
 
 /* 「近战敌人优先打我方前排血最少的」：只在候选目标里比当前 HP（小的优先）。 */
 function pickLowestHp(actor, foes, pool, ctx) {
-  const frontAliveNow = frontAlive(foes);
+  const 局面 = 局面Of(foes);
   let best = null;
   for (const t of foes) {
     if (unitRow(t) !== ROW_FRONT) continue;
-    const w = bestWeaponOn(actor, t, pool, frontAliveNow, ctx);
+    const w = bestWeaponOn(actor, t, pool, 局面, ctx);
     if (!w) continue;
-    if (!best || t.hp < best.target.hp) best = { target: t, entry: w.entry, exp: w.exp, score: targetScore(w.exp, t) };
+    if (!best || t.hp < best.target.hp) best = { target: t, entry: w.entry, exp: w.exp, score: targetScore(w.exp, t), 被挡: w.被挡 };
   }
   return best;
 }
@@ -269,7 +275,7 @@ function enemyAction(actor, ctx) {
     if (a && (!pick || a.exp > pick.exp)) pick = { target: a.target, entry: a.entry, exp: a.exp, slot: a.slot, hit: a.hit };
   }
   if (!pick) return null;
-  return { kind: 'attack', weapon: pick.entry.t, target: pick.target, expected: pick.exp, slot: pick.slot, hit: pick.hit, entry: pick.entry };
+  return { kind: 'attack', weapon: pick.entry.t, target: pick.target, expected: pick.exp, slot: pick.slot, hit: pick.hit, entry: pick.entry, 被挡: !!pick.被挡 };
 }
 
 /* ---------- overwatch（替代战棋的压制射击，方案 5.2） ----------

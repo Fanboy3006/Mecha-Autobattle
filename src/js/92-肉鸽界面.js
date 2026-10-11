@@ -29,7 +29,7 @@ const 肉鸽界面 = {
     const 卡 = 表.map(x => `<button class="pick${this.分队ID === x.名 ? ' on' : ''}" data-act="选分队:${x.名}">
       <b>${x.名}</b><small>${x.说明}</small></button>`).join('');
     return `<section class="card">
-      <h3>选分队（方案第 7 节）<span class="small">分队决定招募券的倾向；队伍上限 ${肉鸽数值.队伍上限} 台（前 3 后 2）</span></h3>
+      <h3>选分队（方案第 7 节）<span class="small">分队决定招募券的倾向；队伍上限 ${肉鸽数值.队伍上限} 台（上阵 9 格阵型，出击上限 ${出击上限初值} → ${出击上限顶} 台，随等级解锁）</span></h3>
       <div class="picks">${卡}</div>
       <div class="acts">
         <button class="primary" data-act="开新局"${this.分队ID ? '' : ' disabled'}>出发（新的一局）→</button>

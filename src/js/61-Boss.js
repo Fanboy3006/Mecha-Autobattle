@@ -135,10 +135,10 @@ function 单武器动作(u, 条目, ctx) {
   const w = 条目.t, pool = [条目];
   if (isAreaKind(rangeKindOf(w))) {
     const a = pickAreaTarget(u, foes, pool);
-    if (a) return { kind: 'attack', weapon: w, target: a.target, expected: a.exp, slot: a.slot, hit: a.hit, entry: a.entry };
+    if (a) return { kind: 'attack', weapon: w, target: a.target, expected: a.exp, slot: a.slot, hit: a.hit, entry: a.entry, 被挡: false };
   }
   const s = pickSingleTarget(u, foes, pool, ctx);
-  if (s) return { kind: 'attack', weapon: w, target: s.target, expected: s.exp, entry: s.entry };
+  if (s) return { kind: 'attack', weapon: w, target: s.target, expected: s.exp, entry: s.entry, 被挡: !!s.被挡 };
   return null;
 }
 

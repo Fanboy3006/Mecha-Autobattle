@@ -2104,25 +2104,35 @@ function mulberry32(a) {
 }
 
 /* ---------- 战场常量 ----------
-   站位在 `src/js/05-阵型.js` 里配置：作者 2026-10-10 定「暂时前 3 后 2」（共 5 格），之后会扩充阵型。
+   站位在 `src/js/05-阵型.js` 里配置：作者 2026-10-10 拍板改成**错开的 9 格 = 前排 4 + 后排 5**
+   （阻挡关系 F0→B0,B1 / F1→B1,B2 / F2→B2,B3 / F3→B3,B4、出击上限 3→6 也在那里）。
    这里不再写死 ROWS / COLS / SLOTS，需要的地方从 05-阵型.js 取。 */
 /* ============================================================================
- * 阵型（作者 2026-10-10 定：暂时「前 3 后 2」，之后会扩充阵型）
+ * 阵型（作者 2026-10-10 拍板：错开的 9 格 = 前排 4 + 后排 5）
  * ----------------------------------------------------------------------------
  * 这里**只改这一个地方**就能换阵型：`阵型表` 里每行写「这一排有几格」。
  * 格子编号 slot 从 0 开始，按排顺序排下来：
- *   前 3 后 2 → 前排 = 0,1,2（前1 前2 前3）· 后排 = 3,4（后1 后2），共 5 格
- *   以后要改「前 4 后 2」「前 3 后 3」，把列数改掉就行，引擎 / 界面 / 测试都从下面这些函数取。
+ *   前 4 后 5 → 前排 = 0,1,2,3（前1 前2 前3 前4）· 后排 = 4..8（后1..后5），共 9 格
  *
- * 参考：舰娘的阵型（陣形）里和前后排有关的是「かばう（替旗舰挡枪）」和一个叫「警戒陣」的分工——
- * 5 只时是「主力艦 = 1–2 番艦（后）、警戒艦 = 3–5 番艦（前）」，靠前的替靠后的挡枪。
- * 舰娘没有严格的「一列对一列」规则，所以「换位」按作者的话做成**按列对位**：
- * 前排第 c 列 ↔ 后排第 c 列；前排多出来、后排没有对位的那一列，就在本排里换空位/换队友。
+ * ★ 作者拍板的阻挡关系（**就按这张图**，见任务板「阵型9格」段）：
+ *
+ *     前排： F0   F1   F2   F3          slot 0  1  2  3
+ *     后排： B0   B1   B2   B3   B4     slot 4  5  6  7  8
+ *
+ *     阻挡： F0→B0,B1   F1→B1,B2   F2→B2,B3   F3→B3,B4
+ *     （B1/B2/B3 各被 2 个前排位挡；B0/B4 各只被 1 个挡 —— 后排比前排多一格，所以错开）
+ *
+ * 为什么这么排：后排 5 格比前排 4 格多一格，整体错开半格，于是每个前排位刚好挡住
+ * 「自己正对的那一格 + 右边那一格」，B0 与 B4 是两端、只有 1 个阻挡位。
+ *
+ * 参考：舰娘的阵型（陣形）里和前后排有关的是「かばう（替旗舰挡枪）」——
+ * 靠前的替靠后的挡枪；舰娘没有严格的「一列对一列」规则，所以「换位」按作者的话做成
+ * **和相邻位换**：同排左右邻居 + 有阻挡关系的对位（`相邻位()`）。
  * ========================================================================== */
 
 const 阵型表 = [
-  { 名: '前排', 列数: 3 },
-  { 名: '后排', 列数: 2 },
+  { 名: '前排', 短名: '前', 列数: 4 },
+  { 名: '后排', 短名: '后', 列数: 5 },
 ];
 
 const 阵型 = (() => {
@@ -2136,7 +2146,7 @@ const 阵型 = (() => {
 })();
 
 const ROWS = 阵型.行.length;          // 有几排
-const SLOTS = 阵型.总格数;            // 一共几个位置（双方各这么多）
+const SLOTS = 阵型.总格数;            // 一共几个位置（双方各这么多）= 9
 const ROW_FRONT = 0, ROW_BACK = 1;    // 排版：0 = 前排（靠敌人）、1 = 后排
 
 const 行列数 = i => 阵型.行[i].列数;
@@ -2144,6 +2154,8 @@ const 行列数 = i => 阵型.行[i].列数;
 const 最大列数 = Math.max(...阵型.行.map(r => r.列数));
 const 行首格 = i => 阵型.行[i].起;
 const 行名 = i => 阵型.行[i].名;
+/** 短名（前/后）：位名用短的 —— 作者说的「前1..前4 / 后1..后5」就是这套名字 */
+const 行短名 = i => 阵型表[i].短名 || 行名(i);
 /** slot → 第几排 */
 function rowOfSlot(slot) {
   let r = 0;
@@ -2154,16 +2166,127 @@ function rowOfSlot(slot) {
 const colOfSlot = slot => slot - 行首格(rowOfSlot(slot));
 /** （排, 列）→ slot */
 const slotOf = (row, col) => 行首格(row) + col;
-/** 这一排有没有这一列（前 3 后 2 时，后排没有第 3 列） */
+/** 这一排有没有这一列（前 4 后 5 时，前排没有第 5 列） */
 const 有这一列 = (row, col) => col >= 0 && col < 行列数(row);
-/** 格子的人话名字：前1 / 后2 */
-const 位名 = slot => `${行名(rowOfSlot(slot))}${colOfSlot(slot) + 1}`;
+/** 格子的人话名字：前1 / 后2（作者 2026-10-10：前1..前4、后1..后5） */
+const 位名 = slot => `${行短名(rowOfSlot(slot))}${colOfSlot(slot) + 1}`;
 
-/** 某一列上所有真实的格子（前 3 后 2 时：前列0+后列0、前列1+后列1、前列2 只有自己） */
+/** 某一列上所有真实的格子（前 4 后 5 时：前列0+后列0 … 前列3+后列3、后列4 只有自己）
+ *  ★ 注意：**这不是阻挡关系**（阻挡是错开的，见下面的 `阻挡表` / `对位()`）；留着给界面画列用。 */
 function 列上所有格(col) {
   const out = [];
   for (let r = 0; r < ROWS; r++) if (有这一列(r, col)) out.push(slotOf(r, col));
   return out;
+}
+
+/* ============================================================================
+ * 阻挡关系（作者 2026-10-10 拍板的那张图）
+ * ----------------------------------------------------------------------------
+ * `阻挡表[前排列]` = 这个前排位挡着的**后排列**（1–2 个）。
+ *   F0(列0)→B0,B1   F1(列1)→B1,B2   F2(列2)→B2,B3   F3(列3)→B3,B4
+ * ========================================================================== */
+const 阻挡表 = [
+  [0, 1],   // 前1 → 后1、后2
+  [1, 2],   // 前2 → 后2、后3
+  [2, 3],   // 前3 → 后3、后4
+  [3, 4],   // 前4 → 后4、后5
+];
+
+/** 归一化「活着的位」：接受 Set / 数组 / 单位数组（取 .slot）。 */
+function 活位集(x) {
+  if (x instanceof Set) return x;
+  const s = new Set();
+  for (const v of (x || [])) s.add(v && typeof v === 'object' ? v.slot : v);
+  return s;
+}
+
+/** 这个**前排位**挡着的后排位们（后排位 / 越界 → 空数组）。 */
+function 阻挡位(位) {
+  if (位 == null || 位 < 0 || 位 >= SLOTS) return [];
+  if (rowOfSlot(位) !== ROW_FRONT) return [];
+  return (阻挡表[colOfSlot(位)] || []).map(c => slotOf(ROW_BACK, c));
+}
+
+/** 挡着这个**后排位**的前排位们（前排位 → 空数组）。B1/B2/B3 各有 2 个，B0/B4 各 1 个。 */
+function 遮挡位(位) {
+  if (位 == null || 位 < 0 || 位 >= SLOTS) return [];
+  if (rowOfSlot(位) !== ROW_BACK) return [];
+  const c = colOfSlot(位);
+  const out = [];
+  for (let i = 0; i < 阻挡表.length; i++) if (阻挡表[i].includes(c)) out.push(slotOf(ROW_FRONT, i));
+  return out;
+}
+
+/** 有阻挡关系的**对位**（对称）：前排位 → 它挡的后排位们；后排位 → 挡着它的前排位们。
+ *  这就是作者说的「F0↔B0/B1、F1↔B1/B2、F2↔B2/B3、F3↔B3/B4」。 */
+const 对位 = 位 => (rowOfSlot(位) === ROW_FRONT ? 阻挡位(位) : 遮挡位(位));
+
+/** 换位用的**相邻位** = 同排左右邻居 + 有阻挡关系的对位（作者 2026-10-10 拍板）。 */
+function 相邻位(位) {
+  const out = [];
+  const r = rowOfSlot(位), c = colOfSlot(位);
+  if (有这一列(r, c - 1)) out.push(slotOf(r, c - 1));
+  if (有这一列(r, c + 1)) out.push(slotOf(r, c + 1));
+  for (const s of 对位(位)) if (!out.includes(s)) out.push(s);
+  return out;
+}
+
+/** 这个**后排位**现在被挡着吗：它的遮挡位里还有活人 → true。
+ *  `活着的位` 传 Set / 数组 / 单位数组都行（界面与 AI 两边都从这里取，规则只有一份）。 */
+function 被挡吗(位, 活着的位) {
+  if (位 == null || rowOfSlot(位) !== ROW_BACK) return false;
+  const 活 = 活位集(活着的位);
+  return 遮挡位(位).some(s => 活.has(s));
+}
+
+/** 范围武器 `area:'col'` 用的**阻挡束**：一个前排位 + 它挡的 1–2 个后排位。
+ *  后排位按**同列的前排位**归束；B4（后排第 5 列）没有同列前排 → 归它唯一的遮挡位 F3。 */
+function 阻挡束(位) {
+  if (位 == null || 位 < 0 || 位 >= SLOTS) return [];
+  let 前;
+  if (rowOfSlot(位) === ROW_FRONT) 前 = 位;
+  else {
+    const c = colOfSlot(位);
+    前 = 有这一列(ROW_FRONT, c) ? slotOf(ROW_FRONT, c) : (遮挡位(位)[0] ?? null);
+  }
+  if (前 == null) return [位];
+  return [前].concat(阻挡位(前));
+}
+
+/** 对照表（测试与文档直接读它，避免两处各写一份）：8 条阻挡关系，逐条是 `[前排位, 后排位]`。 */
+const 阻挡关系 = [];
+for (let c = 0; c < 阵型表[ROW_FRONT].列数; c++) {
+  for (const b of (阻挡表[c] || [])) 阻挡关系.push([slotOf(ROW_FRONT, c), slotOf(ROW_BACK, b)]);
+}
+
+/* ============================================================================
+ * 出击上限（作者 2026-10-10 拍板：**我方同时最多 6 台，一开始只有 3 台**，随等级解锁）
+ * ----------------------------------------------------------------------------
+ * 形状照战棋 `24-Feena_指挥官.js:19` 的 `deployCap()`：
+ *   `const deployCap = () => 4 + Math.floor((RUN.lvl - 1) / 3) + (skLv('编制') >= 2 ? 1 : 0) + (hasRelic('f4') ? 1 : 0);`
+ * 我们抄的是**「起始值 + floor((等级 − 基准) / 每几级) + 封顶」这个形状**（战棋那两项加成
+ * —— 指挥官技能 / 藏品 f4 —— 本仓库还没接，先留 0）；**具体档位是初稿，待作者调**：
+ *   Lv10 → 3 台（作者：「一开始只有 3 台」）
+ *   Lv15 → 4 台
+ *   Lv20 → 5 台
+ *   Lv25 → 6 台（到顶；Lv30 也是 6）
+ * ★ 三个常量都是**初稿**，改这里就够；`82` / `93-藏品.js` 的 f4「编制扩充令」以后接这一条。
+ * ========================================================================== */
+const 出击上限初值 = 3;          // 【初稿】一开始只上 3 台
+const 出击上限顶 = 6;            // 【初稿】我方同时最多 6 台（9 格里留 3 个空位）
+const 每几级加一台 = 5;          // 【初稿】队伍等级每涨 5 级 +1 台（形状照 24-Feena_指挥官.js:19）
+
+/** 队伍等级 → 出击上限（3 → 6，初稿档位见上）。 */
+function 出击上限(等级) {
+  const lv = Number(等级);
+  const n = 出击上限初值 + Math.floor(((Number.isFinite(lv) ? lv : 10) - 10) / 每几级加一台);
+  return Math.max(出击上限初值, Math.min(出击上限顶, n));
+}
+
+/** 名册（`RUN.队伍` = [{键, 等级}]）→ 出击上限：按**名册里最高的等级**算。 */
+function 出击上限由名册(名册) {
+  const 等级们 = (名册 || []).map(m => (m && (m.等级 || m.lv)) || 10);
+  return 出击上限(等级们.length ? Math.max(...等级们) : 10);
 }
 /* ============================================================================
  * 数据：角色 / 机体 / 敌人 / 武器（从机甲战棋复制，方案第 2 节）
@@ -2844,7 +2967,7 @@ const Boss脚本 = {
   },
 };
 /* ============================================================================
- * 射程换算：能打到哪一排（方案 3.3）
+ * 射程换算：能打到哪一格（方案 3.3 + 作者 2026-10-10 拍板的「按位阻挡」）
  * ----------------------------------------------------------------------------
  * 战棋里每把武器都有 `fire`（melee / direct / indirect / map / support / heal /
  * passive / device）和 `range`。新项目里**只用 fire 判断"能打谁"**：
@@ -2853,15 +2976,23 @@ const Boss脚本 = {
  * 换算必须是**纯函数**，不要手改每把武器（方案 3.3 的硬要求）。
  *
  *   fire       新类型   能打谁
- *   melee      近战     只能打敌方前排；前排没人了才能打后排
- *   direct     直射     任意目标；打后排时敌方前排还有人 → 命中 −20（被挡）
- *   indirect   曲射     任意目标，没有惩罚
+ *   melee      近战     只能打敌方前排；前排没人了才能打后排（现状不变）
+ *   direct     直射     任意目标；打**某个后排位**时看这个位的**阻挡位里还有没有活人**
+ *                       —— 有 → 命中 −20（被挡）；阻挡位全灭 → 无惩罚（不是打不到！）
+ *   indirect   曲射     任意目标，无视阻挡、没有惩罚
  *   map/support 范围    按武器新加的 area：row / col / cross / all（没写默认 row）
  *   heal       修理     我方任意一台，优先 HP 比例最低的
  *   passive / device    第一期不做（方案 6.2）
  *
- * 站位在 05-阵型.js 里配（作者 2026-10-10：暂时「前 3 后 2」，之后会扩充）：slot 从 0 开始按排数下来，
- * row 0 = 前排、1 = 后排；前排靠近敌人。
+ * ★ 作者 2026-10-10 拍板的四条（这次阵型大改）：
+ *   ① 9 格 = 前排 4 + 后排 5，阻挡关系 F0→B0,B1 / F1→B1,B2 / F2→B2,B3 / F3→B3,B4；
+ *   ② 直射是「命中 −20」，**不是打不到**；
+ *   ③ 曲射 / 范围**无视阻挡**（本文件里它们根本不算被挡惩罚）；
+ *   ④ 范围的形状跟着新几何走：`row` = 一整排（前 4 / 后 5）；
+ *      `col` = **阻挡束**（一个前排位 + 它挡的 1–2 个后排位）；
+ *      `cross` = 目标位 + 左右邻居 + 对位；`all` = 全场。
+ *
+ * 站位与阻挡关系都在 05-阵型.js 里配（`阻挡位 / 遮挡位 / 对位 / 相邻位 / 被挡吗 / 阻挡束`）。
  * ========================================================================== */
 
 const KIND_MELEE = '近战', KIND_DIRECT = '直射', KIND_INDIRECT = '曲射', KIND_AREA = '范围', KIND_HEAL = '修理';
@@ -2870,7 +3001,7 @@ const KIND_MELEE = '近战', KIND_DIRECT = '直射', KIND_INDIRECT = '曲射', K
    所以单独判成「支援」，不参与「进攻」的武器挑选。 */
 const KIND_SUPPORT = '支援';
 
-/* 排号 ROW_FRONT / ROW_BACK 和格子编号都在 05-阵型.js 里（阵型可扩充） */
+/* 排号 ROW_FRONT / ROW_BACK、格子编号、阻挡关系都在 05-阵型.js 里（阵型可扩充） */
 
 const RANGE_KIND = {
   melee: KIND_MELEE,
@@ -2896,43 +3027,53 @@ const isSupportKind = kind => kind === KIND_SUPPORT;
 /* 带支援字段的支援武器（方案 3.3 之外，作者 2026-10-10 定） */
 const hasSupportField = w => !!(w && (w.buff || w.grant));
 
-/** 这个类型能不能打到指定那一排。frontAlive = 敌方前排是否还有人。 */
+/** 这个类型能不能打到指定那一排。frontAlive = 敌方前排是否还有人。
+ *  ★ 近战规则**现状不变**：只能打前排，前排全灭才能打后排。 */
 function rowReachable(kind, targetRow, frontAlive) {
   if (kind === KIND_MELEE) return targetRow === ROW_FRONT || !frontAlive;
   return true;
 }
 
-/** 「被挡」的命中修正：直射打后排、而敌方前排还有人 → −20；其他情况 0。
- *  职业特色（方案 6.3）：我方的狙击打后排没有这个惩罚。 */
-function rowBlockPenalty(kind, targetRow, frontAlive, attacker) {
+/** 「被挡」的命中修正（作者 2026-10-10 拍板改成**按位**）：
+ *  直射 打**后排位**、而这个位的阻挡位（`遮挡位()`）里还有活人 → −20；其他情况 0。
+ *  ★ 是命中修正，**不是打不到** —— 打得到，只是难打（`tests/grid.js` 第 [2] 段盯着）。
+ *  职业特色（方案 6.3）：我方的狙击打后排没有这个惩罚。
+ *  参数：`目标位` = 被打的格子编号；`活着的位` = 被打那一方还活着的位（Set / 数组 / 单位数组都行）。 */
+function rowBlockPenalty(kind, 目标位, 活着的位, attacker) {
   if (职业是(attacker, '狙击')) return 0;
-  return (kind === KIND_DIRECT && targetRow === ROW_BACK && frontAlive) ? -20 : 0;
+  if (kind !== KIND_DIRECT) return 0;          // 近战够不够得着看 rowReachable；曲射 / 范围无视阻挡
+  return 被挡吗(目标位, 活着的位) ? -20 : 0;
 }
 /* 方案 6.3 的职业特色都只对我方生效（敌人按梯队，没有「职业」）。 */
 const 职业是 = (u, k) => !!u && u.side === 'ally' && !!(u.tags && u.tags.战斗分类 === k);
 
-/** 范围武器的落点：area 决定打哪些格子（没写 area 默认 row）。返回 slot 数组。
- *  阵型是「前 3 后 2」（可扩充），所以一排有几格由 05-阵型.js 决定：
- *   - row   = 那一整排；
- *   - col   = 同一列上的格子（前列0+后列0、前列1+后列1；前列2 后排没有对位，就只有自己）；
- *   - cross = 目标格 + 同排左右相邻 + 另一排同列（有的话）；
- *   - all   = 全部。 */
+/** 范围武器的落点：area 决定打哪些格子（没写 area 默认 row）。返回**升序**的 slot 数组。
+ *  新几何（作者 2026-10-10 拍板，配置在 05-阵型.js）：
+ *   - row   = 那一整排（前 4 格 / 后 5 格）；
+ *   - col   = **阻挡束**：一个前排位 + 它挡的 1–2 个后排位（`阻挡束(位)`）；
+ *   - cross = 目标位 + 同排左右邻居 + 对位（有阻挡关系的那 1–2 格）；
+ *   - all   = 全场 9 格。 */
 function areaSlots(w, row, col) {
   const area = (w && w.area) || 'row';
-  const out = [];
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < 行列数(r); c++) {
-      let hit = false;
-      if (area === 'all') hit = true;
-      else if (area === 'row') hit = r === row;
-      else if (area === 'col') hit = c === col;
-      else if (area === 'cross') hit = (r === row && Math.abs(c - col) <= 1) || (c === col && Math.abs(r - row) === 1);
-      if (hit) out.push(slotOf(r, c));
-    }
+  const 位 = slotOf(row, col);
+  let out;
+  if (area === 'all') {
+    out = [];
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < 行列数(r); c++) out.push(slotOf(r, c));
+  } else if (area === 'col') {
+    out = 阻挡束(位).slice();
+  } else if (area === 'cross') {
+    out = [位];
+    const r = rowOfSlot(位), c = colOfSlot(位);
+    if (有这一列(r, c - 1)) out.push(slotOf(r, c - 1));
+    if (有这一列(r, c + 1)) out.push(slotOf(r, c + 1));
+    for (const s of 对位(位)) if (!out.includes(s)) out.push(s);
+  } else {                                   // 'row' 与没写的都按一整排
+    out = [];
+    for (let c = 0; c < 行列数(row); c++) out.push(slotOf(row, c));
   }
-  return out;
+  return [...new Set(out)].sort((a, b) => a - b);
 }
-
 /* ============================================================================
  * 战斗计算（方案 6.1）· 照抄机甲战棋的数值部分
  * ----------------------------------------------------------------------------
@@ -3253,7 +3394,8 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
  *   levelUp       ← 07-状态.js:18-26     （每级 +2、我方 Lv20 / Lv30 晋升 +25、装甲 +25%、闪避 +8、命中 +10）
  *   速度公式      ← 方案 3.2：机动（mov）× 10 + 闪避 ÷ 2，取整
  *
- * 站位：双方各 2 排 × 3 列，格子编号 slot = 排 × 3 + 列（0–2 前排、3–5 后排）。
+ * 站位：双方各 9 格 = 2 排（前排 4 + 后排 5），格子编号 slot = 排首格 + 列
+ * （0–3 前排、4–8 后排；排首格 / 列数 / 阻挡关系都在 05-阵型.js）。
  * ========================================================================== */
 
 const otherSide = s => s === 'ally' ? 'enemy' : 'ally';
@@ -3267,8 +3409,10 @@ const 战斗分类 = u => (u && u.tags && u.tags.战斗分类) || null;
 const sideUnits = (side, ctx) => side === 'ally' ? ctx.allies : ctx.enemies;
 const livingOf = (side, ctx) => sideUnits(side, ctx).filter(u => u.hp > 0);
 const livingUnits = ctx => ctx.allies.concat(ctx.enemies).filter(u => u.hp > 0);
-/* 这一排里还有没有人（近战能不能够到后排、直射打后排有没有被挡，都看它） */
+/* 这一排里还有没有人（近战能不能够到后排看它；直射的「被挡」改成**按位**看 `被挡吗()`） */
 const frontAlive = units => units.some(u => unitRow(u) === ROW_FRONT);
+/* 还活着的位集合：直射被挡判定（30-射程.js 的 `rowBlockPenalty` / 05-阵型.js 的 `被挡吗`）要用 */
+const 活位们 = units => new Set(units.map(u => u.slot));
 
 /* ---------- 升级（07-状态.js:18-26） ---------- */
 function levelUp(u, heal = false) {
@@ -3328,7 +3472,7 @@ function makeUnits(编成, side) {
  * 所以谁先谁后无所谓）：
  *   usableWeapons(u, ctx) → [{t: 模板武器, cd, uses, ...}]  「这台机体现在能用哪些武器」
  *   expectedDamage(att, def, w, opts) → 期望伤害（只用来比大小）
- *   unitRow(u) / livingOf(side, ctx) / frontAlive(side, ctx)
+ *   unitRow(u) / livingOf(side, ctx) / frontAlive(units) / 活位们(units)
  *   rangeKindOf / rowReachable / rowBlockPenalty / isAreaKind / isHealKind / areaSlots
  *
  * 方案里的对应关系：
@@ -3383,29 +3527,35 @@ function weaponPool(actor, ctx) {
   return ults.length ? ults : pool;                  // 大招优先（方案 5.1.1）
 }
 
+/* 目标那一方的「局面」：前排还有没有人（近战够不够得着）+ 还活着的位集合。
+ * ★ 作者 2026-10-10 拍板「按位阻挡」之后，直射有没有被挡**不能再只看「前排还有没有人」**——
+ *   要看**这个后排位的阻挡位**（`遮挡位()`）里还有没有活人，所以把活位一次性算好传下去。 */
+const 局面Of = foes => ({ 前排有人: frontAlive(foes), 活位: foes.map(u => u.slot) });
+
 /* 一台机体对某个敌人最划算的（武器, 期望伤害）。
- * frontAliveNow：敌方前排是否还有人（决定近战能不能够到后排、直射有没有被挡）。 */
-function bestWeaponOn(actor, target, pool, frontAliveNow, ctx) {
+ * 局面 = 上面那个 `{前排有人, 活位}`：决定近战能不能够到后排、直射有没有被挡（−20）。 */
+function bestWeaponOn(actor, target, pool, 局面, ctx) {
   let best = null;
   for (const e of pool) {
     const kind = rangeKindOf(e.t);
     const trow = unitRow(target);
-    if (!rowReachable(kind, trow, frontAliveNow)) continue;
-    const exp = expectedDamage(actor, target, e.t, { blockPenalty: rowBlockPenalty(kind, trow, frontAliveNow, actor), turn: ctx && ctx.turn });
-    if (!best || exp > best.exp) best = { entry: e, exp };
+    if (!rowReachable(kind, trow, 局面.前排有人)) continue;
+    const 罚 = rowBlockPenalty(kind, target.slot, 局面.活位, actor);
+    const exp = expectedDamage(actor, target, e.t, { blockPenalty: 罚, turn: ctx && ctx.turn });
+    if (!best || exp > best.exp) best = { entry: e, exp, 被挡: 罚 < 0 };
   }
   return best;
 }
 
 /* ---------- 普通目标（近战 / 直射 / 曲射） ---------- */
 function pickSingleTarget(actor, foes, pool, ctx) {
-  const frontAliveNow = frontAlive(foes);
+  const 局面 = 局面Of(foes);
   let best = null;
   for (const t of foes) {
-    const w = bestWeaponOn(actor, t, pool, frontAliveNow, ctx);
+    const w = bestWeaponOn(actor, t, pool, 局面, ctx);
     if (!w) continue;
     const score = targetScore(w.exp, t);
-    if (betterTarget(score, best && best.score)) best = { target: t, entry: w.entry, exp: w.exp, score };
+    if (betterTarget(score, best && best.score)) best = { target: t, entry: w.entry, exp: w.exp, score, 被挡: w.被挡 };
   }
   return best;
 }
@@ -3440,8 +3590,8 @@ function chooseAttack(actor, ctx) {
     const 指定 = (actor.指定目标 && actor.指定目标.hp > 0) ? actor.指定目标
       : (actor.指定目标位 != null ? foes.find(t => t.slot === actor.指定目标位) : null);
     if (指定) {
-      const w = bestWeaponOn(actor, 指定, pool, frontAlive(foes), ctx);
-      if (w) return { kind: 'attack', weapon: w.entry.t, target: 指定, expected: w.exp, entry: w.entry, 集火: true };
+      const w = bestWeaponOn(actor, 指定, pool, 局面Of(foes), ctx);
+      if (w) return { kind: 'attack', weapon: w.entry.t, target: 指定, expected: w.exp, entry: w.entry, 集火: true, 被挡: w.被挡 };
     }
   }
 
@@ -3451,7 +3601,7 @@ function chooseAttack(actor, ctx) {
   const cands = [];
   if (singlePool.length) {
     const s = pickSingleTarget(actor, foes, singlePool, ctx);
-    if (s) cands.push({ kind: 'attack', weapon: s.entry.t, target: s.target, expected: s.exp, score: s.score, entry: s.entry });
+    if (s) cands.push({ kind: 'attack', weapon: s.entry.t, target: s.target, expected: s.exp, score: s.score, entry: s.entry, 被挡: s.被挡 });
   }
   if (areaPool.length) {
     const a = pickAreaTarget(actor, foes, areaPool);
@@ -3547,13 +3697,13 @@ function combatClassOf(u, ctx) {
 
 /* 「近战敌人优先打我方前排血最少的」：只在候选目标里比当前 HP（小的优先）。 */
 function pickLowestHp(actor, foes, pool, ctx) {
-  const frontAliveNow = frontAlive(foes);
+  const 局面 = 局面Of(foes);
   let best = null;
   for (const t of foes) {
     if (unitRow(t) !== ROW_FRONT) continue;
-    const w = bestWeaponOn(actor, t, pool, frontAliveNow, ctx);
+    const w = bestWeaponOn(actor, t, pool, 局面, ctx);
     if (!w) continue;
-    if (!best || t.hp < best.target.hp) best = { target: t, entry: w.entry, exp: w.exp, score: targetScore(w.exp, t) };
+    if (!best || t.hp < best.target.hp) best = { target: t, entry: w.entry, exp: w.exp, score: targetScore(w.exp, t), 被挡: w.被挡 };
   }
   return best;
 }
@@ -3589,7 +3739,7 @@ function enemyAction(actor, ctx) {
     if (a && (!pick || a.exp > pick.exp)) pick = { target: a.target, entry: a.entry, exp: a.exp, slot: a.slot, hit: a.hit };
   }
   if (!pick) return null;
-  return { kind: 'attack', weapon: pick.entry.t, target: pick.target, expected: pick.exp, slot: pick.slot, hit: pick.hit, entry: pick.entry };
+  return { kind: 'attack', weapon: pick.entry.t, target: pick.target, expected: pick.exp, slot: pick.slot, hit: pick.hit, entry: pick.entry, 被挡: !!pick.被挡 };
 }
 
 /* ---------- overwatch（替代战棋的压制射击，方案 5.2） ----------
@@ -3603,7 +3753,8 @@ const hasOverwatch = u => u.side === 'enemy' && ENEMY_OVERWATCH.includes(u.key);
  * ----------------------------------------------------------------------------
  * 对外接口（M3 起是「一回合一个回合地打」，因为玩家的指令会变，不能一次算完整场）：
  *
- *   开局(我方, 敌方, 种子) → ctx      一次战斗的状态：双方单位、记录、带种子的随机数
+ *   开局(我方, 敌方, 种子, 指令表, 选项) → ctx   一次战斗的状态：双方单位、记录、带种子的随机数、
+ *                                      **敌方增援波次**（`选项.波次`，编成表配；不传 = 没有增援）
  *                                     （里面会调 `藏品开战`，把这一局的藏品应用到双方；见 93-藏品.js）
  *   设指令(ctx, 指令表)               指令表 = { 位: {类型, 目标位, 保留大招} }
  *                                     类型 = 进攻（默认）/ 集火 / 守护 / 防御 / 换位（方案第 4 节）
@@ -3682,8 +3833,12 @@ function 嘲讽(ctx, 攻击者, 原目标) {
   return 候选[0];
 }
 
-/* ---------- 回合开始（指令解析 + 指挥 + 防御回报） ---------- */
+/* ---------- 回合开始（增援 + 指令解析 + 指挥 + 防御回报） ---------- */
 function 回合开始(ctx) {
+  /* 0. 增援（作者 2026-10-10 拍板）：波次表里写着「这一回合来一波」的，先补进空位。
+     放在最前面 —— 补进来的敌人这一回合就按速度正常行动（和战棋 respawnFoes 一个时机）。 */
+  增援(ctx);
+
   /* 1. 把「位」形式的指令解析成**单位引用**：换位之后引用不会错 */
   for (const u of livingOf('ally', ctx)) {
     u.守护对象 = null;
@@ -3720,21 +3875,57 @@ function 回合开始(ctx) {
   }
 }
 
-/* ---------- 换位：算出该换到哪个格子（作者 2026-10-10 定：按列对位） ----------
- *   1. 同一列的另一排有这一格 → 就用它（对面有人就互换，空着就移过去）；
- *   2. 没有对位格（前 3 后 2 时前排的第 3 列）→ 在本排里找空位，没空位就和本排第一个队友互换；
- *   3. 本排也没有别的格子 → 返回 null（这次换位作罢）。 */
+/* ---------- 换位：算出该换到哪个格子（作者 2026-10-10 拍板：换到**相邻位**） ----------
+ * 相邻位 = 同一排的左右邻居 + **有阻挡关系的对位**（05-阵型.js 的 `相邻位()`）：
+ *   F0↔B0/B1、F1↔B1/B2、F2↔B2/B3、F3↔B3/B4（对位），同排还能左右挪一格。
+ * 挑法（决定性的，不用随机）：① 先看**对位**里空着的那一格 → 移过去；② 再看同排左右空位；
+ * ③ 全占着就和对位（先）或同排邻居（后）**互换**；④ 一个相邻位都没有 → null，这次换位作罢。 */
 function 换位目标(ctx, actor) {
-  const r = rowOfSlot(actor.slot), c = colOfSlot(actor.slot);
-  const 对排 = r === ROW_FRONT ? ROW_BACK : ROW_FRONT;
-  if (有这一列(对排, c)) return slotOf(对排, c);
   const 占 = new Map(livingOf(actor.side, ctx).map(u => [u.slot, u]));
-  const 本排 = [];
-  for (let i = 0; i < 行列数(r); i++) 本排.push(slotOf(r, i));
-  const 空位 = 本排.filter(位 => 位 !== actor.slot && !占.has(位));
-  if (空位.length) return 空位[0];
-  const 队友位 = 本排.filter(位 => 位 !== actor.slot && 占.has(位));
-  return 队友位.length ? 队友位[0] : null;
+  const 候选 = [];
+  for (const s of 对位(actor.slot)) if (!候选.includes(s)) 候选.push(s);
+  for (const s of 相邻位(actor.slot)) if (!候选.includes(s)) 候选.push(s);
+  const 空格 = 候选.filter(s => !占.has(s));
+  if (空格.length) return 空格[0];
+  const 有人 = 候选.filter(s => 占.has(s));
+  return 有人.length ? 有人[0] : null;
+}
+
+/* ---------- 增援（作者 2026-10-10 拍板：敌方被击坠后按波次补人） ----------
+ * 形状照战棋 `30b-关卡目标.js:96-105` 的持续刷新：
+ *   `respawn: { every: N, lv, list: t => [键…] }`，触发在回合开始时
+ *   （`if (rs && c.turn > 1 && (c.turn - 1) % rs.every === 0) { respawnFoes(rs.list(c.turn), rs.lv); log('敌方增援 N 台从右侧出现') }`）。
+ * 本仓库把「间隔」在编成表里**展开成波次**（`70-编成.js` 的 `波次: [{回合, 来:[键…]}]`，
+ * 回合号就是 `1 + 间隔×n`），所以这里只要「回合号对上了就补」。
+ * 补进**空位**（前排先、再后排 —— 被击坠的格子空出来正好顶上）；一个空位都没有就作罢，照样写日志。
+ * 日志统一写 `〔增援〕…`，记录里带 `数量 / 位们 / 单位们` 给界面用。 */
+function 空位(ctx, side) {
+  const 占 = new Set(livingOf(side, ctx).map(u => u.slot));
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < 行列数(r); c++) {
+    const s = slotOf(r, c);
+    if (!占.has(s)) return s;
+  }
+  return null;
+}
+function 增援(ctx) {
+  for (const w of (ctx.波次 || [])) {
+    if (!w || w.回合 !== ctx.turn) continue;
+    const 来 = w.来 || [];
+    const 位们 = [], 单位们 = [];
+    let 没空位 = 0;
+    for (const e of 来) {
+      const s = 空位(ctx, 'enemy');
+      if (s == null) { 没空位++; continue; }
+      const u = makeUnit(e.键, 'enemy', s, e.等级);
+      ctx.enemies.push(u);
+      位们.push(s); 单位们.push(u.key);
+    }
+    if (位们.length) {
+      pushLog(ctx, `〔增援〕第 ${ctx.turn} 回合：敌方 ${位们.length} 台赶到（${位们.map(位名).join('、')}：${单位们.join('、')}）`,
+        { 类型: '增援', 数量: 位们.length, 位们, 目标方们: 位们.map(() => 'enemy'), 单位们 });
+    }
+    if (没空位) pushLog(ctx, `〔增援〕第 ${ctx.turn} 回合：还有 ${没空位} 台挤不进来（9 个位都占着）`, { 类型: '增援', 数量: 0, 结果: '没空位' });
+  }
 }
 
 /* ---------- 一个单位这次行动做什么 ---------- */
@@ -3830,8 +4021,8 @@ function resolveAction(actor, action, ctx) {
     return 空;
   }
 
-  /* 换位（方案第 4 节 + 作者 2026-10-10：按列对位）：和同一列的另一排交换；对面是空位就直接移过去；
-     前排多出来、后排没有对位的那一列（前 3 后 2 时的前 3），就在本排里换空位 / 换队友。本回合不攻击。 */
+  /* 换位（方案第 4 节 + 作者 2026-10-10：换到**相邻位**）：同排左右邻居 + 有阻挡关系的对位
+     （F0↔B0/B1、F1↔B1/B2、F2↔B2/B3、F3↔B3/B4）。对面空着就移过去、有人就互换。本回合不攻击。 */
   if (action.kind === 'swap') {
     const 目标位 = 换位目标(ctx, actor);
     if (目标位 == null) {
@@ -3884,9 +4075,10 @@ function resolveAction(actor, action, ctx) {
     }
 
     const 血 = 实际.hp;
-    const 行 = unitRow(实际);
-    const frontAliveNow = frontAlive(livingOf(otherSide(actor.side), ctx));
-    const blockPenalty = isAreaKind(kind) ? 0 : rowBlockPenalty(kind, 行, frontAliveNow, actor);
+    /* 被挡（作者 2026-10-10 拍板改成**按位**）：看**实际目标这一位**的阻挡位里还有没有活人。
+       近战够不够得着由 AI 那边按 `rowReachable` 过滤，这里只管直射的 −20。 */
+    const 活位 = livingOf(实际.side, ctx).map(x => x.slot);
+    const blockPenalty = isAreaKind(kind) ? 0 : rowBlockPenalty(kind, 实际.slot, 活位, actor);
     const rec = resolveAttack(actor, 实际, w, ctx, { blockPenalty, defending: 按防御, 伤害倍率: 倍率 });
     if (血 > 0 && 实际.hp <= 0) 击破++;
     pushLog(ctx, rec.文本, Object.assign({ 类型: '攻击', 单位: actor.key, 目标: 实际.key, 武器: w.name, 集火: !!action.集火, 守护挡下: 按防御, 原目标: 按防御 ? t.key : null, 原目标位: 按防御 ? t.slot : null }, 谁(actor), 谁目标(实际), rec.字段));
@@ -3951,13 +4143,17 @@ function endTurn(ctx) {
   }
 }
 
-/* ---------- 开场 ---------- */
-function 开局(我方编成, 敌方编成, 种子, 指令表) {
+/* ---------- 开场 ----------
+ * `选项`（可选）：`{ 波次: [{回合, 来:[{键, 等级}…]}…] }` —— 敌方增援的波次表
+ * （编成表里配，`70-编成.js` 的 `编成波次到单位()` 把「第几回合来哪几台」换算好；
+ * 不传 = 这一场没有增援，行为和以前一个字节都不变）。 */
+function 开局(我方编成, 敌方编成, 种子, 指令表, 选项) {
   const rng = mulberry32((种子 >>> 0) || 1);
   const ctx = {
     turn: 1, 种子: (种子 >>> 0) || 1, rng,
     allies: makeUnits(我方编成, 'ally'), enemies: makeUnits(敌方编成, 'enemy'),
     log: [], result: null, again: [],
+    波次: ((选项 && 选项.波次) || []).map(w => ({ 回合: w.回合, 来: (w.来 || []).map(e => ({ 键: e.键, 等级: e.等级 })) })),
   };
   /* 藏品（方案第 7 节 · 作者 2026-10-10 要做）：把 `肉鸽.RUN.藏品` 应用到**我方**出击机体
      （HP / 装甲 / 命中 / 暴击 / 闪避 / 伤害 / 减伤）和**敌方**（命中 / 装甲减益）。
@@ -3992,6 +4188,10 @@ function 算意图(ctx) {
       目标名: a && a.target ? a.target.name : null,
       期望: a && a.expected ? Math.round(a.expected) : 0,
       压制射击: hasOverwatch(u),
+       /* 直射打这个后排位**现在被挡着吗**（阻挡位里还有活人 → 命中 −20；打得到，只是难打）。
+          界面上要跟这条规则一致：意图里写「被挡 −20」（作者 2026-10-10 拍板）。 */
+      被挡: !!(a && a.被挡),
+      命中修正: a && a.被挡 ? -20 : 0,
       /* Boss：这一发是不是大技能、现在第几阶段、还是这一回合在蓄力（界面上看得见节奏） */
       大技能: !!(a && a.大技能),
       Boss: !!bp,
@@ -4014,8 +4214,8 @@ function 打一回合(ctx) {
 }
 
 /* ---------- simulate（方案第 9 节 M1 的接口；一整场，指令固定不变） ---------- */
-function simulate(我方, 敌方, 指令, 种子) {
-  const ctx = 开局(我方, 敌方, 种子, 指令);
+function simulate(我方, 敌方, 指令, 种子, 选项) {
+  const ctx = 开局(我方, 敌方, 种子, 指令, 选项);
   let 护栏 = 0;
   while (!ctx.result && 护栏++ < MAX_TURN + 2) {
     设指令(ctx, 指令);
@@ -4165,10 +4365,10 @@ function 单武器动作(u, 条目, ctx) {
   const w = 条目.t, pool = [条目];
   if (isAreaKind(rangeKindOf(w))) {
     const a = pickAreaTarget(u, foes, pool);
-    if (a) return { kind: 'attack', weapon: w, target: a.target, expected: a.exp, slot: a.slot, hit: a.hit, entry: a.entry };
+    if (a) return { kind: 'attack', weapon: w, target: a.target, expected: a.exp, slot: a.slot, hit: a.hit, entry: a.entry, 被挡: false };
   }
   const s = pickSingleTarget(u, foes, pool, ctx);
-  if (s) return { kind: 'attack', weapon: w, target: s.target, expected: s.exp, entry: s.entry };
+  if (s) return { kind: 'attack', weapon: w, target: s.target, expected: s.exp, entry: s.entry, 被挡: !!s.被挡 };
   return null;
 }
 
@@ -4224,8 +4424,8 @@ function bossTurn(u, ctx) {
 /* ============================================================================
  * 编成表（方案第 7 节）· 取代战棋的关卡和地图
  * ----------------------------------------------------------------------------
- * 每条 = 一组敌人和站位：{层, 类型, 前:[…], 后:[…], 考点:'…'}。
- * 站位跟着阵型（05-阵型.js：前 3 后 2），所以 前 最多 3 个、后 最多 2 个。
+ * 每条 = 一组敌人和站位：{层, 类型, 前:[…], 后:[…], 波次:[…], 考点:'…'}。
+ * 站位跟着阵型（05-阵型.js：**前 4 后 5 = 9 格**），所以 前 最多 4 个、后 最多 5 个。
  * 战斗节点从对应层 / 对应类型里**随机抽一条**（`抽编成()` / `抽编成兜底()`）。
  *
  * ★ 作者 2026-10-10 拍板的两条设计（这张表就是照它重写的）：
@@ -4235,8 +4435,20 @@ function bossTurn(u, ctx) {
  *      现在 13 个「层 × 类型」组合 × 3 条 = **39 条**；加条目时往对应那一段后面追加就行。
  *
  * ★ 数量按阵型来（作者定的）：普通 **3–4 台**（前 2–3、后 1）、精英 **4 台**（前 2–3、后 1–2）、
- *   守军 / 侵蚀源 / Boss **5 台摆满前 3 后 2**。**不写等级** —— 等级由
+ *   守军 / 侵蚀源 / Boss **5 台**。**不写等级** —— 等级由
  *   `runEnemyLv(kind, 层, 场次) + TIER_LV[梯队]`（11-敌方梯队.js）决定，现状如此。
+ *   ★ 2026-10-10 这次**基础台数一个都没动**（那是作者定的设计数量，不是我能自己改的平衡数值）；
+ *   「把 9 格用满」靠下面的**增援波次**：守军 / 侵蚀源 5 + 2 波 ×2 = **9 台，正好摆满一整张图**。
+ *   阵型上限（前 ≤4 / 后 ≤5）已经放开，以后加条目可以直接用第 4 个前排位 / 第 5 个后排位。
+ *
+ * ★ **增援波次（作者 2026-10-10 拍板：敌方被击坠后可以增援）**：每条编成一个 `波次` 字段，
+ *   写成 `[{回合: N, 来: [敌人键…]}, …]`（`60-战斗.js` 的 `增援()` 在回合开始时按回合号补人，
+ *   日志写 `〔增援〕…`）。数值出处：
+ *     触发时机 `(回合 − 1) % 间隔 === 0` → 第 3、5、7… 回合 ← 战棋 `30b-关卡目标.js:101`
+ *     间隔 **2**                                    ← 战棋 `31-战斗.js:204/206`（坚守 every:2、第 1 层斩首 every:2）
+ *     每波台数 / 用哪些键 = **初稿**（战棋是 `tierPick(杂兵, 2 + st.layer)` 这类随机抽取，
+ *                          本仓库要可复现，所以写死成具体的键）
+ *   档位越高波次越多（初稿）：普通 1 波 / 精英 1 波 / 守军 2 波 / 侵蚀源 2 波 / Boss 3 波。
  *
  * ★ 敌人只用 `ENEMY_T`（10-数据.js，战棋复制件）里已有的键，**不造新敌人、不新加数值**；
  *   同一条编成里**不重复**同一个敌人键（一条里两个 grunt 界面分不开，`tests/comp.js` 盯着）。
@@ -4250,7 +4462,7 @@ function bossTurn(u, ctx) {
  *   | 出口守军（第 4 层）  | Boss   | 4（蓝色大肥鱼 = 终点） |
  *   | 侵蚀源（第 2 层起）  | 侵蚀源 | 2 / 3 |
  *   映射在 `90-肉鸽.js` 的 `节点战斗类型` / `当前战斗类型()`：
- *   ★ 2026-10-10 这次改了 —— 出口守军原来落到「精英」、侵蚀源原来也落到「精英」，
+ *   ★ 2026-10-10 那次改了 —— 出口守军原来落到「精英」、侵蚀源原来也落到「精英」，
  *   现在**各归各的档**（守军 / 侵蚀源），地图上可能出现的组合**一个不缺**（`tests/comp.js` 第 [1] 段）。
  *
  * 敌人梯队（11-敌方梯队.js 的 ENEMY_TIER）：
@@ -4272,96 +4484,129 @@ const 头目池 = ['captain', 'venom', 'regen', 'funnel', 'berserker'];
 const 编成表 = [
   /* ================= 第 1 层（教学：先把四种指令各练一遍） ================= */
 
-  /* ---- 普通（3–4 台：前 2–3、后 1） ---- */
+  /* ---- 普通（3–4 台：前 2–3、后 1）+ 1 波增援 ---- */
   { 层: 1, 类型: '普通', 前: ['raider', 'grunt'], 后: ['bomber'],
+    波次: [{ 回合: 3, 来: ['drone', 'hound'] }],
     考点: '三台都是近战杂兵：一台一台集火，别把伤害摊开' },
   { 层: 1, 类型: '普通', 前: ['drone', 'hound', 'swarm'], 后: ['fighter'],
+    波次: [{ 回合: 3, 来: ['grunt', 'raider'] }],
     考点: '远程杂兵全挤在前排：它们能隔着前排打你的后排，先算换位' },
   { 层: 1, 类型: '普通', 前: ['bomber', 'drone'], 后: ['swarm'],
+    波次: [{ 回合: 3, 来: ['grunt', 'fighter'] }],
     考点: '自爆机 + 会飞的杂兵：这一回合先防御 / 守护，别让它贴上来' },
 
-  /* ---- 精英（4 台：前 2–3、后 1–2） ---- */
+  /* ---- 精英（4 台：前 2–3、后 1–2）+ 1 波增援 ---- */
   { 层: 1, 类型: '精英', 前: ['shield', 'grunt', 'raider'], 后: ['sniper'],
-    考点: '盾卫顶在前面、狙击躲后排：先拆盾，再集火后排' },
+    波次: [{ 回合: 3, 来: ['hound', 'drone'] }],
+    考点: '盾卫顶在前面、狙击躲后排：先拆盾，再集火后排（直射打后2 会被盾卫挡 −20）' },
   { 层: 1, 类型: '精英', 前: ['grunt', 'fighter'], 后: ['artillery', 'drone'],
+    波次: [{ 回合: 3, 来: ['raider', 'swarm'] }],
     考点: '炮击机曲射不吃被挡：把守护留给它瞄的那台' },
   { 层: 1, 类型: '精英', 前: ['jammer', 'grunt'], 后: ['stealth', 'hound'],
+    波次: [{ 回合: 3, 来: ['fighter', 'drone'] }],
     考点: '干扰机 + 隐形机压命中：靠狙击 / 指挥把命中补回来' },
 
-  /* ---- 守军（5 台，前 3 后 2）：头目（captain / venom / regen）+ 护卫 ---- */
+  /* ---- 守军（5 台，前 3 后 2）+ 2 波增援（打完两波刚好 9 台摆满） ---- */
   { 层: 1, 类型: '守军', 前: ['captain', 'shield', 'grunt'], 后: ['sniper', 'hound'],
-    考点: '头目带四个护卫：先读意图，这是第一场要动脑的硬仗' },
+    波次: [{ 回合: 3, 来: ['raider', 'drone'] }, { 回合: 5, 来: ['fighter', 'swarm'] }],
+    考点: '头目带四个护卫 + 两波增援：先读意图，这是第一场要动脑的硬仗' },
   { 层: 1, 类型: '守军', 前: ['venom', 'beetle', 'raider'], 后: ['artillery', 'drone'],
+    波次: [{ 回合: 3, 来: ['grunt', 'hound'] }, { 回合: 5, 来: ['fighter', 'swarm'] }],
     考点: 'λ 试作机的近战很痛：看意图决定谁防御、谁守护' },
   { 层: 1, 类型: '守军', 前: ['regen', 'shield', 'fighter'], 后: ['jammer', 'swarm'],
-    考点: '头目血最厚那台该最后打：先清四台护卫' },
+    波次: [{ 回合: 3, 来: ['grunt', 'raider'] }, { 回合: 5, 来: ['drone', 'hound'] }],
+    考点: '头目血最厚那台该最后打：先清护卫，增援来了别回头' },
 
   /* ================= 第 2 层（压力：精锐混编，逼你换目标 / 换位） ================= */
 
-  /* ---- 普通（3–4 台） ---- */
+  /* ---- 普通（3–4 台）+ 1 波增援 ---- */
   { 层: 2, 类型: '普通', 前: ['beamcoat', 'grunt', 'raider'], 后: ['hound'],
+    波次: [{ 回合: 3, 来: ['drone', 'swarm'] }],
     考点: '光束涂层机抗光束（−60）：这一场换实弹打' },
   { 层: 2, 类型: '普通', 前: ['phase', 'fighter'], 后: ['drone'],
+    波次: [{ 回合: 3, 来: ['grunt', 'raider'] }],
     考点: '相转移装甲机吃光束（弱点 +40）：光束武器先手点名' },
   { 层: 2, 类型: '普通', 前: ['beamcoat', 'phase', 'swarm'], 后: ['artillery'],
+    波次: [{ 回合: 3, 来: ['grunt', 'hound'] }],
     考点: '两台精锐弱点相反：把武器按弱点分给不同目标' },
 
-  /* ---- 精英（4 台） ---- */
+  /* ---- 精英（4 台）+ 1 波增援 ---- */
   { 层: 2, 类型: '精英', 前: ['mirror', 'shield'], 后: ['artillery', 'sniper'],
+    波次: [{ 回合: 3, 来: ['grunt', 'raider'] }],
     考点: '前排两层硬壳、后排两门炮：先看谁被瞄准，再分守护' },
   { 层: 2, 类型: '精英', 前: ['jammer', 'phase', 'grunt'], 后: ['artillery'],
+    波次: [{ 回合: 3, 来: ['hound', 'drone'] }],
     考点: '干扰机压命中 + 炮击机曲射：命中不够时先防御' },
   { 层: 2, 类型: '精英', 前: ['mirror', 'beamcoat'], 后: ['jammer', 'sniper'],
+    波次: [{ 回合: 3, 来: ['grunt', 'raider'] }],
     考点: '镜面机怕近战、涂层机抗光束：按弱点换目标，不是死打一台' },
 
-  /* ---- 侵蚀源（5 台，第 2 层起的强敌；数量按「摆满前 3 后 2」定） ---- */
+  /* ---- 侵蚀源（5 台，第 2 层起的强敌）+ 2 波增援（摆满 9 格） ---- */
   { 层: 2, 类型: '侵蚀源', 前: ['captain', 'beamcoat', 'shield'], 后: ['artillery', 'jammer'],
+    波次: [{ 回合: 3, 来: ['grunt', 'hound'] }, { 回合: 5, 来: ['raider', 'drone'] }],
     考点: '侵蚀源：头目带头，前后排都得处理，先分好守护' },
   { 层: 2, 类型: '侵蚀源', 前: ['venom', 'phase', 'beetle'], 后: ['sniper', 'mirror'],
+    波次: [{ 回合: 3, 来: ['grunt', 'swarm'] }, { 回合: 5, 来: ['fighter', 'hound'] }],
     考点: '侵蚀源：λ 试作机贴脸很痛 —— 看意图决定先点哪台' },
   { 层: 2, 类型: '侵蚀源', 前: ['berserker', 'stealth', 'grunt'], 后: ['artillery', 'drone'],
+    波次: [{ 回合: 3, 来: ['raider', 'hound'] }, { 回合: 5, 来: ['fighter', 'swarm'] }],
     考点: '侵蚀源：狂战士贴脸、炮击机躲后排，先点哪边要想清楚' },
 
-  /* ---- 守军（5 台）：berserker / funnel + 精锐 ---- */
+  /* ---- 守军（5 台）：berserker / funnel + 精锐，2 波增援 ---- */
   { 层: 2, 类型: '守军', 前: ['berserker', 'shield', 'beamcoat'], 后: ['artillery', 'sniper'],
+    波次: [{ 回合: 3, 来: ['grunt', 'raider'] }, { 回合: 5, 来: ['drone', 'hound'] }],
     考点: '狂战士上前排砍人：把守护给它盯的那台' },
   { 层: 2, 类型: '守军', 前: ['funnel', 'phase', 'beetle'], 后: ['jammer', 'mirror'],
+    波次: [{ 回合: 3, 来: ['grunt', 'fighter'] }, { 回合: 5, 来: ['raider', 'swarm'] }],
     考点: '浮游炮母机三连曲射：防御 / 守护能少吃一大截' },
   { 层: 2, 类型: '守军', 前: ['captain', 'berserker', 'grunt'], 后: ['sniper', 'artillery'],
+    波次: [{ 回合: 3, 来: ['hound', 'drone'] }, { 回合: 5, 来: ['fighter', 'raider'] }],
     考点: '两个头目顶前面：先集火一台，别把伤害摊开' },
 
   /* ================= 第 3 层（硬仗：普通也带精锐，守军双头目） ================= */
 
-  /* ---- 普通（3–4 台：普通也带 1 台精锐） ---- */
+  /* ---- 普通（3–4 台：普通也带 1 台精锐）+ 1 波增援 ---- */
   { 层: 3, 类型: '普通', 前: ['shield', 'grunt', 'raider'], 后: ['hound'],
+    波次: [{ 回合: 3, 来: ['drone', 'swarm'] }],
     考点: '杂兵里混了一台盾卫：先拆盾，剩下的杂兵才打得动' },
   { 层: 3, 类型: '普通', 前: ['grunt', 'fighter'], 后: ['beamcoat'],
+    波次: [{ 回合: 3, 来: ['raider', 'hound'] }],
     考点: '后排藏了一台光束涂层机：打它别用光束' },
   { 层: 3, 类型: '普通', 前: ['artillery', 'raider'], 后: ['swarm'],
+    波次: [{ 回合: 3, 来: ['grunt', 'fighter'] }],
     考点: '杂兵里混了一台炮击机：曲射不吃被挡，先点它' },
 
-  /* ---- 精英（4 台）：头目 + 精锐 ---- */
+  /* ---- 精英（4 台）：头目 + 精锐，1 波增援 ---- */
   { 层: 3, 类型: '精英', 前: ['captain', 'beamcoat', 'beetle'], 后: ['sniper'],
+    波次: [{ 回合: 3, 来: ['grunt', 'raider'] }],
     考点: '头目坐镇：集火头目还是先清护卫，看意图定' },
   { 层: 3, 类型: '精英', 前: ['venom', 'phase', 'shield'], 后: ['artillery'],
+    波次: [{ 回合: 3, 来: ['hound', 'drone'] }],
     考点: 'λ 试作机贴脸 + 炮击机曲射：守护只能接一边，先读意图' },
   { 层: 3, 类型: '精英', 前: ['funnel', 'mirror', 'stealth'], 后: ['jammer'],
+    波次: [{ 回合: 3, 来: ['grunt', 'swarm'] }],
     考点: '浮游炮 + 干扰机压命中：先防御顶过这一回合再打' },
 
-  /* ---- 侵蚀源（5 台）：本层最硬的一场 ---- */
+  /* ---- 侵蚀源（5 台）：本层最硬的一场，2 波增援 ---- */
   { 层: 3, 类型: '侵蚀源', 前: ['captain', 'venom', 'beetle'], 后: ['sniper', 'artillery'],
+    波次: [{ 回合: 3, 来: ['grunt', 'raider'] }, { 回合: 5, 来: ['drone', 'hound'] }],
     考点: '侵蚀源双头目：分守护、看意图，这是本层最硬的一场' },
   { 层: 3, 类型: '侵蚀源', 前: ['berserker', 'shield', 'phase'], 后: ['mirror', 'jammer'],
+    波次: [{ 回合: 3, 来: ['grunt', 'swarm'] }, { 回合: 5, 来: ['fighter', 'hound'] }],
     考点: '侵蚀源：前排三个硬壳，先按弱点挑目标' },
   { 层: 3, 类型: '侵蚀源', 前: ['funnel', 'beamcoat', 'stealth'], 后: ['artillery', 'sniper'],
+    波次: [{ 回合: 3, 来: ['raider', 'drone'] }, { 回合: 5, 来: ['grunt', 'fighter'] }],
     考点: '侵蚀源：两台远程躲后排、直射会被挡（−20）—— 用狙击或换位' },
 
-  /* ---- 守军（5 台）：双头目，或头目 + 3 精锐 ---- */
+  /* ---- 守军（5 台）：双头目，或头目 + 3 精锐，2 波增援 ---- */
   { 层: 3, 类型: '守军', 前: ['captain', 'venom', 'shield'], 后: ['sniper', 'artillery'],
+    波次: [{ 回合: 3, 来: ['grunt', 'hound'] }, { 回合: 5, 来: ['raider', 'drone'] }],
     考点: '双头目（指挥 + λ）：先集火一台，别分伤害' },
   { 层: 3, 类型: '守军', 前: ['berserker', 'beetle', 'beamcoat'], 后: ['sniper', 'jammer'],
+    波次: [{ 回合: 3, 来: ['grunt', 'fighter'] }, { 回合: 5, 来: ['hound', 'swarm'] }],
     考点: '装甲差很多（狂战士 300 / 甲虫 900）：先打穿甲薄的那台' },
   { 层: 3, 类型: '守军', 前: ['regen', 'funnel', 'phase'], 后: ['artillery', 'mirror'],
+    波次: [{ 回合: 3, 来: ['grunt', 'raider'] }, { 回合: 5, 来: ['drone', 'hound'] }],
     考点: '头目带三台精锐：第 12 回合上限下要抢时间，别磨' },
 
   /* ================= 第 4 层（终点） =================
@@ -4369,20 +4614,26 @@ const 编成表 = [
      下面这 3 条「普通」**只服务追击战**（第 4 层推进剂用光也会触发追击战，
      不能让它没有池子、更不能让它去撞终点 Boss）—— 见任务板「自己定的地方」。 */
   { 层: 4, 类型: '普通', 前: ['shield', 'beamcoat', 'phase'], 后: ['sniper'],
+    波次: [{ 回合: 3, 来: ['grunt', 'raider'] }],
     考点: '终点层的追击战：三台精锐拦路，打赢才走得动' },
   { 层: 4, 类型: '普通', 前: ['beetle', 'mirror', 'jammer'], 后: ['artillery'],
+    波次: [{ 回合: 3, 来: ['hound', 'drone'] }],
     考点: '追击战：重甲 + 干扰机顶前排，命中被压时先防御一回合' },
   { 层: 4, 类型: '普通', 前: ['berserker', 'stealth', 'grunt'], 后: ['sniper'],
+    波次: [{ 回合: 3, 来: ['raider', 'fighter'] }],
     考点: '追击战：狂战士贴脸，守好被盯的那台再集火' },
 
-  /* ---- Boss（5 台摆满前 3 后 2）：站桩大肥鱼（bluefish）+ 4 台护卫 ----
+  /* ---- Boss（5 台）：站桩大肥鱼（bluefish）+ 4 台护卫，3 波增援 ----
      战棋：3 层航区 + 第 4 层终点；方案 5.2 说第一期 Boss 只做蓝色大肥鱼这一个。
      ★ 这一组必须留在**表的最后**：`tests/art_audio.js` 用 `编成表[length - 1]` 认 Boss 战。 */
   { 层: 4, 类型: 'Boss', 前: ['bluefish', 'shield', 'beetle'], 后: ['sniper', 'artillery'],
+    波次: [{ 回合: 3, 来: ['grunt'] }, { 回合: 5, 来: ['raider'] }, { 回合: 7, 来: ['fighter'] }],
     考点: '第 1 回合大肥鱼就放★大技能：开场先把防御 / 守护摆好' },
   { 层: 4, 类型: 'Boss', 前: ['bluefish', 'phase', 'beamcoat'], 后: ['jammer', 'sniper'],
+    波次: [{ 回合: 3, 来: ['hound'] }, { 回合: 5, 来: ['swarm'] }, { 回合: 7, 来: ['drone'] }],
     考点: '半血进第 2 阶段（间隔 2 回合、伤害 ×1.25）：留一手防御' },
   { 层: 4, 类型: 'Boss', 前: ['bluefish', 'berserker', 'beetle'], 后: ['artillery', 'sniper'],
+    波次: [{ 回合: 3, 来: ['grunt'] }, { 回合: 5, 来: ['raider'] }, { 回合: 7, 来: ['hound'] }],
     考点: '它每 3 回合出手一次（半血后 2 回合）：趁蓄力回合把伤害打满' },
 ];
 
@@ -4460,8 +4711,21 @@ function 编成到单位(条目, 场次 = 0) {
   return makeUnits(列表, 'enemy');
 }
 
+/* ---------- 增援波次（作者 2026-10-10 拍板）----------
+ * 编成表里的 `波次: [{回合, 来:[键…]}]` → 喂给 `开局()` 的 `选项.波次`
+ * （`{回合, 来:[{键, 等级}]}`）。等级和开场那几台**同一套算法**
+ * （`runEnemyLv(kind, 层, 场次) + TIER_LV[梯队]`，11-敌方梯队.js），所以增援和编成里同级。 */
+const 编成波次 = 条目 => ((条目 && 条目.波次) || []);
+function 编成波次到单位(条目, 场次 = 0) {
+  const kind = 类型到Kind[条目.类型] || 'battle';
+  const 等级 = 键 => runEnemyLv(kind, 条目.层, 场次) + TIER_LV[tierOfEnemy(键)];
+  return 编成波次(条目).map(w => ({ 回合: w.回合, 来: (w.来 || []).map(键 => ({ 键, 等级: 等级(键) })) }));
+}
+
 /* ---------- 默认的 Lv10 五人队（方案第 9 节 M1 验收用；肉鸽开局的样例队伍也用它） ----------
- * 方案没有指定是哪五个人，先按「五个不同职业 + 覆盖三个势力」挑一队**初稿**。 */
+ * 方案没有指定是哪五个人，先按「五个不同职业 + 覆盖三个势力」挑一队**初稿**。
+ * ★ 作者 2026-10-10：我方**一开始只有 3 台**能上（`05-阵型.js` 的 `出击上限()`），
+ *   这一队 5 台是「名册」不是「出击名单」，出击名单由编队屏从名册里挑（最多 `出击上限()` 台）。 */
 const 默认五人队 = [
   { 键: 'B1', 位: 0, 等级: 10 },    // 近卫 · 雷萨（影世界）
   { 键: 'B2', 位: 1, 等级: 10 },    // 尖兵 · 蕾卡（影世界）
@@ -4808,7 +5072,14 @@ function 能去的格(RUN) {
  * `Set` 不能进 JSON，所以「已走过」存成数组，读档时转回 Set（见 存档 / 读存档）。
  * ========================================================================== */
 
-const 存档键 = 'mecha-autobattle-run-v2';      // v2：地图从「一列列节点」换成「6×4 网格」
+/* 存档版本（结构变了就升版本、换键；读到**旧版本**一律丢弃并提示，不崩）。
+ *   v2：地图从「一列列节点」换成「6×4 网格」
+ *   v3：阵型从「前 3 后 2」换成「前 4 后 5 = 9 格」（2026-10-10 作者拍板）——
+ *       出击名单里的「位」语义变了（位 3 从后1 变成前4、位 4 从前… 变成后1），
+ *       旧存档读回来会把阵型摆错，所以整个丢掉。 */
+const 存档键 = 'mecha-autobattle-run-v3';
+const 存档版本 = 3;
+const 旧存档键们 = ['mecha-autobattle-run-v2', 'mecha-autobattle-run-v1'];
 
 /* 数值初稿（出处：战棋 27-开局.js / 30-移动与节点.js / 23b-藏品.js 的同类数值；等作者确认） */
 const 肉鸽数值 = {
@@ -4830,7 +5101,13 @@ const 肉鸽数值 = {
   胜利源碳: 5,
   补给源碳: 8,               // 【初稿】M4 起就是 8（战棋的补给箱是 3 + rand(3)，31:240）
   队伍上限: 12,              // 战棋：队伍上限 12（出击另有上限，见 出击上限）
-  出击上限: 5,               // 我们的阵型只有 5 格（前 3 后 2）
+  /* 出击上限（作者 2026-10-10 拍板：**一开始只有 3 台、最多 6 台，随等级解锁**）
+   * 真正的算法在 `05-阵型.js` 的 `出击上限(等级)` / `出击上限由名册(名册)`（形状照战棋
+   * `24-Feena_指挥官.js:19` 的 deployCap）。★ 下面三个是**初稿**数值，待作者调：
+   *   Lv10 → 3 台、Lv15 → 4、Lv20 → 5、Lv25 → 6（到顶）。 */
+  出击上限初值: 出击上限初值,
+  出击上限顶: 出击上限顶,
+  每几级加一台: 每几级加一台,
   招募等级: 10,              // 战棋：招到的机师 Lv10
   招募费: { S: 5, A: 3, B: 0 },   // 战棋：精锐 5 / 骨干 3 / 普通 0 希望
   /* 新节点（战棋有数字的照抄，没查到的写「初稿」并注明） */
@@ -4929,15 +5206,16 @@ const 肉鸽 = {
   /* ---------------- 开局 ---------------- */
   新的一局(分队, 种子) {
     const 种 = (种子 >>> 0) || (Math.floor(Date.now() % 900000) + 100000);
+    const 队伍 = 默认五人队.map(x => ({ 键: x.键, 等级: 10 }));   // 队伍（名册，上限 12）
     const RUN = {
-      版本: 2, 种子: 种, t0: Date.now(),
+      版本: 存档版本, 种子: 种, t0: Date.now(),
       分队: 分队 || '无',
       层: 1, 场次: 0,
       希望: 肉鸽数值.起始希望,
       源碳: 肉鸽数值.起始源碳,
       耐久: 肉鸽数值.起始耐久,
-      队伍: 默认五人队.map(x => ({ 键: x.键, 等级: 10 })),   // 队伍（名册，上限 12）
-      出击: 默认五人队.map(x => x.键),                        // 出击名单（最多 5 台，前 3 后 2）
+      队伍,
+      出击: 队伍.slice(0, 出击上限由名册(队伍)).map(m => m.键),   // 出击名单（Lv10 时 = 前 3 台）
       券: [],                                                // 战棋：开局送 2 张招募券（本仓库还没有券系统，留着字段）
       藏品: [],
       零件: [],                                              // 零件（战棋 27-开局.js:33 的 RUN.parts；94-零件.js）
@@ -5046,6 +5324,19 @@ const 肉鸽 = {
     const r = this.抽当前编成详情(覆盖类型);
     return r ? r.条目 : null;
   },
+  /** 这一场的**敌方增援波次**（作者 2026-10-10 拍板）：把编成条目的 `波次` 字段
+   *  （`[{回合, 来:[键…]}]`）按**本场次**的等级换算成 `{回合, 来:[{键, 等级}]}`，
+   *  交给 `开局(…, { 波次 })`（`60-战斗.js` 的 `增援()` 在回合开始时按回合号补人，日志 `〔增援〕…`）。
+   *  没有波次字段 = 空数组（这一场不增援，行为和以前一样）。 */
+  增援波次(条目) {
+    const R = this.RUN;
+    return 编成波次到单位(条目, R ? R.场次 : 0);
+  },
+
+  /* ---------------- 出击上限（作者 2026-10-10 拍板：3 → 6，随等级解锁） ---------------- */
+  /** 这一局现在最多能上几台：按**名册里最高的等级**算（算法在 `05-阵型.js` 的 `出击上限()`）。
+   *  Lv10 → 3 台（作者：「一开始只有 3 台」）、Lv15 → 4、Lv20 → 5、Lv25 → 6（初稿，待作者调）。 */
+  出击上限() { return 出击上限由名册(this.RUN && this.RUN.队伍); },
 
   /* ---------------- 移动 ---------------- */
   有格(k) { const R = this.RUN; return !!(R && R.地图 && R.地图.格[k]); },
@@ -5377,18 +5668,18 @@ const 肉鸽 = {
     if (R.希望 < 费) return { ok: false, why: `希望不够（要 ${费}，只有 ${R.希望}）` };
     R.希望 -= 费;
     R.队伍.push({ 键, 等级: 肉鸽数值.招募等级 });
-    if (R.出击.length < 肉鸽数值.出击上限) R.出击.push(键);
+    if (R.出击.length < this.出击上限()) R.出击.push(键);
     this.记(`招募 ${键}（Lv${肉鸽数值.招募等级}，花希望 ${费}）`);
     this.节点完成();
     return { ok: true, 费 };
   },
-  /** 出击名单（最多 5 台，前 3 后 2）：加/减一台 */
+  /** 出击名单（最多 `出击上限()` 台，摆进 9 格阵型里）：加/减一台 */
   切换出击(键) {
     const R = this.RUN;
     if (!R) return false;
     if (R.出击.includes(键)) R.出击 = R.出击.filter(k => k !== 键);
     else {
-      if (R.出击.length >= 肉鸽数值.出击上限) return false;
+      if (R.出击.length >= this.出击上限()) return false;
       if (!R.队伍.some(m => m.键 === 键)) return false;
       R.出击.push(键);
     }
@@ -5443,6 +5734,8 @@ const 肉鸽 = {
   记(文字) { if (this.RUN) this.RUN.日志.push({ 层: this.RUN.层, 文本: 文字, 时间: Date.now() }); },
 
   /* ---------------- 存档（关掉页面能继续） ---------------- */
+  /* 版本 v3（阵型 9 格）：结构变了，所以**换键**。读到旧版本的存档一律**丢弃并提示**，
+     不崩、也不把旧阵型硬读成新阵型（`位 3` 的语义从「后1」变成了「前4」）。 */
   存档() {
     if (!this.RUN) return false;
     try {
@@ -5451,13 +5744,32 @@ const 肉鸽 = {
       return true;
     } catch (e) { return false; }
   },
+  /** 旧版本（v1 / v2）的存档还在不在：界面用它决定要不要提示「旧存档已作废」。 */
+  有旧存档() {
+    try {
+      if (typeof localStorage === 'undefined' || !localStorage.getItem) return false;
+      return 旧存档键们.some(k => !!localStorage.getItem(k));
+    } catch (e) { return false; }
+  },
+  /** 把旧版本的存档清掉（读档时顺手丢，避免菜单上一直提示）。 */
+  清旧存档() {
+    let n = 0;
+    try {
+      if (typeof localStorage !== 'undefined' && localStorage.removeItem) {
+        for (const k of 旧存档键们) if (localStorage.getItem(k)) { localStorage.removeItem(k); n++; }
+      }
+    } catch (e) { /* 读不到 localStorage 就算了 */ }
+    return n;
+  },
   读存档() {
     try {
       if (typeof localStorage === 'undefined' || !localStorage.getItem) return null;
       const s = localStorage.getItem(存档键);
-      if (!s) return null;
+      if (!s) { this.清旧存档(); return null; }              // 只有旧版本的存档 → 丢掉，别读错阵型
       const 存 = JSON.parse(s);
       if (!存 || !存.RUN || !存.RUN.地图 || !存.RUN.地图.格) return null;
+      /* 版本不对（未来版本 / 旧版本混进来）：丢弃并记一句提示，不让它把界面弄崩 */
+      if (存.RUN.版本 != null && 存.RUN.版本 !== 存档版本) { this.清存档(); return null; }
       this.RUN = 存.RUN;
       this.进行中 = !!存.进行中;
       /* Set 不能进 JSON：读回来补上（界面用） */
@@ -5889,7 +6201,7 @@ const 肉鸽界面 = {
     const 卡 = 表.map(x => `<button class="pick${this.分队ID === x.名 ? ' on' : ''}" data-act="选分队:${x.名}">
       <b>${x.名}</b><small>${x.说明}</small></button>`).join('');
     return `<section class="card">
-      <h3>选分队（方案第 7 节）<span class="small">分队决定招募券的倾向；队伍上限 ${肉鸽数值.队伍上限} 台（前 3 后 2）</span></h3>
+      <h3>选分队（方案第 7 节）<span class="small">分队决定招募券的倾向；队伍上限 ${肉鸽数值.队伍上限} 台（上阵 9 格阵型，出击上限 ${出击上限初值} → ${出击上限顶} 台，随等级解锁）</span></h3>
       <div class="picks">${卡}</div>
       <div class="acts">
         <button class="primary" data-act="开新局"${this.分队ID ? '' : ' disabled'}>出发（新的一局）→</button>
@@ -6488,7 +6800,9 @@ const 藏品表 = {
   f4: {
     名: '编制扩充令', 稀有: '传说', 分类: '【内核】', 实装: '未接', 缺: '出击上限', 抽: false,
     说明: '出击上限 +1', 数值: { 特殊: 'deploy' },                                   // 23b-藏品.js:68
-    说明备注: '我们的战场只有 5 个格子（前 3 后 2），出击上限 +1 要连阵型一起改，归作者 / Claude 拍板',
+    说明备注: '2026-10-10 阵型改成 9 格之后，出击上限已经是 `05-阵型.js` 的 `出击上限()`（3 → 6，' +
+              '上限 6 台 < 9 格，所以「+1」**这下接得上了**）；但这是加战力，要不要接、接在哪一档归 Claude 拍板，' +
+              '这一版仍然标「未接」，一个数值都没动',
   },
 };
 
@@ -6955,7 +7269,8 @@ const 界面 = {
     if (B.出击.some(x => x.键 === 键)) this.挪位(B.出击.find(x => x.键 === 键).位, 位);
     else {
       if (B.出击.some(x => x.位 === 位)) B.出击 = B.出击.filter(x => x.位 !== 位);
-      if (B.出击.length >= SLOTS) { this.提示 = `出击位置已经满了（${SLOTS} 格）。`; this.刷(); return false; }
+      const 上限 = this.当前出击上限();
+      if (B.出击.length >= 上限) { this.提示 = `出击上限是 ${上限} 台（Lv10 起 3 台，每 5 级 +1，最多 6 台）。`; this.刷(); return false; }
       B.出击.push({ 键, 位 });
       this.刷();
     }
@@ -7110,7 +7425,7 @@ const 界面 = {
     const 有存档 = !!肉鸽.读存档();
     return `<section class="card menu">
       <h3>机甲指挥 · 晋升 + 零件（大地图上用的那一批）</h3>
-      <p>自动战斗回合制 RPG：把机体摆进<b>前排 / 后排</b>（前 3 后 2），每回合给每台机体下一条<b>大方向指令</b>，这一回合按速度自动打完。</p>
+      <p>自动战斗回合制 RPG：把机体摆进<b>前排 4 格 / 后排 5 格</b>的 9 格阵型（一开始只上 3 台，最多 6 台），每回合给每台机体下一条<b>大方向指令</b>，这一回合按速度自动打完。</p>
       <ul>
         <li><b>肉鸽</b>（方案第 7 节）：选分队 → <b>6×4 网格大地图</b>（战棋那套：四邻接 BFS 走格子、
           <b>推进剂</b>每层 7、走一格扣 1、用光触发追击战）→ 作战 / 精英 / 侵蚀源 / 黑市 / 事件 / 瞭望站 /
@@ -7135,6 +7450,13 @@ const 界面 = {
   },
 
   /* ---------------- 编队 ---------------- */
+  /** 这一屏最多能上几台（作者 2026-10-10 拍板：**一开始只有 3 台、最多 6 台**，随等级解锁）。
+   *  肉鸽里按名册最高等级算（`肉鸽.出击上限()`）；练习模式按当前选的 Lv 算
+   *  （Lv10 → 3 台、Lv15 → 4、Lv20 → 5、Lv25+ → 6，初稿档位在 `05-阵型.js`）。 */
+  当前出击上限() {
+    if (this.肉鸽编队模式 && 肉鸽.RUN) return 肉鸽.出击上限();
+    return 出击上限(this.编队.等级);
+  },
   编队屏() {
     const B = this.编队;
     /* 肉鸽里进战斗前会先走这一步：候选项是**名册**（RUN.队伍），不是全部 34 名 */
@@ -7171,6 +7493,7 @@ const 界面 = {
       }
     }
     for (const [r, 列表] of 行格) 格.push(`<div class="row" style="--cols:${最大列数}">${列表.join('')}</div>`);
+    const 上限 = this.当前出击上限();
     const 编成选项 = 编成表.map((e, i) => {
       /* 下拉里带上这一条的「考点」（作者 2026-10-10：每条编成必须考一个指令）——
          练习模式换编成的时候能直接看到这一场想让玩家练什么。 */
@@ -7190,10 +7513,10 @@ const 界面 = {
         <div class="picks">${列表}</div>
       </div>
       <div class="col 站位">
-        <h3>出击编队（${B.出击.length} / ${SLOTS}）<span class="small">上排 = 后排 2 格，下排 = 前排 3 格</span></h3>
+        <h3>出击编队（${B.出击.length} / ${上限}）<span class="small">9 格阵型：上排 = 后排 5 格，下排 = 前排 4 格；出击上限 ${上限} 台（Lv10 起 3 台，每 5 级 +1，最多 6 台）</span></h3>
         <div class="grid">${格.join('')}</div>
         <div class="acts">
-          <button data-act="默认五人队">${肉鸽模式 ? '把名册前 5 台摆上' : '默认五人队'}</button>
+          <button data-act="默认五人队">${肉鸽模式 ? `把名册前 ${上限} 台摆上` : `摆上前 ${上限} 台`}</button>
           <button data-act="清空">清空</button>
         </div>
         ${肉鸽模式 ? `<p class="small">这一场：第 ${肉鸽.RUN.层} 层 <b>${节点类型表[当前节点 && 当前节点.类型] ? 节点类型表[当前节点.类型].名 : '作战'}</b>（敌人由编成表随机抽；敌人等级按层数走）</p>
@@ -7266,7 +7589,7 @@ const 界面 = {
     /* 站桩 Boss（61-Boss.js）：大技能那一下前面标 ★，蓄力时直接写「蓄力中」——
        玩家在指令阶段就能看见 Boss 的节奏（方案 5.3 的意图显示） */
     const 意图行 = 意图 && 意图.武器
-      ? `${意图.大技能 ? '★大技能 ' : ''}→ ${意图.目标名}(${位名(意图.目标位)}) · ${意图.武器} · 约 ${意图.期望}`
+      ? `${意图.大技能 ? '★大技能 ' : ''}→ ${意图.目标名}(${位名(意图.目标位)}) · ${意图.武器} · 约 ${意图.期望}${意图.被挡 ? '（被挡 −20 命中）' : ''}`
       : (意图 ? (意图.蓄力 ? '蓄力中（这一回合不出手）' : '不行动') : '');
     const 选中 = 方 === 'ally' && this.选中位 === u.slot ? ' sel' : '';
     return `<div class="uc${u.hp <= 0 ? ' down' : ''}${选中}" id="u-${方}-${u.slot}" data-side="${方}" data-slot="${u.slot}" style="--fc:${色}"${动}>
@@ -7306,7 +7629,8 @@ const 界面 = {
     const 条目 = 编成表[B.编成序号];
     const 敌方 = 编成到单位(条目, 0).map(u => ({ 键: u.key, 位: u.slot, 等级: u.lv }));
     this.种子 = 种子 != null ? Number(种子) : Math.floor(Date.now() % 900000) + 100000;
-    this.ctx = 开局(我方, 敌方, this.种子);
+    /* 敌方增援波次（作者 2026-10-10）：编成表里配的波次交给引擎，回合开始时按回合号补人 */
+    this.ctx = 开局(我方, 敌方, this.种子, null, { 波次: 编成波次到单位(条目, 0) });
     this.指令 = {};
     this.选中位 = null;
     this.选目标 = null;
@@ -7531,15 +7855,16 @@ const 界面 = {
     const 详情 = 肉鸽.抽当前编成详情(格类型);
     const 条目 = 详情 && 详情.条目;
     if (!条目) { 肉鸽界面.提示 = `第 ${R.层} 层没有「${肉鸽.当前战斗类型(格类型)}」的编成，写进编成表再打。`; this.开屏('大地图'); return false; }
-    /* 出击名单：优先用编队界面摆好的阵（RUN.出击阵 = [{键, 位}]），没有就用名册前几台 */
-    const 阵 = (R.出击阵 && R.出击阵.length) ? R.出击阵 : R.队伍.slice(0, 肉鸽数值.出击上限).map((m, i) => ({ 键: m.键, 位: i }));
+    /* 出击名单：优先用编队界面摆好的阵（RUN.出击阵 = [{键, 位}]），没有就用名册前几台
+       （台数上限 = 肉鸽.出击上限()，作者 2026-10-10：Lv10 起 3 台） */
+    const 阵 = (R.出击阵 && R.出击阵.length) ? R.出击阵 : R.队伍.slice(0, 肉鸽.出击上限()).map((m, i) => ({ 键: m.键, 位: i }));
     const 等级 = 键 => { const m = R.队伍.find(x => x.键 === 键); return (m && m.等级) || 肉鸽数值.招募等级; };
     const 我方 = 阵.map(x => ({ 键: x.键, 位: x.位, 等级: 等级(x.键) }));
     const 敌方 = 编成到单位(条目, R.场次).map(u => ({ 键: u.key, 位: u.slot, 等级: u.lv }));
     this.肉鸽编队模式 = false;
     this.种子 = (R.种子 + R.层 * 131 + R.场次 * 17 + (格 ? 格.k : 0) * 7) >>> 0;
-    this.肉鸽战斗 = { 格类型, 类型: 详情.类型, 条目, 兜底: 详情.兜底, 请求类型: 肉鸽.当前战斗类型(格类型) };
-    this.ctx = 开局(我方, 敌方, this.种子);
+    this.肉鸽战斗 = { 格类型, 类型: 详情.类型, 条目, 兜底: 详情.兜底, 请求类型: 肉鸽.当前战斗类型(格类型), 波次: 肉鸽.增援波次(条目) };
+    this.ctx = 开局(我方, 敌方, this.种子, null, { 波次: this.肉鸽战斗.波次 });
     this.指令 = {};
     this.选中位 = null; this.选目标 = null; this.提示 = '';
     this.显示单位 = null; this.战报 = null;
@@ -7547,7 +7872,7 @@ const 界面 = {
     this.开屏('战斗');
     return this.ctx;
   },
-  /** 肉鸽：进战斗前先编队（方案 8.1 的第 3 条）——候选项是名册，摆进前 3 后 2 */
+  /** 肉鸽：进战斗前先编队（方案 8.1 的第 3 条）——候选项是名册，摆进 9 格阵型（前 4 后 5） */
   准备肉鸽编队() {
     const R = 肉鸽.RUN;
     if (!R) return false;
@@ -7555,7 +7880,7 @@ const 界面 = {
     this.肉鸽编队模式 = true;
     this.肉鸽战斗类型 = 格 ? 格.类型 : '作战';
     this.编队.选中 = null;
-    this.编队.出击 = (R.出击阵 && R.出击阵.length ? R.出击阵 : R.队伍.slice(0, 肉鸽数值.出击上限).map((m, i) => ({ 键: m.键, 位: i })))
+    this.编队.出击 = (R.出击阵 && R.出击阵.length ? R.出击阵 : R.队伍.slice(0, 肉鸽.出击上限()).map((m, i) => ({ 键: m.键, 位: i })))
       .map(x => ({ 键: x.键, 位: x.位 }));
     this.开屏('编队');
     return this.编队.出击;
@@ -7766,7 +8091,7 @@ const 界面 = {
     if (B.出击.some(x => x.键 === B.选中)) return false;      // 同一台不重复上
     const 旧 = B.出击.find(x => x.位 === 位);
     if (旧) B.出击 = B.出击.filter(x => x.位 !== 位);
-    if (B.出击.length >= SLOTS) return false;
+    if (B.出击.length >= this.当前出击上限()) return false;   // 出击上限（3 → 6，见 当前出击上限()）
     B.出击.push({ 键: B.选中, 位 });
     this.刷();
     return true;
@@ -7777,9 +8102,10 @@ const 界面 = {
   设势力(f) { this.编队.势力 = f; this.刷(); return f; },
   设编成(i) { this.编队.编成序号 = Math.max(0, Math.min(编成表.length - 1, i || 0)); this.刷(); return this.编队.编成序号; },
   默认五人队() {
-    /* 肉鸽模式：把名册前几台摆上；练习模式：默认五人队 */
-    if (this.肉鸽编队模式 && 肉鸽.RUN) this.编队.出击 = 肉鸽.RUN.队伍.slice(0, 肉鸽数值.出击上限).map((m, i) => ({ 键: m.键, 位: i }));
-    else this.编队.出击 = 默认五人队.map(x => ({ 键: x.键, 位: x.位 }));
+    /* 肉鸽模式：把名册前几台摆上（最多 = 出击上限）；练习模式：默认五人队里前几台（按当前 Lv 的上限） */
+    const 上限 = this.当前出击上限();
+    if (this.肉鸽编队模式 && 肉鸽.RUN) this.编队.出击 = 肉鸽.RUN.队伍.slice(0, 上限).map((m, i) => ({ 键: m.键, 位: i }));
+    else this.编队.出击 = 默认五人队.slice(0, 上限).map(x => ({ 键: x.键, 位: x.位 }));
     this.刷();
     return this.编队.出击;
   },
@@ -7957,14 +8283,17 @@ const G = {
   version: VERSION,
   milestone: MILESTONE,
   ready: false,
-  slots: SLOTS,          // 双方各几个位置（现在「前 3 后 2」= 5，阵型在 05-阵型.js 里配）
+  slots: SLOTS,          // 双方各几个位置（现在「前 4 后 5」= 9，阵型在 05-阵型.js 里配）
   rows: ROWS, 行列数, 阵型表, 行名, 位名, 列上所有格,
+  /* ---- 阵型 9 格（作者 2026-10-10 拍板）：阻挡关系 + 出击上限 ---- */
+  阻挡表, 阻挡关系, 阻挡位, 遮挡位, 对位, 相邻位, 被挡吗, 阻挡束,
+  出击上限, 出击上限由名册, 出击上限初值, 出击上限顶, 每几级加一台,
   mulberry32,            // 带种子的随机数（方案 6.1）
 
   /* ---- 界面 / 播放（M2） ---- */
   界面, 播放, FACTION_COL, 势力色,
   /* ---- 肉鸽（M4 / 作者 2026-10-10 换成网格 + 推进剂） ---- */
-  肉鸽, 肉鸽界面, 肉鸽数值, 存档键, 节点类型表, 抽编成, 选编成, 抽编成兜底, 兜底类型顺序, 行列数,
+  肉鸽, 肉鸽界面, 肉鸽数值, 存档键, 存档版本, 旧存档键们, 节点类型表, 抽编成, 选编成, 抽编成兜底, 兜底类型顺序, 行列数,
   肉鸽弹窗, allyName, 坐标文字,          // 界面小工具（节点屏 / 测试用）
   /* ---- 晋升（10 → 20 → 30；作者点名要做的第 6 项，出处见 90-肉鸽.js 文件头） ---- */
   晋升价格, 晋升目标, 晋升要多少, 晋升预览, 重算名册属性,
@@ -7994,13 +8323,13 @@ const G = {
   /* 引擎内部（给测试驱动一场战斗用） */
   endTurn, checkResult, aiAction, enemyAction, grantTargetOf, runAutoCast, actionOrder,
   chooseHeal, 修理阈值,       // 修理策略（作者 2026-10-10：低于 60% 才修）——tests/heal.js 直接读它
-  守护关系, 守护者, 嘲讽, 单位动作,
+  守护关系, 守护者, 嘲讽, 单位动作, 换位目标, 增援, 空位, 活位们, resolveAction,
   /* 射程换算 / 公式（给测试和以后的界面用） */
   rangeKindOf, rowReachable, rowBlockPenalty, areaSlots, ROW_FRONT, ROW_BACK,
   isAreaKind, isHealKind, isSupportKind, KIND_SUPPORT,
   statCoef, hitRate, critRate, dmgCore, critMul, isSure, isUltimate,
   effArmor, buffSum, defMul, statVal, atkStat, REDUCTIONS,   // 藏品测试要直接看公式里的量
-  编成表, 选编成, 编成到单位, 默认五人队, 类型到Kind,
+  编成表, 选编成, 编成到单位, 编成波次, 编成波次到单位, 默认五人队, 类型到Kind, 杂兵池, 精锐池, 头目池,
   月光祝福范围, 残月余响范围, 再动,
   /* ---- 站桩 Boss 脚本（方案 5.2 / 61-Boss.js） ---- */
   Boss脚本, 取Boss脚本, 是Boss单位, Boss参数, Boss阶段序号, Boss触发阈值,

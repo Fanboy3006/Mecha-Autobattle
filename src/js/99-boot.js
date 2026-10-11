@@ -17,14 +17,17 @@ const G = {
   version: VERSION,
   milestone: MILESTONE,
   ready: false,
-  slots: SLOTS,          // 双方各几个位置（现在「前 3 后 2」= 5，阵型在 05-阵型.js 里配）
+  slots: SLOTS,          // 双方各几个位置（现在「前 4 后 5」= 9，阵型在 05-阵型.js 里配）
   rows: ROWS, 行列数, 阵型表, 行名, 位名, 列上所有格,
+  /* ---- 阵型 9 格（作者 2026-10-10 拍板）：阻挡关系 + 出击上限 ---- */
+  阻挡表, 阻挡关系, 阻挡位, 遮挡位, 对位, 相邻位, 被挡吗, 阻挡束,
+  出击上限, 出击上限由名册, 出击上限初值, 出击上限顶, 每几级加一台,
   mulberry32,            // 带种子的随机数（方案 6.1）
 
   /* ---- 界面 / 播放（M2） ---- */
   界面, 播放, FACTION_COL, 势力色,
   /* ---- 肉鸽（M4 / 作者 2026-10-10 换成网格 + 推进剂） ---- */
-  肉鸽, 肉鸽界面, 肉鸽数值, 存档键, 节点类型表, 抽编成, 选编成, 抽编成兜底, 兜底类型顺序, 行列数,
+  肉鸽, 肉鸽界面, 肉鸽数值, 存档键, 存档版本, 旧存档键们, 节点类型表, 抽编成, 选编成, 抽编成兜底, 兜底类型顺序, 行列数,
   肉鸽弹窗, allyName, 坐标文字,          // 界面小工具（节点屏 / 测试用）
   /* ---- 晋升（10 → 20 → 30；作者点名要做的第 6 项，出处见 90-肉鸽.js 文件头） ---- */
   晋升价格, 晋升目标, 晋升要多少, 晋升预览, 重算名册属性,
@@ -54,13 +57,13 @@ const G = {
   /* 引擎内部（给测试驱动一场战斗用） */
   endTurn, checkResult, aiAction, enemyAction, grantTargetOf, runAutoCast, actionOrder,
   chooseHeal, 修理阈值,       // 修理策略（作者 2026-10-10：低于 60% 才修）——tests/heal.js 直接读它
-  守护关系, 守护者, 嘲讽, 单位动作,
+  守护关系, 守护者, 嘲讽, 单位动作, 换位目标, 增援, 空位, 活位们, resolveAction,
   /* 射程换算 / 公式（给测试和以后的界面用） */
   rangeKindOf, rowReachable, rowBlockPenalty, areaSlots, ROW_FRONT, ROW_BACK,
   isAreaKind, isHealKind, isSupportKind, KIND_SUPPORT,
   statCoef, hitRate, critRate, dmgCore, critMul, isSure, isUltimate,
   effArmor, buffSum, defMul, statVal, atkStat, REDUCTIONS,   // 藏品测试要直接看公式里的量
-  编成表, 选编成, 编成到单位, 默认五人队, 类型到Kind,
+  编成表, 选编成, 编成到单位, 编成波次, 编成波次到单位, 默认五人队, 类型到Kind, 杂兵池, 精锐池, 头目池,
   月光祝福范围, 残月余响范围, 再动,
   /* ---- 站桩 Boss 脚本（方案 5.2 / 61-Boss.js） ---- */
   Boss脚本, 取Boss脚本, 是Boss单位, Boss参数, Boss阶段序号, Boss触发阈值,

@@ -1,5 +1,5 @@
 /* ============================================================================
- * 射程换算：能打到哪一排（方案 3.3）
+ * 射程换算：能打到哪一格（方案 3.3 + 作者 2026-10-10 拍板的「按位阻挡」）
  * ----------------------------------------------------------------------------
  * 战棋里每把武器都有 `fire`（melee / direct / indirect / map / support / heal /
  * passive / device）和 `range`。新项目里**只用 fire 判断"能打谁"**：
@@ -8,15 +8,23 @@
  * 换算必须是**纯函数**，不要手改每把武器（方案 3.3 的硬要求）。
  *
  *   fire       新类型   能打谁
- *   melee      近战     只能打敌方前排；前排没人了才能打后排
- *   direct     直射     任意目标；打后排时敌方前排还有人 → 命中 −20（被挡）
- *   indirect   曲射     任意目标，没有惩罚
+ *   melee      近战     只能打敌方前排；前排没人了才能打后排（现状不变）
+ *   direct     直射     任意目标；打**某个后排位**时看这个位的**阻挡位里还有没有活人**
+ *                       —— 有 → 命中 −20（被挡）；阻挡位全灭 → 无惩罚（不是打不到！）
+ *   indirect   曲射     任意目标，无视阻挡、没有惩罚
  *   map/support 范围    按武器新加的 area：row / col / cross / all（没写默认 row）
  *   heal       修理     我方任意一台，优先 HP 比例最低的
  *   passive / device    第一期不做（方案 6.2）
  *
- * 站位在 05-阵型.js 里配（作者 2026-10-10：暂时「前 3 后 2」，之后会扩充）：slot 从 0 开始按排数下来，
- * row 0 = 前排、1 = 后排；前排靠近敌人。
+ * ★ 作者 2026-10-10 拍板的四条（这次阵型大改）：
+ *   ① 9 格 = 前排 4 + 后排 5，阻挡关系 F0→B0,B1 / F1→B1,B2 / F2→B2,B3 / F3→B3,B4；
+ *   ② 直射是「命中 −20」，**不是打不到**；
+ *   ③ 曲射 / 范围**无视阻挡**（本文件里它们根本不算被挡惩罚）；
+ *   ④ 范围的形状跟着新几何走：`row` = 一整排（前 4 / 后 5）；
+ *      `col` = **阻挡束**（一个前排位 + 它挡的 1–2 个后排位）；
+ *      `cross` = 目标位 + 左右邻居 + 对位；`all` = 全场。
+ *
+ * 站位与阻挡关系都在 05-阵型.js 里配（`阻挡位 / 遮挡位 / 对位 / 相邻位 / 被挡吗 / 阻挡束`）。
  * ========================================================================== */
 
 const KIND_MELEE = '近战', KIND_DIRECT = '直射', KIND_INDIRECT = '曲射', KIND_AREA = '范围', KIND_HEAL = '修理';
@@ -25,7 +33,7 @@ const KIND_MELEE = '近战', KIND_DIRECT = '直射', KIND_INDIRECT = '曲射', K
    所以单独判成「支援」，不参与「进攻」的武器挑选。 */
 const KIND_SUPPORT = '支援';
 
-/* 排号 ROW_FRONT / ROW_BACK 和格子编号都在 05-阵型.js 里（阵型可扩充） */
+/* 排号 ROW_FRONT / ROW_BACK、格子编号、阻挡关系都在 05-阵型.js 里（阵型可扩充） */
 
 const RANGE_KIND = {
   melee: KIND_MELEE,
@@ -51,40 +59,50 @@ const isSupportKind = kind => kind === KIND_SUPPORT;
 /* 带支援字段的支援武器（方案 3.3 之外，作者 2026-10-10 定） */
 const hasSupportField = w => !!(w && (w.buff || w.grant));
 
-/** 这个类型能不能打到指定那一排。frontAlive = 敌方前排是否还有人。 */
+/** 这个类型能不能打到指定那一排。frontAlive = 敌方前排是否还有人。
+ *  ★ 近战规则**现状不变**：只能打前排，前排全灭才能打后排。 */
 function rowReachable(kind, targetRow, frontAlive) {
   if (kind === KIND_MELEE) return targetRow === ROW_FRONT || !frontAlive;
   return true;
 }
 
-/** 「被挡」的命中修正：直射打后排、而敌方前排还有人 → −20；其他情况 0。
- *  职业特色（方案 6.3）：我方的狙击打后排没有这个惩罚。 */
-function rowBlockPenalty(kind, targetRow, frontAlive, attacker) {
+/** 「被挡」的命中修正（作者 2026-10-10 拍板改成**按位**）：
+ *  直射 打**后排位**、而这个位的阻挡位（`遮挡位()`）里还有活人 → −20；其他情况 0。
+ *  ★ 是命中修正，**不是打不到** —— 打得到，只是难打（`tests/grid.js` 第 [2] 段盯着）。
+ *  职业特色（方案 6.3）：我方的狙击打后排没有这个惩罚。
+ *  参数：`目标位` = 被打的格子编号；`活着的位` = 被打那一方还活着的位（Set / 数组 / 单位数组都行）。 */
+function rowBlockPenalty(kind, 目标位, 活着的位, attacker) {
   if (职业是(attacker, '狙击')) return 0;
-  return (kind === KIND_DIRECT && targetRow === ROW_BACK && frontAlive) ? -20 : 0;
+  if (kind !== KIND_DIRECT) return 0;          // 近战够不够得着看 rowReachable；曲射 / 范围无视阻挡
+  return 被挡吗(目标位, 活着的位) ? -20 : 0;
 }
 /* 方案 6.3 的职业特色都只对我方生效（敌人按梯队，没有「职业」）。 */
 const 职业是 = (u, k) => !!u && u.side === 'ally' && !!(u.tags && u.tags.战斗分类 === k);
 
-/** 范围武器的落点：area 决定打哪些格子（没写 area 默认 row）。返回 slot 数组。
- *  阵型是「前 3 后 2」（可扩充），所以一排有几格由 05-阵型.js 决定：
- *   - row   = 那一整排；
- *   - col   = 同一列上的格子（前列0+后列0、前列1+后列1；前列2 后排没有对位，就只有自己）；
- *   - cross = 目标格 + 同排左右相邻 + 另一排同列（有的话）；
- *   - all   = 全部。 */
+/** 范围武器的落点：area 决定打哪些格子（没写 area 默认 row）。返回**升序**的 slot 数组。
+ *  新几何（作者 2026-10-10 拍板，配置在 05-阵型.js）：
+ *   - row   = 那一整排（前 4 格 / 后 5 格）；
+ *   - col   = **阻挡束**：一个前排位 + 它挡的 1–2 个后排位（`阻挡束(位)`）；
+ *   - cross = 目标位 + 同排左右邻居 + 对位（有阻挡关系的那 1–2 格）；
+ *   - all   = 全场 9 格。 */
 function areaSlots(w, row, col) {
   const area = (w && w.area) || 'row';
-  const out = [];
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < 行列数(r); c++) {
-      let hit = false;
-      if (area === 'all') hit = true;
-      else if (area === 'row') hit = r === row;
-      else if (area === 'col') hit = c === col;
-      else if (area === 'cross') hit = (r === row && Math.abs(c - col) <= 1) || (c === col && Math.abs(r - row) === 1);
-      if (hit) out.push(slotOf(r, c));
-    }
+  const 位 = slotOf(row, col);
+  let out;
+  if (area === 'all') {
+    out = [];
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < 行列数(r); c++) out.push(slotOf(r, c));
+  } else if (area === 'col') {
+    out = 阻挡束(位).slice();
+  } else if (area === 'cross') {
+    out = [位];
+    const r = rowOfSlot(位), c = colOfSlot(位);
+    if (有这一列(r, c - 1)) out.push(slotOf(r, c - 1));
+    if (有这一列(r, c + 1)) out.push(slotOf(r, c + 1));
+    for (const s of 对位(位)) if (!out.includes(s)) out.push(s);
+  } else {                                   // 'row' 与没写的都按一整排
+    out = [];
+    for (let c = 0; c < 行列数(row); c++) out.push(slotOf(row, c));
   }
-  return out;
+  return [...new Set(out)].sort((a, b) => a - b);
 }
-

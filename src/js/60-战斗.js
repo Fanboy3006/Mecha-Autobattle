@@ -3,7 +3,8 @@
  * ----------------------------------------------------------------------------
  * 对外接口（M3 起是「一回合一个回合地打」，因为玩家的指令会变，不能一次算完整场）：
  *
- *   开局(我方, 敌方, 种子) → ctx      一次战斗的状态：双方单位、记录、带种子的随机数
+ *   开局(我方, 敌方, 种子, 指令表, 选项) → ctx   一次战斗的状态：双方单位、记录、带种子的随机数、
+ *                                      **敌方增援波次**（`选项.波次`，编成表配；不传 = 没有增援）
  *                                     （里面会调 `藏品开战`，把这一局的藏品应用到双方；见 93-藏品.js）
  *   设指令(ctx, 指令表)               指令表 = { 位: {类型, 目标位, 保留大招} }
  *                                     类型 = 进攻（默认）/ 集火 / 守护 / 防御 / 换位（方案第 4 节）
@@ -82,8 +83,12 @@ function 嘲讽(ctx, 攻击者, 原目标) {
   return 候选[0];
 }
 
-/* ---------- 回合开始（指令解析 + 指挥 + 防御回报） ---------- */
+/* ---------- 回合开始（增援 + 指令解析 + 指挥 + 防御回报） ---------- */
 function 回合开始(ctx) {
+  /* 0. 增援（作者 2026-10-10 拍板）：波次表里写着「这一回合来一波」的，先补进空位。
+     放在最前面 —— 补进来的敌人这一回合就按速度正常行动（和战棋 respawnFoes 一个时机）。 */
+  增援(ctx);
+
   /* 1. 把「位」形式的指令解析成**单位引用**：换位之后引用不会错 */
   for (const u of livingOf('ally', ctx)) {
     u.守护对象 = null;
@@ -120,21 +125,57 @@ function 回合开始(ctx) {
   }
 }
 
-/* ---------- 换位：算出该换到哪个格子（作者 2026-10-10 定：按列对位） ----------
- *   1. 同一列的另一排有这一格 → 就用它（对面有人就互换，空着就移过去）；
- *   2. 没有对位格（前 3 后 2 时前排的第 3 列）→ 在本排里找空位，没空位就和本排第一个队友互换；
- *   3. 本排也没有别的格子 → 返回 null（这次换位作罢）。 */
+/* ---------- 换位：算出该换到哪个格子（作者 2026-10-10 拍板：换到**相邻位**） ----------
+ * 相邻位 = 同一排的左右邻居 + **有阻挡关系的对位**（05-阵型.js 的 `相邻位()`）：
+ *   F0↔B0/B1、F1↔B1/B2、F2↔B2/B3、F3↔B3/B4（对位），同排还能左右挪一格。
+ * 挑法（决定性的，不用随机）：① 先看**对位**里空着的那一格 → 移过去；② 再看同排左右空位；
+ * ③ 全占着就和对位（先）或同排邻居（后）**互换**；④ 一个相邻位都没有 → null，这次换位作罢。 */
 function 换位目标(ctx, actor) {
-  const r = rowOfSlot(actor.slot), c = colOfSlot(actor.slot);
-  const 对排 = r === ROW_FRONT ? ROW_BACK : ROW_FRONT;
-  if (有这一列(对排, c)) return slotOf(对排, c);
   const 占 = new Map(livingOf(actor.side, ctx).map(u => [u.slot, u]));
-  const 本排 = [];
-  for (let i = 0; i < 行列数(r); i++) 本排.push(slotOf(r, i));
-  const 空位 = 本排.filter(位 => 位 !== actor.slot && !占.has(位));
-  if (空位.length) return 空位[0];
-  const 队友位 = 本排.filter(位 => 位 !== actor.slot && 占.has(位));
-  return 队友位.length ? 队友位[0] : null;
+  const 候选 = [];
+  for (const s of 对位(actor.slot)) if (!候选.includes(s)) 候选.push(s);
+  for (const s of 相邻位(actor.slot)) if (!候选.includes(s)) 候选.push(s);
+  const 空格 = 候选.filter(s => !占.has(s));
+  if (空格.length) return 空格[0];
+  const 有人 = 候选.filter(s => 占.has(s));
+  return 有人.length ? 有人[0] : null;
+}
+
+/* ---------- 增援（作者 2026-10-10 拍板：敌方被击坠后按波次补人） ----------
+ * 形状照战棋 `30b-关卡目标.js:96-105` 的持续刷新：
+ *   `respawn: { every: N, lv, list: t => [键…] }`，触发在回合开始时
+ *   （`if (rs && c.turn > 1 && (c.turn - 1) % rs.every === 0) { respawnFoes(rs.list(c.turn), rs.lv); log('敌方增援 N 台从右侧出现') }`）。
+ * 本仓库把「间隔」在编成表里**展开成波次**（`70-编成.js` 的 `波次: [{回合, 来:[键…]}]`，
+ * 回合号就是 `1 + 间隔×n`），所以这里只要「回合号对上了就补」。
+ * 补进**空位**（前排先、再后排 —— 被击坠的格子空出来正好顶上）；一个空位都没有就作罢，照样写日志。
+ * 日志统一写 `〔增援〕…`，记录里带 `数量 / 位们 / 单位们` 给界面用。 */
+function 空位(ctx, side) {
+  const 占 = new Set(livingOf(side, ctx).map(u => u.slot));
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < 行列数(r); c++) {
+    const s = slotOf(r, c);
+    if (!占.has(s)) return s;
+  }
+  return null;
+}
+function 增援(ctx) {
+  for (const w of (ctx.波次 || [])) {
+    if (!w || w.回合 !== ctx.turn) continue;
+    const 来 = w.来 || [];
+    const 位们 = [], 单位们 = [];
+    let 没空位 = 0;
+    for (const e of 来) {
+      const s = 空位(ctx, 'enemy');
+      if (s == null) { 没空位++; continue; }
+      const u = makeUnit(e.键, 'enemy', s, e.等级);
+      ctx.enemies.push(u);
+      位们.push(s); 单位们.push(u.key);
+    }
+    if (位们.length) {
+      pushLog(ctx, `〔增援〕第 ${ctx.turn} 回合：敌方 ${位们.length} 台赶到（${位们.map(位名).join('、')}：${单位们.join('、')}）`,
+        { 类型: '增援', 数量: 位们.length, 位们, 目标方们: 位们.map(() => 'enemy'), 单位们 });
+    }
+    if (没空位) pushLog(ctx, `〔增援〕第 ${ctx.turn} 回合：还有 ${没空位} 台挤不进来（9 个位都占着）`, { 类型: '增援', 数量: 0, 结果: '没空位' });
+  }
 }
 
 /* ---------- 一个单位这次行动做什么 ---------- */
@@ -230,8 +271,8 @@ function resolveAction(actor, action, ctx) {
     return 空;
   }
 
-  /* 换位（方案第 4 节 + 作者 2026-10-10：按列对位）：和同一列的另一排交换；对面是空位就直接移过去；
-     前排多出来、后排没有对位的那一列（前 3 后 2 时的前 3），就在本排里换空位 / 换队友。本回合不攻击。 */
+  /* 换位（方案第 4 节 + 作者 2026-10-10：换到**相邻位**）：同排左右邻居 + 有阻挡关系的对位
+     （F0↔B0/B1、F1↔B1/B2、F2↔B2/B3、F3↔B3/B4）。对面空着就移过去、有人就互换。本回合不攻击。 */
   if (action.kind === 'swap') {
     const 目标位 = 换位目标(ctx, actor);
     if (目标位 == null) {
@@ -284,9 +325,10 @@ function resolveAction(actor, action, ctx) {
     }
 
     const 血 = 实际.hp;
-    const 行 = unitRow(实际);
-    const frontAliveNow = frontAlive(livingOf(otherSide(actor.side), ctx));
-    const blockPenalty = isAreaKind(kind) ? 0 : rowBlockPenalty(kind, 行, frontAliveNow, actor);
+    /* 被挡（作者 2026-10-10 拍板改成**按位**）：看**实际目标这一位**的阻挡位里还有没有活人。
+       近战够不够得着由 AI 那边按 `rowReachable` 过滤，这里只管直射的 −20。 */
+    const 活位 = livingOf(实际.side, ctx).map(x => x.slot);
+    const blockPenalty = isAreaKind(kind) ? 0 : rowBlockPenalty(kind, 实际.slot, 活位, actor);
     const rec = resolveAttack(actor, 实际, w, ctx, { blockPenalty, defending: 按防御, 伤害倍率: 倍率 });
     if (血 > 0 && 实际.hp <= 0) 击破++;
     pushLog(ctx, rec.文本, Object.assign({ 类型: '攻击', 单位: actor.key, 目标: 实际.key, 武器: w.name, 集火: !!action.集火, 守护挡下: 按防御, 原目标: 按防御 ? t.key : null, 原目标位: 按防御 ? t.slot : null }, 谁(actor), 谁目标(实际), rec.字段));
@@ -351,13 +393,17 @@ function endTurn(ctx) {
   }
 }
 
-/* ---------- 开场 ---------- */
-function 开局(我方编成, 敌方编成, 种子, 指令表) {
+/* ---------- 开场 ----------
+ * `选项`（可选）：`{ 波次: [{回合, 来:[{键, 等级}…]}…] }` —— 敌方增援的波次表
+ * （编成表里配，`70-编成.js` 的 `编成波次到单位()` 把「第几回合来哪几台」换算好；
+ * 不传 = 这一场没有增援，行为和以前一个字节都不变）。 */
+function 开局(我方编成, 敌方编成, 种子, 指令表, 选项) {
   const rng = mulberry32((种子 >>> 0) || 1);
   const ctx = {
     turn: 1, 种子: (种子 >>> 0) || 1, rng,
     allies: makeUnits(我方编成, 'ally'), enemies: makeUnits(敌方编成, 'enemy'),
     log: [], result: null, again: [],
+    波次: ((选项 && 选项.波次) || []).map(w => ({ 回合: w.回合, 来: (w.来 || []).map(e => ({ 键: e.键, 等级: e.等级 })) })),
   };
   /* 藏品（方案第 7 节 · 作者 2026-10-10 要做）：把 `肉鸽.RUN.藏品` 应用到**我方**出击机体
      （HP / 装甲 / 命中 / 暴击 / 闪避 / 伤害 / 减伤）和**敌方**（命中 / 装甲减益）。
@@ -392,6 +438,10 @@ function 算意图(ctx) {
       目标名: a && a.target ? a.target.name : null,
       期望: a && a.expected ? Math.round(a.expected) : 0,
       压制射击: hasOverwatch(u),
+       /* 直射打这个后排位**现在被挡着吗**（阻挡位里还有活人 → 命中 −20；打得到，只是难打）。
+          界面上要跟这条规则一致：意图里写「被挡 −20」（作者 2026-10-10 拍板）。 */
+      被挡: !!(a && a.被挡),
+      命中修正: a && a.被挡 ? -20 : 0,
       /* Boss：这一发是不是大技能、现在第几阶段、还是这一回合在蓄力（界面上看得见节奏） */
       大技能: !!(a && a.大技能),
       Boss: !!bp,
@@ -414,8 +464,8 @@ function 打一回合(ctx) {
 }
 
 /* ---------- simulate（方案第 9 节 M1 的接口；一整场，指令固定不变） ---------- */
-function simulate(我方, 敌方, 指令, 种子) {
-  const ctx = 开局(我方, 敌方, 种子, 指令);
+function simulate(我方, 敌方, 指令, 种子, 选项) {
+  const ctx = 开局(我方, 敌方, 种子, 指令, 选项);
   let 护栏 = 0;
   while (!ctx.result && 护栏++ < MAX_TURN + 2) {
     设指令(ctx, 指令);

@@ -167,7 +167,9 @@ console.log('\n[4] 编队 / 战斗 / 招募三个画面真的画出了图标');
   界面.默认五人队();
   const 编队HTML = 屏文字();
   const 编队图 = (编队HTML.match(/<img class="mi"/g) || []).length;
-  if (编队图 >= G.ALLY_T.length + G.slots) ok(`编队屏 ${编队图} 个图标（机师列表 ${G.ALLY_T.length} 名 + 出击 ${G.slots} 格）`);
+  /* 出击格子里有几台就有几个图标（Lv10 的出击上限是 3 台，不是 9 格都摆满） */
+  const 出击台数 = 界面.编队.出击.length;
+  if (编队图 >= G.ALLY_T.length + 出击台数) ok(`编队屏 ${编队图} 个图标（机师列表 ${G.ALLY_T.length} 名 + 出击 ${出击台数} 格）`);
   else bad(`编队屏图标太少：${编队图}`);
   if (/undefined|NaN/.test(编队HTML)) bad('编队屏 HTML 里出现了 undefined / NaN');
   else ok('编队屏 HTML 里没有 undefined / NaN');

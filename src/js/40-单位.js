@@ -6,7 +6,8 @@
  *   levelUp       ← 07-状态.js:18-26     （每级 +2、我方 Lv20 / Lv30 晋升 +25、装甲 +25%、闪避 +8、命中 +10）
  *   速度公式      ← 方案 3.2：机动（mov）× 10 + 闪避 ÷ 2，取整
  *
- * 站位：双方各 2 排 × 3 列，格子编号 slot = 排 × 3 + 列（0–2 前排、3–5 后排）。
+ * 站位：双方各 9 格 = 2 排（前排 4 + 后排 5），格子编号 slot = 排首格 + 列
+ * （0–3 前排、4–8 后排；排首格 / 列数 / 阻挡关系都在 05-阵型.js）。
  * ========================================================================== */
 
 const otherSide = s => s === 'ally' ? 'enemy' : 'ally';
@@ -20,8 +21,10 @@ const 战斗分类 = u => (u && u.tags && u.tags.战斗分类) || null;
 const sideUnits = (side, ctx) => side === 'ally' ? ctx.allies : ctx.enemies;
 const livingOf = (side, ctx) => sideUnits(side, ctx).filter(u => u.hp > 0);
 const livingUnits = ctx => ctx.allies.concat(ctx.enemies).filter(u => u.hp > 0);
-/* 这一排里还有没有人（近战能不能够到后排、直射打后排有没有被挡，都看它） */
+/* 这一排里还有没有人（近战能不能够到后排看它；直射的「被挡」改成**按位**看 `被挡吗()`） */
 const frontAlive = units => units.some(u => unitRow(u) === ROW_FRONT);
+/* 还活着的位集合：直射被挡判定（30-射程.js 的 `rowBlockPenalty` / 05-阵型.js 的 `被挡吗`）要用 */
+const 活位们 = units => new Set(units.map(u => u.slot));
 
 /* ---------- 升级（07-状态.js:18-26） ---------- */
 function levelUp(u, heal = false) {
