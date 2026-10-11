@@ -227,6 +227,9 @@ const 界面 = {
     点敌人: function (参) { return this.点敌人(Number(参)); },
     点队友: function (参) { return this.点队友(Number(参)); },
     大招: function (参) { return this.切大招(Number(参)); },
+    /* ★ 天人的 TRANS-AM 单位级开关（作者 2026-10-11 拍板）：切自动 / 手动、手动档本回合点开 */
+    TRANSAM: function (参) { return this.切TRANSAM(Number(参)); },
+    开TRANSAM: function (参) { return this.开TRANSAM(Number(参)); },
     /* M4 肉鸽 */
     去分队: function () { return this.开屏('分队'); },
     选分队: function (参) { return this.选分队(参); },
@@ -466,7 +469,7 @@ const 界面 = {
     </section>`;
   },
 
-  /** 指令面板（方案第 4 节）：选中的我方机体能下的指令 + 大招开关 */
+  /** 指令面板（方案第 4 节）：选中的我方机体能下的指令 + 大招开关 + ★ TRANS-AM 的单位级开关 */
   指令面板() {
     const 位 = this.选中位;
     if (位 == null) return `<div class="cmdpanel"><h3>指令</h3><p class="small">先点一张我方卡片。指令会一直留着，不想改就直接「开打 ▶」。</p>${this.提示 ? `<p class="warn small">${this.提示}</p>` : ''}</div>`;
@@ -479,10 +482,35 @@ const 界面 = {
     return `<div class="cmdpanel">
       <h3>指令 · ${u.name}<span class="small">${u.key} · ${u.tags.战斗分类} · ${位名(位)}</span></h3>
       <div class="cmds">${按钮}<button class="mini${c.保留大招 ? ' on' : ''}" data-act="大招:${位}">大招：${c.保留大招 ? '保留' : '自动'}</button></div>
+      ${this.天人开关(位, u, c)}
       <p class="small">当前：<b>${c.类型}</b>${目标 ? ` → ${目标.name}（${位名(目标.slot)}）` : ''}${c.类型 === '集火' && !目标 ? '（还没点目标）' : ''}${c.类型 === '守护' && !目标 ? '（还没点队友）' : ''}</p>
       ${this.选目标 ? `<p class="warn small">正在选目标：点一个${this.选目标 === '集火' ? '敌方' : '我方'}单位。</p>` : ''}
       ${this.提示 ? `<p class="warn small">${this.提示}</p>` : ''}
     </div>`;
+  },
+
+  /** ★ **TRANS-AM 的单位级开关**（作者 2026-10-11 拍板原话「TRANS-AM 应该是单个单位开关的」）：
+   *  指令面板上给**每台有 `transAm` 的机体**一个「TRANS-AM：自动 / 手动」开关；
+   *  手动档多一个「**开 TRANS-AM**」按钮 —— **CD 没到就 `disabled`，并把为什么写在按钮上与下面那行小字里**
+   *  （「为什么」和单位卡那一行**同源**：都读 `72-势力.js` 的 `天人手动可开()`，两处不会说两套话）。
+   *  没有 `transAm` 的机体（拉塞 CB5）返回空串 —— 一张卡都不多画。
+   *  ★ 开关存进**指令表**（`TRANSAM` / `本回合开TRANSAM`），和「大招：自动 / 保留」同一层、逐回合保留。 */
+  天人开关(位, u, c) {
+    if (!有TRANSAM(u, 天人参数())) return '';
+    const 手 = c || this.当前指令(位);
+    const 手动 = 手.TRANSAM === '手动';
+    const 判 = 天人手动可开(u, 天人参数());
+    const 开 = 手动
+      ? `<button class="mini${手.本回合开TRANSAM ? ' on' : ''}" data-act="开TRANSAM:${位}"${判.可以 ? '' : ' disabled'}`
+        + ` title="${判.可以 ? '点了就在本回合开' : '开不了：' + 判.原因}">`
+        + `开 TRANS-AM${手.本回合开TRANSAM ? '（本回合已点）' : ''}${判.可以 ? '' : `（${判.原因}）`}</button>`
+      : '';
+    return `<div class="cmds">
+        <button class="mini${手动 ? ' on' : ''}" data-act="TRANSAM:${位}">TRANS-AM：${手动 ? '手动' : '自动'}</button>${开}
+      </div>
+      <p class="small">${手动
+        ? `手动档：CD 到了也<b>不会自动开</b>，要在本回合点「开 TRANS-AM」。${判.可以 ? `现在${判.原因}。` : `现在<b>开不了</b>：${判.原因}。`}`
+        : '自动档（默认）：CD 一到就在回合开始自动开，不用点。'}</p>`;
   },
 
   单位卡(u, 方, 意图, 可点) {
@@ -567,11 +595,18 @@ const 界面 = {
       side: u.side, slot: u.slot, key: u.key, name: u.name, maxHp: u.maxHp, hp: u.hp,
       shieldHp: u.shieldHp, tags: u.tags, weapons: u.weapons, abilities: u.abilities,
       mov: u.mov, eva: u.eva, awaken: u.awaken,
+      /* ★ 天人的 TRANS-AM 单位级开关也要进快照（作者 2026-10-11 拍板）：不然播放阶段
+         单位卡那一行会写回「开关：自动」，和指令阶段看到的不一致。 */
+      TRANSAM手动: !!u.TRANSAM手动,
       势力状态: u.势力状态 ? JSON.parse(JSON.stringify(u.势力状态)) : null,
     }));
     this.显示单位 = { 我方: 快照(this.ctx.allies), 敌方: 快照(this.ctx.enemies) };
     设指令(this.ctx, this.指令);
     const 记录 = 打一回合(this.ctx);
+    /* ★ TRANS-AM 的「本回合开」**点一次只管本回合**：打完了就把指令表里那一位清掉
+       （`72-势力.js` 的 `手动开天人()` 读掉之后也会清单位上那一位）；
+       开关 `TRANSAM`（自动 / 手动）**留着**——下一回合还是玩家上次选的那一档（逐回合保留）。 */
+    for (const k of Object.keys(this.指令)) this.指令[k].本回合开TRANSAM = false;
     播放.载入({ 记录, 我方: this.显示单位.我方, 敌方: this.显示单位.敌方 });
     播放.手动 = !!this.手动播放;
     播放.快进 = !!this.跳过动画总是;
@@ -678,8 +713,19 @@ const 界面 = {
   },
 
   /* ---------------- 指令阶段的动作（方案第 4 节） ---------------- */
-  当前指令(位) { return Object.assign({ 类型: '进攻', 目标位: null, 保留大招: false }, this.指令[位] || {}); },
-  设某指令(位, 补丁) { this.指令[位] = Object.assign(this.当前指令(位), 补丁); this.提示 = ''; this.刷(); return this.指令[位]; },
+  /* ★ 指令表的形状（`60-战斗.js` 的 `默认指令()` 同一份）：`TRANSAM` / `本回合开TRANSAM`
+     是**势力特色第四件「天人 TRANS-AM」的单位级开关**（作者 2026-10-11 拍板「单个单位开关」）。 */
+  当前指令(位) { return Object.assign({ 类型: '进攻', 目标位: null, 保留大招: false, TRANSAM: '自动', 本回合开TRANSAM: false }, this.指令[位] || {}); },
+  设某指令(位, 补丁) {
+    this.指令[位] = Object.assign(this.当前指令(位), 补丁);
+    this.提示 = '';
+    /* ★ 把指令表同步给引擎（`60-战斗.js` 的 `设指令()`）：TRANS-AM 的开关要**立刻**反映到
+       单位卡那一行 / 那个按钮上（不然得等点「开打 ▶」才更新）。`设指令()` 只写指令类字段，
+       不动任何战斗状态；「开打」时还会再同步一次，两处一致。 */
+    if (this.ctx) 设指令(this.ctx, this.指令);
+    this.刷();
+    return this.指令[位];
+  },
   选单位(位) {
     if (this.阶段 !== '指令') return false;
     this.选中位 = this.选中位 === 位 ? null : 位;
@@ -711,6 +757,32 @@ const 界面 = {
   切大招(位) {
     const c = this.当前指令(位);
     return this.设某指令(位, { 保留大招: !c.保留大招 });
+  },
+
+  /* ★ TRANS-AM 的单位级开关（作者 2026-10-11 拍板「TRANS-AM 应该是单个单位开关的」）：
+     ① `切TRANSAM(位)`：在「自动 / 手动」之间切（存指令表，逐回合保留；切回自动时清掉本回合那次点击）；
+     ② `开TRANSAM(位)`：手动档下**本回合点开**——CD 没到（或在 TRANS-AM 中 / 等级不够 / 没有这个能力）
+        点了一点用都没有（返回 false + 写一句提示），界面上那个按钮这时本来就是 `disabled`。 */
+  切TRANSAM(位) {
+    if (this.阶段 !== '指令') return false;
+    const u = this.ctx.allies.find(x => x.slot === 位);
+    if (!u || !有TRANSAM(u, 天人参数())) { this.提示 = '这台机体没有 TRANS-AM。'; this.刷(); return false; }
+    const c = this.当前指令(位);
+    const 新 = c.TRANSAM === '手动' ? '自动' : '手动';
+    return this.设某指令(位, { TRANSAM: 新, 本回合开TRANSAM: 新 === '手动' ? c.本回合开TRANSAM : false });
+  },
+  开TRANSAM(位) {
+    if (this.阶段 !== '指令') return false;
+    const u = this.ctx.allies.find(x => x.slot === 位);
+    if (!u) return false;
+    const c = this.当前指令(位);
+    if (c.TRANSAM !== '手动') {
+      this.提示 = '这台是「自动」档：CD 一到会在回合开始自己开，不用点（要自己掌握就先切成「手动」）。';
+      this.刷(); return false;
+    }
+    const 判 = 天人手动可开(u, 天人参数());
+    if (!判.可以) { this.提示 = `开不了：${判.原因}`; this.刷(); return false; }   // ★ CD 没到 → 点了也无效
+    return this.设某指令(位, { 本回合开TRANSAM: true });
   },
 
   /* ---------------- 肉鸽：把 92-肉鸽界面.js 的画面接进来 ---------------- */
