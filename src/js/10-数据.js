@@ -72,8 +72,13 @@ const ALLY_T = [
   ]},
   /* 小太刀 Nagi：直射、曲射齐全；唯一的直射武器可以连射（每命中一次，下一击命中再 −70，直到被闪避） */
   {pilot:'小太刀 Nagi', mech:'M4', short:'M4', mechName:'朔夜', trait:'iaiSnipe', tags:{势力:'月球王国', 远近分类:'远程', 战斗分类:'狙击'}, hp:4000, armor:300, eva:20, mov:5, melee:150, shoot:165, defense:75, flying:false, w:1, h:1, abilities:[], weapons:[
-    wp({name:'月光狙击枪', power:2100, fire:'direct', range:[3,8], hit:125, afterMove:false, dmgType:'光束', special:'chain', chainStep:70,
+    wp({name:'月光狙击枪', power:2100, fire:'direct', range:[3,8], hit:125, afterMove:false, dmgType:'光束', special:'chain', chainStep:70, hits:8,
         desc:'连射：命中后对同一目标再开一枪，每命中一次下一枪命中修正再 −70，直到被闪避为止（Lv20 被动「残心」减轻惩罚）。'}),
+    /* ★ 2026-10-11：`hits:8` 是**照战棋逐字补上的段数**（`special:'chain'` 本来就是连射，但战棋的段数
+       写在循环常量 `const CHAIN_MAX = 8;`（`17b-角色机制.js:32`）里、不在武器数据上 ——
+       本仓库的逐段循环读 `w.hits`（`20-战斗计算.js` 的 `resolveAttack()`），所以要把它补进数据才跑得起来。
+       数值一个都没改：威力 2100 / 命中 125 / 光束 / `chainStep:70` 原样；「残心」把 70 减轻成 55 / 45
+       （Lv20 / Lv30）走势力钩子，见 `72-势力.js` 的月球王国条目与 `71-改动.js` 的参数表。 */
     wp({name:'月影迫击炮', power:2000, fire:'indirect', range:[3,9], afterMove:false, desc:'远距离曲射，不需要视线。'}),
     wp({name:'掷弹筒', power:1300, fire:'indirect', range:[2,5], desc:'移动后也能用的曲射。'}),
     wp({name:'小太刀', power:1800, stat:'格斗', fire:'melee', critMod:15}),
@@ -210,6 +215,13 @@ const ALLY_T = [
   {pilot:'艾克赛琳', mech:'A2', short:'A2', mechName:'白骑士', trait:'lucky', canFly:true, tags:{势力:'ATX', 远近分类:'远程', 战斗分类:'狙击'}, hp:4200, armor:200, eva:35, mov:6, melee:90, shoot:160, defense:75, flying:true, w:1, h:1, abilities:[], weapons:[
     wp({name:'嚎叫发射器·光束', power:2400, fire:'direct', range:[2,7], dmgType:'光束'}),
     wp({name:'嚎叫发射器·实弹', power:2400, fire:'direct', range:[2,7], desc:'和光束模式同一把武器，打光束抗性高的敌人时切换到这个。'}),
+    /* ★ 2026-10-11：这一把**已经接上**（作者点头做的 ATX 最后一条）。逐字出处 = 战棋
+       `04-武器与机体.js:194`（`wp({name:'好运加护', fire:'support', range:[0,3], buff:{critX:1, hit:-20}, cd:2, dmgType:'—', …})`）
+       ＋ `03-能力与减免管线.js:164` 的 `critMul = u => (hasTrait(u,'zero') ? 2.5 : 2) + buffSum(u,'critX')`
+       ＋ `:73` 的描述。**纯武器、不是位置类**（范围 `[0,3]` 照第一期口径不读）：
+       **暴击倍率 +1（×2 → ×3）+ 命中 −20**、CD 2、给**除自己以外**的我方队友、持续到本回合结束。
+       落点：`20-战斗计算.js` 的 `critMul(att)` 读 `buffSum(att,'critX')`（暴击倍率那个口子）、
+       `hitRate()` 本来就读 `buffSum(att,'hit')`（−20 走同一个入口）；条目在 `72-势力.js` 的 ATX。 */
     wp({name:'好运加护', fire:'support', range:[0,3], buff:{critX:1, hit:-20}, cd:2, dmgType:'—',
         desc:'3 格内的其他友军暴击倍率 +1（×2 → ×3；赌神 ×4 → ×5），但命中 −20，持续到下一个我方阶段开始。打不中也没关系：打空能喂响介的冷却。'}),
     wp({name:'嚎叫发射器·全开', power:2550, statMul:1.2, fire:'direct', range:[2,7], special:'lock', lockN:3, cd:2, unlock:20, dmgType:'光束',

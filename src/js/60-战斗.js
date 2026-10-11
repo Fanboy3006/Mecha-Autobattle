@@ -121,6 +121,14 @@ function 回合开始(ctx) {
   }
   for (const u of livingOf('enemy', ctx)) { u.守护对象 = null; u.指令 = '进攻'; }
 
+  /* 1.5 ★ 月球王国「不动如山」重判（2026-10-11；**必须在指令解析完之后**）：
+     它的触发条件是「**本回合没有换位**」（换义；战棋原条件是「本回合没有移动」，我们没有移动力），
+     判据就是上面刚落地的 `u.指令`。判定写进 `u.势力状态.月球王国.不动如山`，
+     `20-战斗计算.js` 的 `effArmor()` 通过框架钩子 `势力装甲()` 读它（装甲 +30%）。
+     第 1 回合在 `开局()` 里已经判过一次（按默认指令「进攻」）；这里每回合重判一次。
+     ★ 没有月球王国 / 没有 `steadfast` 的机体 → 这个函数什么都不写（空循环），公式逐字不变。 */
+  判定月球不动(ctx, 势力参数('月球王国'));
+
   /* 2. 指挥（方案 6.3）：回合开始时，同一排的队友命中 +10（本回合） */
   for (const c of livingOf('ally', ctx)) {
     if (!职业是(c, '指挥')) continue;
@@ -309,6 +317,12 @@ function resolveAction(actor, action, ctx) {
     const 原 = actor.slot;
     if (对方) { actor.slot = 对方.slot; 对方.slot = 原; }
     else actor.slot = 目标位;
+    /* ★ 月球王国「不动如山」（2026-10-11）：**真的换了位就当场把「不动」摘掉** ——
+       它在对手眼里就不再是「不动」的了。回合开始时判的那一下是按 `u.指令` 算的，
+       这里补上「换位真的发生过」这半边（两处都要，才和战棋「本回合有没有移动」对得上）。
+       没吃这条特色（没有 `steadfast` / 不是月球王国）→ 这里什么都不做。 */
+    const 不动状 = actor.势力状态 && actor.势力状态.月球王国;
+    if (不动状 && 不动状.不动如山) { 不动状.不动如山 = false; 不动状.不动如山文字 = `本回合换位到 ${位名(actor.slot)} → 装甲不加成`; }
     pushLog(ctx, `${actor.name} 换位到 ${位名(actor.slot)}${对方 ? `（和 ${对方.name} 互换）` : ''}`, Object.assign({ 类型: '换位', 位: actor.slot, 原: 原 }, 谁(actor)));
     return 空;
   }
@@ -321,6 +335,12 @@ function resolveAction(actor, action, ctx) {
     pushLog(ctx, `${actor.name} 修理 ${action.target.name}，回复 ${action.target.hp - before}`, Object.assign({
       类型: '修理', 单位: actor.key, 目标: action.target.key, 武器: w.name, 回复: action.target.hp - before, 目标剩余HP: action.target.hp,
     }, 谁(actor), 谁目标(action.target)));
+    /* ★ 2026-10-11 新加的势力钩子 `势力修理(ctx, 修理者, 被修的那台, 武器, 回复)`（框架第 17 个，`72-势力.js`）：
+       触发时机 = **血已经加上去、`spendWeapon()` 之后**。
+       第一条用它的是**月球王国的「战地急救」**（Iris）：修完给被修的那台挂「防御 +15」
+       （战棋 `17-战斗执行.js:268` 的 `if (hasTrait(u,'fieldAid')){ t.buffs.push({src:'战地急救', def:15}); … }`）。
+       ★ 没有势力条目 / 条目没写这个钩子 → 空循环，**修理的数值与记录逐字不变**。 */
+    势力修理(ctx, actor, action.target, w, action.target.hp - before);
     return 空;
   }
 

@@ -188,7 +188,9 @@ function grantTargetOf(actor, ctx) {
 }
 
 function chooseSupport(actor, ctx) {
-  const pool = usableWeapons(actor, ctx).filter(e => isSupportKind(rangeKindOf(e.t)));
+  /* ★ 2026-10-11：**已接的「势力支援武器」**要能被 `启用: false` 关掉（`势力支援关着()` 在 `72-势力.js`）——
+     现在只有艾克赛琳的「好运加护」走这道门；没有那件武器 / 开着的时候它恒 false，行为与改动前逐字相同。 */
+  const pool = usableWeapons(actor, ctx).filter(e => isSupportKind(rangeKindOf(e.t)) && !势力支援关着(e.t));
   if (!pool.length) return null;
   const ults = pool.filter(e => ultAllowed(actor, e.t));
   const 有序 = (ults.length ? ults : []).concat(pool.filter(e => !ults.includes(e)));

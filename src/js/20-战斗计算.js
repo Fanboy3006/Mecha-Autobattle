@@ -39,10 +39,23 @@ const atkStat = (u, w) => Math.round(statNames(w).reduce((a, k) => a + statVal(u
 
 /* ---------- 增益 / 装甲 / 破防 ---------- */
 const buffSum = (u, k) => (u.buffs || []).reduce((a, b) => a + (b[k] || 0), 0);
-const effArmor = u => Math.max(0, Math.round(u.armor * Math.max(0, 1 + buffSum(u, 'armorPct') / 100)) - (u.armorCut || 0));
+/* 有效装甲 = 装甲 ×（1 + `armorPct`）− 破甲 —— 战棋 `15-战斗计算.js:5`。
+ * ★ 2026-10-11：**势力特色的装甲那一路**（框架第 16 个钩子 `势力装甲()`，实现在 `72-势力.js`）
+ *   乘在 `u.armor` 上、与战棋同一个落点（`hasTrait(u,'steadfast') && !u.movedThisRound ? 1.3 : 1` 就在那里）。
+ *   第一条用它的是月球王国的「不动如山」（阿布拉德，装甲 +30%，触发条件是换义过的「本回合没换位」）。
+ *   **没有势力条目 → `势力装甲(u)` 恒 0 → 这一行与改动前逐字相同**（`× (1 + 0)`）。 */
+const effArmor = u => Math.max(0, Math.round(u.armor * (1 + 势力装甲(u) / 100) * Math.max(0, 1 + buffSum(u, 'armorPct') / 100)) - (u.armorCut || 0));
 const breakSum = u => (u.debuffs || []).reduce((a, b) => a + b.pct, 0);
 const defMul = u => Math.max(0, 1 - breakSum(u) / 100);
-const critMul = () => 2;   // 战棋：暴击威力 ×2（零式 ×2.5 走特技，第一期不做）
+/* 暴击倍率：战棋 `03-能力与减免管线.js:164` 的
+   `const critMul = u => (hasTrait(u,'zero') ? 2.5 : 2) + buffSum(u,'critX');` ——
+   基础 **×2**（零式 ×2.5 是个人特技，第一期不做）+ **`buffSum(att,'critX')`**。
+   ★ 2026-10-11 开的口子（势力特色第五件 ATX 的**「好运加护」**，作者拍板接上）：
+     `critX` 这个键**只有**「好运加护」那把支援武器会写到受益人身上（`buff:{critX:1, hit:-20}`，
+     战棋 `04-武器与机体.js:194` ← 本仓库复制件 `10-数据.js:213`），值 = **暴击倍率 +1**。
+     没有这个 buff 的战斗 `buffSum` 是 0 → `critMul(att)` **恒等于 2**，与改动前逐字相同
+     （`tests/sim.js` 的胜率表与公式对照盯着这一条）。最低不低于 1（防负数 buff 把暴击变成减伤）。 */
+const critMul = att => Math.max(1, 2 + buffSum(att, 'critX'));
 
 /* 地图炮必中（战棋原样）。注意：新项目的「范围」类就是从 map / support 换算来的，
    所以从 map 过来的范围武器保留战棋的必中；从 support 过来的走正常命中判定。 */
@@ -165,7 +178,7 @@ function dmgCore(att, w, def, o = {}) {
     const v = Math.max(-95, pos + neg);
     if (v) { W *= 1 + v / 100; wn.push(wk.map(([k, x]) => `${x > 0 ? '弱点' : '抗性'}·${k} ${x > 0 ? '+' : ''}${x}%`).join('、')); }
   }
-  if (c.crit) { const x = critMul(); W *= x; wn.push(`暴击 ×${x}`); }
+  if (c.crit) { const x = critMul(att); W *= x; wn.push(`暴击 ×${x}`); }
   W = Math.round(W);
 
   /* 2. 装甲（特殊伤害 / 无视防御按 0） */
@@ -228,12 +241,20 @@ const START_CD_ULT = 3;   // 大招（unlock ≥ 20）开场冷却 3 回合
 const startCdOf = w => w.startCd != null ? w.startCd : (w.unlock >= 20 ? START_CD_ULT : 0);
 
 /* 第一期不做的武器（方案 6.2）：带 special 的特殊武器全部不用，
-   例外是方案明确要保留的「多段」（special === 'multi'）。
+   例外是方案明确要保留的「多段」（special === 'multi'），以及 **2026-10-11 放行的 `chain`**。
+   ★ `chain`（连射）是**月球王国「连射 + 残心」**的前提（作者点头要做的三条之一）：
+     它只有一个字段（`chainStep:70`，数据 `10-数据.js:75` ← 战棋 `04-武器与机体.js:56`），
+     战棋那条规则**本来就长在 `multi` 的逐段循环上**（`17-战斗执行.js:106-125` 与 `:79-104` 同一个形状），
+     我们把它照抄成 `w.hits`（段数）+ 势力钩子给的 step（残心按等级减轻）→ **不依赖任何新引擎机制**。
+     放行之前 `月光狙击枪` 被这一行挡着（Nagi 只有「月影迫击炮 / 掷弹筒 / 小太刀」可用，是他的主武器用不出来）；
+     放行之后它按数据原样（威力 2100 / 命中 125 / 光束 / 段数 8）参战。
+     ★ **别的 `special` 一律照旧挡着**（`lock` 多重锁定 / `pull` 拉人 / `markBreak` 标定 / `summon` 召唤…），
+     所以这条改动只影响 `月光狙击枪` 一把武器，其他单位的可用武器池**一个字节都没变**。
    另一个例外是作者 2026-10-10 定的两条支援：Feena 的「月光祝福」（buff）和「再动」（grant）——
    没有伤害的支援武器，用 buff / grant 字段标记。 */
 function weaponPlayable(w) {
   if (w.fire === 'passive' || w.fire === 'device') return false;
-  if (w.special && w.special !== 'multi') return false;
+  if (w.special && w.special !== 'multi' && w.special !== 'chain') return false;
   if (w.fire === 'support' && !hasSupportField(w)) return false;   // 召唤 / 烟雾 / 回复% 之类的支援第一期不做
   return true;
 }
@@ -265,6 +286,19 @@ const healAmount = (u, w) => Math.round(w.power * u.shoot / 100);   // 17-战斗
 /* 特种的降命中值（作者 2026-10-10：先按 20 做，和原来「防御 −20」同一个量级；要调就改这一个常量） */
 const 特种降命中值 = 20;
 
+/* ★ 2026-10-11 新加的**段内命中加成**（框架第 15 个钩子 `势力段内命中加成()`，实现在 `72-势力.js`）：
+   多段武器（`w.hits > 1`）**逐段**乘在「这一段判定的基础命中」`p` 上 ——
+   第一条用它的是**月球王国**的「连射 + 残心」（小太刀 Nagi 的月光狙击枪）：
+     连射：命中后对同一目标再开一枪，**每命中一次下一枪命中修正再 −step**（战棋 `17-战斗执行.js:106-125`）；
+     残心（Lv20 被动）：把那个 step 从 **70** 减轻成 **55**（Lv30 起 **45**）
+       —— 战棋 `17b-角色机制.js:33` 的 `const chainStepOf = (u, w) => abilOn(u, 'zanshin') ? (L30(u) ? 45 : 55) : (w.chainStep || 70);`
+     战棋是 `p -= step`（命中后递减，未中 `break` 结束连射）；本仓库的逐段循环本来就是
+     「命中 → `p -= w.step` / 未中 → `p += w.step`」（战棋 multi 的做法），**step 由这个钩子按等级给**，
+     所以这一段循环**一行都没动**，只是 `w.step` 的来源从数据换成「势力按等级算」。
+   参数：`(攻击者, 武器, 段)`，`段 = { 段号, 段数 }`（段号从 1 开始）；返回这一段的 step（0 = 照数据）。
+   ★ 没有势力条目 / 没写这个钩子 → 恒 0 → `p` 与改动前逐字相同（`p -= 0`）。 */
+const 命中段步长 = (att, w, 段) => 段内命中加成(att, w, 段);
+
 /* ---------- 一次普通攻击的结算（第一期唯一的攻击路径） ----------
  * 随机数全部走 ctx.rng（带种子，方案 6.1）。返回一条战斗记录用的文本 + 字段。
  * 多段：w.hits 段，每段独立判定命中与暴击；武器写了 w.step 时命中后逐段递减命中（战棋 multi 的做法）。
@@ -294,6 +328,12 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
   const 尖兵加成 = (职业是(def, '尖兵') && def.尖兵闪避Turn !== ctx.turn) ? 20 : 0;
 
   for (let i = 0; i < hits; i++) {
+    /* ★ 2026-10-11：这一段的**命中步长**（势力钩子第 15 个「段内命中加成」，实现在 `72-势力.js`）——
+       第一条用它的是月球王国「连射 + 残心」（小太刀 Nagi 的月光狙击枪）：
+       连射每命中一次下一枪命中 −70，Lv20 残心减轻成 −55、Lv30 −45
+       （战棋 `17b-角色机制.js:33` 的 `chainStepOf`；段落循环本身照战棋 multi 的做法，一行没动）。
+       ★ 没有条目写它 → 恒 0 → `p` 与改动前逐字相同。 */
+    const 步长 = 命中段步长(att, w, { 段号: i + 1, 段数: hits });
     const q = hitRate(att, w, def, { baseHit: p, blockPenalty, turn: ctx.turn }).hit;
     const hit = sure || rng() * 100 < q;
     if (hit) {
@@ -303,7 +343,8 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
       total += d; landed++; if (cr) crits++;
       rolls.push(`第 ${i + 1} 段（${sure ? '必中' : q + '%'}）${cr ? '暴击 ' : ''}${d}`);
       if (c.nullified) break;
-      if (w.step) p -= w.step;
+      const 减 = 步长 || w.step;
+      if (减) p -= 减;
     } else {
       rolls.push(`第 ${i + 1} 段（${q}%）未中`);
       /* ★ 2026-10-11 新加的势力钩子 `势力逐段未命中(ctx, 攻击者, 目标, 武器, 段)`（框架第 11 个，`72-势力.js`）：
@@ -314,7 +355,8 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
          ★ 没有势力条目写这个钩子 → 框架里是空循环，**公式与记录逐字不变**；
            条目里**不许消耗 `ctx.rng`**（在这个位置上动随机数会改整场结果）。 */
       势力逐段未命中(ctx, att, def, w, { 段号: i + 1, 段数: hits, 本段命中率: q });
-      if (w.step) p += w.step;
+      const 加 = 步长 || w.step;
+      if (加) p += 加;
     }
     if (def.hp - total <= 0) break;
   }
