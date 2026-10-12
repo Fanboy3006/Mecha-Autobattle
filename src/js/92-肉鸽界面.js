@@ -53,6 +53,7 @@ const 肉鸽界面 = {
     const 已走过 = new Set(R.已走过 || []);
     const 已揭开 = new Set(R.已揭开 || []);
     const 守军已清 = (() => { const 守 = R.地图.格[R.地图.守军]; return !守 || 守.已过 || 守.类型 === '空'; })();
+    const 出口们 = [R.地图.出口尽头, R.地图.出口小径].filter(k => k != null && R.地图.格[k]);
     const 格按钮 = k => {
       const n = R.地图.格[k];
       if (!n) return '<button class="gcell none" disabled><i>·</i><small>不存在</small></button>';
@@ -113,14 +114,14 @@ const 肉鸽界面 = {
       ${R.推进剂 <= 0 ? '<p class="warn small">推进剂已经用光：这一格结算完就会触发<b>追击战</b>（战棋 30:34）。</p>' : ''}
       <p class="small" data-hope-src="1">${希望来源说明(R)}
         <br>战斗胜利 <b>+${肉鸽数值.胜利希望}</b> / 精英 <b>+${肉鸽数值.精英希望}</b> / Boss <b>+${肉鸽数值.Boss希望}</b>；
-        事件 +${肉鸽数值.奇遇希望}；瞭望站 +${肉鸽数值.瞭望站希望}；
+        出口尽头 <b>剩余推进剂 ×${肉鸽数值.出口换希望} → 希望</b>（照抄黑流树海「险路尽头」）；
         升级按原作分级表 <b>+4…+8</b>（Lv2 +4 / Lv3 +4 / Lv4 +5 / Lv5 +6 / Lv6 +6 / Lv7 +6 / Lv8 +7 / Lv9 +8 / Lv10 +8；
         等级 &gt; 10 沿用 +8）—— 作者 2026-10-11 拍板「照原作 4–8」，逐级给，出处见 CLAUDE.md 第 6 节；
         藏品里的 <b>t1–t6 教范</b>是「免费晋升 1 名该职业」= 省下本来要花的 1–4 希望（战棋 23b:39-44）。</p>
       ${用中 ? `<p class="warn small">正在使用零件【${零件表[用中.k].名}】：点地图上<b>高亮的格子</b>落下去（不花推进剂）。
         再点一次「使用」可以取消。</p>` : ''}
       <div class="gmap">${行们.join('')}</div>
-      <p class="small">当前格：<b>${当前格 ? (节点类型表[当前格.类型] || {}).名 : '—'}</b>${当前格 ? `（${坐标文字(当前格)}）` : ''}${守军已清 ? '' : '　·　出口守军还没打掉，打掉它出口才放行'}　·　图例：${图例Html()}</p>
+      <p class="small">当前格：<b>${当前格 ? (节点类型表[当前格.类型] || {}).名 : '—'}</b>${当前格 ? `（${坐标文字(当前格)}）` : ''}${守军已清 ? '' : '　·　出口守军还没打掉，打掉它两个出口才放行'}　·　出口：${出口们.map(k => `${(节点类型表[R.地图.格[k].类型] || {}).名} ${坐标文字(R.地图.格[k])}`).join('、')}（<b>二选一</b>：尽头 = 剩余推进剂 ${R.推进剂} → 希望 +${R.推进剂 * 肉鸽数值.出口换希望}；小径 = 第 ${R.层 + 1} 层推进剂上限 +${肉鸽数值.出口小径加成}）　·　图例：${图例Html()}</p>
       <div class="acts">${按钮 || '<span class="small">这一格没有可做的事，往别的格子走吧。</span>'}
         <button data-act="去晋升">晋升（希望 ${R.希望}）</button>
         <button data-act="存个档">存档</button><button data-act="放弃本局">放弃本局</button></div>
@@ -192,14 +193,16 @@ const 肉鸽界面 = {
       const P = 零件表[k];
       return `<div class="rv-row"><span class="nm"><b>${P.名}</b><small> · ${P.类} · ${P.价} 源碳</small>
         <br><small style="margin-left:0">${P.说明}</small>
-        <br><small style="margin-left:0">${P.用 ? '✓ ' + P.效果 : '✗ ' + (P.用不了 || '这一版不做')}</small>
+        <br><small style="margin-left:0">${P.用 ? '✓ ' + P.效果 : (P.可卖 ? '¥ ' + P.效果 : '✗ ' + (P.用不了 || '这一版不做'))}</small>
         ${P.换义 ? `<br><small style="margin-left:0">换义：${P.换义}</small>` : ''}</span></div>`;
     }).join('');
     return `<section class="card">
       <h3>零件<span class="small">零件箱 ${们.length} / ${上限} · 照战棋 <code>23-零件.js:4-18</code></span></h3>
       <p class="small">战棋的零件<b>全是大地图上用的</b>（移动 / 传送 / 理财），战斗里一件都没有 ——
         所以这一版做的就是这一批。来源照战棋：<b>精英 / Boss 战必给 1 件</b>、
-        <b>普通战 35%</b>（<code>31-战斗.js:293</code>）、<b>遗迹给 1 件</b>（<code>30:79</code>）。</p>
+        <b>普通战 35%</b>（<code>31-战斗.js:293</code>）、<b>遗迹给 1 件</b>（<code>30:79</code>）。
+        ★ 2026-10-11：黑市接上「<b>卖零件</b>」之后，两件理财类自然物（血蕈 / 浪花）也进了随机池 ——
+        它们在地图上没有「用」这个动作，只能拿去黑市变现（照战棋 <code>30:117-120</code>）。</p>
       <div class="rv-card"><h3>手上的零件</h3>${行}</div>
       <p class="small">用法：点「使用」→ 回大地图 → 点高亮的格子（<b>不花推进剂</b>，照战棋 <code>30:6-16</code>；
         次数用光就自动消失）。</p>
@@ -210,7 +213,10 @@ const 肉鸽界面 = {
     </section>`;
   },
 
-  /* ---------------- 黑市 ---------------- */
+  /* ---------------- 黑市 ----------------
+   * ★ 2026-10-11 作者拍板第 4 条：把「**买 + 卖零件 + 刷新**」三个动作都接上。
+   *   出处（照抄）：原作诡意行商「初始消耗 4 源石锭，每次刷新 +4，每个节点最多刷新 4 次」；
+   *   战棋 `30-移动与节点.js:105-113`（卖零件 / 空间租赁）、`94-零件.js` 的 `零件价()` / `卖零件()`。 */
   黑市屏() {
     const R = 肉鸽.RUN;
     if (!R) return '';
@@ -222,13 +228,32 @@ const 肉鸽界面 = {
       return `<button class="pick" data-act="黑市买:${id}"${买得起 ? '' : ' disabled'}>
         <b>${件.名}</b><small>${件.稀有}${件.分类 ? ' · ' + 件.分类 : ''}${件.实装 && 件.实装 !== '已接' ? ` · ${件.实装}` : ''}</small>
         <small>${件.说明}</small><span class="cost">${价} 源碳结晶${价 !== (肉鸽数值.黑市价格[件.稀有] || 0) ? '（会员卡 −30%）' : ''}</span></button>`;
-    }).join('') || '<p class="small">这一层的黑市卖完了。下层的黑市会换新货。</p>';
+    }).join('') || '<p class="small">这一层的黑市卖完了。刷新一次或者下层的黑市会换新货。</p>';
+    /* 卖零件：手上的零件一件一行（自然物按估价、其他一律 2 源碳 —— 战棋 30:101,119） */
+    const 零件们 = R.零件 || [];
+    const 卖行 = 零件们.map((p, i) => {
+      const P = 零件表[p.k] || { 名: p.k, 类: '—' };
+      const 价 = 肉鸽.零件卖价(i);
+      return `<button class="rv-btn" data-act="黑市卖:${i}">卖【${P.名}】（+${价} 源碳）</button>`;
+    }).join('');
+    /* 刷新：4 / 8 / 12 / 16，上限 4 次（逐字照抄原作诡意行商） */
+    const 次 = 黑市刷新次数(R), 剩 = 肉鸽.黑市刷新剩余(), 价 = 肉鸽.黑市刷新价();
+    const 刷行 = 剩 > 0
+      ? `<button class="primary" data-act="黑市刷新"${R.源碳 < 价 ? ' disabled' : ''}>刷新库存（${价} 源碳 · 第 ${次 + 1} / ${肉鸽数值.黑市刷新上限} 次）</button>`
+      : `<button disabled>刷新库存（这一格已经刷满 ${肉鸽数值.黑市刷新上限} 次了）</button>`;
     return `<section class="card">
-      <h3>黑市<span class="small">源碳结晶 <b>${R.源碳}</b> · 价格照战棋：普通 8 / 稀有 12 / 传说 16（23b-藏品.js:10）</span></h3>
-      <p class="small">战棋的黑市还卖「零件」（30-移动与节点.js:99-113）；方案第 7 节说零件第一期只带大地图上用的那几个，
-        本仓库还没做零件，所以这里**只卖藏品**（记进任务板的差异清单）。</p>
+      <h3>黑市<span class="small">源碳结晶 <b>${R.源碳}</b> · 价格照战棋：普通 8 / 稀有 12 / 传说 16（23b-藏品.js:10）
+        · 刷新 ${肉鸽数值.黑市刷新基价}/${肉鸽数值.黑市刷新基价 + 肉鸽数值.黑市刷新加价}/${肉鸽数值.黑市刷新基价 + 肉鸽数值.黑市刷新加价 * 2}/${肉鸽数值.黑市刷新基价 + 肉鸽数值.黑市刷新加价 * 3}（照抄原作诡意行商）</span></h3>
+      <p class="small">★ 2026-10-11 节点改造：把战棋黑市的<b>卖零件</b>（<code>30-移动与节点.js:105-113</code>；
+        <code>94-零件.js</code> 的 <code>卖零件()</code> 早就写好了，这一版才接上界面）与
+        原作的<b>刷新</b>（初始 4、每次 +4、每格最多 4 次）都做进来了；货架从 2 件提到 <b>${肉鸽数值.黑市货件数} 件</b>
+        （原作诡意行商满档 4 件，见方案书 §3.4）。</p>
       <div class="picks">${卡}</div>
-      <div class="acts"><button class="primary" data-act="黑市离开">离开黑市</button><button data-act="回大地图">回大地图</button></div>
+      <div class="acts">${刷行}<button class="primary" data-act="黑市离开">离开黑市</button><button data-act="回大地图">回大地图</button></div>
+      <div class="rv-card"><h3>卖零件（${零件们.length} / ${R.零件箱 || 零件箱初值}）</h3>
+        <p class="small">战棋 <code>30:105,119</code>：<b>自然物按估价</b>卖出，<b>其他零件一律 2 源碳结晶</b>。
+          零件箱满了的时候，这是腾位置的地方。</p>
+        <div class="acts">${卖行 || '<span class="small">手上没有零件。</span>'}</div></div>
       ${this.提示 ? `<p class="warn small">${this.提示}</p>` : ''}
     </section>`;
   },
@@ -264,18 +289,34 @@ const 肉鸽界面 = {
     </section>`;
   },
 
-  /* ---------------- 事件 ---------------- */
+  /* ---------------- 事件 ----------------
+   * ★ 2026-10-11 作者拍板第 5 条：事件换成**有代价**的 —— 前 5 个**逐字搬回战棋原版**
+   *   （`mecha-tactics/Claude hand off/src/js/30-移动与节点.js:123-129`），后 3 个照抄黑流树海。
+   *   这一屏只负责把 `事件表` 画成按钮：点一下走 `data-act="奇遇:<选项文字>"` → `90-肉鸽.js` 的 `奇遇()`。 */
   奇遇屏() {
     const R = 肉鸽.RUN;
     const 型 = R ? (R.地图.格[R.当前] || {}).类型 : null;
+    if (!R || 型 !== '事件') {
+      return `<section class="card"><h3>奇遇</h3>
+        <p>路上遇到一支友军残骸。你要：</p>
+        <div class="acts">
+          <button class="primary" data-act="奇遇:收下 3 希望">收拢士气（希望 +3）</button>
+          <button class="primary" data-act="奇遇:收下 10 源碳结晶">回收结晶（源碳 +10）</button>
+          <button data-act="回大地图">离开</button>
+        </div>
+        <p class="small">（这一屏现在是**兜底**：正常情况下「事件」节点会直接弹出下面那张事件卡。）</p></section>`;
+    }
+    const 事 = 肉鸽.当前事件();
+    const 已选 = (R.事件已选 || {})[`${R.层}:${R.当前}`];
+    const 选 = 事 ? 事.选.map((o, i) =>
+      `<button class="${i === 0 ? 'primary' : ''}" data-act="奇遇:${o.文}">${o.文}</button>`).join('') : '';
     return `<section class="card">
-      <h3>${型 === '事件' ? '事件' : '奇遇'}</h3>
-      <p>路上遇到一支友军残骸。你要：</p>
-      <div class="acts">
-        <button class="primary" data-act="奇遇:希望">收拢士气（希望 +${肉鸽数值.奇遇希望}）</button>
-        <button class="primary" data-act="奇遇:源碳">回收结晶（源碳 +${肉鸽数值.奇遇源碳}）</button>
-        <button data-act="回大地图">离开</button>
-      </div>
+      <h3>事件${事 ? `：${事.名}` : ''}<span class="small">照抄战棋原版事件（30-移动与节点.js:123-129）/ 黑流树海（方案书 §1.6.2）</span></h3>
+      ${事 ? `<p>${事.文}</p><p class="small">出处：<code>${事.出处}</code></p>` : '<p class="small">这一格没有事件。</p>'}
+      <div class="acts">${选}<button data-act="回大地图">先不选，回大地图</button></div>
+      <p class="small">★ 每一个选项都有代价（或者放弃一部分收益）：推进剂 / 作战耐久 / 源碳 / 经验 里换一样。
+        ${已选 ? `<br>这一格已经选过：<b>${已选}</b>` : ''}</p>
+      ${this.提示 ? `<p class="warn small">${this.提示}</p>` : ''}
     </section>`;
   },
 
