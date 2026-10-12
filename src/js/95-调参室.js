@@ -748,7 +748,7 @@ function 调参中列Html() {
     <p class="small">「伤害 ×」作用在**公式之后**的敌方伤害上（和 Boss 阶段倍率同一个口子）；「防御值 +」是**加法**。</p>
 
     <h4>按敌人键覆盖<span class="small">（取代全局那一项，不是叠加）</span></h4>
-    <select class="sel" data-act="调参室:选敌人键">${敌人键们.map(k =>
+    <select class="sel" data-act="调参选敌人键">${敌人键们.map(k =>
       `<option value="${k}"${k === 当前键 ? ' selected' : ''}>${k}${ENEMY_T[k].mech ? ` · ${ENEMY_T[k].mech}` : ''}（${tierOfEnemy(k)}）</option>`).join('')}</select>
     ${调参滑条Html(`覆盖底:${当前键}:HP倍率`, 'HP ×', 覆盖底.HP倍率, 调参倍率范围, '×')}
     ${调参滑条Html(`覆盖底:${当前键}:装甲倍率`, '装甲 ×', 覆盖底.装甲倍率, 调参倍率范围, '×')}
@@ -1029,6 +1029,16 @@ function 调参回合播完(界面对象) {
   return true;
 }
 
+/** 「按敌人键覆盖」那个下拉（`<select data-act="调参选敌人键">`）：换一个要调的敌人键。
+ *  ⚠ 为什么下拉**不能**写 `data-act="调参室:选敌人键"`：`80-界面.js` 的接线对 `SELECT` 传的是**它的 value**
+ *  当「参」用（`选分队:近卫` 那套老约定）—— 那样 `调参室动作()` 收到的「参」会变成敌人键、被当成子动作名。
+ *  所以下拉单独用一个动作名（值就是敌人键）。 */
+function 调参选敌人键(键) {
+  if (ENEMY_T[键]) 调参室模型.选中敌人键 = 键;
+  if (界面.屏 === '调参室') 界面.刷();
+  return true;
+}
+
 /** 调参室的所有按钮都走这里（`data-act="调参室:<子动作>[:参数]"`）。 */
 function 调参室动作(参) {
   const 名 = String(参 == null ? '' : 参);
@@ -1042,8 +1052,7 @@ function 调参室动作(参) {
     case '条目': M.设({ 条目: 尾 === '全部' ? null : Number(尾) }); break;
     case '方针': M.设({ 方针: decodeURIComponent(尾) }); break;
     case '场次': M.设({ 场次: Number(尾) }); break;
-    case '选敌人键': M.选中敌人键 = 尾; break;
-    case '覆盖加上': {
+    case '选敌人键': M.选中敌人键 = 尾; break;    case '覆盖加上': {
       const 键 = 尾;
       if (!ENEMY_T[键]) { M.提示 = '认不出的敌人键：' + 键; break; }
       const 草 = (M.草稿 || {})[键] || M.设置.覆盖[键] || { HP倍率: 1, 装甲倍率: 1, 威力倍率: 1 };
