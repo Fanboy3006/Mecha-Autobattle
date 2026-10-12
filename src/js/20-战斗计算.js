@@ -77,8 +77,19 @@ function hitRate(att, w, def, opts = {}) {
      （第一件 = 卫星国防军 SEED 觉醒：闪避 + 觉醒 × 0.15；战棋同款是 `03-能力与减免管线.js:100` 的
      `TRAIT_FX.seed`，那里也是加在闪避上）。所以别的战斗与改动前**逐字相同**。 */
   const eva = Math.max(0, def.eva - (def.dodgePen || 0)) + buffSum(def, 'eva') + (def.moveEva || 0) + 尖兵闪 + 势力闪避(def);
-  const h = (opts.baseHit ?? w.hit) - eva + Math.round(((att.aim ?? 160) - 160) / 2) + buffSum(att, 'hit') + (opts.blockPenalty || 0);
-  return { hit: clamp(Math.round(h), 0, 100), raw: Math.round(h), eva, 尖兵闪 };
+  /* ★ 2026-10-12（敌人卡第一批 · 钩子 `stealth` = 卡 A「幻影」）：「**隐匿**」——
+     挂着 `abilities:['stealth']` 的**敌人**被「瞄准打」的射程（默认直射 / 曲射）瞄上时，
+     **命中原始值 −35**（【初稿·待作者在调参室调】，一个常量在 `71-改动.js` 的 `战斗结构.敌人机制.隐匿`）。
+     ★ 三条边界（都在 `71-改动.js` 那张表里，**这里只读表**）：
+       ① **范围武器**根本走不到这一行（`isSure(w)` 在上面已经提前返回）→ 本来就不吃；
+       ② **近战贴身 / 修理 / 支援**由 `隐匿吃惩罚()` 的射程数组豁免 → 不吃；
+       ③ 没有 stealth 敌人 / 总开关 `开:false` / 不是敌人（我方那位不带这个键）→ **恒 0**，
+          `h` 与改动前**逐字相同**。
+     ★ 它是「减在原始命中上」的（和「特种 −20」「被挡 −20」同一条管线、同一个位置）——
+       `raw` 会变、`hit` 再夹到 0–100。 */
+  const 隐匿 = 隐匿惩罚值(def, w);
+  const h = (opts.baseHit ?? w.hit) - eva + Math.round(((att.aim ?? 160) - 160) / 2) + buffSum(att, 'hit') + (opts.blockPenalty || 0) - 隐匿;
+  return { hit: clamp(Math.round(h), 0, 100), raw: Math.round(h), eva, 尖兵闪, 隐匿 };
 }
 function critRate(w, att) {
   if (isSure(w)) return 0;
@@ -348,6 +359,12 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
      `少挨合计` = 逐段「实际挨的这一下」与「不带防御加成时会挨的那一下」的差，**只用来显示**。 */
   const 按防 = !!(opts.defending || (def && def.defending) || 按防御结算(def, ctx));
   let 少挨合计 = 0;
+  /* ★ 2026-10-12（敌人卡第一批 · 钩子 `stealth`）：这一发打在「隐匿」单位身上要减多少命中
+     （`hitRate()` 里面那一行用的是**同一个函数、同一个表**）。只用来写记录里的即时字段：
+     **整次一段都没中**（`landed === 0`）时才写 `隐匿: true` + `隐匿惩罚: N` —— 界面把它翻成
+     「隐匿 −N」那个小标签，战报统计「隐匿共让你打空 N 次」。
+     ★ 恒 0（没有 stealth 敌人）→ 这一个字段**一个字节都不多**（默认路径逐字不变）。 */
+  const 隐匿罚 = 隐匿惩罚值(def, w);
 
   for (let i = 0; i < hits; i++) {
     /* ★ 2026-10-11：这一段的**命中步长**（势力钩子第 15 个「段内命中加成」，实现在 `72-势力.js`）——
@@ -431,7 +448,8 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
     字段: Object.assign({
       命中: landed > 0, 伤害: total, 段数: hits, 命中段数: landed, 暴击: crits, 目标剩余HP: def.hp,
       特种减命中, debuff: 挂上的debuff || null, 详情: rolls.join('；'),
-    }, 少挨合计 > 0 ? { 防御少挨: 少挨合计 } : null),
+    }, 少挨合计 > 0 ? { 防御少挨: 少挨合计 } : null,
+    (隐匿罚 > 0 && landed === 0) ? { 隐匿: true, 隐匿惩罚: 隐匿罚 } : null),
   };
 }
 

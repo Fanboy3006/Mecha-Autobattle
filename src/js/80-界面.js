@@ -616,8 +616,20 @@ const 界面 = {
           + `（${预.集中.台数} 台打得到${预.集中.会打 < 预.集中.台数 ? `，这一回合 ${预.集中.会打} 台会打它` : ''}）`);
       }
     }
+    /* ★ 敌人卡第一批（作者 2026-10-12 拍板的三张卡）：敌机卡上那几句**预告** ——
+       「幻影：...处于隐匿...」「镜甲：打它会被反弹 N% 伤害」「献祭者：濒死自爆：落点 ...」。
+       判定与文本都在 `84-反馈.js` 的 `敌人机制预告()`（**纯读**，不改状态、不消耗随机数）；
+       只有真带着那三个能力键的敌人才有这一行 → 别的战斗一张卡都不多画。 */
+    if (预 && 方 === 'enemy' && 预.敌人机制 && 预.敌人机制[u.slot]) {
+      for (const 行 of (预.敌人机制[u.slot].行们 || [])) 预告行们.push(行);
+    }
     const 预告行 = 预告行们.length ? `<div class="fb-line" data-forecast="1">${预告行们.join('<br>')}</div>` : '';
-    return `<div class="uc${u.hp <= 0 ? ' down' : ''}${选中}${被点名 ? ' marked' : ''}${点目标中 ? ' pickable' : ''}" id="u-${方}-${u.slot}" data-side="${方}" data-slot="${u.slot}" style="--fc:${色}"${动}>
+    /* ★ 敌人卡第一批 · 卡 C「献祭者」：进入**濒死区间**（HP 比例 < 35%，【初稿】）时敌机卡变红。
+       判据 `濒死自爆吗()` 是**纯读**的（只读 `abilities` + HP 比例，不挂状态、不改战斗判定，
+       配置在 `71-改动.js`）；播放阶段看的是这一回合开始时的快照，所以这回合里一直是红的。
+       没有这个键的敌人 → `''`（class 字符串与改前**逐字相同**）。 */
+    const 濒死 = 方 === 'enemy' && 濒死自爆吗(u);
+    return `<div class="uc${u.hp <= 0 ? ' down' : ''}${濒死 ? ' dying' : ''}${选中}${被点名 ? ' marked' : ''}${点目标中 ? ' pickable' : ''}" id="u-${方}-${u.slot}" data-side="${方}" data-slot="${u.slot}" style="--fc:${色}"${动}>
       <span class="pos">${位名(u.slot)}</span>
       <div class="head">${图标.卡(u.key, 方, 图标.尺寸.卡)}<div class="nm"><b>${u.name}</b><small>${u.key} · 速 ${speedOf(u)}</small></div></div>
       <div class="bar hp"><i style="width:${hp}%"></i></div>

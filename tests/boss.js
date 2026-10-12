@@ -527,6 +527,276 @@ console.log('\n[10] 敌方 debuff：命中 −N / 破甲 pct / 削装甲 armorCu
   else bad(`跑了 60 个种子、${出手} 次出手都没抓到「全频干扰弹」命中并挂 debuff 的记录`);
 }
 
+/* ============================ [11] 敌人卡第一批 · 幻影（`stealth`） ============================
+ * 规格书 = `协作/敌人卡-第一批.md` 卡 A + `协作/敌人机制盘点-可用的钩子.md` 的 B1。
+ * 落点：`20-战斗计算.js` 的 `hitRate()`（命中原始值 −35，【初稿·待作者在调参室调】）。
+ * 口径（卡 A 的预告原文「只有近战 / 范围武器能稳定命中」）：**直射 / 曲射吃惩罚；近战 / 范围不吃**，
+ * 表在 `71-改动.js` 的 `战斗结构.敌人机制.隐匿.吃惩罚的射程`。 */
+console.log('\n[11] 敌人卡第一批 · 幻影（钩子 `stealth`：命中原始值 −35，近战 / 范围不吃）');
+{
+  const 表 = G.战斗结构.敌人机制;
+  if (表 && 表.隐匿 && 表.隐匿.命中惩罚 === 35 && Array.isArray(表.隐匿.吃惩罚的射程)
+    && 表.隐匿.吃惩罚的射程.join(',') === '直射,曲射') {
+    ok(`【初稿·待作者在调参室调】隐匿参数：命中惩罚 −${表.隐匿.命中惩罚}、吃惩罚的射程 = ${表.隐匿.吃惩罚的射程.join(' / ')}（近战贴身 / 范围泼洒豁免）`);
+  } else bad(`隐匿参数不对：${JSON.stringify(表 && 表.隐匿)}`);
+
+  /* 落点：`10-数据.js` 里带 `abilities:['stealth']` 的就是**隐形侦察机**（卡 A 的落点键）。
+     `70-编成.js` 的编成表里抽得到它 —— 作者在游戏里遇得到（这一条盯死「挂到了哪个键」）。 */
+  const 带键 = Object.keys(G.ENEMY_T).filter(k => Array.isArray(G.ENEMY_T[k].abilities) && G.ENEMY_T[k].abilities.includes('stealth'));
+  const 用到的 = G.编成表.filter(e => [...(e.前 || []), ...(e.后 || [])].includes('stealth')).length;
+  if (带键.join(',') === 'stealth' && 用到的 > 0) ok(`挂到了已有敌人键 \`stealth\`（${G.ENEMY_T.stealth.mech}，数据里本来就写着 \`abilities:['stealth']\`）—— 编成表里 ${用到的} 条抽得到它`);
+  else bad(`stealth 键不对：带这个能力的键 = ${带键.join(',')}；编成表用到 ${用到的} 条`);
+
+  /* 生效 / 不生效：只对**敌人**生效（我方就算有 abilities 也不吃），总开关关掉就退回改动前 */
+  const 隐 = G.makeUnit('stealth', 'enemy', 5, 5);
+  const 我 = G.makeUnit('CB2', 'ally', 0, 10);
+  const 直 = 我.weapons.find(e => G.rangeKindOf(e.t) === '直射');
+  const 近 = G.makeUnit('B1', 'ally', 0, 10).weapons.find(e => G.rangeKindOf(e.t) === '近战');
+  const 范 = { name: '假范围', fire: 'map', area: 'row', power: 1000, hit: 100, dmgType: '物理', stat: '射击' };
+  const 原始 = (a, w, d, o) => G.hitRate(a, w, d, o || { turn: 1 }).raw;
+  if (G.有敌人机制(隐, 'stealth') && !G.有敌人机制(我, 'stealth')) ok('`有敌人机制()`：敌人吃、我方不吃（作者：「只对敌方生效」）');
+  else bad('敌人机制的阵营判定不对');
+  const 原开关 = 表.开;
+  表.开 = false;
+  const 直关 = 原始(我, 直.t, 隐), 近关 = 原始(G.makeUnit('B1', 'ally', 0, 10), 近.t, 隐);
+  表.开 = true;
+  const 直开 = 原始(我, 直.t, 隐), 近开 = 原始(G.makeUnit('B1', 'ally', 0, 10), 近.t, 隐);
+  if (直关 - 直开 === 35) ok(`直射真的进公式：${我.name}【${直.t.name}】打**幻影**的原始命中 ${直关} → ${直开}（−35）`);
+  else bad(`直射的隐匿惩罚不对：${直关} → ${直开}`);
+  if (近开 === 近关) ok(`近战**贴身不吃**这个惩罚：${近.t.name} 打幻影的原始命中 ${近关} → ${近开}（差 0）`);
+  else bad(`近战被误伤了：${近关} → ${近开}`);
+  const 范开 = G.hitRate(我, 范, 隐, { turn: 1 });
+  if (范开.sure && 范开.hit === 100) ok(`范围武器（\`fire:'map'\`）走必中分支，隐匿**一点都影响不到**它（hit ${范开.hit} / sure ${范开.sure}）`);
+  else bad(`范围武器受到了影响：${JSON.stringify(范开)}`);
+  /* 曲射也吃（卡 A 的预告写「只有近战 / 范围稳定命中」→ 曲射与直射都被罚） */
+  const 曲 = { name: '假曲射', fire: 'indirect', power: 1000, hit: 100, dmgType: '物理', stat: '射击' };
+  表.开 = false; const 曲关 = 原始(我, 曲, 隐); 表.开 = true; const 曲开 = 原始(我, 曲, 隐);
+  if (曲关 - 曲开 === 35) ok(`曲射同样吃惩罚（对准打的都难打中）：${曲关} → ${曲开}`);
+  else bad(`曲射的隐匿惩罚不对：${曲关} → ${曲开}`);
+  /* 不带这个键的敌人**逐字不变**：同一个攻击者打一只没有 stealth 的杂兵 */
+  const 兵 = G.makeUnit('grunt', 'enemy', 5, 5);
+  表.开 = false; const 兵关 = 原始(我, 直.t, 兵); 表.开 = true; const 兵开 = 原始(我, 直.t, 兵);
+  if (兵关 === 兵开 && G.隐匿惩罚值(兵, 直.t) === 0) ok(`不带这个键的敌人**逐字不变**：同一发打 ${兵.name} 的原始命中 ${兵关} → ${兵开}（「隐匿惩罚值」= 0）`);
+  else bad(`没有 stealth 的敌人被影响了：${兵关} → ${兵开}`);
+  表.开 = 原开关;
+
+  /* 真打一场：只放**一台幻影**（这样它一定会被我方瞄上）—— 找一条「打空」的记录。
+     命中 55%（原始 90 − 35）→ 一定会打空几次；固定场景 + 固定种子，结果是决定性的。 */
+  const 一场 = s => G.simulate(G.默认五人队, [{ 键: 'stealth', 位: 5, 等级: 3 }], {}, s);
+  let r = null, 空录 = [];
+  for (const s of [20261010, 20261009, 20261008, 7, 11]) {
+    r = 一场(s);
+    const 试 = r.记录.filter(x => x.类型 === '攻击' && x.隐匿);
+    if (试.length) { 空录 = 试; break; }
+  }
+  info(`单独打一台幻影 Lv3（默认五人队 Lv10，种子轮着试）：${r.结果} / ${r.回合数} 回合 / ${r.记录.length} 条记录，其中**顶了隐匿惩罚打空**的 ${空录.length} 次`);
+  if (空录.length && 空录.every(x => x.隐匿惩罚 === 35 && x.单位方 === 'ally')) {
+    ok(`即时字段真的写了：${空录.map(x => `第 ${x.回合} 回合 ${x.文本}`).slice(0, 2).join('　')}`);
+    info(`即时标签：\`反馈标签(该记录)\` = 「${G.反馈标签(空录[0])}」`);
+  } else bad(`没有一条「打空 + 隐匿」的攻击记录（${空录.length} 条）`);
+  /* 战报（结算）那一行 = 记录里数出来的（数据全部从 ctx.log 统计） */
+  const 直射空 = 空录.filter(x => ((r.我方.find(u => u.slot === x.单位位) || { weapons: [] }).weapons || [])
+    .some(e => e.t && e.t.name === x.武器 && G.rangeKindOf(e.t) === '直射')).length;
+  const 行 = G.战报行们(r).find(x => x.startsWith('隐匿共让你打空'));
+  if (行 && 行 === `隐匿共让你打空 ${空录.length} 次（其中 ${直射空} 次来自直射）`) {
+    ok(`结算行 = 记录逐条数出来的：${行}`);
+  } else bad(`结算行对不上：${行}（记录里 ${空录.length} 次、直射 ${直射空} 次）`);
+  info(`战报三行样例：${G.战报行们(r).filter(x => /^隐匿共让你打空/.test(x)).join('；')}`);
+  /* 同种子两次逐字相同（含新字段） */
+  const 甲 = JSON.stringify(一场(20261010).记录), 乙 = JSON.stringify(一场(20261010).记录);
+  if (甲 === 乙 && 空录.length) ok(`同种子两次逐字相同（${JSON.parse(甲).length} 条记录，含 \`隐匿\` / \`隐匿惩罚\` 字段）`);
+  else bad('同种子两次不一样');
+}
+
+/* ============================ [12] 敌人卡第一批 · 镜甲（`beamReflect`） ============================
+ * 规格书 = 卡 B + 盘点 B4。落点：`60-战斗.js` 的 `resolveAction()` 末尾（`镜甲反弹()`）。
+ * 三条硬规矩：按比例反弹（【初稿】30%）/ **不许二次反弹** / **不许改变随机数消耗顺序**。 */
+console.log('\n[12] 敌人卡第一批 · 镜甲（钩子 `beamReflect`：受到的 30% 反弹，不二次反弹、不动随机数）');
+{
+  const 表 = G.战斗结构.敌人机制;
+  if (表 && 表.镜甲 && 表.镜甲.反弹比例 === 0.3) ok(`【初稿·待作者在调参室调】反弹比例 = ${表.镜甲.反弹比例}（受到的 30%）`);
+  else bad(`反弹比例不对：${JSON.stringify(表 && 表.镜甲)}`);
+  const 带键 = Object.keys(G.ENEMY_T).filter(k => Array.isArray(G.ENEMY_T[k].abilities) && G.ENEMY_T[k].abilities.includes('beamReflect'));
+  const 用到的 = G.编成表.filter(e => [...(e.前 || []), ...(e.后 || [])].includes('mirror')).length;
+  if (带键.join(',') === 'mirror' && 用到的 > 0) ok(`挂到了已有敌人键 \`mirror\`（${G.ENEMY_T.mirror.mech}，数据里本来就写着 \`abilities:['beamReflect']\`）—— 编成表里 ${用到的} 条抽得到它`);
+  else bad(`beamReflect 键不对：带这个能力的敌人键 = ${带键.join(',')}（编成表用到 mirror ${用到的} 条）`);
+  info('★ 我方 `S2 卡嘉莉` 的数据里也有 `beamReflect`（战棋的「光束反射」特技）：这一批按 `只给敌人: true` **没接我方那一条**，归作者 / Claude 拍板');
+
+  /* 真打一场：只放**一台镜甲**（这样我方一定打得着它）→ 看反弹的前后数字与结算行 */
+  const 一场 = s => G.simulate(G.默认五人队, [{ 键: 'mirror', 位: 0, 等级: 3 }], {}, s);
+  let r = null, 镜录 = [];
+  for (const s of [20261010, 20261009, 5, 13]) {
+    r = 一场(s);
+    const 试 = r.记录.filter(x => x.类型 === '镜甲');
+    if (试.length) { 镜录 = 试; break; }
+  }
+  info(`单独打一台镜甲 Lv3（默认五人队 Lv10，种子轮着试）：${r.结果} / ${r.回合数} 回合 / ${r.记录.length} 条记录，镜甲反弹 ${镜录.length} 次`);
+  if (镜录.length) {
+    const 一 = 镜录[0];
+    const 该发 = r.记录.filter(x => x.类型 === '攻击' && x.目标方 === 'enemy' && x.目标位 === 一.单位位
+      && x.回合 === 一.回合 && x.伤害 > 0 && x.单位位 === 一.目标位);
+    const 源 = 该发.length ? 该发[该发.length - 1] : null;
+    if (源 && 一.反弹 === Math.round(源.伤害 * 0.3)) ok(`反弹量真的按比例算：那一下打了 ${源.伤害} → 反弹 ${一.反弹}（${源.伤害} × 30% = ${Math.round(源.伤害 * 0.3)}）`);
+    else bad(`反弹量算错：${JSON.stringify([源 && 源.伤害, 一.反弹])}`);
+    ok(`即时记录：${一.文本}（即时标签 = 「${G.反馈标签(一)}」）`);
+  } else bad('整场一条镜甲记录都没有（打了镜甲却没反弹）');
+  const 行 = G.战报行们(r).find(x => x.startsWith('镜甲共反弹'));
+  const 合计 = 镜录.reduce((n, x) => n + (Number(x.反弹) || 0), 0);
+  if (行 && 行 === `镜甲共反弹 ${合计} 到你身上（占你本场损失 ${Math.round(合计 / (G.战报统计(r).本场损失 || 1) * 100)}%）`) {
+    ok(`结算行 = 记录逐条加起来：${行}`);
+  } else bad(`结算行对不上：${行}（记录加起来 ${合计}）`);
+
+  /* 独立场景：一发一发的**前后数字** + 三条边界（不二次反弹 / 攻击者已死 / 被护盾吃掉） */
+  const ctx = G.开局([{ 键: 'B1', 位: 0, 等级: 10 }], [{ 键: 'mirror', 位: 0, 等级: 3 }], 20261010);
+  const 攻 = ctx.allies[0], 镜 = ctx.enemies[0];
+  const 力 = 攻.weapons.find(e => G.rangeKindOf(e.t) === '近战') || 攻.weapons[0];
+  const 血前 = 攻.hp;
+  const rec = G.resolveAttack(攻, 镜, 力.t, ctx, {});
+  const 反弹 = G.镜甲反弹(ctx, 攻, 镜, rec.字段);
+  if (rec.字段.伤害 > 0 && 反弹 === Math.round(rec.字段.伤害 * 0.3) && 攻.hp === 血前 - 反弹) {
+    ok(`独立场景的前后数字：这一发伤害 ${rec.字段.伤害} → 反弹 ${反弹}；攻击者 HP ${血前} → ${攻.hp}`);
+  } else bad(`反弹的前后数字不对：伤害 ${rec.字段.伤害} / 反弹 ${反弹} / HP ${血前} → ${攻.hp}`);
+  const rng条数 = () => ctx.rng;
+  /* ① 不二次反弹：把两边的镜甲都打开（`只给敌人: false`），反弹的那一发**不会再被反弹回去** */
+  const 只给 = 表.只给敌人;
+  表.只给敌人 = false;
+  const 甲镜 = Object.assign({}, 攻, { abilities: ['beamReflect'], hp: 9999, maxHp: 9999, buffer: null });
+  const 乙镜 = Object.assign({}, 镜, { abilities: ['beamReflect'], hp: 99999, maxHp: 99999 });
+  const 条前 = ctx.log.filter(x => x.类型 === '镜甲').length;
+  const 甲血前 = 甲镜.hp, 乙血前 = 乙镜.hp;
+  const 反弹2 = G.镜甲反弹(ctx, 甲镜, 乙镜, { 伤害: 1000 });
+  const 新条 = ctx.log.filter(x => x.类型 === '镜甲').length - 条前;
+  if (反弹2 === 300 && 新条 === 1 && 甲镜.hp === 甲血前 - 300 && 乙镜.hp === 乙血前) {
+    ok(`**不二次反弹**：两边都带镜甲时，只有被攻击那一方反弹了一次（${反弹2}），反弹本身没有回头再反弹（记录 +${新条} 条、被反弹方的 HP 一动不动）`);
+  } else bad(`二次反弹没挡住：反弹 ${反弹2} / 新记录 ${新条} 条 / ${甲血前}→${甲镜.hp} · ${乙血前}→${乙镜.hp}`);
+  表.只给敌人 = 只给;
+  /* ② 反弹量可以是 0：攻击者已死 / 这一发没造成伤害（被护盾吃掉 / 被屏障无效化） */
+  const 零1 = G.镜甲反弹(ctx, Object.assign({}, 攻, { hp: 0 }), 镜, { 伤害: 5000 });
+  const 零2 = G.镜甲反弹(ctx, 攻, 镜, { 伤害: 0 });
+  const 零3 = G.镜甲反弹(ctx, 攻, G.makeUnit('grunt', 'enemy', 1, 3), { 伤害: 5000 });
+  if (零1 === 0 && 零2 === 0 && 零3 === 0) ok(`反弹量可以是 0：攻击者已死 ${零1} / 这一发没造成伤害（护盾吃掉）${零2} / 目标没有镜甲 ${零3}`);
+  else bad(`「反弹 0」的三种情况不对：${零1} / ${零2} / ${零3}`);
+
+  /* ③ 不许改变随机数消耗顺序：同一个场景，开 / 关镜甲，`ctx.rng` 的调用次数与每一条攻击记录逐字相同 */
+  const 跑一段 = 开 => {
+    表.开 = 开;
+    const c = G.开局([{ 键: 'B1', 位: 1, 等级: 20 }], [{ 键: 'mirror', 位: 0, 等级: 3 }], 20261010);
+    const 真 = c.allies[0];
+    真.maxHp = 999999; 真.hp = 999999;           // 反弹打不死它 → 后面的行动完全一样
+    let n = 0; const 原 = c.rng; c.rng = () => { n++; return 原(); };
+    const 录 = [];
+    for (let i = 0; i < 3 && !c.result; i++) 录.push(...G.打一回合(c));
+    return { n, 攻击: 录.filter(x => x.类型 === '攻击').map(x => JSON.stringify([x.文本, x.命中, x.伤害, x.暴击, x.详情])), 镜: 录.filter(x => x.类型 === '镜甲').length };
+  };
+  const 关 = 跑一段(false), 开 = 跑一段(true);
+  表.开 = true;
+  if (关.n === 开.n && 关.攻击.join('|') === 开.攻击.join('|')) {
+    ok(`**随机数消耗顺序一个字节都没变**：同一个战斗开 / 关镜甲，\`ctx.rng\` 调用 ${关.n} 次 vs ${开.n} 次、${关.攻击.length} 条攻击记录逐字相同（反射那一下一次 \`rng\` 都不调）`);
+  } else bad(`镜甲动了随机数顺序：rng ${关.n} vs ${开.n}；攻击记录 ${关.攻击.length} vs ${开.攻击.length}`);
+  if (关.镜 === 0 && 开.镜 > 0) ok(`开关关掉 → 一条镜甲记录都没有（${关.镜}）；打开 → ${开.镜} 条（这就是「没挂这个钩子的敌人逐字不变」）`);
+  else bad(`开关没起作用：关 ${关.镜} 条 / 开 ${开.镜} 条`);
+  /* 同种子两次逐字相同 */
+  const 甲2 = JSON.stringify(一场(20261010).记录), 乙2 = JSON.stringify(一场(20261010).记录);
+  if (甲2 === 乙2) ok(`同种子两次逐字相同（${JSON.parse(甲2).length} 条记录，含 \`类型:'镜甲'\` 那几条）`);
+  else bad('同种子两次不一样');
+}
+
+/* ============================ [13] 敌人卡第一批 · 献祭者（`selfDestruct`） ============================
+ * 规格书 = 卡 C + 盘点 B3。落点：`60-战斗.js` 的击破点（`自爆()`）。
+ * 【初稿】威力 = 主武器威力 × 1.5；落点 = `col`（**阻挡束**，理由：卡 C 的预告样例就是「前2、后2、后3」，
+ * 而且 col 只有 3 格、开战前摆位躲得掉）；濒死线 = HP 比例 < 35%（只用来做预告）。 */
+console.log('\n[13] 敌人卡第一批 · 献祭者（钩子 `selfDestruct`：击破瞬间自爆，落点 = 阻挡束）');
+{
+  const 表 = G.战斗结构.敌人机制;
+  const c = G.自爆参数();
+  if (c.威力倍率 === 1.5 && c.濒死线 === 0.35 && c.范围 === 'col') {
+    ok(`【初稿·待作者在调参室调】自爆参数：威力 = 主武器威力 × ${c.威力倍率}、濒死线 = HP 比例 < ${c.濒死线}、落点形状 = ${c.范围}（阻挡束）`);
+  } else bad(`自爆参数不对：${JSON.stringify(c)}`);
+  const 带键 = Object.keys(G.ENEMY_T).filter(k => Array.isArray(G.ENEMY_T[k].abilities) && G.ENEMY_T[k].abilities.includes('selfDestruct'));
+  const 用到的 = G.编成表.filter(e => [...(e.前 || []), ...(e.后 || [])].includes('bomber')).length;
+  if (带键.join(',') === 'bomber' && 用到的 > 0) ok(`挂到了已有敌人键 \`bomber\`（${G.ENEMY_T.bomber.mech}，数据里本来就写着 \`abilities:['selfDestruct']\`）—— 编成表里 ${用到的} 条抽得到它`);
+  else bad(`selfDestruct 键不对：带这个能力的敌人键 = ${带键.join(',')}（编成表用到 bomber ${用到的} 条）`);
+
+  /* 落点逐位对：站在「后2」的自爆机 → 前2 / 后2 / 后3（= `阻挡束(前2)`） */
+  const ctx = G.开局([{ 键: 'B1', 位: 1, 等级: 10 }, { 键: 'B2', 位: 5, 等级: 10 }],
+    [{ 键: 'bomber', 位: 5, 等级: 5 }], 7);
+  const 死 = ctx.enemies[0];
+  const 落点 = G.areaSlots({ fire: 'map', area: c.范围 }, G.unitRow(死), 死.slot - 4);
+  if (落点.join(',') === '1,5,6') ok(`落点逐位对：自爆机站在「${G.位名(死.slot)}」→ 落点 ${落点.map(G.位名).join('、')}（= 阻挡束，前2 / 后2 / 后3）`);
+  else bad(`落点不对：${落点.map(G.位名).join('、')}`);
+  /* 威力 = 主武器威力 × 1.5（前后数字） */
+  const 主 = G.主武器威力(死);
+  const r = G.自爆(ctx, ctx.allies[0], 死);
+  if (r && r.威力 === Math.round(主 * 1.5)) ok(`威力真的按倍率算：主武器威力 ${主} × 1.5 = ${r.威力}（实际打掉 ${r.合计}，落在理面的 ${r.台数} 台）`);
+  else bad(`威力不对：主武器 ${主}、自爆 ${r && r.威力}`);
+  const 自爆录 = ctx.log.filter(x => x.类型 === '自爆');
+  const 逐台录 = ctx.log.filter(x => x.类型 === '攻击' && x.自爆);
+  if (自爆录.length === 1 && 逐台录.length === r.台数) {
+    ok(`记录分两层：汇总行「${自爆录[0].文本}」+ 逐台 ${逐台录.length} 条（「${逐台录.map(x => x.文本).join('；')}」）`);
+  } else bad(`自爆记录条数不对：汇总 ${自爆录.length} / 逐台 ${逐台录.length}（落点里 ${r.台数} 台）`);
+  if (逐台录.some(x => x.目标位 === 5)) ok(`落点里的每一台都逐位打了（后2 那台也在：${逐台录.filter(x => x.目标位 === 5).map(x => x.文本).join('')}）`);
+  else bad('落点里的单位没有被逐位打到');
+  /* **不会重复触发**：同一个死者再叫一次 → null，而且记录里还是只有那一条汇总行 */
+  const 再 = G.自爆(ctx, ctx.allies[0], 死);
+  if (再 === null && ctx.log.filter(x => x.类型 === '自爆').length === 1) ok(`**不会重复触发**：同一个死者再调一次 \`自爆()\` → ${再}，汇总行还是 1 条（单位上挂了 \`自爆过\` 标记）`);
+  else bad(`重复触发了：${JSON.stringify(再)} / 汇总 ${ctx.log.filter(x => x.类型 === '自爆').length} 条`);
+  /* 不带这个键的敌人：一次都不触发 */
+  const ctx兵 = G.开局([{ 键: 'B1', 位: 1, 等级: 10 }], [{ 键: 'grunt', 位: 5, 等级: 3 }], 7);
+  const 无 = G.自爆(ctx兵, ctx兵.allies[0], ctx兵.enemies[0]);
+  if (无 === null && ctx兵.log.filter(x => x.类型 === '自爆').length === 0) ok('不带 `selfDestruct` 的敌人：`自爆()` 立刻返回 null、一条记录都不写（行为逐字不变）');
+  else bad(`没有这个键的敌人也被自爆了：${JSON.stringify(无)}`);
+
+  /* 全军防御下的减免真的生效：同一发自爆，防御姿态那一台挨得更少、记录里写 `防御少挨` */
+  const 造局 = 方针 => {
+    const cc = G.开局([{ 键: 'B1', 位: 1, 等级: 20 }, { 键: 'B2', 位: 5, 等级: 20 }],
+      [{ 键: 'bomber', 位: 5, 等级: 5 }], 11);
+    cc.allies.forEach(u => { u.maxHp = 99999; u.hp = 99999; });
+    if (方针) G.设方针(cc, { 类型: 方针 });
+    const b = cc.enemies[0];
+    const rr = G.自爆(cc, cc.allies[0], b);
+    const 少挨录 = cc.log.filter(x => x.类型 === '攻击' && x.自爆 && x.防御少挨 != null);
+    return { rr, 少挨: cc.log.filter(x => x.类型 === '自爆').reduce((n, x) => n + (x.自爆少挨 || 0), 0), 少挨录: 少挨录.length, 每台: cc.log.filter(x => x.类型 === '攻击' && x.自爆).map(x => `${G.位名(x.目标位)} ${x.伤害}${x.防御少挨 ? `（少挨 ${x.防御少挨}）` : ''}`) };
+  };
+  const 突击 = 造局(null), 防御 = 造局('全军防御');
+  info(`全军突击：合计 ${突击.rr.合计}（${突击.每台.join('、')}）　｜　全军防御：合计 ${防御.rr.合计}（${防御.每台.join('、')}）`);
+  if (防御.rr.合计 < 突击.rr.合计 && 防御.少挨 > 0 && 防御.少挨录 > 0) {
+    ok(`**全军防御真的少挨**：同一发自爆 ${突击.rr.合计} → ${防御.rr.合计}（防御帮你省了 ${防御.少挨}，${防御.少挨录} 条记录带 \`防御少挨\`）`);
+  } else bad(`全军防御没少吃：${突击.rr.合计} → ${防御.rr.合计}（少挨 ${防御.少挨}）`);
+
+  /* 只读的「濒死」标记 + 预告那一句：35% 以下才算 */
+  const 濒 = G.开局([{ 键: 'B1', 位: 0, 等级: 10 }], [{ 键: 'bomber', 位: 5, 等级: 5 }], 7);
+  const b = 濒.enemies[0];
+  b.hp = Math.round(b.maxHp * 0.36);
+  const 高 = G.濒死自爆吗(b);
+  b.hp = Math.round(b.maxHp * 0.34);
+  const 低 = G.濒死自爆吗(b);
+  if (高 === false && 低 === true) ok(`「濒死」是**只读**判据（HP 比例 36% 不算 / 34% 算）：${高} → ${低}—— 它不改任何战斗判定`);
+  else bad(`濒死判据不对：36% → ${高}、34% → ${低}`);
+  const 预 = G.敌人机制预告(濒);
+  const 行 = 预[b.slot] && (预[b.slot].行们 || []).find(x => x.includes('濒死自爆'));
+  if (行 && 行 === `敌机【${G.敌人机制称谓(b)}】濒死自爆：落点 前2、后2、后3（这一下会打这几个位）`) ok(`预告那一句：${行}`);
+  else bad(`濒死预告不对：${行}`);
+
+  /* 真打一场：击破的瞬间真的自爆了一次（编成表里抽得到自爆机的那一条） */
+  const 序 = G.编成表.findIndex(e => [...(e.前 || []), ...(e.后 || [])].includes('bomber'));
+  const 条目 = G.编成表[序];
+  const 一场 = s => G.simulate(G.默认五人队, G.敌方规格组(G.编成到单位(条目, 0)), {}, s, { 波次: G.编成波次到单位(条目, 0) });
+  const rr = 一场(20261010);
+  const 爆录 = rr.记录.filter(x => x.类型 === '自爆');
+  const 死爆 = rr.敌方.filter(u => u.key === 'bomber' && u.hp <= 0).length;
+  info(`编成 #${序}（第 ${条目.层} 层${条目.类型}）：${rr.结果} / ${rr.回合数} 回合 / ${rr.记录.length} 条记录，自爆 ${爆录.length} 次（被击破的自爆机 ${死爆} 台）`);
+  if (爆录.length === 死爆 && 爆录.length > 0) ok(`**一台只爆一次**：被击破的自爆机 ${死爆} 台 → 汇总行 ${爆录.length} 条（${爆录.map(x => x.文本).join('；')}）`);
+  else bad(`自爆次数与被击破台数对不上：${爆录.length} 次 vs ${死爆} 台`);
+  const 结行 = G.战报行们(rr).find(x => x.startsWith('自爆打掉你'));
+  const 伤 = 爆录.reduce((n, x) => n + (x.自爆伤害 || 0), 0), 省 = 爆录.reduce((n, x) => n + (x.自爆少挨 || 0), 0);
+  if (结行 && 结行 === `自爆打掉你 ${伤}，防御帮你省了 ${省}`) ok(`结算行 = 记录逐条加起来：${结行}`);
+  else bad(`结算行对不上：${结行}（记录 ${伤} / ${省}）`);
+  /* 同种子两次逐字相同 */
+  const 甲3 = JSON.stringify(一场(20261010).记录), 乙3 = JSON.stringify(一场(20261010).记录);
+  if (甲3 === 乙3) ok(`同种子两次逐字相同（${JSON.parse(甲3).length} 条记录，含 \`类型:'自爆'\` 与它逐台的 \`自爆:true\`）`);
+  else bad('同种子两次不一样');
+}
+
 /* ============================ 结果 ============================ */
 console.log(`\nERRS [${errs.join(' | ')}]`);
 console.log(fails ? `共 ${fails} 项失败` : '站桩 Boss 测试全部通过');

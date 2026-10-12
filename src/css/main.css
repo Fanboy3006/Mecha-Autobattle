@@ -102,6 +102,11 @@ h3 .small{margin-left:6px;font-weight:400}
 .uc .faction{font-family:var(--font-m);font-size:10px;color:#ff9ad0;margin-top:2px}
 .uc.empty{border-style:dashed;border-left-color:var(--line);opacity:.5;display:flex;align-items:center;justify-content:center}
 .uc.down{opacity:.35;filter:grayscale(1)}
+/* ★ 敌人卡第一批 · 卡 C「献祭者」：进入**濒死区间**（HP 比例 < 35%，初稿）的敌机卡变红 ——
+   配合卡上那句「濒死自爆：落点 …」的预告（`84-反馈.js` 的 `敌人机制预告()`）。
+   只有带 `abilities:['selfDestruct']` 的敌人才可能带上这个 class，别的卡片一个字节都不变。 */
+.uc.dying{border-color:var(--enemy);border-left-color:var(--enemy);background:color-mix(in srgb,var(--enemy) 16%,var(--panel2));
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--enemy) 55%,transparent) inset}
 .uc.hit{animation:hitflash .18s;box-shadow:0 0 0 2px color-mix(in srgb,var(--enemy) 70%,transparent)}
 .uc.hit.crit{box-shadow:0 0 0 3px var(--accent)}
 /* 攻击者向前冲一下（方案 8.1）：我方往右、敌方往左，都朝接触线方向 */
