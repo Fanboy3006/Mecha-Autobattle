@@ -503,12 +503,22 @@ const 肉鸽界面 = {
     }
     const 事 = 肉鸽.当前事件();
     const 已选 = (R.事件已选 || {})[`${R.层}:${R.当前}`];
-    const 选 = 事 ? 事.选.map((o, i) =>
-      `<button class="${i === 0 ? 'primary' : ''}" data-act="奇遇:${o.文}">${o.文}</button>`).join('') : '';
+    /* ★ 2026-10-12 作者点名改「迷路的机师」时加的：选项可以声明「现在做不了」
+       （`90-肉鸽.js` 的 `事件选项做不了()`，例如源碳不够 4 就点不了这张随机券）——
+       按钮照旧画出来（玩家看得见这条路），但 **`disabled` + `title` 写着为什么**，
+       屏上再单独列一行**可见的理由**（照现有事件屏 / 黑市 / 招募屏那套写法：
+       `disabled` + 说明，理由由引擎那一份原样给，两层永远同一句话）。 */
+    const 选 = 事 ? 事.选.map((o, i) => {
+      const 拦 = 事件选项做不了(o, R);
+      return `<button class="${i === 0 ? 'primary' : ''}" data-act="奇遇:${o.文}"${拦 ? ` disabled title="${拦}"` : ''}>${o.文}</button>`;
+    }).join('') : '';
+    const 拦们 = 事 ? 事.选.map(o => ({ 文: o.文, why: 事件选项做不了(o, R) })).filter(x => x.why) : [];
     return `<section class="card">
       <h3>事件${事 ? `：${事.名}` : ''}<span class="small">照抄战棋原版事件（30-移动与节点.js:123-129）/ 黑流树海（方案书 §1.6.2）</span></h3>
       ${事 ? `<p>${事.文}</p><p class="small">出处：<code>${事.出处}</code></p>` : '<p class="small">这一格没有事件。</p>'}
       <div class="acts">${选}<button data-act="回大地图">先不选，回大地图</button></div>
+      ${拦们.length ? `<p class="small" data-事件拦="1"><b style="color:var(--enemy)">做不了的选项（按钮已变灰）</b>：${
+        拦们.map(x => `「${x.文}」—— ${x.why}`).join('；')}</p>` : ''}
       <p class="small">★ 每一个选项都有代价（或者放弃一部分收益）：推进剂 / 作战耐久 / 源碳 / 经验 里换一样。
         ${已选 ? `<br>这一格已经选过：<b>${已选}</b>` : ''}</p>
       ${this.结果条Html()}
