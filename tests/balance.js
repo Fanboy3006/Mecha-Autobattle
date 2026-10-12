@@ -19,7 +19,7 @@
  *
  * 跑法：node tests/balance.js
  * ========================================================================== */
-import { readFileSync, existsSync, mkdtempSync, rmSync } from 'fs';
+import { readFileSync, existsSync, mkdtempSync, rmSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { tmpdir } from 'os';
@@ -27,6 +27,16 @@ import * as 工具 from '../tools/balance.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
+
+/* ★ 2026-10-12（统筹修）：**这份测试不要用系统临时目录**。
+   本机沙箱给受限进程的临时目录里**不允许再建子目录** ——
+   `mkdtempSync(join(tmpdir(), …))` 直接 `EPERM: operation not permitted`（`tests/balance.js` 第 [5]、[6] 段都踩过）。
+   改成在**仓库内**建临时目录（`.gitignore` 里那条「点开头的临时目录」规则已经挡住，不会进 git）。 */
+const 建临时目录 = (标记) => {
+  const 目录 = join(ROOT, '.tmp-balance-测试', `${标记}-${process.pid}`);
+  mkdirSync(目录, { recursive: true });
+  return 目录;
+};
 
 let fails = 0;
 const errs = [];
@@ -193,7 +203,7 @@ console.log('\n[4] 同一主种子跑两遍，除了「生成时间」那一行�
 /* ============================ [5] docs/平衡表.md 能生成、带结论段 ============================ */
 console.log('\n[5] 平衡表能生成：抬头写明「自动生成」+ 时间 + 种子 + 场次，且含结论段');
 {
-  const 临时 = mkdtempSync(join(tmpdir(), 'mecha-balance-'));
+  const 临时 = 建临时目录('mecha-balance');
   const 目标 = join(临时, '平衡表.md');
   try {
     const { r } = 跑(['--quick', `--out=${目标}`, '--quiet']);
@@ -358,7 +368,7 @@ console.log('\n[7] 作弊上限口径（`--cheat`）：出表 / 行数 / 口径 
   else bad('跑完 --cheat 之后组队表变了 —— 作弊用的 RUN 没还原（藏品漏进了别的战斗）');
 
   /* ---- 能写出 docs/难度-上限表.md，且**不碰 docs/平衡表.md** ---- */
-  const 临时 = mkdtempSync(join(tmpdir(), 'mecha-cheat-'));
+  const 临时 = 建临时目录('mecha-cheat');
   const 目标 = join(临时, '难度-上限表.md');
   try {
     const 写 = 跑(['--cheat', '--quick', `--out=${目标}`, '--quiet']);
