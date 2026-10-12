@@ -1,0 +1,651 @@
+<title>残月陨石演出</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+SC:wght@400;700&display=swap">
+<style>
+/* Layout: GBA-ratio stage on top, controls + beat timeline below, single column. */
+:root{
+  --bg:#0c0d16; --panel:#151827; --line:#2a2f48; --fg:#e8eaf2; --muted:#8f96ad;
+  --gold:#f2c45a; --gold-dim:#8a6e30;
+  --f-px:"Press Start 2P","Courier New",monospace;
+  --f-body:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--f-body);padding-block:20px 40px;padding-inline:16px}
+.wrap{max-width:960px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-direction:column;gap:6px}
+h1{margin:0;font-family:var(--f-px);font-weight:400;font-size:clamp(13px,2.2vw,18px);color:var(--gold);letter-spacing:.06em;line-height:1.6}
+h1 span{font-family:var(--f-body);font-weight:700;font-size:1.25em;letter-spacing:.02em}
+header p{margin:0;color:var(--muted);font-size:13px;line-height:1.7;max-width:66ch}
+.stage{width:100%;aspect-ratio:3/2;max-width:100%;background:#000;border:2px solid var(--line);border-radius:4px;overflow:hidden}
+canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+.controls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:12px 14px}
+.grp{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lbl{color:var(--muted);font-size:12px;letter-spacing:.08em}
+button{font:inherit;font-size:13px;color:var(--fg);background:#1e2236;border:1px solid var(--line);border-radius:3px;padding:6px 12px;cursor:pointer}
+button:hover{border-color:var(--gold-dim)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+button.primary{background:var(--gold);color:#1a1406;border-color:var(--gold);font-weight:700}
+button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
+input[type=range]{width:110px;accent-color:var(--gold)}
+.val{font-family:var(--f-px);font-size:10px;color:var(--gold);min-width:6ch}
+.tl{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.tl-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:12px}
+.tl-head b{font-family:var(--f-px);font-size:10px;color:var(--fg);font-weight:400}
+.track{position:relative;display:flex;height:40px;overflow:hidden;cursor:pointer;user-select:none;touch-action:none}
+.seg{border-right:2px solid var(--bg);background:#1f2438;display:flex;align-items:center;justify-content:center;min-width:0;font-size:11px;color:var(--muted);overflow:hidden;white-space:nowrap}
+.seg.on{background:#33301e;color:var(--gold)}
+.seg.key{background:#2e1c1c}
+.seg.key.on{background:#55291f;color:#ffd2b8}
+.head{position:absolute;top:0;bottom:0;width:2px;background:var(--gold);pointer-events:none}
+.beats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 16px;font-size:12px;color:var(--muted)}
+.beats div{display:flex;gap:8px;min-width:0}
+.beats .t{font-family:var(--f-px);font-size:9px;line-height:18px;color:var(--fg);min-width:7ch}
+.note{font-size:12px;color:var(--muted);line-height:1.7}
+@media (max-width:520px){ .seg{font-size:0} }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>ZANGETSU <span>残月的余响 · 陨石打击</span></h1>
+    <p>GBA 原生分辨率 240×160、整数倍放大的像素演出；机体 SD 比例。Feena 用质量加速器把一块陨石砸向对方小兵。点或拖时间轴跳到任意一拍，命中停顿和震动可以现场调。</p>
+  </header>
+
+  <div class="stage"><canvas id="cv" width="240" height="160" aria-label="像素横版战斗演出"></canvas></div>
+
+  <div class="controls">
+    <div class="grp"><button class="primary" id="play">▶ 播放（带音效）</button><button id="pause">暂停</button></div>
+    <div class="grp"><span class="lbl">结果</span><button id="rKill" aria-pressed="true">击破</button><button id="rLive" aria-pressed="false">未击破</button></div>
+    <div class="grp"><span class="lbl">速度</span>
+      <button data-sp="0.25" aria-pressed="false">¼</button><button data-sp="0.5" aria-pressed="false">½</button>
+      <button data-sp="1" aria-pressed="true">1×</button><button data-sp="2" aria-pressed="false">2×</button></div>
+    <div class="grp"><span class="lbl">命中停顿</span><input type="range" id="stop" min="0" max="250" step="10" value="100"><span class="val" id="stopV">100ms</span></div>
+    <div class="grp"><span class="lbl">震动</span><input type="range" id="shake" min="0" max="200" step="10" value="100"><span class="val" id="shakeV">100%</span></div>
+    <div class="grp"><span class="lbl">音效</span><button id="snd" aria-pressed="true">开</button></div>
+  </div>
+
+  <div class="tl">
+    <div class="tl-head"><span>时间轴（1× 下的真实时长，点或拖动跳到那一拍）</span><span><b id="now">0</b> / <b id="total">0</b> ms</span></div>
+    <div class="track" id="track"><div class="head" id="head"></div></div>
+    <div class="beats" id="beats"></div>
+    <div class="note">红色两拍（命中停顿、冲击）最影响打击感。觉得哪一拍不对，直接说「坠落再快一点」「停顿 150」就行。</div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const cv = document.getElementById('cv');
+let g = cv.getContext('2d');
+g.imageSmoothingEnabled = false;
+const W = 240, H = 160;
+
+/* ---------------- settings & timeline ---------------- */
+const S = { stop: 100, shake: 1, speed: 1, kill: true, sound: true };
+const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const IMPACT = 4150;
+function beats() {
+  const s = S.stop, A = t => t + s;
+  const L = [
+    { k: 'enter', n: '入场', a: 0, b: 450 },
+    { k: 'cutin', n: '切入台词', a: 450, b: 1700 },
+    { k: 'charge', n: '蓄力', a: 1700, b: 2550 },
+    { k: 'fire', n: '发射', a: 2550, b: 2850 },
+    { k: 'pan', n: '转镜', a: 2850, b: 3250 },
+    { k: 'omen', n: '预兆', a: 3250, b: 3550 },
+    { k: 'fall', n: '坠落', a: 3550, b: IMPACT },
+    { k: 'stop', n: '命中停顿', a: IMPACT, b: IMPACT + s, key: true },
+    { k: 'hit', n: '冲击', a: A(IMPACT), b: A(4500), key: true },
+    { k: 'drain', n: '扣血', a: A(4500), b: A(5200) },
+  ];
+  if (S.kill) { L.push({ k: 'kill', n: '击破', a: A(5200), b: A(6550) }, { k: 'exit', n: '退场', a: A(6550), b: A(7050) }); }
+  else { L.push({ k: 'recoil', n: '后仰', a: A(5200), b: A(5900) }, { k: 'exit', n: '退场', a: A(5900), b: A(6400) }); }
+  return L;
+}
+let BEATS = beats();
+const total = () => BEATS[BEATS.length - 1].b;
+const toBase = t => t < IMPACT ? t : (t < IMPACT + S.stop ? IMPACT : t - S.stop);
+
+/* ---------------- helpers ---------------- */
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const prog = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+const easeIn = t => t * t * t, easeOut = t => 1 - Math.pow(1 - t, 3);
+const easeInOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const easeBack = t => { const c = 2.2; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+const r = Math.round;
+const step = (t, ms) => Math.floor(t / ms) * ms;      // GBA-style choppy motion
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const px = (x, y, c) => { g.fillStyle = c; g.fillRect(r(x), r(y), 1, 1); };
+const rect = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(r(x), r(y), r(w), r(h)); };
+function disc(cx, cy, rad, c, dither) {       // pixel circle, optional checker dither
+  g.fillStyle = c; const R2 = rad * rad;
+  for (let y = -rad; y <= rad; y++) for (let x = -rad; x <= rad; x++) {
+    if (x * x + y * y > R2) continue;
+    if (dither && ((x + y + r(cx) + r(cy)) & 1)) continue;
+    g.fillRect(r(cx) + x, r(cy) + y, 1, 1);
+  }
+}
+function ring(cx, cy, rx, ry, c) {             // pixel ellipse outline
+  g.fillStyle = c; const n = Math.max(12, r((rx + ry) * 3));
+  for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; g.fillRect(r(cx + Math.cos(a) * rx), r(cy + Math.sin(a) * ry), 1, 1); }
+}
+
+/* ---------------- sprites (original SD pixel art, outline added automatically) ---------------- */
+const PAL = {
+  K: '#141623', W: '#f2f4fa', L: '#c3cde3', B: '#8794b6', D: '#4d5878', G: '#f2c45a', g: '#a8742c', C: '#7ff0ff',
+  M: '#b4524a', m: '#5e2830', n: '#e3876a', Y: '#ffe066', w: '#ffffff', r: '#3a1e22', R: '#9aa0aa', k: '#555a66',
+};
+const FEENA = [
+'..........GGGGGGGG............',
+'........GG........GG..........',
+'........GG........GG..........',
+'..........GGGGGGGG............',
+'...........LLLLLL.............',
+'..........LWWWWWWL............',
+'.........LWWWWWWWWL...........',
+'........LWWWWWWWWWWL..........',
+'.......LWWWWWWWWWWWBL.........',
+'......LWWWWWWWWWWWWBBL........',
+'......DDDDDDDDDWWWWBBL........',
+'......DCCCCCCCDWWWWBBL........',
+'......DCWCCCCCDWWWWBBL........',
+'......DDDDDDDDDWWWWBBL........',
+'.......LWWWWWWWWWWWBBL..BB.....',
+'.......LLWGGWWWWWWBBL..BLB.....',
+'........LLLWWWWWWBBBL.BLLB.....',
+'.........DDLLLLLLBBD.BLLB......',
+'..........DDDDDDDD..BLLB.......',
+'.......LLLLDDDDLLLLBLB.........',
+'.....LWWWWBDDDDBWWWWLB.........',
+'....LWWWWWBWGGWBWWWWWL.........',
+'....LWWWWWBWGGWBWWWWWL.........',
+'....BLLLLLBWWWWBLLLLLB.........',
+'..........BWWWWB...............',
+'.........DLWWWWLD..............',
+'.........DLWWWWLD..............',
+'........DLLWWWWLLD.............',
+'........DLWWWWWWLD.............',
+'.......DLWWWWWWWWLD............',
+'.......DLWWWGWWWWLD............',
+'......DLWWWWGWWWWWLD...........',
+'......DLWWWWGWWWWWLD...........',
+'.....DLWWWWWGWWWWWWLD..........',
+'.....DLWWWWWGWWWWWWLD..........',
+'....DLLWWWWWGWWWWWWLLD.........',
+'....DBLLLLLLGLLLLLLLBD.........',
+'....DBBBBBBBGBBBBBBBBD.........',
+'.....GGGGGGGGGGGGGGGG..........',
+'.........DBB....BBD............',
+'.........DBB....BBD............',
+'........DBBB...DBBB............',
+'.......DDDDD...DDDDD...........',
+];
+const ARM_DOWN = ['..LL..', '.LWWL.', 'LWWWWL', 'LWWWBL', '.LWWB.', '.LWWB.', '.BLLB.', '.DBBD.'];
+const ARM_UP = ['.DBBD.', '.BLLB.', '.LWWB.', '.LWWB.', '.LWWB.', '.LWWB.', '.LWWB.', '.LWWB.', 'LWWWBL', 'LWWWWL', '.LWWL.'];
+const GRUNT = [
+'.......mmmmmmmmm..............',
+'......mMMMMMMMMMm.............',
+'.....mMMnnMMMMMMMm............',
+'.....mMnnMMMMMMMMm............',
+'.....mmmmmmmmmmmmm............',
+'.....mrrrrrrrYYYrm............',
+'.....mrrrrrrrYwYrm............',
+'.....mmmmmmmmmmmmm............',
+'.....mMMMMMMMMMMMm............',
+'......mMMMMMMMMMm.............',
+'.......mmmmmmmmm..............',
+'..nnnnn..mmmmm..nnnnnnnn......',
+'.nMMMMMn.mMMMm.nMMMMMMMMn.....',
+'.nMMMMMMnMMMMMnMMMMMMMMMMn....',
+'.mMMMMMMMMMMMMMMMMMMMMMMMm....',
+'.mmMMMMMMMMMMMMMMMMMMMMMmm....',
+'..mmmMMMMMMYYMMMMMMMMmmmm.....',
+'....mMMMMMMYYMMMMMMMMm........',
+'....mMMMMMMMMMMMMMMMMm........',
+'.....mmMMMMMMMMMMMMmm.........',
+'.....mmmmmmmmmmmmmmmm.........',
+'......mMMMm....mMMMm..........',
+'......mMMMm....mMMMm..........',
+'......mMMMm....mMMMm..........',
+'.....mMMMMm....mMMMMm.........',
+'.....mMMMMm....mMMMMm.........',
+'.....mnnnnm....mnnnnm.........',
+'....mmmmmmmm..mmmmmmmm........',
+];
+const ROCK = ['...rrrr...', '..rkkkkr..', '.rkRkkkkr.', 'rkkkkRkkkr', 'rkRkkkkkkr', 'rkkkkkRkkr', 'rkkRkkkkkr', '.rkkkkkRr.', '..rkkkkr..', '...rrrr...'];
+
+function buildSprite(layers, w, h, outline = PAL.K, flip = false) {
+  // layers: [{grid, x, y}] painted in order; returns canvas with 1px auto outline (+1px padding)
+  const grid = Array.from({ length: h }, () => Array(w).fill(null));
+  for (const L of layers) L.grid.forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== '.' && PAL[ch]) { const yy = y + L.y, xx = x + L.x; if (yy >= 0 && yy < h && xx >= 0 && xx < w) grid[yy][xx] = PAL[ch]; } }));
+  const c = document.createElement('canvas'); c.width = w + 2; c.height = h + 2;
+  const q = c.getContext('2d');
+  const at = (x, y) => (y >= 0 && y < h && x >= 0 && x < w) ? grid[y][x] : null;
+  for (let y = -1; y <= h; y++) for (let x = -1; x <= w; x++) {
+    const v = at(x, y);
+    const fx = flip ? (w - 1 - x) : x;
+    if (v) { q.fillStyle = v; q.fillRect(fx + 1, y + 1, 1, 1); }
+    else if (at(x - 1, y) || at(x + 1, y) || at(x, y - 1) || at(x, y + 1)) { q.fillStyle = outline; q.fillRect(fx + 1, y + 1, 1, 1); }
+  }
+  return c;
+}
+function whiteOf(sp) { const c = document.createElement('canvas'); c.width = sp.width; c.height = sp.height; const q = c.getContext('2d'); q.drawImage(sp, 0, 0); q.globalCompositeOperation = 'source-in'; q.fillStyle = '#fff'; q.fillRect(0, 0, c.width, c.height); return c; }
+const RIFLE = ['RRRRRRRRRRRRR', 'kkkkkkRRkkkkk', '......kk.....'];
+const SP = {
+  feenaIdle: buildSprite([{ grid: FEENA, x: 3, y: 0 }, { grid: ARM_DOWN, x: 4, y: 20 }], 34, 43),
+  feenaCast: buildSprite([{ grid: FEENA, x: 3, y: 0 }, { grid: ARM_UP, x: 3, y: 10 }], 34, 43),
+  grunt: buildSprite([{ grid: GRUNT, x: 0, y: 0 }, { grid: RIFLE, x: 15, y: 15 }], 30, 28),
+  rock: buildSprite([{ grid: ROCK, x: 0, y: 0 }], 10, 10, '#1a0f0a'),
+  head: buildSprite([{ grid: FEENA.slice(0, 19), x: 0, y: 0 }], 30, 19),
+};
+SP.gruntWhite = whiteOf(SP.grunt);
+
+/* ---------------- 1-bit text (crisp bitmap look) ---------------- */
+const TXT = new Map();
+function text(str, font, color, outline, opts = {}) {
+  const key = str + '|' + font + '|' + color + '|' + outline;
+  let c = TXT.get(key);
+  if (!c) {
+    const m = document.createElement('canvas').getContext('2d'); m.font = font;
+    const w = Math.ceil(m.measureText(str).width) + 4, size = parseInt(font.match(/(\d+)px/)[1], 10), h = size + 6;
+    const raw = document.createElement('canvas'); raw.width = w; raw.height = h;
+    const q = raw.getContext('2d'); q.font = font; q.textBaseline = 'top'; q.fillStyle = '#fff'; q.fillText(str, 2, 2);
+    const d = q.getImageData(0, 0, w, h), on = new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) on[i] = d.data[i * 4 + 3] > 120 ? 1 : 0;
+    c = document.createElement('canvas'); c.width = w + 2; c.height = h + 2;
+    const o = c.getContext('2d');
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (on[y * w + x]) { o.fillStyle = color; o.fillRect(x + 1, y + 1, 1, 1); }
+      else if (outline && ((x > 0 && on[y * w + x - 1]) || (x < w - 1 && on[y * w + x + 1]) || (y > 0 && on[(y - 1) * w + x]) || (y < h - 1 && on[(y + 1) * w + x]))) { o.fillStyle = outline; o.fillRect(x + 1, y + 1, 1, 1); }
+    }
+    TXT.set(key, c);
+  }
+  return c;
+}
+function drawText(str, x, y, font, color, outline, align = 'left', scale = 1) {
+  const c = text(str, font, color, outline);
+  const w = c.width * scale, h = c.height * scale;
+  const dx = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
+  g.drawImage(c, r(dx), r(y), r(w), r(h));
+  return c.width;
+}
+const FONT_CN = n => `${n}px "Noto Sans SC","Microsoft YaHei","PingFang SC",sans-serif`;
+const FONT_CNB = n => `700 ${n}px "Noto Sans SC","Microsoft YaHei","PingFang SC",sans-serif`;
+const FONT_PX = n => `${n}px "Press Start 2P","Courier New",monospace`;
+
+/* ---------------- world ---------------- */
+const GROUND = 118;
+const ENEMY_X = 70, ALLY_X = 330;
+const CAM_ALLY = 280, CAM_ENEMY = 116;
+const ENEMY = { name: '量产型·小兵', lv: 14, max: 6200 };
+const ALLY = { name: 'Feena·月辉', lv: 20, max: 11250 };
+const DMG = 5180;
+const hpStart = () => S.kill ? 4900 : 6200;
+const R = rng(20261012);
+const STARS = Array.from({ length: 90 }, () => ({ x: R() * 520, y: R() * 92, b: R() < .15, tw: R() * 8 }));
+const CRATERS = Array.from({ length: 16 }, () => ({ x: R() * 560 - 60, y: GROUND + 4 + R() * 30, rx: 4 + r(R() * 9), ry: 1 + r(R() * 2) }));
+const CHARGE = Array.from({ length: 30 }, () => ({ a: R() * Math.PI * 2, d: 18 + R() * 26, delay: R() * 500 }));
+const DEBRIS = Array.from({ length: 40 }, () => { const a = -Math.PI * (0.1 + R() * 0.8); const sp = 40 + R() * 120; return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, s: R() < .3 ? 2 : 1, life: 450 + R() * 600, hot: R() < .5 }; });
+const SPARK = Array.from({ length: 16 }, () => ({ a: R() * Math.PI * 2, sp: 30 + R() * 50, life: 220 + R() * 200 }));
+const FIRE = ['#fffbe0', '#ffe066', '#ffa23a', '#e8502c', '#8a2420'];
+
+/* ---------------- background ---------------- */
+function background(cam, tb) {
+  rect(0, 0, W, H, '#07081a');
+  rect(0, 60, W, 40, '#0c0e24');
+  for (let y = 56; y < 60; y++) for (let x = (y & 1); x < W; x += 2) px(x, y, '#0c0e24');   // dithered sky band
+  for (const s of STARS) {
+    const x = ((s.x - cam * 0.08) % 520 + 520) % 520 - 140;
+    if (x < 0 || x >= W) continue;
+    const on = s.b || (Math.floor(tb / 260 + s.tw) % 5) !== 0;
+    if (on) px(x, s.y, s.b ? '#ffffff' : '#7d86b8');
+  }
+  // earth
+  const ex = 150 - cam * 0.1, ey = 28;
+  disc(ex, ey, 14, '#2a5da8'); disc(ex, ey, 14, '#3f86d6', true);
+  disc(ex - 4, ey - 3, 4, '#5fae5a'); disc(ex + 5, ey + 4, 3, '#5fae5a');
+  for (let y = -14; y <= 14; y++) for (let x = -14; x <= 14; x++) { if (x * x + y * y > 196) continue; if (x + y > 6) px(ex + x, ey + y, '#13284d'); else if (x + y > 2 && ((x + y) & 1)) px(ex + x, ey + y, '#13284d'); }
+  // far ridge
+  for (let x = 0; x < W; x++) {
+    const wx = x + cam * 0.4;
+    const h = r(12 + 6 * Math.sin(wx / 26) + 4 * Math.sin(wx / 11 + 1.3));
+    rect(x, 100 - h, 1, h, '#232842');
+    px(x, 100 - h, '#363d60');
+  }
+  // ground
+  rect(0, 100, W, H - 100, '#545a72');
+  for (let y = 100; y < 104; y++) for (let x = (y & 1); x < W; x += 2) px(x, y, '#3c4158');
+  rect(0, 100, W, 1, '#8c93ae');
+  for (const c of CRATERS) {
+    const x = c.x - cam + W / 2; if (x < -20 || x > W + 20) continue;
+    for (let i = -c.rx; i <= c.rx; i++) { const hh = Math.max(0, r(c.ry * Math.sqrt(1 - (i * i) / (c.rx * c.rx)))); rect(x + i, c.y - hh, 1, hh * 2 + 1, '#3c4158'); }
+    rect(x - c.rx + 1, c.y + c.ry + 1, c.rx * 2 - 1, 1, '#7d84a0');
+  }
+}
+
+/* ---------------- HUD ---------------- */
+function frame9(x, y, w, h) {
+  rect(x, y, w, h, '#101428'); rect(x, y, w, 1, '#c3cde3'); rect(x, y + h - 1, w, 1, '#4d5878'); rect(x, y, 1, h, '#c3cde3'); rect(x + w - 1, y, 1, h, '#4d5878');
+}
+function hpBar(x, y, w, frac, lag) {
+  rect(x - 1, y - 1, w + 2, 5, '#141623');
+  rect(x, y, r(w * clamp(lag, 0, 1)), 3, '#ffffff');
+  const col = frac > .5 ? '#5fd35a' : frac > .25 ? '#ffd23a' : '#ff5a3a';
+  rect(x, y, r(w * clamp(frac, 0, 1)), 3, col);
+  rect(x, y, r(w * clamp(frac, 0, 1)), 1, '#ffffffaa');
+}
+function hud(hp, lag, show) {
+  if (!show) return;
+  frame9(0, 127, 119, 33); frame9(121, 127, 119, 33);
+  drawText(ENEMY.name, 4, 128, FONT_CN(11), '#ff9a86', null);
+  drawText('LV' + ENEMY.lv, 115, 131, FONT_PX(8), '#8f96ad', null, 'right');
+  hpBar(5, 145, 109, hp / ENEMY.max, lag / ENEMY.max);
+  drawText(`${Math.max(0, r(hp))}/${ENEMY.max}`, 115, 150, FONT_PX(8), '#e8eaf2', null, 'right');
+  drawText(ALLY.name, 125, 128, FONT_CN(11), '#9fd2ff', null);
+  drawText('LV' + ALLY.lv, 236, 131, FONT_PX(8), '#8f96ad', null, 'right');
+  hpBar(126, 145, 109, 1, 1);
+  drawText(`${ALLY.max}/${ALLY.max}`, 236, 150, FONT_PX(8), '#e8eaf2', null, 'right');
+}
+
+/* ---------------- cut-in ---------------- */
+const LINE1 = '质量加速器，充能完毕——', LINE2 = '月光，坠落吧！';
+function cutin(p, tb) {
+  const inP = prog(p, 0, .12), outP = prog(p, .9, 1);
+  const off = r((1 - easeOut(inP)) * W - easeIn(outP) * W);
+  for (let y = 0; y < H; y++) for (let x = (y & 1); x < W; x += 2) px(x, y, '#000000');   // dither dim
+  g.save(); g.translate(off, 0);
+  const y0 = 28, h = 76;
+  rect(0, y0, W, h, '#0d1430');
+  for (let i = 0; i < 14; i++) { const yy = y0 + 4 + ((i * 23) % (h - 8)); const xx = ((i * 71 - step(tb, 33) * (0.25 + (i % 4) * .08)) % (W + 80) + W + 80) % (W + 80) - 40; rect(xx, yy, 18 + (i % 5) * 8, 1, i % 3 ? '#1f3264' : '#3c5a9c'); }
+  rect(0, y0, W, 2, '#f2c45a'); rect(0, y0 + h - 2, W, 2, '#f2c45a');
+  // portrait: the same SD head at 3x inside a framed window
+  frame9(8, y0 + 6, 62, 64);
+  g.save(); g.beginPath(); g.rect(9, y0 + 7, 60, 62); g.clip();
+  rect(9, y0 + 7, 60, 62, '#18245a');
+  for (let i = 0; i < 6; i++) rect(9, y0 + 9 + i * 11, 60, 1, '#22306e');
+  const bob = (Math.floor(tb / 200) % 2);
+  g.drawImage(SP.head, 0, 0, SP.head.width, SP.head.height, 4, y0 + 8 + bob, SP.head.width * 2, SP.head.height * 2);
+  g.restore();
+  // lines (typewriter)
+  const n1 = Math.floor(prog(p, .12, .42) * LINE1.length), n2 = Math.floor(prog(p, .42, .6) * LINE2.length);
+  drawText('Feena', 78, y0 + 6, FONT_PX(8), '#8f96ad', null);
+  if (n1) drawText(LINE1.slice(0, n1), 78, y0 + 18, FONT_CN(12), '#ffffff', null);
+  if (n2) drawText(LINE2.slice(0, n2), 78, y0 + 34, FONT_CN(12), '#ffffff', null);
+  const nm = prog(p, .55, .66);
+  if (nm > 0) { const sc = nm < 1 ? 2 : 1; drawText('残月的余响', 78 + (sc === 2 ? -6 : 0), y0 + 50 - (sc === 2 ? 6 : 0), FONT_CNB(14), '#f2c45a', '#3a2408', 'left', 1); }
+  g.restore();
+}
+
+/* ---------------- meteor ---------------- */
+function meteorPos(tb, cam) {
+  const q = easeIn(prog(tb, 3550, IMPACT));
+  const sx = ENEMY_X - cam + W / 2;
+  return { x: lerp(sx + 120, sx + 2, q), y: lerp(-14, GROUND - 16, q), q };
+}
+
+/* ---------------- sound ---------------- */
+let AC = null;
+const ac = () => { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } } return AC; };
+function sfx(kind) {
+  if (!S.sound) return; const a = ac(); if (!a || a.state === 'suspended') return;
+  const now = a.currentTime, out = a.createGain(); out.gain.value = .35; out.connect(a.destination);
+  const tone = (type, f0, f1, dur, vol, at = 0) => { const o = a.createOscillator(), gn = a.createGain(); o.type = type; o.frequency.setValueAtTime(f0, now + at); o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), now + at + dur); gn.gain.setValueAtTime(vol, now + at); gn.gain.exponentialRampToValueAtTime(.0001, now + at + dur); o.connect(gn); gn.connect(out); o.start(now + at); o.stop(now + at + dur + .05); };
+  const noise = (dur, f, vol, at = 0, f1) => { const b = a.createBuffer(1, a.sampleRate * (dur + .1), a.sampleRate), d = b.getChannelData(0); let v = 0; for (let i = 0; i < d.length; i++) { if (i % 6 === 0) v = Math.random() * 2 - 1; d[i] = v; } const s = a.createBufferSource(); s.buffer = b; const fl = a.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.setValueAtTime(f, now + at); if (f1) fl.frequency.exponentialRampToValueAtTime(f1, now + at + dur); const gn = a.createGain(); gn.gain.setValueAtTime(vol, now + at); gn.gain.exponentialRampToValueAtTime(.0001, now + at + dur); s.connect(fl); fl.connect(gn); gn.connect(out); s.start(now + at); s.stop(now + at + dur + .05); };
+  // square / stepped-noise voices for a chiptune feel
+  switch (kind) {
+    case 'cutin': tone('square', 880, 1760, .08, .3); tone('square', 1320, 2640, .1, .25, .08); break;
+    case 'blip': tone('square', 1200, 1200, .03, .12); break;
+    case 'charge': tone('square', 110, 880, .85, .14); tone('triangle', 220, 1760, .85, .2); break;
+    case 'fire': noise(.35, 4000, .7, 0, 500); tone('square', 220, 55, .3, .4); break;
+    case 'whistle': tone('square', 1600, 300, .6, .12); break;
+    case 'impact': noise(1.0, 2500, 1, 0, 90); tone('triangle', 120, 30, .8, 1); break;
+    case 'pop': noise(.2, 2000, .6, 0, 300); break;
+    case 'boom': noise(1.3, 1800, 1, 0, 70); tone('triangle', 90, 25, 1.1, 1); break;
+    case 'clang': tone('square', 700, 200, .18, .3); noise(.15, 5000, .3); break;
+  }
+}
+function soundEvents() {
+  const s = S.stop, ev = [[460, 'cutin'], [1700, 'charge'], [2560, 'fire'], [3520, 'whistle'], [IMPACT, 'impact']];
+  const L1 = LINE1.length, L2 = LINE2.length;
+  for (let i = 1; i <= L1; i += 2) ev.push([450 + 1250 * (.12 + .30 * i / L1), 'blip']);
+  for (let i = 1; i <= L2; i += 2) ev.push([450 + 1250 * (.42 + .18 * i / L2), 'blip']);
+  if (S.kill) { const k = 5200 + s; ev.push([k + 300, 'pop'], [k + 470, 'pop'], [k + 630, 'pop'], [k + 760, 'boom']); }
+  else ev.push([5200 + s, 'clang']);
+  return ev;
+}
+
+/* ---------------- one frame (pure function of t) ---------------- */
+function render(t) {
+  const tb = toBase(t), s = S.stop;
+  const freeze = t >= IMPACT && t < IMPACT + s;
+  const ai = t >= IMPACT + s ? tb - IMPACT : (freeze ? 0 : -1);     // ms since impact (after the stop)
+  const ts = step(tb, 33);                                           // stepped clock for effects
+
+  const cam = r(lerp(CAM_ALLY, CAM_ENEMY, easeInOut(prog(tb, 2850, 3250))));
+
+  // shake (integer pixels, stepped)
+  let sx = 0, sy = 0;
+  if (ai >= 0) { const q = step(ai, 33), amp = 4 * S.shake * Math.exp(-q / 160); sx += r(amp * Math.sin(q * .3)); sy += r(amp * Math.cos(q * .41)); }
+  if (tb >= 2550 && tb < 2750) { const q = step(tb - 2550, 33), amp = 2 * S.shake * Math.exp(-q / 80); sx += r(amp * Math.sin(q)); sy += r(amp * Math.cos(q * 1.3)); }
+  const killT = S.kill ? tb - 5200 : -1;
+  if (killT > 760) { const q = step(killT - 760, 33), amp = 3 * S.shake * Math.exp(-q / 220); sx += r(amp * Math.sin(q * .37)); sy += r(amp * Math.cos(q * .29)); }
+
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  rect(0, 0, W, H, '#000');
+  g.save(); g.translate(sx, sy);
+  background(cam, tb);
+
+  // pan speed lines
+  if (tb > 2850 && tb < 3250) for (let i = 0; i < 10; i++) rect(((i * 61 + ts * .9) % (W + 60)) - 30, 8 + i * 9, 20 + (i % 3) * 12, 1, '#c3cde388');
+
+  // ---------- ally ----------
+  const ax = ALLY_X - cam + W / 2;
+  const casting = tb >= 1700 && tb < 2900;
+  const glow = prog(tb, 1750, 2500) * (1 - prog(tb, 2600, 2850));
+  const handX = ax - 15, handY = GROUND - 33;      // raised hand in screen space
+  if (ax > -40 && ax < W + 40) {
+    rect(ax - 12, GROUND + 1, 24, 2, '#2d3146');
+    const bob = (Math.floor(tb / 400) % 2);
+    const recoil = (tb >= 2550 && tb < 2650) ? 2 : 0;
+    const sp = casting ? SP.feenaCast : SP.feenaIdle;
+    g.drawImage(sp, r(ax - 18), r(GROUND - 44 + bob + recoil));
+    if (!casting) disc(ax - 14, GROUND - 16 + bob, 2, '#e0f4ff');     // orb in the lowered hand
+    if (casting) {
+      // accelerator rings stacking above the hand
+      const n = Math.min(4, Math.floor(prog(tb, 1750, 2300) * 5));
+      for (let i = 0; i < n; i++) {
+        const yy = handY - 8 - i * 9, flick = (Math.floor(ts / 66) + i) % 3 === 0;
+        ring(handX, yy, 7 - i % 2, 2, flick ? '#ffffff' : '#f2c45a');
+      }
+      // converging motes
+      if (tb < 2560) for (const c of CHARGE) { const lt = ts - 1700 - c.delay; if (lt < 0) continue; const q = (lt % 480) / 480; const d = c.d * (1 - easeIn(q)); px(handX + Math.cos(c.a) * d, handY - 18 + Math.sin(c.a) * d * .7, q > .7 ? '#ffffff' : '#7ff0ff'); }
+      // orb charging at the top of the stack
+      if (tb < 2560) { const rr = 2 + r(glow * 3) + (Math.floor(ts / 66) % 2); disc(handX, handY - 40, rr + 2, '#7ff0ff', true); disc(handX, handY - 40, rr, '#e0f4ff'); disc(handX, handY - 40, Math.max(1, rr - 2), '#ffffff'); }
+      // ground glow
+      if (glow > .2) for (let x = -14; x <= 14; x += 2) px(ax + x + (Math.floor(ts / 66) % 2), GROUND + 2, '#7ff0ff');
+    }
+    // launch beam (straight up, chunky)
+    if (tb >= 2550 && tb < 2850) {
+      const q = prog(tb, 2550, 2700), fade = 1 - prog(tb, 2700, 2850);
+      const top = r(lerp(handY - 40, -20, easeOut(q)));
+      const wB = fade > .5 ? 5 : fade > .2 ? 3 : 1;
+      rect(handX - (wB >> 1) - 1, top, wB + 2, handY - 40 - top + 4, '#7ff0ff');
+      rect(handX - (wB >> 1), top, wB, handY - 40 - top + 4, '#ffffff');
+      if (tb < 2620) disc(handX, handY - 40, 7, '#ffffff', (Math.floor(ts / 33) % 2) === 1);
+    }
+  }
+
+  // ---------- enemy ----------
+  const exs = ENEMY_X - cam + W / 2;
+  const looking = tb > 3300 && tb < 4300;
+  let knock = 0, white = false, alive = true;
+  if (ai >= 0) { knock = S.kill ? r(5 * Math.exp(-ai / 220)) : 0; white = freeze || ai < 100; }
+  if (!S.kill && tb >= 5200) { const q = tb - 5200; knock = r(7 * Math.sin(Math.PI * prog(q, 0, 500))); white = q < 66 && (Math.floor(q / 33) % 2 === 0); }
+  if (killT >= 0 && killT < 300) white = Math.floor(killT / 50) % 2 === 0;
+  if (killT >= 760) alive = false;
+  if (exs > -40 && exs < W + 40) {
+    // warning shadow on the ground
+    const sh = prog(tb, 3250, IMPACT);
+    if (sh > 0 && tb <= IMPACT) { const rw = r(4 + 18 * sh); for (let x = -rw; x <= rw; x++) if (((x + Math.floor(ts / 66)) & 1) === 0) px(exs + 2 + x, GROUND + 2, '#ff5a3a'); }
+    if (alive) {
+      rect(exs - 11, GROUND + 1, 22, 2, '#2d3146');
+      const bob = (Math.floor(tb / 380) % 2);
+      g.drawImage(white ? SP.gruntWhite : SP.grunt, r(exs - 15 - knock), r(GROUND - 29 + bob + (looking ? 0 : 0)));
+      if (looking && tb < 3700) drawText('!', exs + 6, GROUND - 46 - (Math.floor(tb / 100) % 2), FONT_PX(8), '#ffe066', '#141623');
+    }
+  }
+
+  // ---------- omen glint / meteor ----------
+  if (tb > 3250 && tb <= IMPACT) {
+    if (tb < 3550) {
+      const gx = exs + 120, on = Math.floor(ts / 66) % 2;
+      px(gx, 6, '#ffffff'); if (on) { px(gx - 1, 6, '#ffe066'); px(gx + 1, 6, '#ffe066'); px(gx, 5, '#ffe066'); px(gx, 7, '#ffe066'); }
+    } else {
+      // trail: chunky blocks, hot to cold
+      for (let i = 1; i <= 16; i++) {
+        const p = meteorPos(ts - i * 18, cam); if (p.q <= 0) continue;
+        const sz = Math.max(1, r((5 - i * .28) * (0.6 + p.q * .6)));
+        const col = FIRE[Math.min(FIRE.length - 1, Math.floor(i / 3.5))];
+        const jx = ((i * 7) % 3) - 1;
+        rect(p.x + jx - sz / 2 + 5, p.y - sz / 2 + 5, sz, sz, col);
+      }
+      const m = meteorPos(ts, cam);
+      disc(m.x + 5, m.y + 5, 7, '#ffa23a', true);
+      g.drawImage(SP.rock, r(m.x - 1), r(m.y - 1));
+      px(m.x + 2, m.y + 2, '#ffe066'); px(m.x + 3, m.y + 2, '#fffbe0');
+      for (let i = 0; i < 5; i++) { const ox = (i * 37) % 70 - 20, oy = (i * 23) % 50; rect(m.x + ox, m.y - 40 - oy, 1, 6, '#fffbe055'); }
+    }
+  }
+
+  // ---------- impact ----------
+  if (ai >= 0) {
+    const q = step(ai, 33), ix = exs + 2, iy = GROUND - 6;
+    // fireball: stepped radius, banded colors
+    if (q < 600) {
+      const R0 = r(6 + 24 * easeOut(Math.min(1, q / 250)));
+      const fade = q / 600;
+      const bands = fade < .3 ? [0, 1, 2, 3] : fade < .6 ? [1, 2, 3, 4] : [2, 3, 4];
+      bands.slice().reverse().forEach((b, k) => disc(ix, iy - 6, Math.max(1, R0 - k * 5), FIRE[b], k === 0 && fade > .5));
+    }
+    // shock ring on the ground
+    for (let k = 0; k < 2; k++) { const lt = q - k * 99; if (lt < 0 || lt > 500) continue; const e = easeOut(lt / 500); ring(ix, GROUND + 1, 8 + 70 * e, 2 + 9 * e, k ? '#ffa23a' : '#fffbe0'); }
+    // debris
+    for (const d of DEBRIS) { if (q > d.life) continue; const s2 = q / 1000; const x = ix + d.vx * s2, y = iy - 6 + d.vy * s2 + 0.5 * 260 * s2 * s2; if (y > GROUND + 10) continue; rect(x, y, d.s, d.s, d.hot ? FIRE[1 + (q > d.life * .5 ? 2 : 0)] : '#a3a9bd'); }
+    // dust puffs (dithered)
+    if (q > 120 && q < 1300) { const e = prog(q, 120, 1300); for (let k = -2; k <= 2; k++) disc(ix + k * (8 + 10 * e), GROUND - 2 - e * 6 - (k & 1) * 3, r(4 + 5 * e), e < .5 ? '#8a8fa6' : '#5c6178', true); }
+    // crater glow
+    if (q < 1500) for (let x = -14; x <= 14; x++) if ((x & 1) || q < 700) px(ix + x, GROUND + 3, q < 700 ? '#ffa23a' : '#8a2420');
+  }
+
+  // ---------- kill sequence ----------
+  if (killT >= 0 && S.kill) {
+    const q = step(killT, 33), ex = exs, ey = GROUND;
+    const POPS = [[-6, -20, 0], [8, -10, 170], [-2, -30, 330]];
+    for (const [dx, dy, at] of POPS) { const lt = q - 300 - at; if (lt < 0 || lt > 330) continue; const e = lt / 330; const rr = r(2 + 8 * easeOut(e)); disc(ex + dx, ey + dy, rr, FIRE[e < .4 ? 1 : 3], e > .6); disc(ex + dx, ey + dy, Math.max(1, rr - 3), FIRE[0]); }
+    const bt = q - 760;
+    if (bt >= 0 && bt < 900) {
+      const e = bt / 900, rr = r(8 + 30 * easeOut(Math.min(1, bt / 300)));
+      [4, 3, 2, 1, 0].forEach((b, k) => { if (e > .5 && b < 2) return; disc(ex, ey - 16, Math.max(1, rr - k * 6), FIRE[b], k === 0 && e > .4); });
+      for (const sp of SPARK) { if (bt > sp.life) continue; const d = sp.sp * bt / 1000 * 2; px(ex + Math.cos(sp.a) * d, ey - 16 + Math.sin(sp.a) * d, '#ffe066'); }
+    }
+    if (bt > 250) { const e = prog(bt, 250, 1400); for (let k = 0; k < 4; k++) disc(ex - 6 + k * 4, ey - 10 - e * 18 - k * 4, r(4 + e * 5), '#4a4658', true); }
+  }
+
+  // ---------- damage number ----------
+  if (ai > 0 && ai < 1400) {
+    const q = step(ai, 33);
+    const hop = q < 100 ? -4 : q < 200 ? -1 : 0;
+    const vis = q < 1100 || (Math.floor(q / 66) % 2 === 0);
+    if (vis) drawText(DMG.toLocaleString('en-US'), exs + 2, GROUND - 62 + hop, FONT_PX(16), '#ffffff', '#c2361e', 'center');
+  }
+  // ---------- 击破 stamp ----------
+  if (killT > 900) {
+    const q = killT - 900, big = q < 66;
+    const vis = tb < 6400 || Math.floor(tb / 66) % 2;
+    if (vis) drawText('击破', exs + 2, 26, FONT_CNB(big ? 28 : 22), '#ff5a3a', '#2a0805', 'center');
+  }
+
+  g.restore();   // end shake
+
+  // ---------- weapon tag ----------
+  if (tb > 1700 && tb < (S.kill ? 6550 : 5900)) { frame9(64, 2, 112, 15); drawText('残月的余响', 70, 2, FONT_CN(11), '#ffffff', null); drawText('3200', 172, 6, FONT_PX(8), '#f2c45a', null, 'right'); }
+
+  // ---------- HUD ----------
+  const hp0 = hpStart();
+  const drained = prog(tb, 4500, 5100), lagged = prog(tb, 4700, 5200);
+  const hpNow = (tb <= IMPACT) ? hp0 : lerp(hp0, hp0 - DMG, Math.max(easeOut(drained), ai >= 0 ? .1 : 0));
+  const hpLag = tb < 4700 ? hp0 : lerp(hp0, hp0 - DMG, easeInOut(lagged));
+  const lastB = BEATS[BEATS.length - 1];
+  hud(Math.max(0, hpNow), Math.max(0, Math.max(hpNow, hpLag)), tb > 200 && !(tb > 450 && tb < 1700) && t < lastB.a + 250);
+
+  // ---------- cut-in ----------
+  if (tb >= 450 && tb < 1700) cutin(prog(tb, 450, 1700), tb);
+
+  // ---------- flashes ----------
+  if (freeze) { if (t - IMPACT < 34) rect(0, 0, W, H, '#ffffff'); else for (let y = 0; y < H; y++) for (let x = (y & 1); x < W; x += 2) px(x, y, '#ffffff'); }
+  else if (ai >= 0 && ai < 99) for (let y = 0; y < H; y += 2) rect(0, y, W, 1, '#ffe06644');
+  if (killT >= 760 && killT < 830) rect(0, 0, W, H, '#ffffff');
+
+  // ---------- wipes ----------
+  const en = prog(t, 0, 450);
+  if (en < 1) { const hh = r((H / 2) * (1 - easeOut(en)) / 4) * 4; rect(0, 0, W, hh, '#000'); rect(0, H - hh, W, hh, '#000'); }
+  const ex2 = prog(t, lastB.a, lastB.b);
+  if (ex2 > 0) { const lvl = Math.floor(ex2 * 4); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (lvl >= 4 || ((x + y * 2) % 4) < lvl) px(x, y, '#000'); } }
+}
+
+/* ---------------- timeline UI ---------------- */
+const track = document.getElementById('track'), head = document.getElementById('head');
+const beatsEl = document.getElementById('beats'), nowEl = document.getElementById('now'), totEl = document.getElementById('total');
+function buildTimeline() {
+  BEATS = beats();
+  track.querySelectorAll('.seg').forEach(n => n.remove());
+  for (const b of BEATS) { const d = document.createElement('div'); d.className = 'seg' + (b.key ? ' key' : ''); d.style.flex = `${Math.max(1, b.b - b.a)} 0 0`; d.textContent = b.n; d.dataset.k = b.k; track.insertBefore(d, head); }
+  beatsEl.innerHTML = BEATS.map(b => `<div><span class="t">${b.b - b.a}ms</span><span>${b.n}</span></div>`).join('');
+  totEl.textContent = total();
+}
+function updateTimeline(t) {
+  head.style.left = `calc(${(t / total()) * 100}% - 1px)`;
+  nowEl.textContent = Math.round(t);
+  for (const n of track.querySelectorAll('.seg')) { const b = BEATS.find(x => x.k === n.dataset.k); n.classList.toggle('on', t >= b.a && t < b.b); }
+}
+
+/* ---------------- playback ---------------- */
+let t = 0, playing = false, last = 0;
+function tick(now) {
+  if (!playing) return;
+  const dt = Math.min(50, now - last); last = now;
+  const prev = t; t += dt * S.speed;
+  for (const [at, kind] of soundEvents()) if (prev <= at && t > at) sfx(kind);
+  if (t >= total()) { t = total(); playing = false; }
+  render(t); updateTimeline(t);
+  if (playing) requestAnimationFrame(tick);
+}
+function play(fromStart) { if (fromStart || t >= total()) t = 0; playing = true; last = performance.now(); requestAnimationFrame(tick); }
+function seek(nt) { playing = false; t = clamp(nt, 0, total()); render(t); updateTimeline(t); }
+document.getElementById('play').addEventListener('click', () => { const a = ac(); if (a && a.state === 'suspended') a.resume(); document.getElementById('pause').textContent = '暂停'; play(true); });
+document.getElementById('pause').addEventListener('click', e => { if (playing) { playing = false; e.target.textContent = '继续'; } else { e.target.textContent = '暂停'; play(false); } });
+const rKill = document.getElementById('rKill'), rLive = document.getElementById('rLive');
+function setKill(v) { S.kill = v; rKill.setAttribute('aria-pressed', String(v)); rLive.setAttribute('aria-pressed', String(!v)); buildTimeline(); seek(Math.min(t, total())); }
+rKill.addEventListener('click', () => setKill(true)); rLive.addEventListener('click', () => setKill(false));
+document.querySelectorAll('[data-sp]').forEach(b => b.addEventListener('click', () => { S.speed = +b.dataset.sp; document.querySelectorAll('[data-sp]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); }));
+const stopI = document.getElementById('stop'), stopV = document.getElementById('stopV');
+stopI.addEventListener('input', () => { S.stop = +stopI.value; stopV.textContent = S.stop + 'ms'; buildTimeline(); if (!playing) seek(Math.min(t, total())); });
+const shakeI = document.getElementById('shake'), shakeV = document.getElementById('shakeV');
+shakeI.addEventListener('input', () => { S.shake = +shakeI.value / 100; shakeV.textContent = shakeI.value + '%'; if (!playing) render(t); });
+const snd = document.getElementById('snd');
+snd.addEventListener('click', () => { S.sound = !S.sound; snd.setAttribute('aria-pressed', String(S.sound)); snd.textContent = S.sound ? '开' : '关'; });
+let dragging = false;
+const trackSeek = e => { const b = track.getBoundingClientRect(); seek(((e.clientX - b.left) / b.width) * total()); };
+track.addEventListener('pointerdown', e => { dragging = true; track.setPointerCapture(e.pointerId); trackSeek(e); });
+track.addEventListener('pointermove', e => { if (dragging) trackSeek(e); });
+track.addEventListener('pointerup', () => { dragging = false; });
+
+/* ---------------- boot ---------------- */
+buildTimeline();
+if (reduce) { S.shake = 0; shakeI.value = 0; shakeV.textContent = '0%'; }
+const boot = () => { TXT.clear(); if (reduce) { seek(IMPACT + S.stop + 300); return; } render(0); updateTimeline(0); play(true); };
+(document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(boot, boot);
+})();
+</script>
