@@ -17,26 +17,35 @@ const 肉鸽界面 = {
   提示: '',
   最近格: null,          // 上一次点的格子（悬停说明用）
   用零件中: null,         // 正在使用中的零件下标（null = 没在用）—— 点了之后地图上高亮它的目标格
+  /* ★ 2026-10-11 招募券：**当前选中的券的下标**（`null` = 没选券）。
+     为什么不写在 `data-act` 里：`界面.动作()` 只按**第一个 `:` 拆一次**（`80-界面.js:195-199`），
+     写 `data-act="券招募:0:B1"` 会被当成「动作 `券招募`、参数 `0:B1`」——
+     所以选中状态放在这里，按钮照旧写 `data-act="招募:<键>"`，由 `界面.招募()` 读这个值。 */
+  选中的券: null,
 
   /* ---------------- 菜单上的入口 ---------------- */
   最近存档() { return 肉鸽.读存档(); },
 
   /* ---------------- 分队选择 ---------------- */
   分队屏() {
-    const 表 = [{ 名: '无', 说明: '不挑分队：招募券完全随机。' }]
-      .concat(CLASSES.map(k => ({ 名: k, 说明: `${k}分队：招募券一半概率出「${k}」券。` })))
-      .concat(FACTIONS.map(f => ({ 名: f, 说明: `${f}分队：招募券一半概率出「${f}」券。` })));
+    const 表 = [{ 名: '无', 说明: '不挑分队：开局 3 张招募券完全随机（含势力券）。' }]
+      .concat(CLASSES.map(k => ({ 名: k, 说明: `${k}分队：开局第 1 张券固定是「${k}招募券」，另 2 张随机。` })))
+      .concat(FACTIONS.map(f => ({ 名: f, 说明: `${f}分队：开局第 1 张券固定是「${f}势力招募券」，另 2 张随机。` })));
     const 卡 = 表.map(x => `<button class="pick${this.分队ID === x.名 ? ' on' : ''}" data-act="选分队:${x.名}">
       <b>${x.名}</b><small>${x.说明}</small></button>`).join('');
     return `<section class="card">
-      <h3>选分队（方案第 7 节）<span class="small">分队决定招募券的倾向；队伍上限 ${肉鸽数值.队伍上限} 台（上阵 9 格阵型，出击上限 ${出击上限初值} 台起、肉鸽部队每 ${每几级加一台} 级 +1，**等级那条最多 ${等级成长顶} 台**；7–9 台只能靠藏品的「出击上限 +1/+2」，**绝对封顶 ${绝对顶} 台**）</span></h3>
+      <h3>选分队（方案第 7 节）<span class="small">分队决定**开局第一张券**与招募券的倾向；队伍上限 ${肉鸽数值.队伍上限} 台（上阵 9 格阵型，出击上限 ${出击上限初值} 台起、肉鸽部队每 ${每几级加一台} 级 +1，**等级那条最多 ${等级成长顶} 台**；7–9 台只能靠藏品的「出击上限 +1/+2」，**绝对封顶 ${绝对顶} 台**）</span></h3>
       <div class="picks">${卡}</div>
       <div class="acts">
         <button class="primary" data-act="开新局"${this.分队ID ? '' : ' disabled'}>出发（新的一局）→</button>
         <button data-act="回菜单">回菜单</button>
       </div>
       ${this.提示 ? `<p class="warn small">${this.提示}</p>` : ''}
-      <p class="small">开局队伍是默认五人队（雷萨 / 蕾卡 / 提耶利亚 / 洛克昂 / Feena，Lv10）。</p>
+      <p class="small">★ 开局：**名册是空的（分队不带机体）**，发 **${肉鸽数值.开局券数} 张招募券**
+        —— 第 1 张固定是「〈分队〉」券（选「无」则 3 张全随机），另 ${肉鸽数值.开局券数 - 1} 张随机职业券；
+        发完**直接进招募屏**（照战棋 <code>27-开局.js:50</code> 的「选完分队立刻依次弹券」）。
+        券的用处：**招募**一名该类别机师（Lv10，照花希望：精锐 5 / 骨干 3 / 普通 0）
+        <b>或</b> 给队里**同类**机师**晋升**（希望 + 1 张同类券，照战棋 <code>27-开局.js:78-86</code>）。</p>
     </section>`;
   },
 
@@ -106,6 +115,7 @@ const 肉鸽界面 = {
         <span class="rv-chip">源碳结晶 <b>${R.源碳}</b></span>
         <span class="rv-chip${R.耐久 <= 3 ? ' warn' : ''}">作战耐久 <b>${R.耐久}</b></span>
         <span class="rv-chip">藏品 <b>${(R.藏品 || []).length}</b></span>
+        <span class="rv-chip${(R.券 || []).length ? '' : ' warn'}" data-tickets="1">招募券 <b>${(R.券 || []).length}</b>${(R.券 || []).length ? `<small>${券汇总文字(R)}</small>` : '<small>（去招募 / 晋升都用不了券）</small>'}</span>
         <span class="rv-chip">本层第 <b>${R.场次 + 1}</b> 场</span>
         ${HP行 ? `<span class="rv-chip warn" data-hp-carry="1">${HP行}</span>` : ''}
         <span class="rv-chip">种子 <b>${R.种子}</b></span>
@@ -138,7 +148,9 @@ const 肉鸽界面 = {
   /* ---------------- 晋升（10 → 20 → 30） ----------------
      照战棋 `29-渲染.js:62-70` 的 `teamCard()`：名册每行一个「→Lv20（N）」按钮，
      `N > RUN.hope` 时 `disabled`；底部一行写「晋升价格：精锐 3 / 4，骨干 2 / 3，普通 1 / 2 希望」。
-     每一行**把升完之后的属性变化列出来**（HP / 装甲 / 防御 / 机动 / 速度），点一下就升。 */
+     每一行**把升完之后的属性变化列出来**（HP / 装甲 / 防御 / 机动 / 速度），点一下就升。
+     ★ 2026-10-11 券系统：价格之外还**必须有一张同类券**（照战棋 `27-开局.js:78-86`：券与希望同时消耗）
+       —— 缺券的按钮 `disabled` 并把「没有可用的同类券」写清；顶上多一行「手上的券」。 */
   晋升屏() {
     const R = 肉鸽.RUN;
     if (!R) return '<section class="card"><p>还没有进行中的局。</p><a href="#" data-act="回菜单">回菜单</a></section>';
@@ -150,23 +162,30 @@ const 肉鸽界面 = {
           `　速度 ${x.属性.前.速度} → <b>${x.属性.后.速度}</b>`
         : '（Lv30 到顶，没有下一档）';
       const 动 = ` data-act="晋升:${x.键}"`;
+      const 券注 = x.到
+        ? (x.有券 ? `　券：<b>${x.券名}</b>（用掉 1 张）` : '　券：<b style="color:var(--enemy)">没有可用的同类券</b>')
+        : '';
       return `<div class="rv-row"><span class="rv-tier ${x.档}">${x.档名}</span>
-        <span class="nm"><b>${x.名}</b><small>${x.键} · Lv${x.等级}${x.到 ? ` → Lv${x.到}` : ''}</small>
+        <span class="nm"><b>${x.名}</b><small>${x.键} · Lv${x.等级}${x.到 ? ` → Lv${x.到}` : ''}${券注}</small>
           <br><small style="margin-left:0">${变}</small></span>
-        ${x.到 ? `<button class="rv-btn"${动}${x.能升 ? '' : ' disabled'}>晋升（${x.价} 希望）</button>`
+        ${x.到 ? `<button class="rv-btn"${动}${x.能升 ? '' : ' disabled'}>晋升（${x.价} 希望 ＋ 1 张同类券）</button>`
                : '<button class="rv-btn" disabled>已到顶</button>'}
         ${x.理由 && x.到 ? `<small style="color:var(--enemy)">${x.理由}</small>` : ''}</div>`;
     }).join('') || '<p class="small">名册是空的。</p>';
     const 次序 = 清单.filter(x => x.到).sort((a, b) => a.价 - b.价);
     return `<section class="card">
       <h3>晋升<span class="small">部队 Lv${R.等级}（出击上限 ${肉鸽.出击上限()} 台 = 等级那条 ${出击上限(R.等级)} ＋ 藏品 ${藏品部署位加成(R)}） · 希望 <b>${R.希望}</b> · 10 → 20 → 30，一次一档，不能跳级</span></h3>
+      <p class="small" data-tickets="1">手上的招募券（<b>${(R.券 || []).length}</b> 张）：
+        ${券按钮组Html() || '<b>一张都没有</b>（战后每场给 1 张、招募站给 1 张 —— 照战棋 31:284,298 / 30:63-67）'}</p>
       <p class="small">价格照战棋（<code>22-输入.js:431</code> 的 <code>PRICE</code>）：
         <b>精锐 3 / 4</b>（S）、<b>骨干 2 / 3</b>（A）、<b>普通 1 / 2</b>（B）希望
         ${R.下次晋升减价 ? '　·　<b>休整过：这次晋升 −1 希望</b>' : ''}。
-        战棋的晋升还要用掉一张同类招募券（<code>27-开局.js:86</code>），本仓库的券系统还没做，所以这一版**只花希望**。</p>
+        战棋的晋升**还要用掉一张同类招募券**（<code>27-开局.js:84→86</code>：先删券、再扣希望），
+        所以按钮上写「N 希望 ＋ 1 张同类券」；**缺券点不动**（券与希望同时消耗 —— 券不是免费票，是类别选择权）。</p>
       <div class="rv-card"><h3>名册（${R.队伍.length} / ${肉鸽数值.队伍上限}）</h3>${行}</div>
-      <p class="small">全场最便宜的下一档：${次序.length ? `${次序[0].名} Lv${次序[0].等级} → Lv${次序[0].到}（${次序[0].价} 希望）` : '（都已经 Lv30 了）'}</p>
-      <div class="acts"><button class="primary" data-act="回大地图">回大地图</button>
+      <p class="small">全场最便宜的下一档：${次序.length ? `${次序[0].名} Lv${次序[0].等级} → Lv${次序[0].到}（${次序[0].价} 希望 ＋ 1 张同类券）` : '（都已经 Lv30 了）'}</p>
+      <div class="acts"><button data-act="去招募">去招募（用券招人）</button>
+        <button class="primary" data-act="回大地图">回大地图</button>
         <button data-act="存个档">存档</button></div>
       ${this.提示 ? `<p class="warn small">${this.提示}</p>` : ''}
       ${界面.弹窗控件Html()}
@@ -258,22 +277,51 @@ const 肉鸽界面 = {
     </section>`;
   },
 
-  /* ---------------- 招募（拖动） ---------------- */
+  /* ---------------- 招募（拖动） ----------------
+   * ★ 2026-10-11 招募券（作者拍板「券系统必须要做了才有试玩的意义」）：
+   *   · 屏顶一段「手上的招募券（N）」按钮组 —— 点一张**选中**（再点一下取消），
+   *     选中后候选池按 `券合(券, 键)` 过滤（照战棋 `27-开局.js:75` 的
+   *     `recruitPool().filter(m => ticketOk(cls, m) && !已有)`），价格照旧写希望价
+   *     （**券不是免费票**：持券招的也是精锐 5 / 骨干 3 / 普通 0 希望，照 `22-输入.js:431`）；
+   *   · **「先留着」= 什么都不点**；**「丢弃这张券」**= 每张券旁边一个小按钮（照 `27:82` 的两个按钮）；
+   *   · **没选券 / 没券** → 与改前**逐字相同**（候选池是全部、价格照希望价）。 */
   招募屏() {
     const R = 肉鸽.RUN;
     if (!R) return '';
     const 已有 = new Set(R.队伍.map(m => m.键));
-    const 候选 = ALLY_T.filter(t => !已有.has(t.mech));
+    const 券们 = R.券 || [];
+    const 选中 = (this.选中的券 != null && 券们[this.选中的券]) ? this.选中的券 : null;
+    if (选中 == null) this.选中的券 = null;
+    const 用中 = 选中 != null ? 券们[选中] : null;
+    /* 候选池：选了券 → 只留这张券对得上的（且不在队里）；没选券 → 全部（改前的老口径） */
+    const 候选 = ALLY_T.filter(t => !已有.has(t.mech) && (!用中 || 券合(用中, t.mech)));
     const 卡 = 候选.map(t => {
       const p = 界面.预览(t.mech, 招募等级(R.层));
       const 费 = 肉鸽数值.招募费[tierOf(t.mech)] || 0;
       return `<button class="pick" data-act="招募:${t.mech}" data-drag="候选:${t.mech}" style="--fc:${势力色(t.mech)}"${R.希望 < 费 ? ' disabled' : ''}>
         <span class="pk-top">${图标.卡(t.mech, 'ally', 图标.尺寸.列表)}<span class="pk-nm"><b>${t.pilot}</b><small>${t.mech} · ${t.tags.战斗分类} · ${t.tags.势力}</small></span></span>
-        <span class="nums">速 ${p.速度} · HP ${p.hp}</span><span class="cost">招募 ${费} 希望</span></button>`;
+        <span class="nums">速 ${p.速度} · HP ${p.hp}</span><span class="cost">招募 ${费} 希望${用中 ? '（用券）' : ''}</span></button>`;
     }).join('');
     const 队 = R.队伍.map(m => `<div class="rv-row"><span class="pk-top">${图标.卡(m.键, 'ally', 图标.尺寸.列表)}<span class="pk-nm"><b>${allyName(m.键)}</b><small>${m.键} · Lv${m.等级}</small></span></span></div>`).join('');
+    /* 手上的券：每张一个「选中 / 取消」按钮 + 一个「丢弃」按钮（照战棋 27:78-82 的两个动作） */
+    const 券卡 = 券们.map((c, i) => {
+      const 选中态 = (选中 === i);
+      return `<div class="rv-row"><span class="rv-tier">券</span>
+        <span class="nm"><b>${券名(c)}</b><small>${券类(c)}${c.来源 ? ` · 来源：${c.来源}` : ''}${c.档 ? ` · 档 ${c.档}` : ''}</small>
+          <br><small style="margin-left:0">${券用途说明(R, c)}</small></span>
+        <button class="rv-btn${选中态 ? ' primary' : ''}" data-act="用券:${i}">${选中态 ? '取消选中' : '选这张券'}</button>
+        <button class="rv-btn" data-act="丢券:${i}">丢弃这张券</button></div>`;
+    }).join('') || '<p class="small">现在手上没有招募券（战后每场给 1 张、招募站给 1 张 —— 照战棋 <code>31:284,298</code> / <code>30:63-67</code>）。</p>';
     return `<section class="card">
-      <h3>招募<span class="small">队伍 ${R.队伍.length} / ${肉鸽数值.队伍上限}（满了就不能再招）· 希望 ${R.希望}</span></h3>
+      <h3>招募<span class="small">队伍 ${R.队伍.length} / ${肉鸽数值.队伍上限}（满了就不能再招）· 希望 ${R.希望} · 招募券 ${券们.length} 张</span></h3>
+      <div class="rv-card"><h3>手上的招募券（${券们.length}）<span class="small">点「选这张券」→ 下面的候选池只留这张券对得上的人；**「先留着」就是什么都不点**（券随时还能用来晋升）</span></h3>
+        ${券卡}</div>
+      <p class="small" data-tickets="1">${用中
+        ? `正在用 <b>${券名(用中)}</b> 招人：候选池只剩 ${候选.length} 名对得上的机师。
+           招募**照样花希望**（精锐 5 / 骨干 3 / 普通 0，照战棋 <code>22-输入.js:431</code>），
+           招完这张券会被用掉（<code>27-开局.js:84</code>）。`
+        : `没选券（或手上没券）→ 候选池是全部机师，价格照希望价（**改前的老口径**）。
+           这张券也可以留着去**晋升**：给队里同职业 / 同势力的机师升一档（希望 + 1 张同类券）。`}</p>
       <div class="编队屏">
         <div class="col 候选" data-drop="候选">
           <h3>可招募的机师（${候选.length} 名）<span class="small">点一下或者拖过来就招募（Lv${招募等级(R.层)}）</span></h3>
@@ -282,7 +330,8 @@ const 肉鸽界面 = {
         <div class="col 站位">
           <h3>当前队伍（${R.队伍.length} / ${肉鸽数值.队伍上限}）</h3>
           ${队 || '<p class="small">还没有人。</p>'}
-          <div class="acts"><button data-act="回大地图">回大地图</button></div>
+          <div class="acts"><button data-act="去晋升">去晋升（用券升级）</button>
+            <button data-act="回大地图">回大地图</button></div>
         </div>
       </div>
       ${this.提示 ? `<p class="warn small">${this.提示}</p>` : ''}
@@ -343,8 +392,27 @@ const 肉鸽界面 = {
 /* 小队成员的显示名（肉鸽界面用） */
 function allyName(键) { const t = tplOf(键); return t ? t.pilot : 键; }
 
+/** 只读的「手上的券」一行（大地图 / 晋升屏那些**不用选券**的地方用它）。
+ *  返回 `名 ×N` 的纯文本（没券时返回空串，由调用方写「一张都没有」）。 */
+function 券行文字(R) {
+  const 们 = (R && R.券) || [];
+  return 们.length ? 券汇总文字(R) : '';
+}
+
+/** 把手上每一张券画成一个小按钮（大地图顶栏 / 晋升屏右上那一行）。
+ *  ★ **不在这里写 `data-act` 的下标**：`用券:<下标>` 只由招募屏那一段负责（那边才有「选中」语义），
+ *  这里只是**展示**（点它就去招募屏，避免玩家在大地图上不小心把券用掉）。 */
+function 券按钮组Html() {
+  const R = 肉鸽 && 肉鸽.RUN;
+  const 们 = (R && R.券) || [];
+  return 们.map((c, i) => `<span class="rv-chip" data-ticket="${i}">${券名(c)}` +
+    `<small>${券类(c)}${c.来源 ? ` · ${c.来源}` : ''}</small></span>`).join('');
+}
+
 /** 大地图上的「队伍」卡片：每台机体的**当前等级与属性**（晋升之后这里会真的变）。
- *  属性一律问 `重算名册属性()`（它走的是 `makeUnit` → `levelUp`，和战斗里同一套规则）。 */
+ *  属性一律问 `重算名册属性()`（它走的是 `makeUnit` → `levelUp`，和战斗里同一套规则）。
+ *  ★ 2026-10-11 券系统：这里的快捷晋升按钮也**要走券**（和晋升屏同一个判据）——
+ *  缺同类券的按钮 `disabled`，`title` 写清为什么。 */
 function 队伍卡片Html() {
   const R = 肉鸽 && 肉鸽.RUN;
   if (!R) return '';
@@ -354,14 +422,21 @@ function 队伍卡片Html() {
     const 出击 = (R.出击 || []).includes(x.键);
     const 到 = 晋升目标(x.等级);
     const 价 = 到 ? 晋升要多少(x.键, 到, R) : 0;
+    const 找 = 到 ? 找同类券(R, x.键) : null;
+    const 能升 = !!到 && R.希望 >= 价 && !!找;
+    const 为什么 = !到 ? '已经 Lv30'
+      : (!找 ? '没有可用的同类券（战后 / 招募站给券）' : (R.希望 < 价 ? `希望不够（要 ${价}）` : `要用掉一张 ${券名(找.券)}`));
     return `<div class="rv-row"><span class="rv-tier ${tierOf(x.键)}">${TIER_NAME[tierOf(x.键)] || '普通'}</span>
       <span class="nm"><b>${t.pilot || x.键}</b><small>${x.键} · ${(t.tags || {}).战斗分类 || '—'} · ${出击 ? '出击名单' : '待命'}</small>
         <br><small style="margin-left:0">Lv${x.等级}　HP ${x.后.maxHp}　装甲 ${x.后.armor}　防御 ${x.后.defense}　机动 ${x.后.mov}　速度 ${x.后.速度}</small></span>
-      ${到 ? `<button class="rv-btn" data-act="晋升:${x.键}"${R.希望 >= 价 ? '' : ' disabled'}>→Lv${到}（${价}）</button>` : '<small>Lv30</small>'}</div>`;
+      ${到 ? `<button class="rv-btn" data-act="晋升:${x.键}" title="${为什么}"${能升 ? '' : ' disabled'}>→Lv${到}（${价} 希望＋1 券）</button>` : '<small>Lv30</small>'}</div>`;
   }).join('') || '<p class="small">名册是空的。</p>';
-  return `<div class="rv-card"><h3>队伍（${R.队伍.length} / ${肉鸽数值.队伍上限}）<span class="small">点右边的按钮直接晋升（花希望）</span></h3>${行}
-    <p class="small">招募价格：精锐 5、骨干 3、普通免费。晋升价格（战棋 <code>22-输入.js:431</code>）：
-      精锐 3 / 4、骨干 2 / 3、普通 1 / 2 希望${R.下次晋升减价 ? '（休整过：下次晋升 −1 希望）' : ''}。</p></div>`;
+  const 券们 = (R.券 || []);
+  return `<div class="rv-card"><h3>队伍（${R.队伍.length} / ${肉鸽数值.队伍上限}）<span class="small">点右边的按钮直接晋升（**希望 ＋ 1 张同类券**）</span></h3>${行}
+    <p class="small" data-tickets="1">手上的招募券（<b>${券们.length}</b> 张）：${券行文字(R) || '<b>一张都没有</b>'}　·　
+      招募价格：精锐 5、骨干 3、普通免费。晋升价格（战棋 <code>22-输入.js:431</code>）：
+      精锐 3 / 4、骨干 2 / 3、普通 1 / 2 希望${R.下次晋升减价 ? '（休整过：下次晋升 −1 希望）' : ''}；
+      **晋升还要用掉 1 张同职业 / 同势力的券**（战棋 <code>27-开局.js:84→86</code>）。</p></div>`;
 }
 
 /* 格子坐标（1 起数，和战棋 30-移动与节点.js:41 的写法一致） */

@@ -44,10 +44,50 @@ if (!G || typeof G.Boss脚本 !== 'object' || typeof G.bossTurn !== 'function') 
   console.log(`\nERRS [${errs.join(' | ')}]`);
   process.exit(1);
 }
-const 界面 = G.界面, 播放 = G.播放, 肉鸽 = G.肉鸽;
+const 界面 = G.界面, 播放 = G.播放, 肉鸽 = G.肉鸽, 肉鸽界面 = G.肉鸽界面;
 界面.手动播放 = true;
 界面.设跳过动画(true);
 console.log(`站桩 Boss 测试：机甲指挥 ${G.version} · ${G.milestone}\n`);
+
+/** ★ 2026-10-11 券系统：**肉鸽开局名册是空的**（分队不带机体；改前白送默认五人队），
+ *  所以「摆几台打一场」之前要**先真的招人**（开招募屏 → 用对得上的券 / 花希望），不硬塞名册。
+ *  希望不够时再补预算重来（测试给足希望：测的是流程，不是经济）。 */
+function 招几个(n = 5, 预算 = 80) {
+  const R = 肉鸽.RUN;
+  if (!R) return 0;
+  const 一起 = () => {
+    界面.开屏('招募');
+    const 费 = k => G.肉鸽数值.招募费[G.tierOf(k)] || 0;
+    let 招到 = 0;
+    for (let 轮 = 0; R.队伍.length < n && 轮 < 24; 轮++) {
+      const 已有 = new Set(R.队伍.map(m => m.键));
+      const 人 = G.ALLY_T.map(t => t.mech).filter(k => !已有.has(k));
+      let 成了 = false;
+      for (let i = 0; i < (R.券 || []).length && !成了; i++) {
+        const 合 = 人.filter(k => G.券合(R.券[i], k)).sort((a, b) => 费(a) - 费(b));
+        for (const k of 合) {
+          if (R.希望 < 费(k)) continue;
+          界面.用券(i);
+          const r = 肉鸽.招募(k, i);
+          if (r && r.ok) { 招到++; 成了 = true; break; }
+          肉鸽界面.选中的券 = null;
+        }
+      }
+      if (成了) continue;
+      肉鸽界面.选中的券 = null;
+      const 能付 = 人.filter(k => R.希望 >= 费(k)).sort((a, b) => 费(a) - 费(b))[0];
+      if (能付 == null) break;
+      const r2 = 肉鸽.招募(能付);
+      if (!r2 || !r2.ok) break;
+      招到++;
+    }
+    if (界面.屏 !== '大地图') 界面.开屏('大地图');
+    return 招到;
+  };
+  const 招到 = 一起();
+  if (R.队伍.length < n) { R.希望 += 预算; return 一起(); }
+  return 招到;
+}
 
 /* ============================ 小工具 ============================ */
 /** 造一台「假人」我方单位：血厚、没有武器 —— 只用来挨打，这样战斗一定能打满 12 回合。 */
@@ -278,6 +318,10 @@ console.log('\n[7] 肉鸽第 4 层终点（蓝色大肥鱼）真的打得起来�
   const R = 肉鸽.RUN;
   if (!R) { bad('开不了新的一局'); }
   else {
+    /* ★ 2026-10-11 券系统：开新局现在停在**招募屏**、名册是空的（分队不带机体）——
+       后面的「摆 5 台打终点 Boss」要先真的招到人（走玩家那条路：用券 / 花希望）。 */
+    招几个(5);
+    if (R.队伍.length < 5) bad(`第 4 层那一段招人没招够：名册 ${R.队伍.length} 台（要 5 台）`);
     R.层 = 4; R.场次 = 0;
     肉鸽.进层(4);                        // 重新生成第 4 层的网格地图（起点 / 出口 / 出口守军都在里面）
     R.推进剂 = 60;                       // 给足推进剂，一次走到出口守军那一格
