@@ -196,7 +196,7 @@ const 肉鸽界面 = {
         <span class="rv-chip">源碳结晶 <b>${R.源碳}</b></span>
         <span class="rv-chip${R.耐久 <= 3 ? ' warn' : ''}">作战耐久 <b>${R.耐久}</b></span>
         <span class="rv-chip">藏品 <b>${(R.藏品 || []).length}</b></span>
-        <span class="rv-chip${(R.券 || []).length ? '' : ' warn'}" data-tickets="1">招募券 <b>${(R.券 || []).length}</b>${(R.券 || []).length ? `<small>${券汇总文字(R)}</small>` : '<small>（去招募 / 晋升都用不了券）</small>'}</span>
+        <span class="rv-chip${(R.券 || []).length ? '' : ' warn'}" data-tickets="1">招募券 <b>${(R.券 || []).length}</b>${(R.券 || []).length ? `<small>${券汇总文字(R)}</small>` : '<small>（招募 / 晋升都要用券 —— 打一场或进招募站拿）</small>'}</span>
         <span class="rv-chip">本层第 <b>${R.场次 + 1}</b> 场</span>
         ${HP行 ? `<span class="rv-chip warn" data-hp-carry="1">${HP行}</span>` : ''}
         <span class="rv-chip">种子 <b>${R.种子}</b></span>
@@ -402,8 +402,15 @@ const 肉鸽界面 = {
    *     选中后候选池按 `券合(券, 键)` 过滤（照战棋 `27-开局.js:75` 的
    *     `recruitPool().filter(m => ticketOk(cls, m) && !已有)`），价格照旧写希望价
    *     （**券不是免费票**：持券招的也是精锐 5 / 骨干 3 / 普通 0 希望，照 `22-输入.js:431`）；
-   *   · **「先留着」= 什么都不点**；**「丢弃这张券」**= 每张券旁边一个小按钮（照 `27:82` 的两个按钮）；
-   *   · **没选券 / 没券** → 与改前**逐字相同**（候选池是全部、价格照希望价）。 */
+   *   · **「先留着」= 什么都不点**；**「丢弃这张券」**= 每张券旁边一个小按钮（照 `27:82` 的两个按钮）。
+   * ★★ 2026-10-12 修**真 bug**（作者试玩：「一开场我招募了一大堆人，但是应该只有 3 个招募券才对」）：
+   *   **不选券 = 不能招**（改前「没选券 / 没券 → 候选池是全部、价格照希望价」那条老口径作废）——
+   *   所以这一屏现在是：
+   *     · **没有券** → 候选按钮**全部 `disabled`** + 屏上写明「没有可用的券（招募要用掉一张同类券：去战斗 / 招募站拿）」；
+   *     · **有券但没选中** → 候选按钮也全部 `disabled`，理由写「先在『手上的招募券』里点『选这张券』」；
+   *     · **选中一张券** → 候选池只剩这张券对得上的机师，按钮可点（希望不够的照旧 `disabled` 并写清差多少）；
+   *     · 每个候选的 `title` / `.cost` 与屏上的 `<p data-tickets="1">` 都写出**为什么**（三层反馈：屏上说明可见）；
+   *     · **手上还有几张券**在 `h3` 与顶栏 `rv-chip` 两处都看得到（0 张时标红并说明去哪拿）。 */
   招募屏() {
     const R = 肉鸽.RUN;
     if (!R) return '';
@@ -412,14 +419,27 @@ const 肉鸽界面 = {
     const 选中 = (this.选中的券 != null && 券们[this.选中的券]) ? this.选中的券 : null;
     if (选中 == null) this.选中的券 = null;
     const 用中 = 选中 != null ? 券们[选中] : null;
-    /* 候选池：选了券 → 只留这张券对得上的（且不在队里）；没选券 → 全部（改前的老口径） */
+    const 没券 = 券们.length === 0;
+    /* 「为什么不能招」的两句（和 `90-肉鸽.js` 的 `招募()` 拒绝理由同义；屏上 / title / 结果条三层都出现） */
+    const 没券理由 = '没有可用的券（招募要用掉一张同类券：每场战斗后 +1 张、招募站每层 +1 张）';
+    const 没选理由 = '先在「手上的招募券」里点「选这张券」—— 招募必须用掉一张同类券';
+    /* 候选池：选了券 → 只留这张券对得上的（且不在队里）；**没选券 → 照旧列全部，但每一张都 disabled**
+       （列出来是为了让玩家看得见「这些人以后拿券能招」，不是让人现在点）。 */
     const 候选 = ALLY_T.filter(t => !已有.has(t.mech) && (!用中 || 券合(用中, t.mech)));
+    /** 这一张候选现在能不能招；不能就返回理由（优先级：先券、再希望 —— 和 `招募()` 的判据顺序一致）。 */
+    const 不能招的理由 = 费 => {
+      if (!用中) return 没券 ? 没券理由 : 没选理由;
+      if (R.希望 < 费) return `希望不够（要 ${费}，只有 ${R.希望}）`;
+      return '';
+    };
     const 卡 = 候选.map(t => {
       const p = 界面.预览(t.mech, 招募等级(R.层));
       const 费 = 肉鸽数值.招募费[tierOf(t.mech)] || 0;
-      return `<button class="pick" data-act="招募:${t.mech}" data-drag="候选:${t.mech}" style="--fc:${势力色(t.mech)}"${R.希望 < 费 ? ' disabled' : ''}>
+      const 理由 = 不能招的理由(费);
+      /* `disabled` + `title` = 鼠标悬停也看得到理由；`data-drag` 照旧保留（能招时才生效） */
+      return `<button class="pick" data-act="招募:${t.mech}" data-drag="候选:${t.mech}" style="--fc:${势力色(t.mech)}"${理由 ? ` disabled title="${理由}"` : ` title="用掉一张 ${券名(用中)}，花 ${费} 希望（${tierOf(t.mech) === 'B' ? '普通档 0 希望' : `要 ${费} 希望`}）"`}>
         <span class="pk-top">${图标.卡(t.mech, 'ally', 图标.尺寸.列表)}<span class="pk-nm"><b>${t.pilot}</b><small>${t.mech} · ${t.tags.战斗分类} · ${t.tags.势力}</small></span></span>
-        <span class="nums">速 ${p.速度} · HP ${p.hp}</span><span class="cost">招募 ${费} 希望${用中 ? '（用券）' : ''}</span></button>`;
+        <span class="nums">速 ${p.速度} · HP ${p.hp}</span><span class="cost">招募 ${费} 希望${用中 ? `（用掉 ${券名(用中)}）` : '（要先选一张券）'}</span></button>`;
     }).join('');
     const 队 = R.队伍.map(m => `<div class="rv-row"><span class="pk-top">${图标.卡(m.键, 'ally', 图标.尺寸.列表)}<span class="pk-nm"><b>${allyName(m.键)}</b><small>${m.键} · Lv${m.等级}</small></span></span></div>`).join('');
     /* 手上的券：每张一个「选中 / 取消」按钮 + 一个「丢弃」按钮（照战棋 27:78-82 的两个动作） */
@@ -430,20 +450,27 @@ const 肉鸽界面 = {
           <br><small style="margin-left:0">${券用途说明(R, c)}</small></span>
         <button class="rv-btn${选中态 ? ' primary' : ''}" data-act="用券:${i}">${选中态 ? '取消选中' : '选这张券'}</button>
         <button class="rv-btn" data-act="丢券:${i}">丢弃这张券</button></div>`;
-    }).join('') || '<p class="small">现在手上没有招募券（战后每场给 1 张、招募站给 1 张 —— 照战棋 <code>31:284,298</code> / <code>30:63-67</code>）。</p>';
+    }).join('') || `<p class="small" style="color:var(--enemy)" data-no-ticket="1">现在手上没有招募券 —— <b>${没券理由}</b>
+      （照战棋 <code>31:284,298</code> 每场战斗后 1 张 / <code>30:63-67</code> 招募站 1 张；券也可以留着去晋升）。</p>`;
     return `<section class="card">
-      <h3>招募<span class="small">队伍 ${R.队伍.length} / ${肉鸽数值.队伍上限}（满了就不能再招）· 希望 ${R.希望} · 招募券 ${券们.length} 张</span></h3>
+      <h3>招募<span class="small">队伍 ${R.队伍.length} / ${肉鸽数值.队伍上限}（满了就不能再招）· 希望 ${R.希望} ·
+        <span class="rv-chip${没券 ? ' warn' : ''}" data-tickets="1">招募券 <b>${券们.length}</b>${没券
+          ? '<small>（一张都没有 —— 招募 / 晋升都要用券）</small>'
+          : `<small>${券汇总文字(R)}</small>`}</span></span></h3>
       <div class="rv-card"><h3>手上的招募券（${券们.length}）<span class="small">点「选这张券」→ 下面的候选池只留这张券对得上的人；**「先留着」就是什么都不点**（券随时还能用来晋升）</span></h3>
         ${券卡}</div>
       <p class="small" data-tickets="1">${用中
         ? `正在用 <b>${券名(用中)}</b> 招人：候选池只剩 ${候选.length} 名对得上的机师。
            招募**照样花希望**（精锐 5 / 骨干 3 / 普通 0，照战棋 <code>22-输入.js:431</code>），
            招完这张券会被用掉（<code>27-开局.js:84</code>）。`
-        : `没选券（或手上没券）→ 候选池是全部机师，价格照希望价（**改前的老口径**）。
+        : `<b style="color:var(--enemy)" data-no-ticket-why="1">${没券 ? 没券理由 : 没选理由}</b>
+           —— **没券就不能招**（2026-10-12 修的：改前不传券时普通档 0 希望可以无限招人）。
            这张券也可以留着去**晋升**：给队里同职业 / 同势力的机师升一档（希望 + 1 张同类券）。`}</p>
       <div class="编队屏">
         <div class="col 候选" data-drop="候选">
-          <h3>可招募的机师（${候选.length} 名）<span class="small">点一下或者拖过来就招募（Lv${招募等级(R.层)}）</span></h3>
+          <h3>可招募的机师（${候选.length} 名）<span class="small">${用中
+            ? `点一下或者拖过来就招募（Lv${招募等级(R.层)}，用掉一张 ${券名(用中)}）`
+            : '现在一张都点不了：先在上面选一张券'}</span></h3>
           <div class="picks">${卡}</div>
         </div>
         <div class="col 站位">
