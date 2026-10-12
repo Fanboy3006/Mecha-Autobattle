@@ -200,6 +200,30 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .gcell.here{opacity:1;border-style:solid;outline:2px solid var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--panel2))}
 .gcell.none{opacity:.18;border-top-color:var(--line)}
 .glegend{display:inline-flex;align-items:center;gap:4px;margin-right:8px;border-left:3px solid var(--fc);padding-left:4px}
+
+/* ---------- 结果条 + 记录屏（2026-10-11：作者「结果没有提示」「记录也需要显示」） ----------
+   结果条 = 大地图屏顶部固定那一行「最近一条结果」，四种类型各一个颜色（成功 / 警告 / 失败 / 信息）；
+   记录屏 = `RUN.日志` 倒着画（最新在前），`.logbox` 限高可滚动。 */
+.resbar{display:flex;align-items:flex-start;gap:8px;margin:0 0 10px;padding:6px 10px;border-radius:4px;
+  border:1px solid var(--line);border-left:4px solid var(--muted);background:var(--panel2)}
+.resbar b{font-family:var(--font-d);letter-spacing:.08em;white-space:nowrap}
+.resbar.ok{border-left-color:var(--good)}   .resbar.ok b{color:var(--good)}
+.resbar.warn{border-left-color:var(--accent)} .resbar.warn b{color:var(--accent)}
+.resbar.bad{border-left-color:var(--enemy)} .resbar.bad b{color:var(--enemy)}
+.resbar.info{border-left-color:var(--ally)} .resbar.info b{color:var(--ally)}
+.resbar small{color:var(--muted)}
+.logbox{max-height:320px;overflow-y:auto;border:1px solid var(--line);border-radius:4px;background:var(--panel2);padding:6px 10px}
+.logbox .logline{display:flex;gap:8px;align-items:baseline;padding:2px 0;border-bottom:1px dashed color-mix(in srgb,var(--line) 60%,transparent)}
+.logbox .logline:last-child{border-bottom:0}
+.logbox .logline .tag{flex:0 0 auto;font-family:var(--font-m);font-size:11px;color:var(--muted);min-width:52px}
+.logbox .logline .idx{flex:0 0 auto;font-family:var(--font-m);font-size:11px;color:var(--muted);min-width:34px;text-align:right}
+.logbox .logline .tx{flex:1 1 auto;min-width:0}
+.rv-mini{margin:10px 0 0}
+.rv-mini .rv-row{padding:2px 0}
+.battle-res{margin:10px 0 0;padding:6px 10px;border-radius:4px;border:1px solid var(--line);
+  border-left:4px solid var(--good);background:var(--panel2)}
+.battle-res.lose{border-left-color:var(--enemy)}
+.battle-res b{font-family:var(--font-m);color:var(--accent)}
 /* 节点弹窗（隧道 / 休整）：大地图屏上一张卡片 + 一排按钮，点一下走 data-act="弹窗:<值>" */
 .dlg{border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--panel2));margin:10px 0}
 .dlg h3{color:var(--accent)}
