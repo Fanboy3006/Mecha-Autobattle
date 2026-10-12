@@ -252,6 +252,22 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .battle-report h3{margin:0 0 4px}
 .battle-report ul{margin:0;padding-left:18px}
 .battle-report li{font-family:var(--font-m);font-size:12px;line-height:1.55}
+
+/* ============================================================================
+ * ★ 2026-10-12 作战记录（作者：「作战记录你看看能不能安排保存一下」）
+ * ----------------------------------------------------------------------------
+ *   · 结算屏上那一块 `.battle-log`（`data-battle-log="1"`）：一行摘要 + 逐条记录（`.logbox` 可滚动）
+ *     + 「复制为文本」/「下载 .txt」两个按钮；
+ *   · 菜单入口那一屏「战斗记录（最近 N 场）」：`.picks` 里一场一个按钮（时间 / 结果 / 回合数 / 种子）；
+ *   · 复制 / 下载的反馈是现成的 `.resbar`；失败时那段「全选文本」摊在 `.copyout` 里。
+ * 全部只是显示：不改 `RUN`、不动存档版本号（数据在 `88-战斗记录.js`，独立 localStorage 键）。
+ * ========================================================================== */
+.battle-log{margin:10px 0 0;padding:6px 10px;border-radius:4px;border:1px solid var(--line);
+  border-left:4px solid var(--ally);background:var(--panel2)}
+.battle-log h3{margin:6px 0 4px}
+.battle-log .logbox{max-height:260px}
+.copyout{width:100%;box-sizing:border-box;margin:6px 0 0;background:var(--panel2);color:var(--fg);
+  border:1px solid var(--line);border-radius:4px;font-family:var(--font-m);font-size:11px;padding:6px}
 /* 节点弹窗（隧道 / 休整）：大地图屏上一张卡片 + 一排按钮，点一下走 data-act="弹窗:<值>" */
 .dlg{border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--panel2));margin:10px 0}
 .dlg h3{color:var(--accent)}

@@ -52,6 +52,18 @@ const 界面 = {
   调参模式: false,                // ★ 调参室（§3.2）：出击上限固定 6、编队状态同步进调参设置；
                                  //   只在「调参室 / 战斗 / 结算」这几屏里开着（`开屏()` 里会关掉）
   种子: null,
+  /* ★ 作战记录（作者 2026-10-12：「**现在这个作战记录你看看能不能安排保存一下**」）——
+     实现在 `src/js/88-战斗记录.js`（**独立** localStorage 键，和肉鸽存档 `存档键` 无关）。
+     界面这一层只管四件事：① 一场打完存一份；② 结算屏上画「本场记录」；③ 菜单上的
+     「战斗记录（最近 N 场）」屏；④ 复制为文本 / 下载 .txt（失败各有可见兜底）。 */
+  本场记录: null,                 // 刚打完那一场的记录（`战斗记录.做一场()` 给的；结算屏画它）
+  本场规格: null,                 // 这一场开打时的规格（我方 / 敌方 / 条目 / 层 / 节点类型 / 波次）
+  方针历史: {},                   // 回合号 → 这一回合下的方针（导出文本里的「方针表」）
+  记录保存: null,                 // 存这一场的结果（`战斗记录.存()`；三层反馈的「保存」那一层）
+  记录已存的ctx: null,            // 同一场只存一次（`到结算()` 有可能被重复调用）
+  记录选: null,                   // 记录屏里正在看第几场（`战斗记录.读()` 的下标；null = 列表）
+  复制结果: null,                 // 「复制为文本」的可见反馈（失败时带整段文本 → 摊在屏上）
+  下载结果: null,                 // 「下载 .txt」的可见反馈
   手动播放: false,                // 测试用：播放引擎不排计时器，自己 tick
   跳过动画总是: false,
   预览缓存: {},
@@ -237,6 +249,12 @@ const 界面 = {
     二倍速: function () { return this.二倍速(); },
     跳过: function () { return this.跳过(); },
     再来一场: function (参) { return this.来一场(参); },
+    /* ★ 作战记录（作者 2026-10-12）：菜单入口 / 列表里点一场 / 两个导出按钮 */
+    去战斗记录: function () { return this.去战斗记录(); },
+    看战斗记录: function (参) { return this.看战斗记录(参); },
+    回战斗记录: function () { return this.回战斗记录列表(); },
+    复制记录: function () { return this.复制本场记录(); },
+    下载记录: function () { return this.下载本场记录(); },
     /* M3 / ★ 2026-10-12 全队方针 */
     选单位: function (参) { return this.选单位(Number(参)); },
     方针: function (参) { return this.选方针(参); },
@@ -347,6 +365,8 @@ const 界面 = {
     }
     if (this.屏 === '结算') return `<button data-act="再来一场">再来一场</button><button data-act="去编队">改编队</button><button data-act="回菜单">回菜单</button>`;
     if (this.屏 === '编队') return `<button data-act="回菜单">回菜单</button>`;
+    /* ★ 作战记录屏（作者 2026-10-12）：顶上给一个回菜单（列表里还有「回战斗记录列表」） */
+    if (this.屏 === '战斗记录') return `<button data-act="回菜单">回菜单</button>`;
     /* ★ 调参室（§3.1）：回菜单 + 一句「只在调参室里生效」 */
     if (this.屏 === '调参室') return `<button data-act="回菜单">回菜单</button>`;
     return '';
@@ -375,6 +395,9 @@ const 界面 = {
         ${有存档 ? `<button data-act="继续上一局">继续上一局（第 ${肉鸽.读存档().层} 层）</button>` : ''}
         <button data-act="去编队">练习：直接编队打一场</button>
         <button data-act="去调参室">调参室（作者调难度）</button>
+        <!-- ★ 作战记录（作者 2026-10-12「作战记录你看看能不能安排保存一下」）：N = 现在存了几场。
+             0 场时这个入口照旧能进，进去写一句「还没有作战记录」—— 没打过战斗时这个入口不许崩。 -->
+        <button data-act="去战斗记录">战斗记录（最近 ${战斗记录.读().length} 场）</button>
         <button data-act="音乐鉴赏">音乐鉴赏</button>
       </div>
       <p class="small">网格大地图照战棋 <code>26-地图生成.js</code> / <code>28-层.js</code> / <code>30-移动与节点.js</code> 实现
@@ -708,6 +731,8 @@ const 界面 = {
     this.显示单位 = null;
     this.战报 = null;
     this.阶段 = '指令';
+    /* ★ 作战记录（作者 2026-10-12）：把「复现这一场所需要的规格」留一份（`88-战斗记录.js` 读它）。 */
+    this.准备记录({ 我方, 敌方, 条目, 波次: 编成波次到单位(条目, 0), 来源: '练习' });
     this.开屏('战斗');
     return this.ctx;
   },
@@ -738,6 +763,10 @@ const 界面 = {
     this.显示单位 = { 我方: 快照(this.ctx.allies), 敌方: 快照(this.ctx.enemies) };
     设方针(this.ctx, this.方针);                 // 全队层（保持到玩家改为止）
     设单位开关(this.ctx, this.单位开关);          // 单位层（只有大招 / TRANS-AM）
+    /* ★ 作战记录：这一回合下的是哪一条方针记进历史 —— 导出文本里的「方针表」就是它，
+       同种子 + 同一串方针 = 同一场（作者要拿它复现那场战斗）。 */
+    if (!this.方针历史) this.方针历史 = {};
+    this.方针历史[this.ctx.turn] = { 类型: 当前方针(this.ctx).类型, 目标位: 当前方针(this.ctx).目标位 };
     const 记录 = 打一回合(this.ctx);
     /* ★ 集中攻击的目标被击破时引擎会**自动回全军突击**（§1.3 第 2 条）——界面跟着走。 */
     this.方针 = { 类型: 当前方针(this.ctx).类型, 目标位: 当前方针(this.ctx).目标位 };
@@ -813,6 +842,11 @@ const 界面 = {
       结果: c.result ? c.result.结果 : '败', 原因: c.result ? c.result.原因 : '—',
       回合数: c.turn, 记录: c.log, 我方: c.allies, 敌方: c.enemies, 种子: c.种子,
     };
+    /* ★ 作战记录（作者 2026-10-12：「作战记录你看看能不能安排保存一下」）：
+       **胜 / 败都存一份**完整逐条记录 —— 独立键 `mecha-autobattle-战斗记录`，与肉鸽存档无关
+       （不改 `RUN`、不动存档版本号）。三层反馈的「保存」那一层 = `this.记录保存`
+       （结算屏上那一条；肉鸽里拼进结果条那一条）。同一场只存一次。 */
+    if (this.ctx && this.记录已存的ctx !== this.ctx) { this.记录已存的ctx = this.ctx; this.存本场记录(); }
     /* 肉鸽里的战斗：把结果交回肉鸽（发奖励 / 扣作战耐久 / 出口守军放行 / 追击后换层），
        然后回大地图；本局结束（耐久耗尽 / 通关）就去肉鸽结算屏。
        ★ 2026-10-11「界面体验修复」（作者：「现在很多事情结束以后，结果没有提示」）：
@@ -838,6 +872,13 @@ const 界面 = {
       if (r && r.胜) 肉鸽界面.设结果('成功', `${名}胜利 —— ${首}`);
       else if (r && r.结束) 肉鸽界面.设结果('失败', `${名}失败 —— ${首}（本局结束）`);
       else 肉鸽界面.设结果('失败', `${名}失败 —— ${首}`);
+      /* ★ 作战记录（三层反馈的「保存」那一层）：肉鸽这一场也补一句 ——
+         **原句照旧在最前面**（奖励账一个字不改），存档那句话补在后面（记录屏上同样看得到）。 */
+      const 记提 = this.记录保存提示();
+      const 现条 = (肉鸽界面.提示结果 ? 肉鸽界面.提示结果() : null);
+      if (记提 && 现条 && 现条.文本 && String(现条.文本).indexOf('本场记录') < 0) {
+        肉鸽界面.设结果(现条.类型, `${现条.文本} · ${记提}`);
+      }
       this.阶段 = '结算';
       if (!肉鸽.进行中 || (肉鸽.RUN && 肉鸽.RUN.结局)) this.开屏('肉鸽结算');
       else this.开屏('大地图');
@@ -867,6 +908,7 @@ const 界面 = {
         <li>种子：<b>${b.种子}</b>（同种子同编队同方针重放，结果完全一样）</li>
       </ul>
       ${本场战报Html(战报行, `第 ${b.回合数} 回合 · ${b.结果} · 共 ${b.记录.length} 条记录`)}
+      ${this.本场记录Html()}
       <div class="acts">
         <button class="primary" data-act="再来一场">再来一场（换种子）</button>
         <button data-act="再来一场:${b.种子}">重放这一场（同种子）</button>
@@ -880,6 +922,226 @@ const 界面 = {
     const s = 同种子 ? Number(同种子) : null;
     this.开战(s);
     return this.ctx;
+  },
+
+  /* ---------------- ★ 作战记录（作者 2026-10-12：保存 / 查看 / 复制 / 下载） ----------------
+   * 作者原话：「**现在这个作战记录你看看能不能安排保存一下**」——他要的是「能把某一场战斗的
+   * 完整记录发出来」（当时在查「攻击已经死掉的敌方」那个 bug）。
+   * 数据 / 上限 / 坏数据兜底全在 `src/js/88-战斗记录.js`（独立键，与肉鸽存档无关），这里只做：
+   *   ① 一场打完存一份；② 画出来（结算屏那一块 + 菜单里「战斗记录（最近 N 场）」那一屏）；
+   *   ③ 复制为文本 / 下载 .txt（两条路都有可见的失败兜底）。
+   * 三层反馈（`CLAUDE.md` 第 7 节第 10 条）：**保存** → 结果条 / 结算屏一句
+   * （`记录保存提示()`）；**查看** → 屏上看得见（`.battle-log` 那一块 / 记录屏）；**导出** →
+   * 成功与失败各有一句可见反馈（失败还把整段文本摊在屏上 = 「全选文本」兜底）。 */
+  /** ★ 开一场之前把「复现这一场所需要的东西」留一份（`88-战斗记录.js` 的 `做一场()` 读它）。
+   *  只放**规格**（我方 / 敌方 / 条目 / 波次 / 层 / 节点类型 / 来源），不放打完之后那些大对象。 */
+  准备记录(规) {
+    const o = 规 || {};
+    this.本场规格 = {
+      我方: o.我方 || null, 敌方: o.敌方 || null, 条目: o.条目 || null,
+      波次: o.波次 || null, 来源: o.来源 || '练习',
+      层: o.层 != null ? o.层 : (o.条目 ? o.条目.层 : null),
+      节点类型: o.节点类型 != null ? o.节点类型 : (o.条目 ? o.条目.类型 : null),
+    };
+    this.本场记录 = null;
+    this.记录保存 = null;
+    this.记录已存的ctx = null;
+    this.记录选 = null;
+    this.复制结果 = null;
+    this.下载结果 = null;
+    this.方针历史 = {};
+    return this.本场规格;
+  },
+  /** 存刚刚打完的这一场（`到结算()` 里调一次）。返回 `战斗记录.存()` 的结果。 */
+  存本场记录() {
+    const b = this.战报;
+    if (!b || !Array.isArray(b.记录)) return null;
+    const 规 = this.本场规格 || {};
+    /* 条目：优先用开打时留的那一份；练习模式兜底读编队屏当前选的那条编成；
+       调参室那一场（`95-调参室.js` 直接建 `ctx`、不走 `开战()`）没有规格 → 用 `ctx.调参` 认出来。 */
+    let 条目 = 规.条目 || null;
+    if (!条目 && typeof 编成表 !== 'undefined' && this.编队 && 编成表[this.编队.编成序号]) 条目 = 编成表[this.编队.编成序号];
+    let 层 = 规.层 != null ? 规.层 : (条目 ? 条目.层 : null);
+    let 节点类型 = 规.节点类型 != null ? 规.节点类型 : (条目 ? 条目.类型 : null);
+    let 来源 = 规.来源 || '练习';
+    if (this.ctx && this.ctx.调参) {
+      来源 = '调参室';
+      try {
+        if (typeof 调参室模型 !== 'undefined' && 调参室模型 && 调参室模型.设置) {
+          const s = 调参室模型.设置;
+          if (层 == null && s.层 != null) 层 = s.层;
+          if (!节点类型 && s.类型) 节点类型 = s.类型;
+        }
+      } catch (e) { /* 认不出来就算了（不崩） */ }
+    }
+    const 场 = 战斗记录.做一场({
+      战报: b, 我方: 规.我方, 敌方: 规.敌方, 条目,
+      层, 节点类型, 来源, 波次: 规.波次,
+      方针表: this.方针历史, 单位开关: this.单位开关,
+      调参: this.ctx ? this.ctx.调参 : null,
+    });
+    this.本场记录 = 场;
+    const r = 战斗记录.存(场);
+    this.记录保存 = r;
+    return r;
+  },
+  /** 保存反馈那一句（三层反馈的「保存」层；例「本场记录已保存（最近 5 场：第 3 场）」）。 */
+  记录保存提示() {
+    const r = this.记录保存;
+    if (!r) return '';
+    if (r.提示) return r.提示;
+    return r.ok ? `本场记录已保存（最近 ${战斗记录.场数上限} 场：第 ${r.第几场} 场）`
+      : `本场记录没存下：${r.why || '写不进去'}`;
+  },
+  /** 这一下要复制 / 下载哪一场：记录屏里选中的那一场，否则就是刚打完的这一场。 */
+  当前记录场() {
+    if (this.屏 === '战斗记录' && this.记录选 != null) {
+      const 表 = 战斗记录.读();
+      const 场 = 表[Number(this.记录选)];
+      if (场) return 场;
+    }
+    return this.本场记录;
+  },
+  /** 菜单入口：进「作战记录」屏（列表；没有记录时写一句人话，不崩）。 */
+  去战斗记录() {
+    this.记录选 = null; this.复制结果 = null; this.下载结果 = null;
+    this.开屏('战斗记录');
+    return 战斗记录.读().length;
+  },
+  /** 列表里点一场 → 看它的逐条记录（**最新的一场 = 第 N 场**，下标是 `战斗记录.读()` 的下标）。 */
+  看战斗记录(参) {
+    const i = Number(参);
+    const 表 = 战斗记录.读();
+    if (!(i >= 0 && i < 表.length)) {
+      this.复制结果 = { ok: false, 提示: '这一场不在记录里了（可能被最近 5 场的上限挤掉了）。' };
+      this.刷();
+      return false;
+    }
+    this.记录选 = i; this.复制结果 = null; this.下载结果 = null;
+    this.开屏('战斗记录');
+    return true;
+  },
+  回战斗记录列表() { this.记录选 = null; this.复制结果 = null; this.下载结果 = null; this.开屏('战斗记录'); return true; },
+  /** 「复制为文本」：优先剪贴板；不行就退化成「全选文本」（整段摊在屏上）+ 一句可见提示。 */
+  复制本场记录() {
+    const 场 = this.当前记录场();
+    if (!场) {
+      this.复制结果 = { ok: false, 提示: '还没有可以复制的记录：先打完一场（或者从菜单进「战斗记录」挑一场）。' };
+      this.刷(); return this.复制结果;
+    }
+    const 文 = 战斗记录.场文本(场);
+    const r = 战斗记录.复制(文);
+    this.下载结果 = null;
+    this.复制结果 = { ok: r.ok, 方式: r.方式, 字数: r.字数, 提示: r.提示, 文本: r.ok ? '' : 文 };
+    this.刷();
+    return this.复制结果;
+  },
+  /** 「下载 .txt」：`Blob` + `a[download]`（文件名带种子与时间）；建不出来就给可见提示 + 摊文本兜底。 */
+  下载本场记录() {
+    const 场 = this.当前记录场();
+    if (!场) {
+      this.下载结果 = { ok: false, 提示: '还没有可以下载的记录：先打完一场（或者从菜单进「战斗记录」挑一场）。' };
+      this.刷(); return this.下载结果;
+    }
+    const 文 = 战斗记录.场文本(场);
+    const r = 战斗记录.下载(文, 战斗记录.文件名(场));
+    this.复制结果 = null;
+    this.下载结果 = { ok: r.ok, 文件名: r.文件名, 字数: r.字数, 提示: r.提示, 文本: r.ok ? '' : 文 };
+    this.刷();
+    return this.下载结果;
+  },
+  /** 逐条记录（**一行一条，原文照抄**）—— 结算屏与记录屏共用。屏上最多画 `战斗记录.屏条数上限` 条。 */
+  记录行Html(场) {
+    const 记录 = (场 && Array.isArray(场.记录)) ? 场.记录 : [];
+    if (!记录.length) return '<p class="small" data-record-empty="1">这一场没有逐条记录。</p>';
+    const 画 = 记录.slice(-战斗记录.屏条数上限);
+    const 头 = 记录.length > 画.length
+      ? `<p class="small">（这一场 ${记录.length} 条，屏上画最新的 ${画.length} 条；复制 / 下载的是全部 ${记录.length} 条）</p>` : '';
+    const 行 = 画.map((x, i) => {
+      const 序 = 记录.length - 画.length + i + 1;
+      const 回 = x && x.回合 != null ? x.回合 : '?';
+      const 文 = x && x.文本 != null ? String(x.文本) : '（这条记录没有文本）';
+      return `<div class="logline" data-record-line="1"><span class="tag">第 ${回} 回合</span>` +
+        `<span class="idx">#${序}</span><span class="tx">${文}</span></div>`;
+    }).join('');
+    return `${头}<div class="logbox" data-record-box="1">${行}</div>`;
+  },
+  /** 复制 / 下载的可见反馈（三层反馈的「导出」层）。
+   *  失败时**把整段文本摊在屏上**（`data-copy-out`）= 任务书要的「全选文本」退化。 */
+  导出反馈Html() {
+    const 条 = this.复制结果 || this.下载结果;
+    if (!条) return '';
+    const 名 = this.复制结果 ? '复制为文本' : '下载 .txt';
+    const 摊 = 条.文本 ? `<textarea class="copyout" data-copy-out="1" readonly rows="8">${条.文本}</textarea>` : '';
+    return `<p class="resbar ${条.ok ? 'ok' : 'warn'}" data-export-feedback="1"><b>${条.ok ? '成功' : '警告'}</b>` +
+      `<span>${名}：${条.提示}</span></p>${摊}`;
+  },
+  /** 一场记录的「摘要一行 + 逐条记录 + 两个按钮 + 导出反馈」—— 结算屏与记录屏共用这一块。 */
+  记录块Html(场, 副标题) {
+    if (!场) return '';
+    return `<h3>${副标题 || '本场记录'}<span class="small">逐条记录（原文照抄，共 <b>${(场.记录 || []).length}</b> 条）</span></h3>
+      <p class="small" data-log-summary="1">${战斗记录.摘要行(场)}</p>
+      ${this.记录行Html(场)}
+      <div class="acts">
+        <button data-act="复制记录">复制为文本</button>
+        <button data-act="下载记录">下载 .txt</button>
+      </div>
+      ${this.导出反馈Html()}`;
+  },
+  /** 战斗结算屏上那一块「本场记录」（`data-battle-log`）：一行摘要 + 可滚动的逐条记录 + 两个导出按钮。 */
+  本场记录Html() {
+    const 场 = this.本场记录;
+    if (!场) return '';
+    const 存 = this.记录保存;
+    const 提 = this.记录保存提示();
+    const 条 = 提 ? `<p class="resbar ${存 && 存.ok ? 'ok' : 'warn'}" data-log-saved="1">` +
+      `<b>${存 && 存.ok ? '成功' : '警告'}</b><span>${提}</span></p>` : '';
+    return `<div class="battle-log" data-battle-log="1">
+      ${条}
+      ${this.记录块Html(场, '本场记录')}
+    </div>`;
+  },
+  /** 菜单入口那一屏：列表（时间 / 结果 / 回合数 / 种子）→ 点进去看逐条记录。 */
+  战斗记录屏() {
+    const 表 = 战斗记录.读();
+    const 场 = this.记录选 != null ? 表[Number(this.记录选)] : null;
+    if (场) {
+      return `<section class="card">
+        <h3>作战记录<span class="small">第 ${Number(this.记录选) + 1} / ${表.length} 场（最老 = 第 1 场；最新 = 第 ${表.length} 场）</span></h3>
+        ${this.记录块Html(场, '这一场')}
+        <div class="acts">
+          <button class="primary" data-act="回战斗记录">← 回列表</button>
+          <button data-act="回菜单">回菜单</button>
+        </div>
+        <p class="small">存的是**完整逐条记录原文**（一行一条，一个字都没改写）+ 种子 / 编成 / 方针 / 单位开关 ——
+          同种子同一串方针重放，结果完全一样。</p>
+      </section>`;
+    }
+    const 卡 = 表.slice().reverse().map((x, i) => {
+      const 序 = 表.length - i;          // 最新的一场 = 第 N 场
+      const 下标 = 序 - 1;               // `战斗记录.读()` 里的下标（最老 = 0）
+      return `<button class="pick" data-act="看战斗记录:${下标}" data-record-item="1">
+        <b>第 ${序} 场 · ${x.结果 || '—'}</b>
+        <small>${x.时间 || '—'} · ${x.回合数 == null ? '—' : x.回合数} 回合 · 种子 ${x.种子 == null ? '—' : x.种子}</small>
+        <small>${x.编成ID || '（没记编成）'} · ${(x.记录 || []).length} 条记录</small>
+      </button>`;
+    }).join('');
+    const 刚打的 = this.本场记录;
+    return `<section class="card">
+      <h3>作战记录<span class="small">最近 <b>${表.length}</b> 场（最多留 ${战斗记录.场数上限} 场 /
+        ${Math.round(战斗记录.容量上限 / 1024)} KB，超了从最老的丢）</span></h3>
+      ${表.length
+        ? `<div class="picks" data-record-list="1">${卡}</div>`
+        : '<p class="small" data-record-empty="1">还没有作战记录。打完一场战斗就会自动存一份（<b>胜 / 败都存</b>）：完整逐条记录 + 种子 / 编成 / 方针 / 单位开关 —— 够复现这一场。</p>'}
+      <div class="acts">
+        ${刚打的 ? '<button data-act="复制记录">复制刚打完那一场</button><button data-act="下载记录">下载刚打完那一场 .txt</button>' : ''}
+        <button data-act="回菜单">回菜单</button>
+      </div>
+      ${this.导出反馈Html()}
+      <p class="small">这个键是<b>独立</b>的：<code>${战斗记录.键}</code> —— 和肉鸽存档
+        <code>${typeof 存档键 !== 'undefined' ? 存档键 : '肉鸽存档'}</code> 无关：不改 <code>RUN</code>、
+        不动存档版本号；坏数据 / 空数据 / 读到垃圾一律当成「没有记录」，不崩。</p>
+    </section>`;
   },
 
   /* ---------------- 指令阶段的动作（★ 2026-10-12 全队方针，§1.6 / §1.7） ----------------
@@ -1116,6 +1378,12 @@ const 界面 = {
     this.选中位 = null; this.选目标 = false; this.提示 = '';
     this.显示单位 = null; this.战报 = null;
     this.阶段 = '指令';
+    /* ★ 作战记录（作者 2026-10-12）：把这一场的规格留一份 —— 层 / 节点类型 / 编成都从**现有战斗对象**读
+       （`肉鸽.RUN.层` 与 `this.肉鸽战斗`），不改 `90-肉鸽.js`、不动 `RUN` 的结构。 */
+    this.准备记录({
+      我方, 敌方, 条目, 波次: this.肉鸽战斗.波次, 来源: '肉鸽',
+      层: R.层, 节点类型: 格类型,
+    });
     this.开屏('战斗');
     return this.ctx;
   },
