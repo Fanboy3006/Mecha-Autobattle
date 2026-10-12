@@ -257,6 +257,40 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .dlg h3{color:var(--accent)}
 
 /* ============================================================================
+ * ★ 2026-10-12 调参室（作者亲手调难度，规格书 §3.1：**左选战斗 / 中调数 / 右看结果**）
+ * ----------------------------------------------------------------------------
+ * 三列在窄屏上会被挤扁，所以用 minmax(0,1fr) 让每一列都能收缩（不会撑破顶栏）；
+ * 滑条 / 输入框的样式只在这一屏里生效（`.调参室屏` 作用域内），别的屏一个字节都不变。
+ * ========================================================================== */
+.调参室屏{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start}
+.调参室屏 .col{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px;min-width:0}
+.调参室屏 h3{margin:0 0 8px}
+.调参室屏 h4{margin:10px 0 5px;font-family:var(--font-d);font-size:12px;letter-spacing:.12em;color:var(--muted)}
+.调参室屏 .cmds{display:flex;flex-wrap:wrap;gap:5px}
+.调参室屏 .cmds .mini{cursor:pointer}
+.调参室屏 .tune-row{display:flex;align-items:center;gap:8px;margin:5px 0}
+.调参室屏 .tune-row label{flex:0 0 78px;font-size:12px;color:var(--muted)}
+.调参室屏 .tune-row input[type=range]{flex:1 1 auto;min-width:50px;accent-color:var(--accent)}
+.调参室屏 .tune-row input[type=number],.调参室屏 .tune-row input[type=text]{flex:0 0 96px;background:var(--panel2);
+  color:var(--fg);border:1px solid var(--line);border-radius:4px;font:inherit;font-size:12px;padding:4px 6px}
+.调参室屏 .tune-row .val{flex:0 0 60px;text-align:right;font-family:var(--font-m);font-size:12px;color:var(--accent)}
+.调参室屏 .tune-grid{display:flex;flex-direction:column;gap:6px;margin:6px 0 8px}
+.调参室屏 .tune-grid .row{display:grid;grid-template-columns:repeat(var(--cols,3),1fr);gap:6px}
+.调参室屏 .tune-card{border:1px solid var(--line);border-radius:5px;padding:7px 9px;margin:8px 0;background:var(--panel2)}
+.调参室屏 .tune-card h4{margin-top:0}
+.调参室屏 textarea{width:100%;min-height:104px;background:var(--panel2);color:var(--fg);border:1px solid var(--line);
+  border-radius:4px;font-family:var(--font-m);font-size:11px;padding:6px;box-sizing:border-box}
+.调参室屏 .bar2{height:7px;background:#0d131a;border-radius:4px;overflow:hidden;margin:3px 0 6px}
+.调参室屏 .bar2 i{display:block;height:100%;background:var(--accent);transition:width .12s}
+.调参室屏 .stat{display:flex;gap:6px;align-items:baseline;font-family:var(--font-m);font-size:11px}
+.调参室屏 .stat .nm{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.调参室屏 .stat .n{flex:0 0 auto;color:var(--accent)}
+.调参室屏 .stat .pc{flex:0 0 46px;text-align:right;color:var(--muted)}
+.调参室屏 .picks{max-height:34vh}
+.调参室屏 .slot{min-height:52px}
+.调参室屏 p.small{margin:4px 0}
+
+/* ============================================================================
  * M5：机体图标和声音开关
  * ----------------------------------------------------------------------------
  * 图标是 art/mech-icons.js 的原创矢量图形，由 78-图标.js 画成 dataURL 内联在 <img> 里；
