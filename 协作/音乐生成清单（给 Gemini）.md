@@ -281,8 +281,8 @@ No lyrics. Loop-friendly, seamless loop, no fade-out. 2-3 minutes, 4/4, ~140-160
 2. 按**实测 lufs** 在 `audio\local-music.js` 的 `TRACKS` 加一行（曲名 / 文件 / lufs / `id`）；
 3. 把 `CUES`（`boss` / `victory` / `defeat` / `mapStrategy`）或 `THEMES.faction['天人']` / `THEMES.unit` 指过去；
 4. `node tools/build-src.mjs` 重新生成 `index.html` + `src/artifact-fragment.html`；
-5. `node tests/art_audio.js`（[5] 曲目数与场景映射、[9] 假浏览器里**真的指向仓库里的文件**）+ `tests/battle_ui.js`；
-6. 十五套测试 + `--check`，然后把「曲名 / 文件 / lufs / id / 挂在哪」追加进 `协作\任务板.md`。
+5. `node tests/audio.js`（[5] 曲目数与场景映射、[9] 假浏览器里**真的指向仓库里的文件**）+ `tests/battle_ui.js`；
+6. 十六套测试 + `--check`，然后把「曲名 / 文件 / lufs / id / 挂在哪」追加进 `协作\任务板.md`。
 
 ---
 
