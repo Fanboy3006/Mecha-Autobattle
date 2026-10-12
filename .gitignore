@@ -27,3 +27,6 @@ audio/SUNO/*.download
 .tmp-*/
 .tmp/
 *.tmp
+# 各条线为「避开别人正在改的文档」而暂存的追加段（照协作框架第 5 节 A2 的做法）
+tmp-*.md
+tmp-*
