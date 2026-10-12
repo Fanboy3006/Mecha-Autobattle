@@ -466,12 +466,16 @@ const 界面 = {
     const 我方单位 = 指令阶段 ? this.ctx.allies : (this.显示单位 ? this.显示单位.我方 : this.ctx.allies);
     const 敌方单位 = 指令阶段 ? this.ctx.enemies : (this.显示单位 ? this.显示单位.敌方 : this.ctx.enemies);
     const 意图 = 指令阶段 ? 算意图(this.ctx) : [];
+    /* ★ 三层反馈的**预告**（作者 2026-10-12 拍板的第 2 件，§2.2 的「预告」列）：
+       指令阶段每一屏算一次（全是纯读：`chooseAttack()` / `rowReachable()` / `按防御结算()` ——
+       不改战斗状态、不消耗随机数），再交给每张卡片；播放阶段不算（`预告快照()` 自己会拦）。 */
+    const 预告 = 指令阶段 ? 预告快照(this.ctx) : null;
     const 排 = (列表, 方, 从后往前) => {
       const 行序 = 从后往前 ? [ROW_BACK, ROW_FRONT] : [ROW_FRONT, ROW_BACK];
       return 行序.map(r => `<div class="row" style="--cols:${行列数(r)}">${Array.from({ length: 行列数(r) }, (_, c) => {
         const 位 = slotOf(r, c);
         const u = 列表.find(x => x.slot === 位);
-        return u ? this.单位卡(u, 方, 意图.find(i => i.单位位 === 位), 指令阶段) : `<div class="uc empty"><span class="pos">${位名(位)}</span></div>`;
+        return u ? this.单位卡(u, 方, 意图.find(i => i.单位位 === 位), 指令阶段, 预告) : `<div class="uc empty"><span class="pos">${位名(位)}</span></div>`;
       }).join('')}</div>`).join('');
     };
     return `<section class="战斗屏">
@@ -558,7 +562,7 @@ const 界面 = {
         : '自动档（默认）：CD 一到就在回合开始自动开，不用点。'}</p>`;
   },
 
-  单位卡(u, 方, 意图, 可点) {
+  单位卡(u, 方, 意图, 可点, 预告) {
     const 色 = 方 === 'ally' ? 势力色(u.key) : 敌方色;
     const hp = Math.max(0, Math.round(u.hp / u.maxHp * 100));
     const 动 = 可点 ? (方 === 'ally' ? ` data-act="选单位:${u.slot}"` : ` data-act="点敌人:${u.slot}"`) : '';
@@ -589,6 +593,30 @@ const 界面 = {
        框架的 `势力卡行()` 只问我方单位（敌人卡走不到那里），所以这一行走 `秘银标定卡行()`；
        **没有标定 = 空串**（一张卡都不多画，别的战斗逐字不变；播放阶段的快照没有 `debuffs` 也走同一条）。 */
     const 标定行 = 方 === 'enemy' ? 秘银标定卡行(u) : '';
+    /* ★ 三层反馈的**预告**（作者 2026-10-12 拍板的第 2 件，§2.2 的「预告」列）——
+       只在**指令阶段**画（`可点` = 指令阶段；播放阶段传的是「这一回合开始时」的快照，
+       那些单位对象没有齐全的武器运行期字段，也不该在播放中改口）。
+       判据全部来自 `84-反馈.js` 的 `预告快照()`（纯读，不改状态、不消耗随机数）：
+         · 大招开关：冷却剩几回合 / 「保留」时把「保留」标出来（§2.2 第 5 行）；
+         · 攻击后排：每台我方标「打得到 / 打不到后排」（§2.2 第 3 行）；
+         · 前守后攻 / 全军防御：进入防御的单位挂盾标 + 「防御值 +50」（§2.2 第 4 行）；
+         · 集中攻击：被点名的那张敌机卡上写「全队对它的预计伤害合计 X / 它剩 Y HP」（§2.2 第 2 行）。 */
+    const 预 = 可点 && 预告 ? 预告 : null;
+    const 预告行们 = [];
+    if (预 && 方 === 'ally') {
+      const g = 预.大招 ? 预.大招[u.slot] : null;
+      if (g && g.有大招) 预告行们.push(`大招${g.可放 ? '已就绪' : `冷却剩 ${g.冷却剩} 回合`}${g.保留 ? ' · <b>保留</b>（这一回合不放）' : ''}`);
+      if (预.方针 === '攻击后排') 预告行们.push(预.后排我能 && 预.后排我能[u.slot] ? '打得到后排' : '打不到后排');
+      if (预.防御位 && 预.防御位.includes(u.slot)) 预告行们.push(`🛡 防御姿态：${预.防御说明 || '防御值 +50'}`);
+    }
+    if (预 && 方 === 'enemy') {
+      if (预.后排位 && 预.后排位.includes(u.slot) && 预.方针 === '攻击后排') 预告行们.push('攻击后排：全队优先打它');
+      if (预.集中 && 预.集中.目标位 === u.slot) {
+        预告行们.push(`全队对它的预计伤害合计 ${预.集中.预计伤害合计} / 它剩 ${预.集中.剩余HP} HP`
+          + `（${预.集中.台数} 台打得到${预.集中.会打 < 预.集中.台数 ? `，这一回合 ${预.集中.会打} 台会打它` : ''}）`);
+      }
+    }
+    const 预告行 = 预告行们.length ? `<div class="fb-line" data-forecast="1">${预告行们.join('<br>')}</div>` : '';
     return `<div class="uc${u.hp <= 0 ? ' down' : ''}${选中}${被点名 ? ' marked' : ''}${点目标中 ? ' pickable' : ''}" id="u-${方}-${u.slot}" data-side="${方}" data-slot="${u.slot}" style="--fc:${色}"${动}>
       <span class="pos">${位名(u.slot)}</span>
       <div class="head">${图标.卡(u.key, 方, 图标.尺寸.卡)}<div class="nm"><b>${u.name}</b><small>${u.key} · 速 ${speedOf(u)}</small></div></div>
@@ -598,6 +626,7 @@ const 界面 = {
       ${势力行 ? `<div class="faction">${势力行}</div>` : ''}
       ${标定行 ? `<div class="faction">${标定行}</div>` : ''}
       ${被点名 ? `<div class="cmd">集中攻击（全队打它）</div>` : ''}
+      ${预告行}
       ${方 === 'ally' && 指令行 ? `<div class="cmd">${指令行}</div>` : ''}
       ${方 === 'enemy' && 意图行 ? `<div class="intent">${意图行}</div>` : ''}
     </div>`;
@@ -616,7 +645,11 @@ const 界面 = {
     el.classList && el.classList.toggle('down', s.死);
     if (飘) {
       el.classList && el.classList.add(飘.暴击 ? 'hit crit' : 'hit');
-      if (飘.伤害) el.innerHTML += `<span class="float${飘.暴击 ? ' crit' : ''}">${飘.伤害}</span>`;
+      /* ★ 三层反馈的**即时**（作者 2026-10-12 拍板的第 2 件，§2.2 的「即时」列）：
+         「伤害数字旁」那一个小标签（`集中` / `被挡 −20` / `防御 少挨 N`）——
+         字段来自记录，`反馈标签()` 把记录翻成人话；没有那三个字段时**一个字都不多**（默认路径的显示也不变）。 */
+      const 签 = 飘.标签 ? `<span class="float-tag${飘.暴击 ? ' crit' : ''}">${飘.标签}</span>` : '';
+      if (飘.伤害 || 签) el.innerHTML += `<span class="float${飘.暴击 ? ' crit' : ''}">${飘.伤害 || ''}</span>${签}`;
     }
   },
 
@@ -715,7 +748,10 @@ const 界面 = {
   /** 播放一条记录：攻击者冲一下（并加一圈光）、受击方闪白 + 飘伤害数字，再追一行战斗记录。 */
   播一步(ev, p) {
     音乐.看记录(ev);                 // M5：我方放大招就切这台机体的主题曲（保持到本回合结束）
-    if (ev && ev.目标方 != null) this.刷卡(ev.目标方, ev.目标位, { 伤害: ev.伤害, 暴击: ev.暴击 > 0 });
+    /* ★ 三层反馈的**即时**（§2.2 的「即时」列）：这张卡上那一下要不要挂个小标签 ——
+       `集中` / `被挡 −20` / `防御 少挨 N`（字段由引擎写在记录上；没有就一个标签都不画）。 */
+    const 签 = 反馈标签(ev);
+    if (ev && ev.目标方 != null) this.刷卡(ev.目标方, ev.目标位, { 伤害: ev.伤害, 暴击: ev.暴击 > 0, 标签: 签 });
     const 屏 = $('#screen');
     const 旧的 = 屏 && 屏.querySelectorAll ? 屏.querySelectorAll('.uc.act') : [];
     for (const el of 旧的) el.classList && el.classList.remove('act');
@@ -726,7 +762,7 @@ const 界面 = {
     const 日志 = $('#log');
     if (日志) {
       const 类 = ev ? (ev.类型 === '攻击' || ev.类型 === '残月余响' ? (ev.单位方 || '') : ev.类型 === '回合' ? 'sys' : 'sys2') : 'sys';
-      日志.innerHTML += ev ? `<li class="${类}"><span class="t">${ev.回合}</span>${ev.文本}</li>` : '<li class="sys">（本回合播放结束）</li>';
+      日志.innerHTML += ev ? `<li class="${类}"><span class="t">${ev.回合}</span>${ev.文本}${签 ? ` <span class="tagx">〔${签}〕</span>` : ''}</li>` : '<li class="sys">（本回合播放结束）</li>';
       if (日志.scrollTop != null) 日志.scrollTop = 99999;
     }
     if (p) this.刷顶栏();

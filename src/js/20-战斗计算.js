@@ -168,8 +168,13 @@ function dmgCore(att, w, def, o = {}) {
          ① 这台单位本回合真的要执行防御动作（`def.defending`）；
          ② **当前方针**就是让它防御的那一档（全军防御 / 前守后攻的前排）——
             `算意图()` 在指令阶段也算得到（§1.6：「全军防御下我方的防御值 +50 会影响敌人挑谁打」）。
-       默认路径（全军突击）两个来源都是假 → 逐字不变。 */
-    defending: !!o.defending || !!(def && def.defending) || 按防御结算(def, o.ctx),
+       默认路径（全军突击）两个来源都是假 → 逐字不变。
+       ★ 2026-10-12（三层反馈 · 第 2 件，§2.4）`o.不带防御加成: true` = **只给显示用**的那一次再算：
+         「防御少挨了多少」＝同一套参数、**不带防御加成**再算一次 `dmgCore`，两次取差值（§2.4 原话）。
+         它把上面三个来源**一起压成 false**，所以那一次算出来的就是「没有防御加成时这一下会挨多少」。
+         它只影响这一次预览：不改实际伤害、不消耗随机数（`dmgCore` 里一个 `rng` 都没有）。
+         默认（不传这个字段）与改动前逐字相同。 */
+    defending: o.不带防御加成 ? false : (!!o.defending || !!(def && def.defending) || 按防御结算(def, o.ctx)),
   };
   const special = w.dmgType === '特殊', ign = !!w.ignoreDef, useStat = o.useStat !== false;
 
@@ -338,6 +343,11 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
   const rolls = [];
   let total = 0, landed = 0, crits = 0, p = w.hit;
   const 尖兵加成 = (职业是(def, '尖兵') && def.尖兵闪避Turn !== ctx.turn) ? 20 : 0;
+  /* ★ 2026-10-12（三层反馈 · 第 2 件，§2.4）：这一下是不是按**防御姿态**结算 ——
+     判定只此一份（`dmgCore()` 里面那一行用的是同一个函数、同一组来源）。
+     `少挨合计` = 逐段「实际挨的这一下」与「不带防御加成时会挨的那一下」的差，**只用来显示**。 */
+  const 按防 = !!(opts.defending || (def && def.defending) || 按防御结算(def, ctx));
+  let 少挨合计 = 0;
 
   for (let i = 0; i < hits; i++) {
     /* ★ 2026-10-11：这一段的**命中步长**（势力钩子第 15 个「段内命中加成」，实现在 `72-势力.js`）——
@@ -350,8 +360,19 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
     const hit = sure || rng() * 100 < q;
     if (hit) {
       const cr = !sure && rng() * 100 < critRate(w, att);
+      /* ★ 三层反馈 · 「防御少挨了多少」（§2.4）：**同一套参数、不带防御加成再算一次 `dmgCore`**，
+         两次取差值。三个要点：
+           ① **先算预览、再算真的** —— 预览走 `preview: true`（屏障 / 力场 / 护盾一个计数器都不动），
+              所以在真的一发之前算，两次看到的**靶子状态完全一样**（先算真的就会看到已经被打掉一层的盾）；
+           ② **不消耗随机数**：这一次调用里一个 `rng` 都没有，`hit / cr` 已经判完了，
+              所以段数、命中段数、暴击次数与整场随机数序列**一个都不变**；
+           ③ **只用来显示**：`total` 加的还是原来那一个 `d`（`少挨合计` 只进记录字段）。 */
+      const 无防 = 按防 ? dmgCore(att, w, def, { power: wv(att, w, 'power') * 威力倍率, crit: cr, preview: true, turn: ctx.turn, 不带防御加成: true, ctx }).dmg : 0;
       const c = dmgCore(att, w, def, { power: wv(att, w, 'power') * 威力倍率, crit: cr, preview: false, turn: ctx.turn, defending: opts.defending, ctx });
       const d = Math.round(c.dmg * 倍率);
+      /* 「少挨了多少」＝**不带防御加成时会挨的** − **实际挨的**（大减小，所以是正数；
+         防御只会让伤害更低，`Math.max(0, …)` 只是兜底：万一某条减免让反向差出现，也不写负数）。 */
+      if (按防) 少挨合计 += Math.max(0, Math.round(无防 * 倍率) - d);
       total += d; landed++; if (cr) crits++;
       rolls.push(`第 ${i + 1} 段（${sure ? '必中' : q + '%'}）${cr ? '暴击 ' : ''}${d}`);
       if (c.nullified) break;
@@ -400,12 +421,17 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
 
   const 段 = hits > 1 ? `${landed}/${hits} 段 ` : '';
   return {
+    /* ★ 2026-10-12（三层反馈 · 第 2 件）：`防御少挨` 只在**真的按防御姿态挨了这一下**时才带上
+       （`少挨合计 > 0`）—— 字段不出现 = 这一下与防御无关，默认路径（全军突击）**一个字段都不多**。 */
     文本: landed
       ? `${att.name}【${w.name}】→ ${def.name}：${段}伤害 ${total}${crits ? `（暴击 ${crits} 次）` : ''}`
         + `${特种减命中 ? `（特种：对方命中 −${特种减命中}，到下回合结束）` : ''}`
         + `${挂上的debuff ? `（${debuff文字(挂上的debuff)}）` : ''}`
       : `${att.name}【${w.name}】→ ${def.name}：未命中（${rolls.join('；')}）`,
-    字段: { 命中: landed > 0, 伤害: total, 段数: hits, 命中段数: landed, 暴击: crits, 目标剩余HP: def.hp, 特种减命中, debuff: 挂上的debuff || null, 详情: rolls.join('；') },
+    字段: Object.assign({
+      命中: landed > 0, 伤害: total, 段数: hits, 命中段数: landed, 暴击: crits, 目标剩余HP: def.hp,
+      特种减命中, debuff: 挂上的debuff || null, 详情: rolls.join('；'),
+    }, 少挨合计 > 0 ? { 防御少挨: 少挨合计 } : null),
   };
 }
 
