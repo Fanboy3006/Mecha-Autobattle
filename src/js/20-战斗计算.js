@@ -109,7 +109,7 @@ function weakList(def, w, o = {}) {
  * 第一期只保留数值类，带特技的条目（地形 / 正面装甲 / GN 全盾 / 光束反射 /
  * SEED 防御 / λ 驱动器 / 减伤）**不做**，等 Claude 出换算方案（方案 6.2）。 */
 const REDUCTIONS = [
-  /* 「防御」指令 / 守护替人挨打：这一下按防御结算 → 防御值 +50（方案第 4 节） */
+/* 「防御」指令 / 全军防御那一档：这一下按防御结算 → 防御值 +50（方案第 4 节，§1.3 第 4 条） */
   { id: 'guard', name: '防御姿态', stage: 2, applies: c => !!c.defending, def: () => 50 },
   { id: 'physRed', name: '物理减免', stage: 2, applies: c => c.w.dmgType === '物理' && buffSum(c.def, 'physRed') > 0, def: c => buffSum(c.def, 'physRed') },
   { id: 'buffDef', name: '防御增益', stage: 2, applies: c => buffSum(c.def, 'def') !== 0, def: c => buffSum(c.def, 'def') },
@@ -163,8 +163,13 @@ function dmgCore(att, w, def, o = {}) {
   const c = {
     att, def, w, preview: o.preview !== false, crit: !!o.crit, turn: o.turn || 0,
     defMul: defMul(def), steps: [], nullified: false,
-    /* 这一下是不是按防御结算：单位的「防御」指令，或替队友挡下的那一下（方案第 4 节） */
-    defending: !!o.defending || !!def.defending,
+    /* 这一下是不是按**防御姿态**结算（防御值 +50，方案第 4 节）。
+       ★ 2026-10-12：来源从「单位的防御指令 / 守护替人挨打」换成两个（见 `60-战斗.js` 的 `按防御结算()`）：
+         ① 这台单位本回合真的要执行防御动作（`def.defending`）；
+         ② **当前方针**就是让它防御的那一档（全军防御 / 前守后攻的前排）——
+            `算意图()` 在指令阶段也算得到（§1.6：「全军防御下我方的防御值 +50 会影响敌人挑谁打」）。
+       默认路径（全军突击）两个来源都是假 → 逐字不变。 */
+    defending: !!o.defending || !!(def && def.defending) || 按防御结算(def, o.ctx),
   };
   const special = w.dmgType === '特殊', ign = !!w.ignoreDef, useStat = o.useStat !== false;
 
@@ -230,9 +235,9 @@ function wv(u, w, key) { let v = w[key]; for (const up of w.upgrades || []) if (
 /* ---------- 期望伤害（方案 5.1.1：命中率 × 伤害，暴击按 1 + 暴击率 计） ---------- */
 function expectedDamage(att, def, w, opts = {}) {
   const hits = Math.max(1, w.hits || 1);
-  const hr = hitRate(att, w, def, { blockPenalty: opts.blockPenalty || 0 }).hit / 100;
+  const hr = hitRate(att, w, def, { blockPenalty: opts.blockPenalty || 0, ctx: opts.ctx }).hit / 100;
   const crit = 1 + critRate(w, att) / 100;
-  const dmg = dmgCore(att, w, def, { power: wv(att, w, 'power'), preview: true, turn: opts.turn || 0 }).dmg;
+  const dmg = dmgCore(att, w, def, { power: wv(att, w, 'power'), preview: true, turn: opts.turn || 0, ctx: opts.ctx }).dmg;
   return hr * dmg * crit * hits;
 }
 
@@ -341,11 +346,11 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
        （战棋 `17b-角色机制.js:33` 的 `chainStepOf`；段落循环本身照战棋 multi 的做法，一行没动）。
        ★ 没有条目写它 → 恒 0 → `p` 与改动前逐字相同。 */
     const 步长 = 命中段步长(att, w, { 段号: i + 1, 段数: hits });
-    const q = hitRate(att, w, def, { baseHit: p, blockPenalty, turn: ctx.turn }).hit;
+    const q = hitRate(att, w, def, { baseHit: p, blockPenalty, turn: ctx.turn, ctx }).hit;
     const hit = sure || rng() * 100 < q;
     if (hit) {
       const cr = !sure && rng() * 100 < critRate(w, att);
-      const c = dmgCore(att, w, def, { power: wv(att, w, 'power') * 威力倍率, crit: cr, preview: false, turn: ctx.turn, defending: opts.defending });
+      const c = dmgCore(att, w, def, { power: wv(att, w, 'power') * 威力倍率, crit: cr, preview: false, turn: ctx.turn, defending: opts.defending, ctx });
       const d = Math.round(c.dmg * 倍率);
       total += d; landed++; if (cr) crits++;
       rolls.push(`第 ${i + 1} 段（${sure ? '必中' : q + '%'}）${cr ? '暴击 ' : ''}${d}`);

@@ -80,7 +80,7 @@ function bestWeaponOn(actor, target, pool, 局面, ctx) {
     const trow = unitRow(target);
     if (!rowReachable(kind, trow, 局面.前排有人)) continue;
     const 罚 = rowBlockPenalty(kind, target.slot, 局面.活位, actor, target);
-    const exp = expectedDamage(actor, target, e.t, { blockPenalty: 罚, turn: ctx && ctx.turn });
+    const exp = expectedDamage(actor, target, e.t, { blockPenalty: 罚, turn: ctx && ctx.turn, ctx });
     if (!best || exp > best.exp) best = { entry: e, exp, 被挡: 罚 < 0 };
   }
   return best;
@@ -100,7 +100,7 @@ function pickSingleTarget(actor, foes, pool, ctx) {
 }
 
 /* ---------- 5.1.3 范围武器：按命中的敌人总期望伤害挑落点 ---------- */
-function pickAreaTarget(actor, foes, pool) {
+function pickAreaTarget(actor, foes, pool, ctx) {
   let best = null;
   for (const e of pool) {
     if (!isAreaKind(rangeKindOf(e.t))) continue;
@@ -108,7 +108,7 @@ function pickAreaTarget(actor, foes, pool) {
       const hit = areaSlots(e.t, rowOfSlot(slot), colOfSlot(slot));
       const inside = foes.filter(t => hit.includes(t.slot));
       if (!inside.length) continue;
-      const total = inside.reduce((n, t) => n + expectedDamage(actor, t, e.t, { blockPenalty: 0 }), 0);
+      const total = inside.reduce((n, t) => n + expectedDamage(actor, t, e.t, { blockPenalty: 0, ctx }), 0);
       // 并列时取格子编号小的（决定性；不要用 sort 的顺序去赌）
       if (!best || total > best.exp) best = { target: inside[0], entry: e, exp: total, slot, hit: inside };
     }
@@ -116,34 +116,113 @@ function pickAreaTarget(actor, foes, pool) {
   return best;
 }
 
-/* ---------- 5.1 我方「进攻」 ---------- */
+/* ---------- 5.1.2 全队方针怎么改「打进谁」（作者 2026-10-12 拍板的第一件，§1.2 / §1.3）----------
+ * **方针本身不带任何加成**，它只改「挑谁打 / 打不打」；代价与收益全部来自现有规则。
+ *   集中攻击（§1.3 第 2 条）：打得到目标位的都打它；打不到就照「全军突击」自由攻击。
+ *   攻击后排（§1.3 第 3 条）：候选先只看对面**后排活着、而且这台用现有武器打得到**的单位，
+ *                              在这些里照常按现有 AI 挑；一个都打不到 → 照「全军突击」。
+ *   全军突击：**现在的「进攻」AI，逐字不变**（默认路径的唯一一条）。
+ * 这两条都**不发明新规则**：挑目标用的还是 `pickSingleTarget` / `targetScore` 那一套。 */
+const 指定目标位在 = (ctx, 位) => ((ctx && ctx.enemies) || []).find(u => u.slot === 位 && u.hp > 0) || null;
+
+/** 集中攻击：打**指定那一位**。返回单个候选（形状和 `pickSingleTarget` 一样），打不到就 null。
+ *  §1.3 第 2 条的规定**逐条照做**：
+ *    ① 单体武器：照现在「集火」那一段的写法（`bestWeaponOn(actor, 指定, …)`），打不到才往下走自由攻击；
+ *    ② 范围武器：落点**必须包含目标**的候选里挑期望伤害最高的（并列取格子号小的）；
+ *    ③ **范围与单体之间照常比一比**（§1.2 的「打得到的都打它」指的是**目标**，
+ *      不是「必须用单体武器」）—— `B2 蕾卡` 那把「影界·万刃归一」是一整排范围武器，
+ *      打前排时比它的单体武器疼得多，这时照常选它；判定规矩和默认那条（能击破优先、再比期望值）一致。 */
+function 集中攻击候选(actor, foes, pool, ctx) {
+  const p = 当前方针(ctx);
+  const 指定 = p.目标位 != null ? 指定目标位在(ctx, p.目标位) : null;
+  if (!指定) return null;
+  const 局面 = 局面Of(foes);
+  let best = null;
+  const 单 = pool.filter(e => !isAreaKind(rangeKindOf(e.t)));
+  if (单.length) {
+    const w = bestWeaponOn(actor, 指定, 单, 局面, ctx);
+    /* ★ §1.3 第 2 条：「打不到的照常自由攻击」——`bestWeaponOn` 返回 null 就交给全军突击。 */
+    if (w) best = { target: 指定, entry: w.entry, exp: w.exp, score: targetScore(w.exp, 指定), 被挡: w.被挡 };
+  }
+  /* 范围武器：落点**必须包含目标**的候选里挑期望伤害最高的；没有能包含目标的落点 → 按单体规则处理。 */
+  const 范围 = pool.filter(e => isAreaKind(rangeKindOf(e.t)));
+  for (const e of 范围) {
+    for (let slot = 0; slot < SLOTS; slot++) {
+      const hit = areaSlots(e.t, rowOfSlot(slot), colOfSlot(slot));
+      if (!hit.includes(指定.slot)) continue;                       // 落点必须包含目标
+      const inside = foes.filter(t => hit.includes(t.slot));
+      if (!inside.length) continue;
+      const total = inside.reduce((n, t) => n + expectedDamage(actor, t, e.t, { blockPenalty: 0, ctx }), 0);
+      const 分 = targetScore(total, 指定);
+      /* 与单体那条比：能击破优先，其次比期望值（并列时保留单体那条 = 格子号小的落点先来，决定性） */
+      if (!best || (分.canKill && !best.score.canKill) || (分.canKill === best.score.canKill && 分.value > best.score.value)) {
+        best = { target: 指定, entry: e, exp: total, score: 分, slot, hit: inside };
+      }
+    }
+  }
+  return best;
+}
+
+/** 攻击后排：候选先只看对面**后排活着、而且这台打得到**的；一个都打不到 → 返回 null（照全军突击）。
+ *  §1.3 第 3 条：单体照现有 AI 在后排里挑；范围优先挑**覆盖后排单位最多**的落点，同样多再比期望伤害。 */
+function 攻击后排候选(actor, foes, pool, ctx) {
+  const 后 = foes.filter(t => unitRow(t) === ROW_BACK);
+  if (!后.length) return null;
+  const 单 = pool.filter(e => !isAreaKind(rangeKindOf(e.t)));
+  let best = 单.length ? pickSingleTarget(actor, 后, 单, ctx) : null;
+  /* 范围：优先「覆盖后排单位最多」，同样多再比期望伤害；一个覆盖后排的落点都没有 → 照突击 */
+  const 范围 = pool.filter(e => isAreaKind(rangeKindOf(e.t)));
+  let 范围最佳 = null;
+  for (const e of 范围) {
+    for (let slot = 0; slot < SLOTS; slot++) {
+      const hit = areaSlots(e.t, rowOfSlot(slot), colOfSlot(slot));
+      const inside = foes.filter(t => hit.includes(t.slot));
+      if (!inside.length) continue;
+      const 后排数 = inside.filter(t => unitRow(t) === ROW_BACK).length;
+      if (!后排数) continue;                                        // 打不到后排的落点不算
+      const total = inside.reduce((n, t) => n + expectedDamage(actor, t, e.t, { blockPenalty: 0, ctx }), 0);
+      if (!范围最佳 || 后排数 > 范围最佳.后排数 || (后排数 === 范围最佳.后排数 && total > 范围最佳.exp)) {
+        范围最佳 = { target: inside[0], entry: e, exp: total, slot, hit: inside, 后排数 };
+      }
+    }
+  }
+  if (范围最佳) {
+    const 分 = targetScore(范围最佳.exp, 范围最佳.target);
+    if (!best || (分.canKill && !best.score.canKill) || (分.canKill === best.score.canKill && 分.value > best.score.value)) return 范围最佳;
+  }
+  return best;
+}
+
+/* ---------- 5.1 我方「进攻」（**默认路径：全军突击，逐字不变**） ---------- */
 function chooseAttack(actor, ctx) {
   const foes = livingOf(otherSide(actor.side), ctx);
   if (!foes.length) return null;
+  /* ★ §1.3 第 5 条：全军防御 / 前守后攻的前排**只禁止攻击**（含范围）——
+     这里返回 null 之后 `aiAction()` 会照常试修理 / 支援，一个都挑不出来才去执行防御动作。
+     `{忽略攻击禁令: true}` = `grantTargetOf()` / 平衡工具那种「估一下它本来能打多少」的调用。 */
+  if (!(ctx && ctx.忽略攻击禁令) && typeof 禁止攻击 === 'function' && 禁止攻击(actor, ctx)) return null;
   const pool = weaponPool(actor, ctx);
   if (!pool.length) return null;
 
-  /* 「集火 ▶ 目标」（方案第 4 节）：玩家点了谁就打谁；打不到（例如近战够不到后排）
-     就按「进攻」处理，继续往下走。 */
-  if (actor.指令 === '集火') {
-    const 指定 = (actor.指定目标 && actor.指定目标.hp > 0) ? actor.指定目标
-      : (actor.指定目标位 != null ? foes.find(t => t.slot === actor.指定目标位) : null);
-    if (指定) {
-      const w = bestWeaponOn(actor, 指定, pool, 局面Of(foes), ctx);
-      if (w) return { kind: 'attack', weapon: w.entry.t, target: 指定, expected: w.exp, entry: w.entry, 集火: true, 被挡: w.被挡 };
-    }
-  }
+  /* 全队方针改「打进谁」（§1.3 第 2、3 条）：
+       · 集中攻击 / 攻击后排**各自给一个候选**，然后和「全军突击」那两个候选放在一起比
+         （能击破优先、再比期望值 —— 和默认那条**同一套排序**，所以并列时挑法完全一致）。
+       · 方针那条候选比不过时**自然落到突击那条**（「打不到的照常自由攻击」/「后排全灭照突击」）。 */
+  const 方针类 = 当前方针(ctx).类型;
+  const 方针候选 = 方针类 === '集中攻击' ? 集中攻击候选(actor, foes, pool, ctx)
+    : 方针类 === '攻击后排' ? 攻击后排候选(actor, foes, pool, ctx) : null;
 
   const areaPool = pool.filter(e => isAreaKind(rangeKindOf(e.t)));
   const singlePool = pool.filter(e => !isAreaKind(rangeKindOf(e.t)));
 
   const cands = [];
+  if (方针候选) cands.push({ kind: 'attack', weapon: 方针候选.entry.t, target: 方针候选.target, expected: 方针候选.exp, score: 方针候选.score, entry: 方针候选.entry, hit: 方针候选.hit, slot: 方针候选.slot, 被挡: 方针候选.被挡 });
   if (singlePool.length) {
     const s = pickSingleTarget(actor, foes, singlePool, ctx);
     if (s) cands.push({ kind: 'attack', weapon: s.entry.t, target: s.target, expected: s.exp, score: s.score, entry: s.entry, 被挡: s.被挡 });
   }
   if (areaPool.length) {
-    const a = pickAreaTarget(actor, foes, areaPool);
+    const a = pickAreaTarget(actor, foes, areaPool, ctx);
     if (a) cands.push({ kind: 'attack', weapon: a.entry.t, target: a.target, expected: a.exp, slot: a.slot, hit: a.hit, entry: a.entry });
   }
   if (!cands.length) return null;
@@ -183,7 +262,10 @@ function grantTargetOf(actor, ctx) {
   if (!done.length) return null;
   let best = null;
   for (const u of done) {
-    const a = chooseAttack(u, ctx);
+    /* ★ §1.3 第 5 条：这里只是**排队**（谁被打断最亏），不是决策 —— 全军防御下所有单位都被禁止
+       攻击，不豁免的话这一步会把「期望输出最高」退化成「位号最小」。所以传 `忽略攻击禁令`
+       （再动出来的那一下**照当前方针**行动：全军防御下它照样只能修理 / 支援 / 防御）。 */
+    const a = chooseAttack(u, Object.assign({}, ctx, { 忽略攻击禁令: true }));
     const v = a ? a.expected : 0;
     if (!best || v > best.v || (v === best.v && u.slot < best.u.slot)) best = { u, v };
   }
@@ -213,16 +295,24 @@ function chooseSupport(actor, ctx) {
 }
 
 /* ---------- 我方一台机体的动作 ----------
- * 顺序：修理 → 进攻 → 支援。修理只在**有人 HP 比例低于 修理阈值（60%）**时才抢在进攻前面
- * （作者 2026-10-10 拍板）；没人低于阈值就正常输出 / 上 debuff，一点血都不掉也不出手修。
+ * 顺序：修理 → 进攻 → 支援 → （方针禁止攻击时）**防御动作**。
+ * 修理只在**有人 HP 比例低于 修理阈值（60%）**时才抢在进攻前面（作者 2026-10-10 拍板）；
+ * 没人低于阈值就正常输出 / 上 debuff，一点血都不掉也不出手修。
  * 方案只写了「进攻」怎么挑；没有攻击手段的机体（例如第一期的 Feena）走到最后一步，
- * 用她唯一能做的事（月光祝福 / 再动），而不是直接跳过。 */
+ * 用她唯一能做的事（月光祝福 / 再动），而不是直接跳过。
+ * ★ 2026-10-12（§1.3 第 5 条「奶妈正常行动」）：全军防御 / 前守后攻的前排**只禁止攻击**，
+ *   **不禁止行动** —— 上面三步（修理 / 进攻 / 支援）照常挑，只有「一个都挑不出来」时
+ *   才执行防御动作（`{kind:'defend'}`：防御值 +50、下回合回 5% 最大 HP，数值沿用现有「防御」指令）。
+ *   例：Iris / 维诺 / 苏菲照常修理；Feena 照常放「月光祝福」「再动」。 */
 function aiAction(actor, ctx) {
   const heal = chooseHeal(actor, ctx);
   if (heal) return heal;
   const atk = chooseAttack(actor, ctx);
   if (atk) return atk;
-  return chooseSupport(actor, ctx);
+  const sup = chooseSupport(actor, ctx);
+  if (sup) return sup;
+  if (typeof 禁止攻击 === 'function' && 禁止攻击(actor, ctx)) return { kind: 'defend' };
+  return null;
 }
 
 /* ---------- 5.2 敌方 ---------- */
@@ -276,7 +366,7 @@ function enemyAction(actor, ctx) {
   // 范围武器按总期望伤害比一比（5.1.3 对敌方同样适用）
   const areaPool = pool.filter(e => isAreaKind(rangeKindOf(e.t)));
   if (areaPool.length) {
-    const a = pickAreaTarget(actor, foes, areaPool);
+    const a = pickAreaTarget(actor, foes, areaPool, ctx);
     if (a && (!pick || a.exp > pick.exp)) pick = { target: a.target, entry: a.entry, exp: a.exp, slot: a.slot, hit: a.hit };
   }
   if (!pick) return null;

@@ -74,10 +74,11 @@ const G = {
   get MechIcons() { return 图标.取MI(); },   // 素材本体，给测试 / 控制台用
   get MechAudio() { return 音乐.层(); },
 
-  /* ---- 战斗内核（M1 / M3） ---- */
-  开局, 设指令, 算意图, 打一回合,   // M3：一回合一个回合地打（玩家的指令每回合都可能改）
+  /* ---- 战斗内核（M1 / M3 / ★ 2026-10-12 全队方针） ---- */
+  开局, 设方针, 设单位开关, 算意图, 打一回合,   // ★ 全队层 = 一条方针；单位层 = 只有大招 / TRANS-AM 开关
+  方针们, 默认方针, 规整方针, 当前方针, 禁止攻击, 按防御结算, 是方针对照表, 第几回合的方针, 方针回合,
   回合开始, endTurn,     // 回合流程的两段（`tests/faction.js` 第 [15] 段验「不动如山」的判定时机要用）
-  simulate,              // simulate(我方, 敌方, 指令, 种子) → 一整场（测试 / 平衡工具用）
+  simulate,              // simulate(我方, 敌方, 方针, 种子, 选项) → 一整场（测试 / 平衡工具用）
   makeUnits,             // 编成数组 → 单位数组
   makeUnit,              // 单个：{键, 位, 等级}
   speedOf, livingOf, unitRow, frontAlive, 位名, 职业是, 战斗分类,
@@ -87,7 +88,8 @@ const G = {
   chooseSupport,        // 支援类武器的挑选（`tests/faction.js` 第 [15] 段验「好运加护」的开关对照用）
   drainAgain, actOnce,        // 再动 / 连斩的排队（`drainAgain`）与「一个单位行动一次」（秘银的倒下接力要靠它们验）
   chooseHeal, 修理阈值,       // 修理策略（作者 2026-10-10：低于 60% 才修）——tests/heal.js 直接读它
-  守护关系, 守护者, 嘲讽, 单位动作, 换位目标, 增援, 空位, 活位们, resolveAction,
+  pickAreaTarget, pickSingleTarget,   // 范围 / 单体的落点与目标挑选（`tests/boss.js` 第 [9] 段量「站位改不改落点」）
+  嘲讽, 单位动作, 增援, 空位, 活位们, resolveAction,
   /* 射程换算 / 公式（给测试和以后的界面用） */
   rangeKindOf, rowReachable, rowBlockPenalty, areaSlots, ROW_FRONT, ROW_BACK,
   isAreaKind, isHealKind, isSupportKind, KIND_SUPPORT,

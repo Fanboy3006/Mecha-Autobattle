@@ -6,8 +6,8 @@
  * 战斗节点从对应层 / 对应类型里**随机抽一条**（`抽编成()` / `抽编成兜底()`）。
  *
  * ★ 作者 2026-10-10 拍板的两条设计（这张表就是照它重写的）：
- *   ① **每条编成必须考一个指令** —— 自动战斗的乐趣是「看到意图 → 下指令」，
- *      所以每条右边都写一句 `考点`：这一场想让玩家练哪个指令（集火 / 守护 / 防御 / 换位 / 读意图）。
+ *   ① **每条编成必须考一个方针 / 决策** —— 自动战斗的乐趣是「看到意图 → 下指令」，
+ *      所以每条右边都写一句 `考点`：这一场想让玩家练哪个方针（集中攻击 / 攻击后排 / 前守后攻 / 全军防御 / 读意图）。
  *   ② **每种类型每层先 3 条，以后加到 5–6 条**（作者 2026-10-10 同意）。
  *      现在 13 个「层 × 类型」组合 × 3 条 = **39 条**；加条目时往对应那一段后面追加就行。
  *
@@ -76,26 +76,26 @@ const 精锐池 = ['shield', 'beamcoat', 'phase', 'stealth', 'mirror', 'jammer',
 const 头目池 = ['captain', 'venom', 'regen', 'funnel', 'berserker'];
 
 const 编成表 = [
-  /* ================= 第 1 层（教学：先把四种指令各练一遍） ================= */
+  /* ================= 第 1 层（教学：先把几条方针各练一遍） ================= */
 
   /* ---- 普通（★ 难度调整第二轮：3–4 → **5 台**，前 3 后 2）+ 2 波增援（第 2 / 4 回合）---- */
   { 层: 1, 类型: '普通', 前: ['raider', 'grunt', 'swarm'], 后: ['bomber', 'drone'],
     波次: [{ 回合: 2, 来: ['hound', 'fighter'] }, { 回合: 4, 来: ['drone', 'raider'] }],
-    考点: '五台近战杂兵：一台一台集火，别把伤害摊开（第 2 回合还会再来两波）' },
+    考点: '五台近战杂兵：用「集中攻击」一台一台点掉，别把伤害摊开（第 2 回合还会再来两波）' },
   { 层: 1, 类型: '普通', 前: ['drone', 'hound', 'swarm'], 后: ['fighter', 'bomber'],
     波次: [{ 回合: 2, 来: ['grunt', 'raider'] }, { 回合: 4, 来: ['hound', 'fighter'] }],
-    考点: '远程杂兵全挤在前排：它们能隔着前排打你的后排，先算换位' },
+    考点: '远程杂兵全挤在前排：它们能隔着前排打你的后排，先算编队摆位' },
   { 层: 1, 类型: '普通', 前: ['bomber', 'drone', 'raider'], 后: ['swarm', 'fighter'],
     波次: [{ 回合: 2, 来: ['grunt', 'fighter'] }, { 回合: 4, 来: ['grunt', 'hound'] }],
-    考点: '自爆机 + 会飞的杂兵：这一回合先防御 / 守护，别让它贴上来' },
+    考点: '自爆机 + 会飞的杂兵：这一回合先「全军防御」，别让它贴上来' },
 
   /* ---- 精英（★ 4 → **6 台**，前 4 后 2）+ 3 波增援（第 2 / 4 / 6 回合）---- */
   { 层: 1, 类型: '精英', 前: ['shield', 'grunt', 'raider', 'hound'], 后: ['sniper', 'drone'],
     波次: [{ 回合: 2, 来: ['hound', 'drone', 'raider'] }, { 回合: 4, 来: ['fighter', 'swarm', 'grunt'] }, { 回合: 6, 来: ['grunt', 'raider'] }],
-    考点: '盾卫顶在前面、狙击躲后排：先拆盾，再集火后排（直射打后2 会被盾卫挡 −20）' },
+    考点: '盾卫顶在前面、狙击躲后排：先拆盾，再用「攻击后排」点掉后排（直射打后2 会被盾卫挡 −20）' },
   { 层: 1, 类型: '精英', 前: ['grunt', 'fighter', 'raider', 'hound'], 后: ['artillery', 'drone'],
     波次: [{ 回合: 2, 来: ['raider', 'swarm', 'grunt'] }, { 回合: 4, 来: ['grunt', 'fighter', 'drone'] }, { 回合: 6, 来: ['hound', 'drone'] }],
-    考点: '炮击机曲射不吃被挡：把守护留给它瞄的那台' },
+    考点: '炮击机曲射不吃被挡：用「前守后攻」把前排顶住' },
   { 层: 1, 类型: '精英', 前: ['jammer', 'grunt', 'shield', 'fighter'], 后: ['stealth', 'hound'],
     波次: [{ 回合: 2, 来: ['fighter', 'drone', 'raider'] }, { 回合: 4, 来: ['raider', 'swarm', 'fighter'] }, { 回合: 6, 来: ['grunt', 'hound'] }],
     考点: '干扰机 + 隐形机压命中：靠狙击 / 指挥把命中补回来' },
@@ -106,12 +106,12 @@ const 编成表 = [
     考点: '头目带六个护卫 + 四波增援：先读意图，这是第一场要动脑的硬仗' },
   { 层: 1, 类型: '守军', 前: ['venom', 'beetle', 'raider', 'shield'], 后: ['artillery', 'drone', 'hound'],
     波次: [{ 回合: 2, 来: ['grunt', 'hound', 'drone'] }, { 回合: 4, 来: ['fighter', 'swarm', 'raider'] }, { 回合: 6, 来: ['raider', 'drone'] }, { 回合: 8, 来: ['grunt', 'fighter'] }],
-    考点: 'λ 试作机的近战很痛：看意图决定谁防御、谁守护' },
+    考点: 'λ 试作机的近战很痛：看意图决定这一回合「全军防御」还是照打' },
   { 层: 1, 类型: '守军', 前: ['regen', 'shield', 'fighter', 'phase'], 后: ['jammer', 'swarm', 'drone'],
     波次: [{ 回合: 2, 来: ['grunt', 'raider', 'swarm'] }, { 回合: 4, 来: ['drone', 'hound', 'fighter'] }, { 回合: 6, 来: ['fighter', 'swarm'] }, { 回合: 8, 来: ['grunt', 'hound'] }],
     考点: '头目血最厚那台该最后打：先清护卫，增援来了别回头' },
 
-  /* ================= 第 2 层（压力：精锐混编，逼你换目标 / 换位） ================= */
+  /* ================= 第 2 层（压力：精锐混编，逼你换目标 / 换方针） ================= */
 
   /* ---- 普通（★ 3–4 → **5 台**）+ 2 波增援 ---- */
   { 层: 2, 类型: '普通', 前: ['beamcoat', 'grunt', 'raider'], 后: ['hound', 'drone'],
@@ -127,10 +127,10 @@ const 编成表 = [
   /* ---- 精英（★ 4 → **6 台**）+ 3 波增援 ---- */
   { 层: 2, 类型: '精英', 前: ['mirror', 'shield', 'beetle', 'grunt'], 后: ['artillery', 'sniper'],
     波次: [{ 回合: 2, 来: ['grunt', 'raider', 'drone'] }, { 回合: 4, 来: ['hound', 'drone', 'fighter'] }, { 回合: 6, 来: ['fighter', 'swarm'] }],
-    考点: '前排两层硬壳、后排两门炮：先看谁被瞄准，再分守护' },
+    考点: '前排两层硬壳、后排两门炮：先看谁被瞄准，再决定「前守后攻」' },
   { 层: 2, 类型: '精英', 前: ['jammer', 'phase', 'grunt', 'shield'], 后: ['artillery', 'hound'],
     波次: [{ 回合: 2, 来: ['hound', 'drone', 'raider'] }, { 回合: 4, 来: ['raider', 'swarm', 'grunt'] }, { 回合: 6, 来: ['grunt', 'fighter'] }],
-    考点: '干扰机压命中 + 炮击机曲射：命中不够时先防御' },
+    考点: '干扰机压命中 + 炮击机曲射：命中不够时先「全军防御」' },
   { 层: 2, 类型: '精英', 前: ['mirror', 'beamcoat', 'phase', 'raider'], 后: ['jammer', 'sniper'],
     波次: [{ 回合: 2, 来: ['grunt', 'raider', 'hound'] }, { 回合: 4, 来: ['hound', 'swarm', 'drone'] }, { 回合: 6, 来: ['drone', 'fighter'] }],
     考点: '镜面机怕近战、涂层机抗光束：按弱点换目标，不是死打一台' },
@@ -138,7 +138,7 @@ const 编成表 = [
   /* ---- 侵蚀源（★ 5 → **8 台**，第 2 层起的强敌）+ 4 波增援 ---- */
   { 层: 2, 类型: '侵蚀源', 前: ['captain', 'beamcoat', 'shield', 'beetle'], 后: ['artillery', 'jammer', 'sniper'],
     波次: [{ 回合: 2, 来: ['grunt', 'hound', 'swarm'] }, { 回合: 4, 来: ['raider', 'drone', 'fighter'] }, { 回合: 6, 来: ['fighter', 'swarm', 'drone'] }, { 回合: 8, 来: ['grunt', 'hound', 'drone'] }],
-    考点: '侵蚀源：头目带头，八台几乎摆满，先分好守护' },
+    考点: '侵蚀源：头目带头，八台几乎摆满，先决定「前守后攻」扛哪一边' },
   { 层: 2, 类型: '侵蚀源', 前: ['venom', 'phase', 'beetle', 'stealth'], 后: ['sniper', 'mirror', 'artillery'],
     波次: [{ 回合: 2, 来: ['grunt', 'swarm', 'drone'] }, { 回合: 4, 来: ['fighter', 'hound', 'raider'] }, { 回合: 6, 来: ['raider', 'drone', 'fighter'] }, { 回合: 8, 来: ['grunt', 'swarm', 'hound'] }],
     考点: '侵蚀源：λ 试作机贴脸很痛 —— 看意图决定先点哪台' },
@@ -149,13 +149,13 @@ const 编成表 = [
   /* ---- 守军（★ 5 → **7 台**）：berserker / funnel + 精锐，4 波增援 ---- */
   { 层: 2, 类型: '守军', 前: ['berserker', 'shield', 'beamcoat', 'phase'], 后: ['artillery', 'sniper', 'hound'],
     波次: [{ 回合: 2, 来: ['grunt', 'raider', 'drone'] }, { 回合: 4, 来: ['drone', 'hound', 'swarm'] }, { 回合: 6, 来: ['fighter', 'swarm'] }, { 回合: 8, 来: ['grunt', 'raider'] }],
-    考点: '狂战士上前排砍人：把守护给它盯的那台' },
+    考点: '狂战士上前排砍人：用「前守后攻」顶住它盯的那一排' },
   { 层: 2, 类型: '守军', 前: ['funnel', 'phase', 'beetle', 'stealth'], 后: ['jammer', 'mirror', 'drone'],
     波次: [{ 回合: 2, 来: ['grunt', 'fighter', 'hound'] }, { 回合: 4, 来: ['raider', 'swarm', 'drone'] }, { 回合: 6, 来: ['hound', 'drone'] }, { 回合: 8, 来: ['grunt', 'fighter'] }],
-    考点: '浮游炮母机三连曲射：防御 / 守护能少吃一大截' },
+    考点: '浮游炮母机三连曲射：「全军防御」能少吃一大截' },
   { 层: 2, 类型: '守军', 前: ['captain', 'berserker', 'grunt', 'beetle'], 后: ['sniper', 'artillery', 'raider'],
     波次: [{ 回合: 2, 来: ['hound', 'drone', 'raider'] }, { 回合: 4, 来: ['fighter', 'raider', 'swarm'] }, { 回合: 6, 来: ['grunt', 'swarm'] }, { 回合: 8, 来: ['hound', 'drone'] }],
-    考点: '两个头目顶前面：先集火一台，别把伤害摊开' },
+    考点: '两个头目顶前面：先「集中攻击」一台，别把伤害摊开' },
 
   /* ================= 第 3 层（硬仗：普通也带精锐，守军双头目） ================= */
 
@@ -173,10 +173,10 @@ const 编成表 = [
   /* ---- 精英（6 台，前 4 后 2）+ 3 波增援 ---- */
   { 层: 3, 类型: '精英', 前: ['captain', 'beamcoat', 'beetle', 'shield'], 后: ['sniper', 'artillery'],
     波次: [{ 回合: 2, 来: ['grunt', 'raider', 'drone'] }, { 回合: 4, 来: ['hound', 'drone', 'fighter'] }, { 回合: 6, 来: ['fighter', 'swarm'] }],
-    考点: '头目坐镇 + 六台摆满：集火头目还是先清护卫，看意图定（前排四台，直射打后排会被挡 −20）' },
+    考点: '头目坐镇 + 六台摆满：集中攻击头目还是先清护卫，看意图定（前排四台，直射打后排会被挡 −20）' },
   { 层: 3, 类型: '精英', 前: ['venom', 'phase', 'shield', 'mirror'], 后: ['artillery', 'sniper'],
     波次: [{ 回合: 2, 来: ['hound', 'drone', 'raider'] }, { 回合: 4, 来: ['grunt', 'raider', 'swarm'] }, { 回合: 6, 来: ['fighter', 'swarm'] }],
-    考点: 'λ 试作机贴脸 + 两门炮曲射：守护只能接一边，先读意图（**特殊伤害不吃装甲，别指望硬扛**）' },
+    考点: 'λ 试作机贴脸 + 两门炮曲射：只能接一边，先读意图（**特殊伤害不吃装甲，别指望硬扛**）' },
   { 层: 3, 类型: '精英', 前: ['funnel', 'mirror', 'stealth', 'beetle'], 后: ['jammer', 'artillery'],
     波次: [{ 回合: 2, 来: ['grunt', 'swarm', 'hound'] }, { 回合: 4, 来: ['hound', 'drone', 'fighter'] }, { 回合: 6, 来: ['raider', 'fighter'] }],
     考点: '浮游炮 + 干扰机压命中 + 甲虫顶前：先防御顶过这一回合再打' },
@@ -184,18 +184,18 @@ const 编成表 = [
   /* ---- 侵蚀源（★ 6 → **8 台**，前 4 后 4）：本层最硬的一场，4 波增援 ---- */
   { 层: 3, 类型: '侵蚀源', 前: ['captain', 'venom', 'beetle', 'shield'], 后: ['sniper', 'artillery', 'jammer'],
     波次: [{ 回合: 2, 来: ['grunt', 'raider', 'swarm'] }, { 回合: 4, 来: ['drone', 'hound', 'fighter'] }, { 回合: 6, 来: ['fighter', 'swarm', 'drone'] }, { 回合: 8, 来: ['grunt', 'hound', 'raider'] }],
-    考点: '侵蚀源双头目 + 八台：分守护、看意图，这是本层最硬的一场' },
+    考点: '侵蚀源双头目 + 八台：看意图决定「前守后攻」，这是本层最硬的一场' },
   { 层: 3, 类型: '侵蚀源', 前: ['berserker', 'shield', 'phase', 'beetle'], 后: ['mirror', 'jammer', 'sniper'],
     波次: [{ 回合: 2, 来: ['grunt', 'swarm', 'drone'] }, { 回合: 4, 来: ['fighter', 'hound', 'raider'] }, { 回合: 6, 来: ['raider', 'drone', 'fighter'] }, { 回合: 8, 来: ['grunt', 'fighter', 'swarm'] }],
     考点: '侵蚀源：前排四个硬壳，先按弱点挑目标' },
   { 层: 3, 类型: '侵蚀源', 前: ['funnel', 'beamcoat', 'stealth', 'beetle'], 后: ['artillery', 'sniper', 'jammer'],
     波次: [{ 回合: 2, 来: ['raider', 'drone', 'swarm'] }, { 回合: 4, 来: ['grunt', 'fighter', 'hound'] }, { 回合: 6, 来: ['hound', 'swarm', 'drone'] }, { 回合: 8, 来: ['raider', 'grunt', 'fighter'] }],
-    考点: '侵蚀源：两台远程躲后排、直射会被挡（−20）—— 用狙击或换位' },
+    考点: '侵蚀源：两台远程躲后排、直射会被挡（−20）—— 用狙击，或者战前摆位错开' },
 
   /* ---- 守军（★ 6 → **7 台**，前 4 后 3）：双头目，或头目 + 3 精锐，4 波增援 ---- */
   { 层: 3, 类型: '守军', 前: ['captain', 'venom', 'shield', 'beetle'], 后: ['sniper', 'artillery', 'jammer'],
     波次: [{ 回合: 2, 来: ['grunt', 'hound', 'drone'] }, { 回合: 4, 来: ['raider', 'drone', 'swarm'] }, { 回合: 6, 来: ['fighter', 'swarm'] }, { 回合: 8, 来: ['grunt', 'raider'] }],
-    考点: '双头目（指挥 + λ）+ 七台：先集火一台，别分伤害' },
+    考点: '双头目（指挥 + λ）+ 七台：先「集中攻击」一台，别分伤害' },
   { 层: 3, 类型: '守军', 前: ['berserker', 'beetle', 'beamcoat', 'phase'], 后: ['sniper', 'jammer', 'artillery'],
     波次: [{ 回合: 2, 来: ['grunt', 'fighter', 'raider'] }, { 回合: 4, 来: ['hound', 'swarm', 'drone'] }, { 回合: 6, 来: ['raider', 'drone'] }, { 回合: 8, 来: ['grunt', 'hound'] }],
     考点: '装甲差很多（狂战士 300 / 甲虫 900）：先打穿甲薄的那台' },
@@ -215,14 +215,14 @@ const 编成表 = [
     考点: '追击战：重甲 + 干扰机顶前排，命中被压时先防御一回合' },
   { 层: 4, 类型: '普通', 前: ['berserker', 'stealth', 'grunt'], 后: ['sniper', 'artillery'],
     波次: [{ 回合: 2, 来: ['raider', 'fighter'] }, { 回合: 4, 来: ['hound', 'drone'] }],
-    考点: '追击战：狂战士贴脸，守好被盯的那台再集火' },
+    考点: '追击战：狂战士贴脸，先顶住被盯的那台再集中攻击' },
 
   /* ---- Boss（★ 5 → **9 台摆满**，前 4 后 5）：站桩大肥鱼（bluefish）+ 8 台护卫，4 波增援 ----
      战棋：3 层航区 + 第 4 层终点；方案 5.2 说第一期 Boss 只做蓝色大肥鱼这一个。
      ★ 这一组必须留在**表的最后**：`tests/audio.js` 用 `编成表[length - 1]` 认 Boss 战。 */
   { 层: 4, 类型: 'Boss', 前: ['bluefish', 'shield', 'beetle', 'berserker'], 后: ['sniper', 'artillery', 'jammer', 'mirror', 'phase'],
     波次: [{ 回合: 2, 来: ['grunt', 'hound'] }, { 回合: 4, 来: ['raider', 'drone'] }, { 回合: 6, 来: ['fighter', 'swarm'] }, { 回合: 8, 来: ['grunt', 'hound'] }],
-    考点: '第 1 回合大肥鱼就放★大技能：开场先把防御 / 守护摆好（九台摆满，9 格一个空位都没有）' },
+    考点: '第 1 回合大肥鱼就放★大技能：这一回合先「全军防御」（九台摆满，9 格一个空位都没有）' },
   { 层: 4, 类型: 'Boss', 前: ['bluefish', 'phase', 'beamcoat', 'beetle'], 后: ['jammer', 'sniper', 'artillery', 'stealth', 'mirror'],
     波次: [{ 回合: 2, 来: ['hound', 'swarm'] }, { 回合: 4, 来: ['drone', 'raider'] }, { 回合: 6, 来: ['grunt', 'fighter'] }, { 回合: 8, 来: ['hound', 'swarm'] }],
     考点: '半血进第 2 阶段（间隔 2 回合、伤害 ×1.25）：留一手防御' },
