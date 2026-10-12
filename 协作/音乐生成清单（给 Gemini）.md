@@ -286,8 +286,9 @@ No lyrics. Loop-friendly, seamless loop, no fade-out. 2-3 minutes, 4/4, ~140-160
 
 ---
 
-> 附：本仓库现在的曲子（9 首，**都是 Suno 生成、可以进仓库**）：
+> 附：本仓库现在的曲子（**17 首** = 原 9 首 + 2026-10-11 作者补的 8 首，**都是 Suno 生成、可以进仓库**）：
 > `Suno 主角` / `Suno 我方回合` / `Suno 敌方回合` / `Suno ATX` / `Suno 流星小队` / `Suno 影世界` /
-> `Suno 月王国` / `Suno 秘银` / `Suno 卫星国防军`。
+> `Suno 月王国` / `Suno 秘银` / `Suno 卫星国防军`；
+> 2026-10-11 作者补的 8 首：`Suno Title` / `Suno Setsuna` / `Suno Feena` / `SUNO 天人` / `SUNO 战略` / `Suno Victory` / `Suno Defeat` / `Suno Boss`。
 > **作者本地的 8 首版权曲（`BOSS BGM.mp3`、`战略音乐1.mp3` 等）绝对不能进仓库**——
 > 那是公开分发受版权保护的录音；新曲子必须是 **Suno 生成 / 作者原创**。
