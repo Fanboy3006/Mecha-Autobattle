@@ -46,8 +46,11 @@ function levelUp(u, heal = false) {
  * `当前HP比` = **HP 继承**（2026-10-11 作者：「同一次出击的队伍带着伤打下一场」）：
  * 0–1 的比例，默认 `null` = **满血**（改前的老口径逐字不变）。
  * ★ 只有肉鸽那条路（`80-界面.js` 的 `打这一场()`）会传它，别的调用点（菜单固定战斗 /
- *   `simulate()` / `tools/balance.mjs` / 测试）**一个字节都不变**（`tests/run.js` 有一段盯着）。 */
-function makeUnit(键, side, slot, lv, 强化 = 1, 当前HP比 = null) {
+ *   `simulate()` / `tools/balance.mjs` / 测试）**一个字节都不变**（`tests/run.js` 有一段盯着）。
+ * ★ 2026-10-13 新增第 7 个参数 `层`（难度上调第一步）：敌人强度的「伤害」那一项**按层给值**
+ *   （`71-改动.js` 的 `难度调整.敌方强度.层威力系数`）。不传 = `null` → 回落成统一的分项系数，
+ *   与「没有这一项」时逐字相同。 */
+function makeUnit(键, side, slot, lv, 强化 = 1, 当前HP比 = null, 层 = null) {
   const tpl = side === 'ally' ? tplOf(键) : ENEMY_T[键];
   if (!tpl) throw new Error(`编成里出现了不认识的${side === 'ally' ? '角色键' : '敌人键'}：${键}`);
   const u = Object.assign({}, tpl, {
@@ -71,9 +74,12 @@ function makeUnit(键, side, slot, lv, 强化 = 1, 当前HP比 = null) {
      ★ 倍率 = 1（第 1 层 / 默认 1 / 手搭的敌方规格没写 `强化`）→ **这一整段不进**，与改前逐字相同；
      ★ 我方（`side !== 'enemy'`）永远不会走到这一段。 */
   u.强化 = 1;
+  /* ★ 2026-10-13：`详情` 要带 **`层`** —— 敌人强度的「伤害」那一项按层给值
+     （`71-改动.js` 的 `难度调整.敌方强度.层威力系数`），层号丢了会回落成统一值。 */
   if (side === 'enemy' && Number(强化) > 1.0001) {
-    应用敌方强化(u, Number(强化), { 来源: '编成（层 × 梯队）' });
+    应用敌方强化(u, Number(强化), { 来源: '编成（层 × 梯队）', 层: 层 != null ? 层 : null });
     u.强化 = Number(强化);
+    u.层 = 层 != null ? 层 : null;
   }
   /* ★ HP 继承（2026-10-11）：**放在最后** —— 上面任何一步（升级 / 强化）都可能改过 `maxHp`，
      按比例算出来的才是「这一台现在还剩多少」。传 `null` = 满血，与改前**逐字相同**。 */
@@ -95,8 +101,10 @@ function makeUnits(编成, side) {
     if (位 < 0 || 位 >= SLOTS) throw new Error(`编成里的位置 ${位} 越界（只有 0–${SLOTS - 1}）`);
     /* `s.强化` = 敌方强度倍率（只有敌人会被 `70-编成.js` 写上；没有 = 1 = 不强化） */
     const 强化 = s.强化 != null ? s.强化 : (s.敌方强度 && s.敌方强度.倍率) || 1;
+    /* `s.层` = 编成条目的层（2026-10-13：敌人强度的「伤害」那一项按层给值） */
+    const 层 = s.层 != null ? s.层 : (s.敌方强度 && s.敌方强度.层 != null ? s.敌方强度.层 : null);
     /* `s.hp` = HP 比例（0–1，**肉鸽那条路才传**；不写 = null = 满血） */
     const 比例 = s.hp != null ? s.hp : (s.hp比 != null ? s.hp比 : null);
-    return makeUnit(键, side, 位, 等级, 强化, 比例);
+    return makeUnit(键, side, 位, 等级, 强化, 比例, 层);
   });
 }

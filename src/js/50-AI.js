@@ -39,9 +39,21 @@ const 修理阈值 = 0.6;
 /* ---------- 5.1.2 目标优先级 ---------- */
 /* 「能击破的目标优先（多个时打 HP 最高的那个，不浪费）；没有能击破的，
  *   打「期望伤害 ÷ 目标当前 HP」最大的。」                                         */
-function targetScore(exp, t) {
+/* ★ 2026-10-13（难度上调第一步 · 第 2 步「AI 目标选择」）：
+ *   **站位权重** —— 同一套判定里，**越靠前（能打到）的目标越优先**。
+ *   作者原话：「让敌人优先打能打到的最前排（越靠前权重越高），让前排真的承伤」。
+ *   ★ 这里**只改「挑谁打」的权重**：`rowReachable`（近战够不够得着）/
+ *     `rowBlockPenalty`（直射被挡 −20）/ `areaSlots`（范围落点）**一个字节都没动**，
+ *     所以「打不到后排的近战照样打不到」「被挡照样 −20」这两条规则照旧。
+ *   ★ 权重乘在 `value`（期望伤害 ÷ 当前 HP）上、**不动 `canKill`** ——
+ *     「这一下能击破就先击破」仍然是硬规则（方案 5.1.2 原样），站位只改「都打不死时先打谁」。
+ *   ★ 为什么不是「硬指定前排」：这是**加权**，玩家用「全军防御 / 前守后攻」把前排的
+ *     期望伤害降下来之后，敌人**仍然会**去挑后排里更划算的目标 —— 决策余地留着。
+ *   参数在 `71-改动.js` 的 `难度调整.AI站位权重`（作者要调就改那一张表）。 */
+function targetScore(exp, t, att) {
   const canKill = exp >= t.hp;
-  return { canKill, value: canKill ? t.hp : exp / Math.max(1, t.hp) };
+  const 权 = 站位权重(att, t);
+  return { canKill, value: (canKill ? t.hp : exp / Math.max(1, t.hp)) * 权 };
 }
 /* 返回 true 表示 a 比 b 更该打 */
 function betterTarget(a, b) {
@@ -93,7 +105,7 @@ function pickSingleTarget(actor, foes, pool, ctx) {
   for (const t of foes) {
     const w = bestWeaponOn(actor, t, pool, 局面, ctx);
     if (!w) continue;
-    const score = targetScore(w.exp, t);
+    const score = targetScore(w.exp, t, actor);
     if (betterTarget(score, best && best.score)) best = { target: t, entry: w.entry, exp: w.exp, score, 被挡: w.被挡 };
   }
   return best;
@@ -142,7 +154,7 @@ function 集中攻击候选(actor, foes, pool, ctx) {
   if (单.length) {
     const w = bestWeaponOn(actor, 指定, 单, 局面, ctx);
     /* ★ §1.3 第 2 条：「打不到的照常自由攻击」——`bestWeaponOn` 返回 null 就交给全军突击。 */
-    if (w) best = { target: 指定, entry: w.entry, exp: w.exp, score: targetScore(w.exp, 指定), 被挡: w.被挡 };
+    if (w) best = { target: 指定, entry: w.entry, exp: w.exp, score: targetScore(w.exp, 指定, actor), 被挡: w.被挡 };
   }
   /* 范围武器：落点**必须包含目标**的候选里挑期望伤害最高的；没有能包含目标的落点 → 按单体规则处理。 */
   const 范围 = pool.filter(e => isAreaKind(rangeKindOf(e.t)));
@@ -153,7 +165,7 @@ function 集中攻击候选(actor, foes, pool, ctx) {
       const inside = foes.filter(t => hit.includes(t.slot));
       if (!inside.length) continue;
       const total = inside.reduce((n, t) => n + expectedDamage(actor, t, e.t, { blockPenalty: 0, ctx }), 0);
-      const 分 = targetScore(total, 指定);
+      const 分 = targetScore(total, 指定, actor);
       /* 与单体那条比：能击破优先，其次比期望值（并列时保留单体那条 = 格子号小的落点先来，决定性） */
       if (!best || (分.canKill && !best.score.canKill) || (分.canKill === best.score.canKill && 分.value > best.score.value)) {
         best = { target: 指定, entry: e, exp: total, score: 分, slot, hit: inside };
@@ -187,7 +199,7 @@ function 攻击后排候选(actor, foes, pool, ctx) {
     }
   }
   if (范围最佳) {
-    const 分 = targetScore(范围最佳.exp, 范围最佳.target);
+    const 分 = targetScore(范围最佳.exp, 范围最佳.target, actor);
     if (!best || (分.canKill && !best.score.canKill) || (分.canKill === best.score.canKill && 分.value > best.score.value)) return 范围最佳;
   }
   return best;
@@ -228,8 +240,8 @@ function chooseAttack(actor, ctx) {
   if (!cands.length) return null;
   // 单体 / 范围之间：能击破的先打，其次比期望值；范围武器的 exp 是总伤害，直接比数值
   cands.sort((x, y) => {
-    const kx = x.score ? x.score : targetScore(x.expected, x.target);
-    const ky = y.score ? y.score : targetScore(y.expected, y.target);
+    const kx = x.score ? x.score : targetScore(x.expected, x.target, actor);
+    const ky = y.score ? y.score : targetScore(y.expected, y.target, actor);
     if (kx.canKill !== ky.canKill) return kx.canKill ? -1 : 1;
     return ky.value - kx.value;
   });
@@ -326,15 +338,20 @@ function combatClassOf(u, ctx) {
   return '重装';
 }
 
-/* 「近战敌人优先打我方前排血最少的」：只在候选目标里比当前 HP（小的优先）。 */
+/* 「近战类优先打够得到的、当前 HP 最少的」：候选先按**现成的**够不够得着过滤
+ * （`rowReachable`，`30-射程.js` —— 近战要前排还有人），再在候选里比当前 HP（小的优先）。
+ * ★ 2026-10-13（第 2 步「AI 目标选择」）：原来这一行写死 `unitRow(t) !== ROW_FRONT → 跳过`，
+ *   改成用**同一个** `rowReachable` 判 —— 对纯近战单位两者**完全等价**（近战够不到后排），
+ *   但「够不够得着」这件事从此**由射程那条规则说了算，不在这里再写一遍**
+ *   （作者的约束：射程 / 阻挡 / 职业特色一条都不许改，只改挑谁打的权重）。 */
 function pickLowestHp(actor, foes, pool, ctx) {
   const 局面 = 局面Of(foes);
   let best = null;
   for (const t of foes) {
-    if (unitRow(t) !== ROW_FRONT) continue;
+    if (!pool.some(e => rowReachable(rangeKindOf(e.t), unitRow(t), 局面.前排有人))) continue;
     const w = bestWeaponOn(actor, t, pool, 局面, ctx);
     if (!w) continue;
-    if (!best || t.hp < best.target.hp) best = { target: t, entry: w.entry, exp: w.exp, score: targetScore(w.exp, t), 被挡: w.被挡 };
+    if (!best || t.hp < best.target.hp) best = { target: t, entry: w.entry, exp: w.exp, score: targetScore(w.exp, t, actor), 被挡: w.被挡 };
   }
   return best;
 }
@@ -379,3 +396,4 @@ function enemyAction(actor, ctx) {
  * 具体「什么时候打、每回合几次」在战斗引擎（60-战斗.js）里执行，
  * 这里只提供判断，以及给 M3 的意图显示复用。 */
 const hasOverwatch = u => u.side === 'enemy' && ENEMY_OVERWATCH.includes(u.key);
+

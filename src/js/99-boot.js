@@ -174,7 +174,7 @@ const G = {
   chooseSupport,        // 支援类武器的挑选（`tests/faction.js` 第 [15] 段验「好运加护」的开关对照用）
   drainAgain, actOnce,        // 再动 / 连斩的排队（`drainAgain`）与「一个单位行动一次」（秘银的倒下接力要靠它们验）
   chooseHeal, 修理阈值,       // 修理策略（作者 2026-10-10：低于 60% 才修）——tests/heal.js 直接读它
-  pickAreaTarget, pickSingleTarget,   // 范围 / 单体的落点与目标挑选（`tests/boss.js` 第 [9] 段量「站位改不改落点」）
+  pickAreaTarget, pickSingleTarget, targetScore,   // 范围 / 单体的落点与目标挑选（`tests/boss.js` 第 [9] 段量「站位改不改落点」）
   嘲讽, 单位动作, 增援, 空位, 活位们, resolveAction,
   /* 射程换算 / 公式（给测试和以后的界面用） */
   rangeKindOf, rowReachable, rowBlockPenalty, areaSlots, ROW_FRONT, ROW_BACK,
@@ -188,6 +188,7 @@ const G = {
    * `敌方强度倍率(层, 梯队)` = 「层数越高、档位越硬的敌人更强」那条曲线（实现在 `40-单位.js` 的 `makeUnit`）；
    * `敌方规格 / 敌方规格组` = 把 `编成到单位()` 的敌方单位摊平成规格时**把强度带着走**（工具 / 界面 / 测试都要用它）。 */
   难度调整, 敌方强度倍率, 敌方规格, 敌方规格组, 应用敌方强化, 回合上限, 藏品合计封顶,
+  站位权重,           // ★ 2026-10-13（第 2 步「AI 目标选择」）：目标站位权重（`50-AI.js` 的 `targetScore` 读它）
   /* ---- ★ 战斗结构大改造（作者 2026-10-11 试玩后拍板「过于轻松…全部加上」）----
    * `战斗结构` = 这一轮新增的**机制开关与参数**总表（常量全部在 `71-改动.js`，每条标【初稿·待作者调】）；
    *   `对称职业特色` / `敌方职业` → `职业是()`（`30-射程.js`）改成敌我都认；
