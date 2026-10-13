@@ -661,14 +661,14 @@ node tools/specials.mjs           # 重新生成 docs/特技换算待办.md
 
 - 改完源文件**必须**跑 `node tools/build-src.mjs`，否则双击 `index.html` 看到的还是旧版本。
 - 提交前跑一次 `--check`，确认生成物没落后于源文件。
-- **十七条测试**（smoke / sim / battle_ui / commands / run / comp / map / **art_icons** / **audio** / boss / heal / relic / rank / **balance** / **grid** / **faction** / **tuner**）都要过；
+- **十九条测试**（smoke / sim / battle_ui / commands / run / comp / map / **art_icons** / **audio** / boss / heal / relic / rank / **balance** / **grid** / **faction** / **tuner** / **录像** / **分析**）都要过；
   ★ **2026-10-12 起再多一套「十八条」**：`tests/分析.js`（**战报分析**，作者：「需要一个对话在理解规则的情况下检视我的游戏记录」）——
   同步改了三处里的两处（`tools/verify-all.mjs` 的 `套件` 数组、本节这份清单）；**`协作/协作框架.md` 第 3 节那一处归统筹补**（红线文件）。
   这一套的**硬骨头**是两条对账：① 我们的硬指标 == 引擎自己的 `战报统计()`；② 我们从**文本**重放出来的 HP == 引擎每条记录的 `目标剩余HP`。
   ★ **2026-10-12 同日还多一套**：`tests/录像.js`（**对局录像**，作者「录操作，不录局面」）——
   同步改了 `tools/verify-all.mjs` 的 `套件` 数组与本节这份清单两处；**`协作/协作框架.md` 第 3 节那一处归统筹补**（红线文件）。
   **加完这两套（战报分析 + 对局录像）总数是十九条**，以 `tools/verify-all.mjs` 的数组为准。
-  ★ **2026-10-12 起总数从「十六套」变成「十七条」**：新增 `tests/tuner.js`（调参室）——
+  ★ **2026-10-12 起总数从「十六套」变成「十九条」**：新增 `tests/tuner.js`（调参室）——
   同步改了三处里的两处（`tools/verify-all.mjs` 的 `套件` 数组、本节这份清单）；**`协作/协作框架.md` 第 3 节那一处归统筹补**（红线文件）。
   ★ **2026-10-11 起总数从「十五套」变成「十六套」**：原来那套共享的 `tests/art_audio.js` 已拆成
   `tests/art_icons.js`（**美术线**）+ `tests/audio.js`（**音乐线**）两个文件（`协作/协作框架.md` 第 5 节 A1），
