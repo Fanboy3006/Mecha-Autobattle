@@ -28,6 +28,7 @@ const 套件 = [
   'smoke', 'sim', 'battle_ui', 'commands', 'run', 'comp', 'map',
   'art_icons', 'audio', 'boss', 'heal', 'relic', 'rank', 'balance', 'grid', 'faction',
   'tuner',
+  '分析',
 ];
 
 const 结果 = [];
