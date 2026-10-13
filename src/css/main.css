@@ -338,3 +338,17 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .btn{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:6px 12px;color:var(--fg)}
 .btn:hover:not(:disabled){border-color:var(--muted)}
 .btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ---------- 对局录像（作者 2026-10-12，`src/js/89-录像.js`） ----------
+   · `.vcr-block` = 战斗结算屏那一块「正在录这一局」；
+   · `.vcr-reason` = 招募 / 晋升 / 黑市 / 零件那四屏上**可以不填**的「为什么选它？」输入框
+     （默认收起 —— 只显示一行小按钮，展开才有输入框，绝不打断作者）。 */
+.vcr-block{margin:10px 0 0;padding:6px 10px;border-radius:4px;border:1px solid var(--line);
+  border-left:4px solid var(--ally);background:var(--panel2)}
+.vcr-block b{font-family:var(--font-m)}
+.vcr-reason{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0 0;padding:5px 8px;
+  border:1px dashed var(--line);border-radius:4px;background:color-mix(in srgb,var(--ally) 6%,transparent)}
+.vcr-reason .small{color:var(--muted);font-size:11px}
+.vcr-reason-in{flex:1 1 260px;min-width:180px;background:var(--panel2);color:var(--fg);
+  border:1px solid var(--line);border-radius:4px;font:inherit;font-size:13px;padding:4px 8px}
+.vcr-reason-in:focus{outline:none;border-color:var(--accent)}
