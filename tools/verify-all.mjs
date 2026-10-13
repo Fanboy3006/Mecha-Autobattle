@@ -23,13 +23,15 @@ import { fileURLToPath } from 'node:url';
 const 根 = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const 静默 = process.argv.includes('--quiet');
 
-/** 十八条测试（顺序照 CLAUDE.md 第 4 节；加新套件要同步这里与 CLAUDE.md） */
+/** 二十条测试（顺序照 CLAUDE.md 第 4 节；加新套件要同步这里与 CLAUDE.md） */
 const 套件 = [
   'smoke', 'sim', 'battle_ui', 'commands', 'run', 'comp', 'map',
   'art_icons', 'audio', 'boss', 'heal', 'relic', 'rank', 'balance', 'grid', 'faction',
   'tuner',
   '录像',
   '分析',
+  // ★ 2026-10-12 对局上报（客户端）：`上报地址` 默认空 = 关闭 = 与现在完全一致（tests/上报.js 第 [1] 段钉着）
+  '上报',
 ];
 
 const 结果 = [];
