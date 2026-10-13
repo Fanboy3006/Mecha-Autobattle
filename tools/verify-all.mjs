@@ -3,10 +3,10 @@
  * 全量验收（统筹 2026-10-11 写）
  *
  * 用法：
- *   node tools/verify-all.mjs            # 十七条测试 + 生成物同步检查
+ *   node tools/verify-all.mjs            # 二十条测试 + 生成物同步检查
  *   node tools/verify-all.mjs --quiet    # 只打失败的套件与总结
  *
- * 为什么要有这个：交付前必须跑「**十七条测试全绿 + `--check` 通过**」，
+ * 为什么要有这个：交付前必须跑「**二十条测试全绿 + `--check` 通过**」，
  * 手工一条条敲容易漏套（历史上就漏过 `art_icons` / `audio` 这类新拆出来的套）。
  *
  * ★ 本机的一个坑（写在 CLAUDE.md 第 4 节）：DSH 沙箱**不给子进程开管道**，
