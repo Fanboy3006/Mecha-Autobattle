@@ -50,6 +50,13 @@
 function 取Boss脚本(u) {
   if (!u || u.side !== 'enemy' || !u.key) return null;
   if (u.调参Boss) return u.调参Boss;
+  /* ★ 2026-10-13（关卡变体池 · `1-Boss` / `2-Boss` 的守关部队）：**按场挂**的那一份
+     （编成的 `词条 {键:'Boss脚本'}` 落成 `u.词条Boss`，见 `70-编成.js` 的 `应用词条到单位()`）优先读它。
+     为什么要这个口子：第 1–2 层的守关只能用**现成的敌人键**（不造新敌人），而「键在 `Boss脚本` 表里」
+     是**全场次**生效的 —— 拿 `regen` / `captain` 当守关核心会把别的关卡里同一个键也变成站桩 Boss。
+     按场挂之后，守关脚本只作用在**挂着这条词条的那一场**。
+     **没有挂这个词条的单位 → 走原来那句表查询，行为一个字节都不变。** */
+  if (u.词条Boss) return u.词条Boss;
   return (Boss脚本 && Boss脚本[u.key]) || null;
 }
 const 是Boss单位 = u => !!取Boss脚本(u);

@@ -541,7 +541,11 @@ console.log('\n[10] 敌人卡第一批：三张卡的预告 / 即时 / 结算');
     ok(`幻影的预告画在它自己的敌机卡上（位 ${G.位名(隐U.slot)}）：「${隐行}」`);
   } else bad(`幻影的预告没画出来：${隐行}`);
   const 镜行 = 快A.敌人机制[镜U.slot] && 快A.敌人机制[镜U.slot].行们.find(x => x.includes('会被反弹'));
-  if (镜行 && 镜行 === '敌机【镜甲】：打它会被反弹 30% 伤害' && 屏A.includes(镜行)) {
+  /* ★ 2026-10-13（关卡变体池）：期望串**从这一台自己的反弹比例算**，不再写死 30% ——
+     带词条 `反弹` 的单位（`2-EE`）自带 20%，预告已经跟着它走（`84-反馈.js` 的 `敌人机制预告()`）。 */
+  const 镜比 = 镜U && (镜U.词条反弹 ? (Number(镜U.反弹比例) || 0) : G.镜甲反弹比例());
+  const 镜期望 = `敌机【${G.敌人机制称谓(镜U)}】：打它会被反弹 ${Math.round(镜比 * 100)}% 伤害`;
+  if (镜行 && 镜行 === 镜期望 && 屏A.includes(镜行)) {
     ok(`镜甲的预告画在它自己的敌机卡上（位 ${G.位名(镜U.slot)}）：「${镜行}」`);
   } else bad(`镜甲的预告没画出来：${镜行}`);
   const 该有 = ctxA.enemies.filter(u => G.有敌人机制(u, 'stealth') || G.有敌人机制(u, 'beamReflect') || G.濒死自爆吗(u)).length;
@@ -556,7 +560,12 @@ console.log('\n[10] 敌人卡第一批：三张卡的预告 / 即时 / 结算');
   /* ---- ② 预告：献祭者「濒死自爆：落点 …」+ 卡片变红 ---- */
   const ctxB = 进(序爆, 30, 20261010);
   const 爆U = ctxB.enemies.find(u => u.key === 'bomber');
-  const 落点 = G.areaSlots({ fire: 'map', area: G.自爆参数().范围 }, G.unitRow(爆U), 爆U.slot - 4).map(G.位名).join('、');
+  /* ★ 2026-10-13（关卡变体池）：列号按**这一台自己在哪一排**算（`colOfSlot`）。
+     旧写法写死 `爆U.slot - 4`（= 假定了自爆机一定在**后排**）—— 那时 `序爆` 抽到的那条
+     编成里自爆机正好在 `后1`；现在 `序爆` 抽到的是 `1-N5`（自爆机在 `前1`，slot 0），
+     `slot - 4` 会算出 −4 → 落点空串、和界面画的对不上。 */
+  const 爆列 = G.unitRow(爆U) === G.ROW_BACK ? 爆U.slot - G.行列数(G.ROW_FRONT) : 爆U.slot;
+  const 落点 = G.areaSlots({ fire: 'map', area: G.自爆参数().范围 }, G.unitRow(爆U), 爆列).map(G.位名).join('、');
   爆U.hp = Math.round(爆U.maxHp * 0.34);
   界面.刷();
   const 屏B = 屏文字();

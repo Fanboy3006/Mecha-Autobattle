@@ -76,8 +76,7 @@ function hitRate(att, w, def, opts = {}) {
   /* `势力闪避(def)`（`72-势力.js` 的框架钩子）＝ 势力特色给的闪避，**只对我方、没有特色恒 0**
      （第一件 = 卫星国防军 SEED 觉醒：闪避 + 觉醒 × 0.15；战棋同款是 `03-能力与减免管线.js:100` 的
      `TRAIT_FX.seed`，那里也是加在闪避上）。所以别的战斗与改动前**逐字相同**。 */
-  const eva = Math.max(0, def.eva - (def.dodgePen || 0)) + buffSum(def, 'eva') + (def.moveEva || 0) + 尖兵闪 + 势力闪避(def);
-  /* ★ 2026-10-12（敌人卡第一批 · 钩子 `stealth` = 卡 A「幻影」）：「**隐匿**」——
+  const eva = Math.max(0, def.eva - (def.dodgePen || 0)) + buffSum(def, 'eva') + (def.moveEva || 0) + 尖兵闪 + 势力闪避(def);  /* ★ 2026-10-12（敌人卡第一批 · 钩子 `stealth` = 卡 A「幻影」）：「**隐匿**」——
      挂着 `abilities:['stealth']` 的**敌人**被「瞄准打」的射程（默认直射 / 曲射）瞄上时，
      **命中原始值 −35**（【初稿·待作者在调参室调】，一个常量在 `71-改动.js` 的 `战斗结构.敌人机制.隐匿`）。
      ★ 三条边界（都在 `71-改动.js` 那张表里，**这里只读表**）：
@@ -91,16 +90,29 @@ function hitRate(att, w, def, opts = {}) {
   const h = (opts.baseHit ?? w.hit) - eva + Math.round(((att.aim ?? 160) - 160) / 2) + buffSum(att, 'hit') + (opts.blockPenalty || 0) - 隐匿;
   return { hit: clamp(Math.round(h), 0, 100), raw: Math.round(h), eva, 尖兵闪, 隐匿 };
 }
+
 function critRate(w, att) {
   if (isSure(w)) return 0;
   return clamp(10 + ((att && att.critBase) || 0) + (w.critMod || 0) + buffSum(att, 'crit') + (职业是(att, '狙击') ? 10 : 0), 0, 100);
 }
 
 /* ---------- 弱点 / 抗性 ---------- */
-/* 正数 = 弱点（生成阶段增伤），负数 = 抗性（百分比减免阶段，受破防削弱）。没有「背面」。 */
+/* 正数 = 弱点（生成阶段增伤），负数 = 抗性（百分比减免阶段，受破防削弱）。没有「背面」。
+ * ★ 2026-10-13（关卡变体池 · `1-Boss`【原型重型装甲列车】P1 的词条键 `免直射物理`）：
+ *   现有 8 个键是**「或」**（各自独立判定、数值相加），做不到「**同时**满足 `direct` 且 `物理`」。
+ *   所以这里补**一条专用规则**：单位上写着 `免直射物理`（词条给的数，作者拍板 **−95%、不归 0**）时，
+ *   凡是 `fire==='direct' && dmgType==='物理'` 的那一发就吃一个 −95% 抗性。
+ *   ★ 三条边界：① 没有这个词条的单位 → 这一段不进（`def.免直射物理` 是 undefined）；
+ *   ② 它与别的弱点**照旧相加**（下限仍是 `:199` 的 −95），所以「光束直射」照样打得进（原案后半句）；
+ *   ③ 公式本体（并进威力 / 装甲 / 防御 / 减免链）**一行没改**。 */
 function weakList(def, w, o = {}) {
-  if (!def.weak || !w) return [];
+  if (!w) return [];
   const out = [];
+  const 免直 = Number(def.免直射物理);
+  if (Number.isFinite(免直) && 免直 > 0 && w.fire === 'direct' && w.dmgType === '物理') {
+    out.push(['直射物理', -Math.min(95, 免直)]);
+  }
+  if (!def.weak) return out;
   for (const [k, v] of Object.entries(def.weak)) {
     const ok = (k === '光束' || k === '物理') ? w.dmgType === k
       : k === '近战' ? w.fire === 'melee'
@@ -119,6 +131,21 @@ function weakList(def, w, o = {}) {
  * stage 1 / 3 / 4 = 公式算完之后的门槛与吸收；stage 2 = 给「防御值」加数。
  * 第一期只保留数值类，带特技的条目（地形 / 正面装甲 / GN 全盾 / 光束反射 /
  * SEED 防御 / λ 驱动器 / 减伤）**不做**，等 Claude 出换算方案（方案 6.2）。 */
+/* ---------- 词条层的两个小工具（关卡变体池 · 2026-10-13）----------
+ * 都**只读**、都在「没有词条」时恒为 0 / false（所以默认路径一行都不进）。 */
+/** 「护卫减伤」（`2-Boss` 审判者）：这台单位带多少减伤（0 = 没有这个词条）。 */
+function 护卫减伤值(u) {
+  const v = u && u.护卫减伤;
+  const 默认 = (词条参数() || {}).护卫减伤值;
+  return Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : 0;
+}
+/** 这一方的**别人**里还有活人吗（不含自己）—— 「只要护卫不死」这句的现成判据。 */
+function 同侧还有别人(u, ctx) {
+  if (!u || !ctx) return false;
+  const 们 = (u.side === 'ally' ? ctx.allies : ctx.enemies) || [];
+  return 们.some(x => x !== u && x && x.hp > 0);
+}
+
 const REDUCTIONS = [
 /* 「防御」指令 / 全军防御那一档：这一下按防御结算 → 防御值 +50（方案第 4 节，§1.3 第 4 条） */
   { id: 'guard', name: '防御姿态', stage: 2, applies: c => !!c.defending, def: () => 50 },
@@ -135,6 +162,16 @@ const REDUCTIONS = [
    * 我们把它做成**通用的势力入口**（`势力防御(u)`），后面 5 个势力共用。
    * **没有势力特色的战斗这个值是 0 → applies 为假 → 一行都不进步骤**，公式与改动前逐字相同。 */
   { id: 'factionDef', name: '势力防御', stage: 2, applies: c => 势力防御(c.def) > 0, def: c => 势力防御(c.def) },
+  /* ★ 2026-10-13（关卡变体池 · `2-Boss`【战术指挥官·审判者】的词条键 `护卫减伤`）：
+   * 原案「只要护卫不死，本体拥有 90% 绝对减伤」——没有「免疫 / 绝对减伤」这个内核，
+   * 所以照**现成的同构模板**加一条**条件条目**：同侧**还有别的活人**（`livingOf`，不看自己）时，
+   * 自己获得 `减伤 值`（【初稿 90】，配置在 `71-改动.js` 的 `战斗结构.词条.护卫减伤值`）。
+   * ★ 「还有没有别人」只能从 `ctx` 里读 —— 所以 `dmgCore()` 的上下文多带一个 `ctx`（`o.ctx`，
+   *   `resolveAttack()` / `expectedDamage()` 本来就在传它）；**没有 ctx 的战斗恒 false** →
+   *   `applies` 为假 → 一行都不进步骤，公式与改动前**逐字相同**。 */
+  { id: 'guardRed', name: '护卫减伤', stage: 2,
+    applies: c => 护卫减伤值(c.def) > 0 && 同侧还有别人(c.def, c.ctx),
+    def: c => 护卫减伤值(c.def) },
   {
     id: 'barrier', name: '能量屏障', stage: 1,
     applies: c => abilOn(c.def, 'barrier') && c.def.barrierLeft > 0 && c.dmg <= 2500,
@@ -174,6 +211,10 @@ function dmgCore(att, w, def, o = {}) {
   const c = {
     att, def, w, preview: o.preview !== false, crit: !!o.crit, turn: o.turn || 0,
     defMul: defMul(def), steps: [], nullified: false,
+    /* ★ 2026-10-13（关卡变体池）：把 `ctx` 也带进来 —— `REDUCTIONS` 里那条**条件条目**
+       「护卫减伤」要问「这一方还有没有别的活人」（`同侧还有别人()`）。
+       不传 / 没有 ctx 的战斗：那一条的 `applies` 恒 false，公式与改动前**逐字相同**。 */
+    ctx: o.ctx || null,
     /* 这一下是不是按**防御姿态**结算（防御值 +50，方案第 4 节）。
        ★ 2026-10-12：来源从「单位的防御指令 / 守护替人挨打」换成两个（见 `60-战斗.js` 的 `按防御结算()`）：
          ① 这台单位本回合真的要执行防御动作（`def.defending`）；
@@ -306,6 +347,11 @@ function spendWeapon(u, entry) {
   const 冷却 = entry.t.unlock >= 20 ? Math.max(entry.t.cd || 0, 大招普攻冷却()) : (entry.t.cd || 0);
   if (冷却) entry.cd = 冷却;
   if (entry.uses != null) entry.uses--;
+  /* ★ 2026-10-13（关卡变体池 · 词条键 `冷却延长`）：这一把武器**真的打出去了** → 摘掉
+     「这一轮冷却已经被延长过」的标记（`60-战斗.js` 的 `词条冷却延长()` 每轮最多延一次，
+     标记只在这里清 —— 这样「延长 1 回合」是有界的，不会把武器永久锁死）。
+     没有词条的武器这个字段恒为 undefined → 这一行什么都不做。 */
+  entry.词条已延 = false;
 }
 
 /* ---------- 修理 ---------- */
@@ -414,6 +460,10 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
   def.hp = Math.max(0, def.hp - total);
   /* 尖兵：这一回合的「第一次被攻击闪避 +20」用掉了 */
   if (尖兵加成) def.尖兵闪避Turn = ctx.turn;
+  /* ★ 2026-10-13（关卡变体池 · `2-E3`【光学迷彩机】的词条键 `隐身刷新`）：**打中一下就摘掉隐身**
+     （原案「每回合隐身（免疫单体攻击一次）」，我们用「命中 −35 + 打中就破」表达；回合开始会重新挂，
+     见 `60-战斗.js` 的 `词条隐身刷新()`）。没有这个词条的单位这个字段恒为 undefined → 这一行什么都不做。 */
+  if (landed > 0 && def.隐身中) def.隐身中 = false;
   /* 特种（作者 2026-10-10）：武器命中后给对方挂「命中 −20」——对方的攻击更难打中（到下回合结束，
      同一个来源只留一份，不叠加）。作者说推人 / 破坏阵型以后可以单独设计，职业特色先做降命中。 */
   let 特种减命中 = 0;
@@ -432,8 +482,12 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
      ★ 没有配 debuff 的武器 → `武器debuff()` 返回 null → 这一整段不进，行为与改前逐字相同。 */
   let 挂上的debuff = null;
   if (landed) {
-    挂上的debuff = 武器debuff(att.key, w.name);
-    if (挂上的debuff) 应用武器debuff(def, 挂上的debuff, w.name);
+    /* ★ 2026-10-13（关卡变体池）：第三个参数把**攻击者单位**传下去 —— 带 `词条` 的编成
+       （`2-N3` 的 `cd+1` / `2-E2` 的「转成自身攻击力」/ `2-Boss` 的「攻击附带破甲」）
+       在单位上挂着一份 `词条武器debuff`，`武器debuff()` 优先读它。
+       没挂词条的单位 → 走原来那句表查询，行为与改动前逐字相同。 */
+    挂上的debuff = 武器debuff(att.key, w.name, att);
+    if (挂上的debuff) 应用武器debuff(def, 挂上的debuff, w.name, att);
   }
 
   const 段 = hits > 1 ? `${landed}/${hits} 段 ` : '';
@@ -455,8 +509,15 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
 
 /* ---------- 敌方武器 debuff 的落点（2026-10-11，出处见 `71-改动.js` 的 `战斗结构.敌方debuff`） ----------
  * 同一来源**只留一份**（和 `换同源增益()` 同一个规矩），换新的时候先把旧的副作用还回去，
- * 免得 `armorCut` 这种**累加**的量越挂越多。 */
-function 应用武器debuff(def, d, 武器名) {
+ * 免得 `armorCut` 这种**累加**的量越挂越多。
+ * ★ 2026-10-13（关卡变体池 · 词条层）**新加两个键**（老的三键 `hit` / `pct` / `armorCut` 一个字节没改）：
+ *   · `cd`   —— 替代 ≠ 原案（原案是「扣大招能量条 10%」，我们是**冷却制**，见对账 §0.3 边界 3）：
+ *               命中时把目标**带大招的武器**冷却 +N（`2-N3`【气力压制官】/ `2-E2`【能量黑洞】）。
+ *               没配 `cd` 的 debuff → 这一段不进（老行为逐字不变）。
+ *   · `自身` —— `2-E2` 的「把扣掉的能量转化成自身攻击力」：给**攻击者**挂一份**可累加**的
+ *               `buffSum(att,'dmg')`（和藏品同一个入口），同源条数只有一条、数值往上叠（滚雪球）。
+ *   第 4 个参数 `att`（攻击者，可选）只有 `自身` 用得上；不传 / 没写 `自身` → 行为与改动前一致。 */
+function 应用武器debuff(def, d, 武器名, att) {
   const 源 = d.src || `${武器名}(敌)`;
   const 剩余 = Number.isFinite(Number(d.剩余)) ? Number(d.剩余) : 2;
   /* 先把同源的旧条目摘掉，并把可累加的那一项（armorCut）还回去 */
@@ -472,6 +533,17 @@ function 应用武器debuff(def, d, 武器名) {
     if (d.armorCut) { 条.armorCut = d.armorCut; def.armorCut = (def.armorCut || 0) + d.armorCut; }
     def.debuffs.push(条);
   }
+  /* ★ 第 4 个键 `cd`（替代写法：扣能量 → 大招冷却 +N） */
+  if (d.cd) {
+    const n = Math.max(1, Math.round(Number(d.cd)));
+    for (const e of (def.weapons || [])) if (isUltimate(e.t)) e.cd = Math.max(0, (e.cd || 0) + n);
+  }
+  /* ★ `自身`：给**攻击者**叠一份可累加的增益（同源只留一条、数值往上加 —— 这就是「滚雪球」） */
+  if (d.自身 && att) {
+    const 旧 = (att.buffs || []).find(b => b.src === 源);
+    if (旧) { for (const [k, v] of Object.entries(d.自身)) 旧[k] = (Number(旧[k]) || 0) + Number(v); 旧.剩余 = 剩余; }
+    else att.buffs = (att.buffs || []).concat([Object.assign({ src: 源, 剩余 }, d.自身)]);
+  }
   return 源;
 }
 
@@ -481,5 +553,7 @@ function debuff文字(d) {
   if (d.hit) 们.push(`命中 ${d.hit}`);
   if (d.pct) 们.push(`破甲 −${d.pct}%`);
   if (d.armorCut) 们.push(`削装甲 ${d.armorCut}`);
+  if (d.cd) 们.push(`大招冷却 +${Math.round(Number(d.cd))}`);
+  if (d.自身) 们.push(`自身${Object.entries(d.自身).map(([k, v]) => ` ${k} +${v}`).join('、')}`);
   return `挂上 debuff：${们.join('、')}，到下回合结束`;
 }
