@@ -48,7 +48,7 @@ let 有失败 = false;
   if (!通过) console.log('  ↑ 生成物落后于源文件：先跑 `node tools/build-src.mjs` 再提交');
 }
 
-/* ---- ② 十七条测试 ---- */
+/* ---- ② 二十条测试 ---- */
 for (const 名 of 套件) {
   const 文件 = join(根, 'tests', `${名}.js`);
   if (!existsSync(文件)) {
