@@ -18490,8 +18490,9 @@ const 录像 = {
 
 /** ★ 上报地址：**拿到 Apps Script 的 Web 应用 URL 之后填这里**（形如
  *  `https://script.google.com/macros/s/AKfy…/exec`）。**空字符串 = 关闭 = 与现在完全一致**：
- *  一次 fetch 都不发，菜单上一个字节都不加。部署 5 步见 `协作/上报-接收端-AppsScript.md` 第一节。 */
-const 上报地址 = '';
+ *  一次 fetch 都不发，菜单上一个字节都不加。部署 5 步见 `协作/上报-接收端-AppsScript.md` 第一节。
+ *  ★ 2026-10-13：作者已部署并给出 URL，这里**填好了**（上报随之变为可用 + 默认开）。 */
+const 上报地址 = 'https://script.google.com/macros/s/AKfycbxTiNEJbwDRJGqwqNx5zFOha45pZ_RGd2_Zn6lZnIAVrvn-64CwAySbqTlTbfSuIalidQ/exec';
 /** 拿到地址之后**默认就传**（作者拍板「默认开启 + 页面告知 + 可关」）；玩家在菜单里关掉就写进 localStorage。 */
 const 上报默认开 = true;
 /** 「哪些对局ID已经上报过」的**独立** localStorage 键（和录像键、肉鸽存档、作战记录都无关）。 */
