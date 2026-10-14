@@ -63,12 +63,24 @@
       ? `<p class="small" data-heal-forecast="1">战后休整（预告）：这一场打完，名册上<b>每一台</b>都回 ` +
         `<b>${Math.round(回血比例 * 100)}%</b> 最大 HP —— <b>0 HP 的也会回到 ${Math.round(回血比例 * 100)}%</b>（不会再有人躺在地上不出战）。</p>`
       : '';
+    const 气预 = (this.ctx && typeof 气势战术预告 === 'function') ? 气势战术预告(this.ctx) : null;
+    const 气势块 = (气预 && 气预.开)
+      ? `<div class="cmds morale-bar" data-center="1" data-morale="${气预.气势}" data-morale-max="${气预.上限}">
+          <span class="morale-label">气势 <b>${气预.气势} / ${气预.上限}</b></span>
+          <div class="bar morale"><i style="width:${Math.max(0, Math.min(100, Math.round(气预.气势 / 气预.上限 * 100)))}%"></i></div>
+          <button class="mini${气预.预约战术 === '总攻' ? ' on' : ''}" data-act="战术:总攻"${可点 && 气预.可发动 ? '' : ' disabled'}>⚡ 全军总攻${气预.预约战术 === '总攻' ? '（已预约）' : ''}</button>
+          <button class="mini${气预.预约战术 === '掩护' ? ' on' : ''}" data-act="战术:掩护"${可点 && 气预.可发动 ? '' : ' disabled'}>🛡 紧急掩护${气预.预约战术 === '掩护' ? '（已预约）' : ''}</button>
+          <button class="mini${气预.全队憋大招 ? ' on' : ''}"${可点 ? ' data-act="全队大招"' : ' disabled'}>全队大招：${气预.全队憋大招 ? '憋住' : '自动'}</button>
+        </div>
+        <p class="small tactic-forecast" data-tactic-forecast="1">${气预.文本}</p>`
+      : '';
     return `<div class="cmdpanel policybar">
       <h3>全队方针 · <b>${当前}</b>${目标 ? ` → ${目标.name}（${位名(目标.slot)}）` : ''}
         <span class="small">保持到改为止 · 单位层只有大招开关</span></h3>
       <div class="cmds" data-center="1">${方针们.map(k => `<button class="mini${当前 === k ? ' on' : ''}"${可点 ? ` data-act="方针:${k}"` : ' disabled title="这一回合正在播放，等它播完才能改（方针保持到改为止）"'}>${k}</button>`).join('')}</div>
       <p class="small">${一句[当前] || ''}${当前 === '集中攻击' ? (目标 ? '　目标已选。' : '　<b>还没点目标</b>：点一张敌方卡片。') : ''}
         ${可点 && this.选目标 ? '　<b>正在选目标：点一个敌人。</b>' : ''}${可点 ? '' : '　<b>播放中不能改方针</b>：这一回合播完就回到指令阶段。'}</p>
+      ${气势块}
       ${回血预告}
       ${可点 && this.提示 ? `<p class="warn small">${this.提示}</p>` : ''}
     </div>`;
@@ -82,9 +94,11 @@
     const u = this.ctx.allies.find(x => x.slot === 位);
     if (!u) return '';
     const c = this.当前指令(位);
+    const 大招 = (this.ctx && typeof 大招状态 === 'function') ? 大招状态(u, this.ctx) : null;
+    const 锁提示 = (大招 && 大招.未解锁大招) ? ` <span class="ult-lock" data-ult-locked="1">大招：Lv${大招.解锁等级 || 20} 解锁</span>` : '';
     return `<div class="cmdpanel">
       <h3>单位开关 · ${u.name}<span class="small">${u.key} · ${u.tags.战斗分类} · ${位名(位)}</span></h3>
-      <div class="cmds" data-center="1"><button class="mini${c.保留大招 ? ' on' : ''}" data-act="大招:${位}">大招：${c.保留大招 ? '保留' : '自动'}</button></div>
+      <div class="cmds" data-center="1"><button class="mini${c.保留大招 ? ' on' : ''}" data-act="大招:${位}">大招：${c.保留大招 ? '保留' : '自动'}</button>${锁提示}</div>
       ${this.天人开关(位, u, c)}
       <p class="small">「保留」= 这一回合不放这个大招（推迟，不是作废）。其余交给上面的全队方针。</p>
       ${this.提示 ? `<p class="warn small">${this.提示}</p>` : ''}
@@ -120,7 +134,10 @@
     const hp = Math.max(0, Math.round(u.hp / u.maxHp * 100));
     const 动 = 可点 ? (方 === 'ally' ? ` data-act="选单位:${u.slot}"` : ` data-act="点敌人:${u.slot}"`) : '';
     const c = 方 === 'ally' ? this.当前指令(u.slot) : null;
-    const 指令行 = c ? `大招：${c.保留大招 ? '保留' : '自动'}` : '';
+    const 大招卡 = (方 === 'ally' && 预告 && 预告.大招) ? 预告.大招[u.slot] : ((方 === 'ally' && this.ctx && typeof 大招状态 === 'function') ? 大招状态(u, this.ctx) : null);
+    const 锁行 = (大招卡 && 大招卡.未解锁大招) ? ` · <span class="ult-lock" data-ult-locked="1">大招：Lv${大招卡.解锁等级 || 20} 解锁</span>` : '';
+    const 全队憋 = !!(方 === 'ally' && this.ctx && this.ctx.全队憋大招);
+    const 指令行 = c ? `大招：${(c.保留大招 || 全队憋) ? '保留' : '自动'}${全队憋 ? '（全队憋住）' : ''}${锁行}` : '';
     /* ★ 2026-10-12（§1.7）：被「集中攻击」点名的敌机卡片上**一直挂标记**，直到它被击破或方针改掉。
        判定读**引擎的当前方针**（`ctx.方针`）—— 目标被击破时引擎会自动回到全军突击，
        界面跟着变，不会出现「界面写集中攻击、实际在自由攻击」。 */
@@ -389,6 +406,7 @@
     this.战报 = {
       结果: c.result ? c.result.结果 : '败', 原因: c.result ? c.result.原因 : '—',
       回合数: c.turn, 记录: c.log, 我方: c.allies, 敌方: c.enemies, 种子: c.种子,
+      曾满气势回合: c.曾满气势回合 || null,
     };
     /* ★ 作战记录（作者 2026-10-12：「作战记录你看看能不能安排保存一下」）：
        **胜 / 败都存一份**完整逐条记录 —— 独立键 `mecha-autobattle-战斗记录`，与肉鸽存档无关

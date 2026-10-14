@@ -74,6 +74,28 @@
     const c = this.当前指令(位);
     return this.设某开关(位, { 保留大招: !c.保留大招 });
   },
+  选战术(参) {
+    if (this.阶段 !== '指令' || !this.ctx) return false;
+    if (typeof 气势总攻开 !== 'function' || !气势总攻开()) return false;
+    const 上限 = Number(气势总攻参数().上限) || 100;
+    if ((Number(this.ctx.气势) || 0) < 上限 && 参 !== '取消' && 参 != null) {
+      this.提示 = `气势未满（当前 ${this.ctx.气势 || 0}/${上限}），满 ${上限} 才能发动战术指令。`;
+      this.刷();
+      return false;
+    }
+    设战术(this.ctx, 参);
+    this.提示 = '';
+    this.刷();
+    return this.ctx.预约战术;
+  },
+  切全队大招() {
+    if (this.阶段 !== '指令' || !this.ctx) return false;
+    if (typeof 气势总攻开 !== 'function' || !气势总攻开()) return false;
+    设全队憋大招(this.ctx, !this.ctx.全队憋大招);
+    this.提示 = '';
+    this.刷();
+    return this.ctx.全队憋大招;
+  },
   /* ★ TRANS-AM 的单位级开关（作者 2026-10-11 拍板「TRANS-AM 应该是单个单位开关的」；
      2026-10-12 起它和「大招：自动 / 保留」一起构成**单位层的全部**决策，§1.1）：
      ① `切TRANSAM(位)`：在「自动 / 手动」之间切（存开关表，逐回合保留；切回自动时清掉本回合那次点击）；

@@ -336,6 +336,8 @@ const 界面 = {
     方针: function (参) { return this.选方针(参); },
     点敌人: function (参) { return this.点敌人(Number(参)); },
     大招: function (参) { return this.切大招(Number(参)); },
+    战术: function (参) { return this.选战术(参); },
+    全队大招: function () { return this.切全队大招(); },
     /* ★ 天人的 TRANS-AM 单位级开关（作者 2026-10-11 拍板）：切自动 / 手动、手动档本回合点开 */
     TRANSAM: function (参) { return this.切TRANSAM(Number(参)); },
     开TRANSAM: function (参) { return this.开TRANSAM(Number(参)); },

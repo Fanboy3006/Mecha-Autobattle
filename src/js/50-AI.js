@@ -28,7 +28,16 @@
  * 开关「自动」= 冷却好了就放；「保留」= 这一回合不放（u.holdUlt）。 */
 const ULT_UNLOCKS = [20, 30];
 const isUltimate = w => !!w && (ULT_UNLOCKS.includes(w.unlock) || w.大招 === true);
-const ultAllowed = (u, w) => isUltimate(w) && !u.holdUlt;
+const 憋住大招吗 = (u, ctx) => {
+  if (!u) return false;
+  if (气势总攻开() && ctx && ctx.当前战术 === '总攻' && u.side === 'ally' && 气势总攻参数().总攻强制放大招 !== false) {
+    return false;
+  }
+  if (u.holdUlt) return true;
+  if (气势总攻开() && ctx && ctx.全队憋大招 && u.side === 'ally') return true;
+  return false;
+};
+const ultAllowed = (u, w, ctx) => isUltimate(w) && !憋住大招吗(u, ctx);
 
 /* ---------- 修理阈值（作者 2026-10-10 拍板） ----------
  * 有人 HP 比例**低于这个值**时才优先修理；否则这个单位正常输出 / 上 debuff。
@@ -68,13 +77,13 @@ function weaponPool(actor, ctx) {
   const pool = usableWeapons(actor, ctx).filter(e => {
     const kind = rangeKindOf(e.t);
     if (kind === null || isHealKind(kind) || isSupportKind(kind)) return false;   // 被动 / 修理 / 支援 不参与「进攻」
-    if (isUltimate(e.t) && actor.holdUlt) return false;   // 大招开关「保留」= 这一回合不放（方案第 4 节）
+    if (isUltimate(e.t) && 憋住大招吗(actor, ctx)) return false;   // 大招开关「保留」/ 全队憋大招 = 这一回合不放（总攻强制解禁）
     /* 站桩 Boss 脚本（61-Boss.js）：间隔外不许把「大技能武器」当普通武器用，
        否则「每 N 回合放一次」就变成「每回合都放」。没配脚本的单位不受影响。 */
     if (Boss本回合禁用(actor, ctx, e.t)) return false;
     return true;
   });
-  const ults = pool.filter(e => ultAllowed(actor, e.t));
+  const ults = pool.filter(e => ultAllowed(actor, e.t, ctx));
   return ults.length ? ults : pool;                  // 大招优先（方案 5.1.1）
 }
 

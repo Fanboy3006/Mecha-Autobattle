@@ -407,6 +407,166 @@ console.log('\n[11] ★ 标定经济（特种产标 → 狙击引爆；作者 20
   }
 }
 
+/* ============================ [12] 气势与战术指令（总攻 / 紧急掩护）+ 全队憋大招（1 + A2 + B2 + C1） ============================ */
+console.log('\n[12] ★ 气势与战术指令（总攻 / 紧急掩护）+ 全队憋大招 + Lv10 大招提示（1 + A2 + B2 + C1）');
+{
+  const 参 = G.气势总攻参数();
+  if (G.气势总攻开() === true && 参.上限 === 100 && 参.每回合自然加 === 10 &&
+      参.防御每台加 === 15 && 参.防御每回合上限 === 45 && 参.击破加 === 15 &&
+      参.标定引爆加 === 10 && 参.受重击阈值 === 0.25 && 参.受重击加 === 10 &&
+      参.总攻伤害倍率 === 1.35 && 参.总攻命中加 === 15 && 参.总攻减冷却 === 1 &&
+      参.掩护护盾比例 === 0.25 && 参.掩护清减益 === true) {
+    ok('参数表逐项对齐：上限 100 · 自然 +10 · 防御 +15（上限 45）· 击破 +15 · 标定引爆 +10 · 受重击 +10 · 总攻 ×1.35/+15/−1CD · 掩护 25%盾+清减益');
+  } else bad(`气势总攻参数不对：${JSON.stringify(参)}`);
+
+  /* ① 铁律 1：默认路径（未下达战术指令）下 开=true 与 开=false 的战斗记录逐字相同、0 次额外 rng */
+  {
+    const 队 = [{ 键: 'B1', 位: 0, 等级: 20 }, { 键: 'M1', 位: 4, 等级: 20 }, { 键: 'CB2', 位: 5, 等级: 20 }];
+    const 敌 = [{ 键: 'beetle', 位: 1, 等级: 15 }, { 键: 'hound', 位: 2, 等级: 15 }];
+    const r开 = G.simulate(队, 敌, {}, 20261013);
+    G.战斗结构.气势总攻.开 = false;
+    const r关 = G.simulate(队, 敌, {}, 20261013);
+    G.战斗结构.气势总攻.开 = true;
+    if (JSON.stringify(r开.记录) === JSON.stringify(r关.记录) && r开.结果 === r关.结果 && r开.回合数 === r关.回合数) {
+      ok(`① 铁律 1：未下达战术指令时，气势总攻 开=true 与 开=false 的记录（${r开.记录.length} 条）**逐字节相同**`);
+    } else bad('① 开=true 与 开=false 在默认路径下出现了差异');
+  }
+
+  /* ② 五条攒气势触发 + 单回合防御气势上限 45 + 总上限 100 */
+  {
+    const 队4 = [
+      { 键: 'B1', 位: 0, 等级: 20 }, { 键: 'M2', 位: 1, 等级: 20 },
+      { 键: 'CB1', 位: 2, 等级: 20 }, { 键: 'CB2', 位: 4, 等级: 20 },
+    ];
+    const 敌1 = [{ 键: 'ironwall', 位: 1, 等级: 25 }];
+    const ctx = G.开局(队4, 敌1, 77);
+    for (const e of ctx.enemies) e.weapons = [];
+    G.设方针(ctx, '全军防御');
+    G.打一回合(ctx); // Turn 1：4 台防御 -> 4*15=60 但单回合防御上限 45；回合末进 Turn 2 自然 +10 -> 55
+    if (ctx.累计防御气势 === 45 && ctx.气势 === 55) {
+      ok('② 防御攒气势：4 台进入防御但单回合封顶 **+45**，进第 2 回合自然 **+10** → 气势 **55**');
+    } else bad(`② 防御/自然气势不对：累计防御=${ctx.累计防御气势}，气势=${ctx.气势}`);
+
+    /* 受重击（>=25% maxHp）+10、标定引爆 +10、击破 +15 */
+    const ctx2 = G.开局([{ 键: 'CB2', 位: 4, 等级: 20 }], [{ 键: 'grunt', 位: 0, 等级: 1 }], 1);
+    const 我 = ctx2.allies[0], 敌 = ctx2.enemies[0];
+    G.标定经济产标(ctx2, { key: 'U7', name: '宗介', side: 'ally', slot: 0, tags: { 战斗分类: '特种' } }, 敌);
+    敌.hp = 100;
+    const 狙 = 我.weapons.find(e => e.t.name === 'GN 狙击步枪').t;
+    G.resolveAttack(我, 敌, 狙, ctx2, {});
+    if (ctx2.气势 === 25) {
+      ok('② 标定引爆 **+10** + 击破敌机 **+15** → 气势 **+25**（单发同时触发两条）');
+    } else bad(`② 标定引爆+击破气势不对：${ctx2.气势}`);
+
+    const ctx重 = G.开局([{ 键: 'B1', 位: 0, 等级: 10 }], [{ 键: 'artillery', 位: 0, 等级: 25 }], 2);
+    const 靶 = ctx重.allies[0], 炮 = ctx重.enemies[0];
+    const 重武 = Object.assign({}, 炮.weapons[0].t, { power: 9000, hit: 200, fire: 'map', area: 'all' });
+    G.resolveAttack(炮, 靶, 重武, ctx重, {});
+    if (ctx重.气势 === 10) {
+      ok('② 我方单次受击 ≥ 25% 最大 HP（受重击）→ 气势 **+10**');
+    } else bad(`② 受重击气势不对：${ctx重.气势}`);
+  }
+
+  /* ③ ⚡ 全军总攻：满 100 发动 → 气势清零 / 全军防御自动切突击 / 全武器冷却 −1 / 伤害 ×1.35 / 命中 +15 / 强制解禁大招 */
+  {
+    const ctx = G.开局([{ 键: 'B2', 位: 0, 等级: 20 }], [{ 键: 'ironwall', 位: 0, 等级: 20 }], 12);
+    const 我 = ctx.allies[0], 敌 = ctx.enemies[0];
+    敌.hp = 99999; 敌.maxHp = 99999;
+    G.设战术(ctx, '总攻');
+    const 未满无效 = ctx.预约战术 === null;
+    G.加气势(ctx, 100);
+    G.设方针(ctx, '全军防御');
+    G.设全队憋大招(ctx, true);
+    我.holdUlt = true;
+    const 大招项 = 我.weapons.find(e => G.isUltimate(e.t));
+    大招项.cd = 1; 大招项.readyTurn = ctx.turn + 1;
+    G.设战术(ctx, '总攻');
+    const 预约成功 = ctx.预约战术 === '总攻' && ctx.曾满气势回合 === 1;
+    G.回合开始(ctx);
+    const 发动后 = ctx.气势 === 0 && ctx.当前战术 === '总攻' && G.当前方针(ctx).类型 === '全军突击' &&
+      大招项.cd === 0 && 大招项.readyTurn <= ctx.turn;
+    const 选招 = G.chooseAttack(我, ctx);
+    const 强制大招 = 选招 && G.isUltimate(选招.weapon);
+    const 普武 = 我.weapons[0].t;
+    const 命普 = G.hitRate(我, 普武, 敌, { ctx: { turn: 1 } }).raw;
+    const 命总 = G.hitRate(我, 普武, 敌, { ctx }).raw;
+    const rec = G.resolveAttack(我, 敌, 大招项.t, ctx, {});
+    const 标签 = G.反馈标签(rec.字段);
+    G.endTurn(ctx);
+    if (未满无效 && 预约成功 && 发动后 && 强制大招 && (命总 - 命普 === 15) &&
+        rec.字段.总攻 === true && rec.字段.总攻增伤 > 0 && 标签.includes('⚡ 总攻 +') && ctx.当前战术 === null) {
+      ok(`③ ⚡ 全军总攻：未满拒接 · 满 100 发动后气势归 0 · 全军防御自动切全军突击 · CD −1 · 命中 +15（${命普}→${命总}）· 无视憋大招强制释放【${选招.weapon.name}】· 增伤 +${rec.字段.总攻增伤}（标签「${标签}」）· 回合末清零`);
+    } else bad(`③ 全军总攻断言失败：${JSON.stringify({ 未满无效, 预约成功, 发动后, 强制大招, 命普, 命总, 字段: rec.字段, 标签, 末战术: ctx.当前战术 })}`);
+  }
+
+  /* ④ 🛡 紧急掩护：满 100 发动 → 25% maxHp 临时护盾 + 清减益（debuffs / armorCut / 负 hit）+ 吸收伤害写记录 + 回合末清零 */
+  {
+    const ctx = G.开局([{ 键: 'B1', 位: 0, 等级: 20 }], [{ 键: 'artillery', 位: 0, 等级: 20 }], 15);
+    const 我 = ctx.allies[0], 敌 = ctx.enemies[0];
+    我.debuffs = [{ pct: 20, 剩余: 2 }];
+    我.armorCut = 200;
+    我.buffs = [{ stat: 'hit', val: -20, 剩余: 2 }, { stat: 'hit', val: 10, 剩余: 2 }];
+    G.加气势(ctx, 100);
+    G.设战术(ctx, '掩护');
+    G.回合开始(ctx);
+    const 期望盾 = Math.round(我.maxHp * 0.25);
+    const 盾对 = 我.掩护盾 === 期望盾;
+    const 清对 = 我.debuffs.length === 0 && 我.armorCut === 0 && 我.buffs.length === 1 && 我.buffs[0].val === 10;
+    const 满血 = 我.hp;
+    const 必中炮 = Object.assign({}, 敌.weapons[0].t, { power: 2500, hit: 200, fire: 'map', area: 'all' });
+    const rec = G.resolveAttack(敌, 我, 必中炮, ctx, {});
+    const 标签 = G.反馈标签(rec.字段);
+    G.endTurn(ctx);
+    if (盾对 && 清对 && rec.字段.掩护吸收 > 0 && 标签.includes('🛡 掩护 −') && 我.掩护盾 === 0 && 我.hp === 满血 - rec.字段.伤害) {
+      ok(`④ 🛡 紧急掩护：护盾 ${期望盾} 点 · 清空破甲/削甲/降命中（保留正向 buff）· 吸收伤害 ${rec.字段.掩护吸收}（标签「${标签}」）· 回合末护盾清零`);
+    } else bad(`④ 紧急掩护断言失败：${JSON.stringify({ 盾对, 清对, 字段: rec.字段, 标签, 末盾: 我.掩护盾 })}`);
+  }
+
+  /* ⑤ C1 全队憋大招 + B2 Lv10 未解锁大招状态 + 三层反馈（预告 / 即时 / 结算战报行） */
+  {
+    const ctx10 = G.开局([{ 键: 'B1', 位: 0, 等级: 10 }, { 键: 'B2', 位: 1, 等级: 20 }], [{ 键: 'grunt', 位: 0, 等级: 10 }], 21);
+    const 态10 = G.大招状态(ctx10.allies[0], ctx10);
+    const 态20 = G.大招状态(ctx10.allies[1], ctx10);
+    if (态10.有大招 === false && 态10.未解锁大招 === true && 态10.解锁等级 === 20 &&
+        态20.有大招 === true && 态20.未解锁大招 === false) {
+      ok('⑤ B2：`大招状态()` 对 Lv10 机体给出 `未解锁大招: true, 解锁等级: 20`，Lv20 已解锁机体为 `false`');
+    } else bad(`⑤ B2 大招状态不对：${JSON.stringify({ 态10, 态20 })}`);
+
+    for (const e of ctx10.allies[1].weapons) { e.cd = 0; e.readyTurn = 1; }
+    G.设全队憋大招(ctx10, true);
+    const 憋时 = G.chooseAttack(ctx10.allies[1], ctx10);
+    G.设全队憋大招(ctx10, false);
+    const 放时 = G.chooseAttack(ctx10.allies[1], ctx10);
+    if (憋时 && !G.isUltimate(憋时.weapon) && 放时 && G.isUltimate(放时.weapon)) {
+      ok(`⑤ C1 全队憋大招：开启时改用普攻【${憋时.weapon.name}】，关闭后立刻释放大招【${放时.weapon.name}】`);
+    } else bad('⑤ C1 全队憋大招切换未生效');
+
+    let rng数 = 0;
+    const 原rng = ctx10.rng;
+    ctx10.rng = () => { rng数++; return 原rng(); };
+    G.加气势(ctx10, 100);
+    const 预 = G.气势战术预告(ctx10);
+    ctx10.rng = 原rng;
+    const 未用行 = G.战报行们({ 记录: ctx10.log, 我方: ctx10.allies, 敌方: ctx10.enemies, ctx: ctx10 }).find(x => x.includes('气势曾在第'));
+    const r总攻 = G.simulate(
+      [{ 键: 'B1', 位: 0, 等级: 20 }, { 键: 'M2', 位: 1, 等级: 20 }, { 键: 'CB1', 位: 2, 等级: 20 }],
+      [{ 键: 'ironwall', 位: 0, 等级: 20 }, { 键: 'beetle', 位: 1, 等级: 20 }],
+      { 1: '全军防御', 2: '全军防御', 3: '总攻' }, 99
+    );
+    const 总攻行 = G.战报行们(r总攻).find(x => x.startsWith('全军总攻：'));
+    const r掩护 = G.simulate(
+      [{ 键: 'B1', 位: 0, 等级: 20 }, { 键: 'M2', 位: 1, 等级: 20 }, { 键: 'CB1', 位: 2, 等级: 20 }],
+      [{ 键: 'ironwall', 位: 0, 等级: 20 }, { 键: 'beetle', 位: 1, 等级: 20 }],
+      { 1: '全军防御', 2: '全军防御', 3: '掩护' }, 99
+    );
+    const 掩护行 = G.战报行们(r掩护).find(x => x.startsWith('紧急掩护：'));
+    if (rng数 === 0 && 预.可发动 === true && 预.预计总攻增伤 > 0 && 预.预计掩护护盾 > 0 &&
+        未用行 && 总攻行 && 掩护行) {
+      ok(`⑤ 三层反馈闭环：预告纯读（rng 0 次，预计总攻 +${预.预计总攻增伤} / 掩护盾 ${预.预计掩护护盾}）· 结算行齐（「${总攻行}」「${掩护行}」「${未用行}」）`);
+    } else bad(`⑤ 三层反馈断言失败：${JSON.stringify({ rng数, 预, 未用行, 总攻行, 掩护行 })}`);
+  }
+}
+
 /* ============================ 结果 ============================ */
 console.log(`\nERRS [${errs.join(' | ')}]`);
 console.log(fails ? `共 ${fails} 项失败` : '全队方针测试全部通过');

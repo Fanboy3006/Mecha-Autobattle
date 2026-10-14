@@ -66,6 +66,9 @@ function endTurn(ctx) {
     });
     u.defending = false;
   }
+  ctx.当前战术 = null;
+  ctx.本回合防御气势 = 0;
+  for (const u of (ctx.allies || [])) if (u) u.掩护盾 = 0;
   /* 势力特色（框架在 `72-势力.js`）：回合结束的钩子。
      第一件 = 卫星国防军 SEED 的「每回合 +5」—— 战棋挂在**我方阶段开始**（17b:220-226），
      我们挂在回合结束：第 N 回合结束 = 第 N+1 回合开始，加点与次数和战棋一致。 */
@@ -93,6 +96,14 @@ function 开局(我方编成, 敌方编成, 种子, 单位开关表, 选项) {
     /* ★ 杠杆 ④：这一场的回合上限（按敌方阵容里最硬的那一档现算），见 `71-改动.js` 的 `难度调整.回合上限`。
        传**规格**（`{键, 位, 等级}`）就行 —— `回合上限()` 只看键；不重复造一遍单位。 */
     回合上限: 回合上限(敌方编成),
+    气势: Number(气势总攻参数().开场气势) || 0,
+    预约战术: null,
+    当前战术: null,
+    本回合防御气势: 0,
+    累计防御气势: 0,
+    全队憋大招: false,
+    曾满气势回合: null,
+    自然气势已加回合: 1,
     log: [], result: null, again: [],
     /* `强化` = 敌方强度倍率（`70-编成.js` 的 `编成波次到单位()` 按编成条目的层 × 梯队算好的一程，
        见 `71-改动.js` 的「难度调整」段）；不传 = 1 = 与改前逐字相同。 */
@@ -118,6 +129,7 @@ function 开局(我方编成, 敌方编成, 种子, 单位开关表, 选项) {
        开场冷却 3 回合 = 第 4 回合才能用；普通冷却 cd 开场一律是 0。 */
     u.weapons = u.weapons.map(e => Object.assign({}, e, { cd: 0 }));
     u.holdUlt = false;
+    u.掩护盾 = 0;
     /* 天人 TRANS-AM 的单位级开关（2026-10-11）：默认自动、本回合没点开；
        紧接着的 `设单位开关(ctx, 单位开关表)` 会按表覆盖掉。 */
     u.TRANSAM手动 = false; u.本回合开TRANSAM = false;
@@ -189,7 +201,14 @@ function 打一回合(ctx) {
     /* ★ 杠杆 ④（`71-改动.js` 的 `难度调整.回合上限`）：上限随敌方档位收紧，`ctx.回合上限` 在 `开局()` 里算好 */
     const 上限 = ctx.回合上限 || MAX_TURN;
     if (ctx.turn >= 上限) ctx.result = { 结果: '败', 原因: `第 ${上限} 回合结束还没分出胜负（按撤退处理）` };
-    else { endTurn(ctx); ctx.turn++; }
+    else {
+      endTurn(ctx);
+      ctx.turn++;
+      if (气势总攻开() && ctx.turn >= 2 && ctx.自然气势已加回合 !== ctx.turn) {
+        ctx.自然气势已加回合 = ctx.turn;
+        加气势(ctx, Number(气势总攻参数().每回合自然加) || 10);
+      }
+    }
   }
   return ctx.log.slice(起);
 }
@@ -212,8 +231,28 @@ function 第几回合的方针(方针, 回合) {
   if (!是方针对照表(方针)) return 方针 || {};
   const 键 = Object.keys(方针).filter(k => /^\d+$/.test(k)).map(Number).sort((a, b) => a - b);
   let 取 = null;
-  for (const k of 键) if (k <= 回合) 取 = 方针[String(k)] != null ? 方针[String(k)] : 方针[k];
+  for (const k of 键) {
+    if (k > 回合) continue;
+    const v = 方针[String(k)] != null ? 方针[String(k)] : 方针[k];
+    if (v === '总攻' || v === '掩护') continue;
+    if (v && typeof v === 'object' && v.类型 == null && (v.战术 != null || v.全队憋大招 != null)) continue;
+    取 = v;
+  }
   return 取 == null ? {} : 取;
+}
+
+function 第几回合的战术(方针, 回合) {
+  if (!是方针对照表(方针)) return null;
+  const v = 方针[String(回合)] != null ? 方针[String(回合)] : 方针[回合];
+  if (!v) return null;
+  if (v === '总攻' || v === '掩护') return { 战术: v };
+  if (typeof v === 'object') {
+    const 出 = {};
+    if (v.战术 === '总攻' || v.战术 === '掩护') 出.战术 = v.战术;
+    if (v.全队憋大招 !== undefined) 出.全队憋大招 = !!v.全队憋大招;
+    return Object.keys(出).length ? 出 : null;
+  }
+  return null;
 }
 
 function simulate(我方, 敌方, 方针, 种子, 选项) {
@@ -229,7 +268,14 @@ function simulate(我方, 敌方, 方针, 种子, 选项) {
      **没有调参时 `ctx.回合上限 ≤ MAX_TURN`（难度调整那张表最大 12）→ 护栏顶恒等于 14，与改动前逐字相同。** */
   const 护栏顶 = Math.max(MAX_TURN, ctx.回合上限 || MAX_TURN) + 2;
   while (!ctx.result && 护栏++ < 护栏顶) {
-    if (表) ctx.当局方针 = 第几回合的方针(表, ctx.turn);
+    if (表) {
+      ctx.当局方针 = 第几回合的方针(表, ctx.turn);
+      const 战 = 第几回合的战术(表, ctx.turn);
+      if (战) {
+        if (战.全队憋大招 !== undefined) 设全队憋大招(ctx, 战.全队憋大招);
+        if (战.战术) ctx.当局战术 = 战.战术;
+      }
+    }
     打一回合(ctx);
   }
   if (!ctx.result) ctx.result = { 结果: '败', 原因: '超出回合上限' };

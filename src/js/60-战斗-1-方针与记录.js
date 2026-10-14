@@ -159,6 +159,108 @@ function 方针回合(ctx) {
   return ctx;
 }
 
+/* ---------- 气势与战术指令（总攻 / 紧急掩护）+ 全队憋大招（2026-10-13，1 + A2 + C1） ----------
+ * ★ 两条铁律：
+ *   ① `气势总攻开() === false` 时整套短路；
+ *   ② 未下达战术指令时，`加气势()` 只做纯算术累加（0 次 `ctx.rng` 调用、0 条新日志）。 */
+const 战术集合 = ['总攻', '掩护'];
+
+function 加气势(ctx, 值) {
+  if (!ctx || !气势总攻开()) return 0;
+  const 增 = Number(值) || 0;
+  if (!(增 > 0)) return Number(ctx.气势) || 0;
+  const 上限 = Number(气势总攻参数().上限) || 100;
+  const 前 = Number(ctx.气势) || 0;
+  const 后 = Math.max(0, Math.min(上限, 前 + 增));
+  ctx.气势 = 后;
+  if (后 >= 上限 && ctx.曾满气势回合 == null) ctx.曾满气势回合 = ctx.turn || 1;
+  return 后;
+}
+
+function 设战术(ctx, 类型) {
+  if (!ctx || !气势总攻开()) return ctx;
+  if (类型 == null || 类型 === '' || 类型 === '取消') {
+    ctx.预约战术 = null;
+    return ctx;
+  }
+  const 型 = String(类型);
+  if (!战术集合.includes(型)) return ctx;
+  const 上限 = Number(气势总攻参数().上限) || 100;
+  if ((Number(ctx.气势) || 0) < 上限) return ctx;
+  ctx.预约战术 = (ctx.预约战术 === 型) ? null : 型;
+  return ctx;
+}
+
+function 设全队憋大招(ctx, 布尔) {
+  if (!ctx || !气势总攻开()) return ctx;
+  ctx.全队憋大招 = !!布尔;
+  return ctx;
+}
+
+function 战术回合(ctx) {
+  if (!ctx || !气势总攻开()) return ctx;
+  if (ctx.当局全队憋大招 !== undefined) ctx.全队憋大招 = !!ctx.当局全队憋大招;
+  if (ctx.当局战术) {
+    const 上限 = Number(气势总攻参数().上限) || 100;
+    if (战术集合.includes(ctx.当局战术) && (Number(ctx.气势) || 0) >= 上限) {
+      ctx.预约战术 = ctx.当局战术;
+    }
+    ctx.当局战术 = null;
+  }
+  const 型 = ctx.预约战术;
+  if (!型 || !战术集合.includes(型)) return ctx;
+  const c = 气势总攻参数();
+  const 上限 = Number(c.上限) || 100;
+  if ((Number(ctx.气势) || 0) < 上限) {
+    ctx.预约战术 = null;
+    return ctx;
+  }
+  ctx.预约战术 = null;
+  ctx.气势 = 0;
+  ctx.当前战术 = 型;
+  if (型 === '总攻') {
+    let 切换方针 = false;
+    if (c.总攻自动转突击 !== false && 当前方针(ctx).类型 === '全军防御') {
+      ctx.方针 = 默认方针();
+      切换方针 = true;
+    }
+    const 减 = Number(c.总攻减冷却) || 1;
+    for (const u of (ctx.allies || [])) {
+      if (!u || u.hp <= 0) continue;
+      for (const e of (u.weapons || [])) {
+        if (!e) continue;
+        if (e.cd > 0) e.cd = Math.max(0, e.cd - 减);
+        if (e.readyTurn && e.readyTurn > 1) e.readyTurn = Math.max(1, e.readyTurn - 减);
+      }
+    }
+    pushLog(ctx, `〔战术〕⚡ 全军总攻发动！全队伤害 ×${c.总攻伤害倍率 || 1.35}、命中 +${c.总攻命中加 || 15}、全武器冷却 −${减}，全员大招解禁！`, {
+      类型: '战术', 战术: '总攻', 伤害倍率: c.总攻伤害倍率 || 1.35, 命中加: c.总攻命中加 || 15, 减冷却: 减, 切换方针,
+    });
+  } else if (型 === '掩护') {
+    const 比 = Number(c.掩护护盾比例) || 0.25;
+    let 护盾总值 = 0, 净化数 = 0;
+    for (const u of (ctx.allies || [])) {
+      if (!u || u.hp <= 0) continue;
+      const 盾 = Math.round(u.maxHp * 比);
+      u.掩护盾 = (u.掩护盾 || 0) + 盾;
+      护盾总值 += 盾;
+      if (c.掩护清减益 !== false) {
+        const 破甲数 = Array.isArray(u.debuffs) ? u.debuffs.length : 0;
+        const 削甲数 = (Number(u.armorCut) || 0) > 0 ? 1 : 0;
+        const 减命中数 = Array.isArray(u.buffs) ? u.buffs.filter(b => b && b.stat === 'hit' && b.val < 0).length : 0;
+        净化数 += 破甲数 + 削甲数 + 减命中数;
+        u.debuffs = [];
+        u.armorCut = 0;
+        if (Array.isArray(u.buffs)) u.buffs = u.buffs.filter(b => !(b && b.stat === 'hit' && b.val < 0));
+      }
+    }
+    pushLog(ctx, `〔战术〕🛡 紧急掩护发动！全队获得 ${Math.round(比 * 100)}% 最大 HP 临时护盾（共 ${护盾总值} 点），清除减益 ${净化数} 项！`, {
+      类型: '战术', 战术: '掩护', 护盾比例: 比, 护盾总值, 净化数,
+    });
+  }
+  return ctx;
+}
+
 /* ---------- 行动顺序 ---------- */
 /* 速度从高到低；同速：我方先，再按列号（方案 3.2）。同速同列再按格子编号，保证决定性。 */
 function actionOrder(ctx) {

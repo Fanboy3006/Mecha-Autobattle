@@ -3942,7 +3942,7 @@ window.MECHA_MUSIC_BASE = (typeof location !== 'undefined' && String(location.pa
  * ★ 2026-10-13 **战斗线 · 第一批「标定经济」**（作者亲手拍板「OK」；方案出处 = 他转来的一份设计稿，
  *   核心思想 = **把秘银已有的「标定 → 接力」泛化成全职业通用的「传球」机制**）：
  *   生产端 = **特种命中即挂标**（+1 层）+ **指挥号令点名标定一台敌机**（原有「命中 −20」/「同排命中 +10」
- *   **一个字没改**，标定是**额外**挂上去的）；消费端 = **狙击打带标定目标（暴击 +25 / 伤害 +30%，消耗 1 层）**
+ *   **一个字没改**，标定是**额外**挂上去的）；消费端 = **狙击打带标定目标（★ **暴击那一段的伤害 +30%**，消耗 1 层 —— 见下面「文案口径」）**
  *   + **范围武器引爆全部标定**（每层给一点溅射伤害）；**层数上限 3、保留到被消耗或战斗结束（不清零）**；
  *   **对称**（敌人有对应职业时也照样产标 / 引爆）；**开关** `战斗结构.标定经济.开`（便于 A/B 测量）。
  *   ★ **近卫处决（HP < 35% 直接击破）这一批没做**，留给下一批（理由写在任务板）。
@@ -6188,7 +6188,37 @@ const 战斗结构 = {
        留后理由见 `协作/任务板.md` 的「标定经济」段。 */
     近卫处决: { 开: false, 濒死线: 0.35, 消耗: '全部' },
   },
+
+  /* ---------- 2026-10-13：气势与战术指令（总攻 / 紧急掩护）+ 全队憋大招（1 + A2 + B2 + C1） ----------
+   * 作者拍板：把防御转化为进攻资源（防反闭环）+ 满气势（100）二选一战术指令：
+   *   ⚡ 全军总攻（伤害 ×1.35、命中 +15、全队冷却 −1、强制解禁大招、全军防御自动切突击）
+   *   🛡 紧急掩护（全队 25% 最大 HP 临时护盾、清除破甲/削甲/降命中减益）
+   * ★ 两条铁律：
+   *   ① `开: false` 时逐字回到改动前；
+   *   ② `开: true` 但玩家未下达战术指令时，气势只在后台算术累加（0 次 `ctx.rng` 调用、0 条新日志、0 个新记录字段）。 */
+  气势总攻: {
+    开: true,
+    上限: 100,
+    开场气势: 0,
+    每回合自然加: 10,         // 第 2 回合起每回合开始自动 +10 气势
+    防御每台加: 15,           // 我方单位实际执行 defend 动作时 +15 气势
+    防御每回合上限: 45,       // 单回合通过防御最多 +45 气势（防死蹲刷气势）
+    击破加: 15,               // 我方击破敌方单位 +15 气势
+    标定引爆加: 10,           // 我方引爆标定（狙击或范围）+10 气势
+    受重击阈值: 0.25,         // 我方单次受击伤害 >= maxHp * 25% 视为受重击
+    受重击加: 10,             // 受重击 +10 气势
+    /* 战术指令①：全军总攻（消耗 100 气势，本回合生效） */
+    总攻伤害倍率: 1.35,       // 本回合我方全体最终伤害 ×1.35
+    总攻命中加: 15,           // 本回合我方全体最终命中 +15
+    总攻减冷却: 1,            // 发动瞬间我方全体所有武器 cd 与 readyTurn 各减 1
+    总攻强制放大招: true,     // 本回合无视 holdUlt 与全队憋大招，就绪大招一律释放
+    总攻自动转突击: true,     // 发动总攻时若当前方针为「全军防御」，自动切为「全军突击」
+    /* 战术指令②：紧急掩护（消耗 100 气势，本回合生效） */
+    掩护护盾比例: 0.25,       // 发动瞬间我方全体存活单位获得 round(maxHp * 0.25) 临时护盾（本回合末清零）
+    掩护清减益: true,         // 发动瞬间清除我方全体 debuffs / armorCut / 负向 hit buff
+  },
 };
+
 
 /** 词条层的参数（没有就返回空对象 → 下面的默认值生效）。 */
 function 词条参数() { return (战斗结构 && 战斗结构.词条) || {}; }
@@ -6369,6 +6399,16 @@ function 按比例算HP(maxHp, 比, 参数) {
   if (比 == null || !Number.isFinite(Number(比))) return maxHp;
   return Math.max(最低, Math.min(maxHp, Math.round(maxHp * Number(比))));
 }
+
+/* ---------- ⑧ 气势与战术指令（总攻 / 紧急掩护）的参数入口 ---------- */
+function 气势总攻参数() {
+  return (战斗结构 && 战斗结构.气势总攻) || {};
+}
+function 气势总攻开() {
+  const c = 气势总攻参数();
+  return c.开 !== false;
+}
+
 /* ============================================================================
  * 势力特色（作者 2026-10-10 拍板「势力特色优先」· 第一件 = 卫星国防军 SEED 觉醒）
  * ----------------------------------------------------------------------------
@@ -8476,7 +8516,9 @@ function hitRate(att, w, def, opts = {}) {
      ★ 它是「减在原始命中上」的（和「特种 −20」「被挡 −20」同一条管线、同一个位置）——
        `raw` 会变、`hit` 再夹到 0–100。 */
   const 隐匿 = 隐匿惩罚值(def, w);
-  const h = (opts.baseHit ?? w.hit) - eva + Math.round(((att.aim ?? 160) - 160) / 2) + buffSum(att, 'hit') + (opts.blockPenalty || 0) - 隐匿;
+  const 总攻命中 = (气势总攻开() && opts && opts.ctx && opts.ctx.当前战术 === '总攻' && att && att.side === 'ally')
+    ? (Number(气势总攻参数().总攻命中加) || 0) : 0;
+  const h = (opts.baseHit ?? w.hit) - eva + Math.round(((att.aim ?? 160) - 160) / 2) + buffSum(att, 'hit') + (opts.blockPenalty || 0) - 隐匿 + 总攻命中;
   return { hit: clamp(Math.round(h), 0, 100), raw: Math.round(h), eva, 尖兵闪, 隐匿 };
 }
 
@@ -8973,6 +9015,9 @@ function 标定经济引爆(ctx, 攻击者, 目标, w, 主伤害) {
   d.层数 = 0;                                                 // ★ 消耗**全部**层数
   const 剩HP = Math.max(0, 目标.hp - 总);
   const 公式 = `${主伤害} × ${每层} × ${层数} 层 = ${总}`;
+  if (气势总攻开() && 攻击者 && 攻击者.side === 'ally' && typeof 加气势 === 'function') {
+    加气势(ctx, Number(气势总攻参数().标定引爆加) || 10);
+  }
   if (Array.isArray(ctx.log)) pushLog(ctx, `〔标定〕${来源.join('、') || '（无来源）'} 的标定 → ${攻击者.name}【${w.name}】引爆 ${层数} 层，`
     + `溅射 ${总}（${公式}）`, {
     类型: '标定', 事件: '引爆', 结果: '范围引爆',
@@ -9040,7 +9085,13 @@ const 命中段步长 = (att, w, 段) => 段内命中加成(att, w, 段);
 function resolveAttack(att, def, w, ctx, opts = {}) {
   const rng = ctx.rng;
   const blockPenalty = opts.blockPenalty || 0;
-  const 倍率 = opts.伤害倍率 == null ? 1 : opts.伤害倍率;
+  const 原HP = def ? def.hp : 0;
+  const 是总攻 = !!(气势总攻开() && ctx && ctx.当前战术 === '总攻' && att && att.side === 'ally');
+  const 总攻乘子 = 是总攻 ? (Number(气势总攻参数().总攻伤害倍率) || 1.35) : 1;
+  const 倍率 = opts.伤害倍率 == null ? 总攻乘子 : opts.伤害倍率;
+  const 基准倍率 = 是总攻 && 总攻乘子 > 0 ? (倍率 / 总攻乘子) : 倍率;
+  let 总攻增伤合计 = 0;
+  let 掩护吸收合计 = 0;
   /* ★ 威力倍率（框架第 14 个钩子，`72-势力.js` 的 `势力威力倍率()`；作者 2026-10-11 拍板「天人的 ×1.3 挪到威力」）：
      乘在**武器威力**上（`wv(att, w, 'power') * 威力倍率`）、进 `dmgCore()` 之前 ——
      和战棋 `15-战斗计算.js:36` 的 `wPow = round(wv(u,w,'power') * tierUp * taPowMul(u))` 同一个落点。
@@ -9091,6 +9142,9 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
         记号.公式 = `（暴击段 ×${记号.伤害倍率}）`;
         return 记号;
       })() : null;
+      if (段标 && 气势总攻开() && att && att.side === 'ally' && typeof 加气势 === 'function') {
+        加气势(ctx, Number(气势总攻参数().标定引爆加) || 10);
+      }
       /* ★ 三层反馈 · 「防御少挨了多少」（§2.4）：**同一套参数、不带防御加成再算一次 `dmgCore`**，
          两次取差值。三个要点：
            ① **先算预览、再算真的** —— 预览走 `preview: true`（屏障 / 力场 / 护盾一个计数器都不动），
@@ -9100,10 +9154,20 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
            ③ **只用来显示**：`total` 加的还是原来那一个 `d`（`少挨合计` 只进记录字段）。 */
       const 无防 = 按防 ? dmgCore(att, w, def, { power: wv(att, w, 'power') * 威力倍率, crit: cr, preview: true, turn: ctx.turn, 不带防御加成: true, ctx }).dmg : 0;
       const c = dmgCore(att, w, def, { power: wv(att, w, 'power') * 威力倍率, crit: cr, preview: false, turn: ctx.turn, defending: opts.defending, ctx });
-      const d = Math.round(c.dmg * 倍率 * (段标 ? 段标.伤害倍率 : 1));
+      let d = Math.round(c.dmg * 倍率 * (段标 ? 段标.伤害倍率 : 1));
+      if (是总攻) {
+        const 基准d = Math.round(c.dmg * 基准倍率 * (段标 ? 段标.伤害倍率 : 1));
+        总攻增伤合计 += Math.max(0, d - 基准d);
+      }
       /* 「少挨了多少」＝**不带防御加成时会挨的** − **实际挨的**（大减小，所以是正数；
          防御只会让伤害更低，`Math.max(0, …)` 只是兜底：万一某条减免让反向差出现，也不写负数）。 */
       if (按防) 少挨合计 += Math.max(0, Math.round(无防 * 倍率) - d);
+      if (def && def.掩护盾 > 0 && d > 0) {
+        const 吸 = Math.min(def.掩护盾, d);
+        d -= 吸;
+        if (!opts.preview) def.掩护盾 -= 吸;
+        掩护吸收合计 += 吸;
+      }
       total += d; landed++; if (cr) crits++;
       /* ★ 标定经济：这一段的伤害里有**多少是标定加成带来的**（差值账，给记录 / 战报读）。
          没有标定记号 → 这一行什么都不做（`段标` 是 null）。 */
@@ -9137,6 +9201,15 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
      ★ 一个随机数都不消耗；没有标定 / 不是范围武器 → `null`，一个字段都不多（默认路径逐字不变）。 */
   const 引爆 = 标定经济引爆(ctx, att, def, w, total);
   if (引爆) def.hp = 引爆.剩余HP;
+  if (!opts.preview && 气势总攻开() && typeof 加气势 === 'function') {
+    const 气参 = 气势总攻参数();
+    if (def && def.side === 'ally' && def.maxHp > 0 && total >= def.maxHp * (Number(气参.受重击阈值) || 0.25)) {
+      加气势(ctx, Number(气参.受重击加) || 10);
+    }
+    if (att && att.side === 'ally' && def && def.side === 'enemy' && 原HP > 0 && def.hp <= 0) {
+      加气势(ctx, Number(气参.击破加) || 15);
+    }
+  }
   /* 尖兵：这一回合的「第一次被攻击闪避 +20」用掉了 */
   if (尖兵加成) def.尖兵闪避Turn = ctx.turn;
   /* ★ 2026-10-13（关卡变体池 · `2-E3`【光学迷彩机】的词条键 `隐身刷新`）：**打中一下就摘掉隐身**
@@ -9189,6 +9262,8 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
       命中: landed > 0, 伤害: total, 段数: hits, 命中段数: landed, 暴击: crits, 目标剩余HP: def.hp,
       特种减命中, debuff: 挂上的debuff || null, 详情: rolls.join('；'),
     }, 少挨合计 > 0 ? { 防御少挨: 少挨合计 } : null,
+    掩护吸收合计 > 0 ? { 掩护吸收: 掩护吸收合计 } : null,
+    (是总攻 && landed > 0) ? { 总攻: true, 总攻增伤: 总攻增伤合计 } : null,
     (隐匿罚 > 0 && landed === 0) ? { 隐匿: true, 隐匿惩罚: 隐匿罚 } : null,
     /* ★ 2026-10-13 标定经济（即时那一层）：**只有真的用上了才写字段** ——
        默认路径（开关关掉 / 没有标定）一个字段都不多，记录逐字不变。
@@ -9399,7 +9474,16 @@ function makeUnits(编成, side) {
  * 开关「自动」= 冷却好了就放；「保留」= 这一回合不放（u.holdUlt）。 */
 const ULT_UNLOCKS = [20, 30];
 const isUltimate = w => !!w && (ULT_UNLOCKS.includes(w.unlock) || w.大招 === true);
-const ultAllowed = (u, w) => isUltimate(w) && !u.holdUlt;
+const 憋住大招吗 = (u, ctx) => {
+  if (!u) return false;
+  if (气势总攻开() && ctx && ctx.当前战术 === '总攻' && u.side === 'ally' && 气势总攻参数().总攻强制放大招 !== false) {
+    return false;
+  }
+  if (u.holdUlt) return true;
+  if (气势总攻开() && ctx && ctx.全队憋大招 && u.side === 'ally') return true;
+  return false;
+};
+const ultAllowed = (u, w, ctx) => isUltimate(w) && !憋住大招吗(u, ctx);
 
 /* ---------- 修理阈值（作者 2026-10-10 拍板） ----------
  * 有人 HP 比例**低于这个值**时才优先修理；否则这个单位正常输出 / 上 debuff。
@@ -9439,13 +9523,13 @@ function weaponPool(actor, ctx) {
   const pool = usableWeapons(actor, ctx).filter(e => {
     const kind = rangeKindOf(e.t);
     if (kind === null || isHealKind(kind) || isSupportKind(kind)) return false;   // 被动 / 修理 / 支援 不参与「进攻」
-    if (isUltimate(e.t) && actor.holdUlt) return false;   // 大招开关「保留」= 这一回合不放（方案第 4 节）
+    if (isUltimate(e.t) && 憋住大招吗(actor, ctx)) return false;   // 大招开关「保留」/ 全队憋大招 = 这一回合不放（总攻强制解禁）
     /* 站桩 Boss 脚本（61-Boss.js）：间隔外不许把「大技能武器」当普通武器用，
        否则「每 N 回合放一次」就变成「每回合都放」。没配脚本的单位不受影响。 */
     if (Boss本回合禁用(actor, ctx, e.t)) return false;
     return true;
   });
-  const ults = pool.filter(e => ultAllowed(actor, e.t));
+  const ults = pool.filter(e => ultAllowed(actor, e.t, ctx));
   return ults.length ? ults : pool;                  // 大招优先（方案 5.1.1）
 }
 
@@ -9929,6 +10013,108 @@ function 方针回合(ctx) {
   return ctx;
 }
 
+/* ---------- 气势与战术指令（总攻 / 紧急掩护）+ 全队憋大招（2026-10-13，1 + A2 + C1） ----------
+ * ★ 两条铁律：
+ *   ① `气势总攻开() === false` 时整套短路；
+ *   ② 未下达战术指令时，`加气势()` 只做纯算术累加（0 次 `ctx.rng` 调用、0 条新日志）。 */
+const 战术集合 = ['总攻', '掩护'];
+
+function 加气势(ctx, 值) {
+  if (!ctx || !气势总攻开()) return 0;
+  const 增 = Number(值) || 0;
+  if (!(增 > 0)) return Number(ctx.气势) || 0;
+  const 上限 = Number(气势总攻参数().上限) || 100;
+  const 前 = Number(ctx.气势) || 0;
+  const 后 = Math.max(0, Math.min(上限, 前 + 增));
+  ctx.气势 = 后;
+  if (后 >= 上限 && ctx.曾满气势回合 == null) ctx.曾满气势回合 = ctx.turn || 1;
+  return 后;
+}
+
+function 设战术(ctx, 类型) {
+  if (!ctx || !气势总攻开()) return ctx;
+  if (类型 == null || 类型 === '' || 类型 === '取消') {
+    ctx.预约战术 = null;
+    return ctx;
+  }
+  const 型 = String(类型);
+  if (!战术集合.includes(型)) return ctx;
+  const 上限 = Number(气势总攻参数().上限) || 100;
+  if ((Number(ctx.气势) || 0) < 上限) return ctx;
+  ctx.预约战术 = (ctx.预约战术 === 型) ? null : 型;
+  return ctx;
+}
+
+function 设全队憋大招(ctx, 布尔) {
+  if (!ctx || !气势总攻开()) return ctx;
+  ctx.全队憋大招 = !!布尔;
+  return ctx;
+}
+
+function 战术回合(ctx) {
+  if (!ctx || !气势总攻开()) return ctx;
+  if (ctx.当局全队憋大招 !== undefined) ctx.全队憋大招 = !!ctx.当局全队憋大招;
+  if (ctx.当局战术) {
+    const 上限 = Number(气势总攻参数().上限) || 100;
+    if (战术集合.includes(ctx.当局战术) && (Number(ctx.气势) || 0) >= 上限) {
+      ctx.预约战术 = ctx.当局战术;
+    }
+    ctx.当局战术 = null;
+  }
+  const 型 = ctx.预约战术;
+  if (!型 || !战术集合.includes(型)) return ctx;
+  const c = 气势总攻参数();
+  const 上限 = Number(c.上限) || 100;
+  if ((Number(ctx.气势) || 0) < 上限) {
+    ctx.预约战术 = null;
+    return ctx;
+  }
+  ctx.预约战术 = null;
+  ctx.气势 = 0;
+  ctx.当前战术 = 型;
+  if (型 === '总攻') {
+    let 切换方针 = false;
+    if (c.总攻自动转突击 !== false && 当前方针(ctx).类型 === '全军防御') {
+      ctx.方针 = 默认方针();
+      切换方针 = true;
+    }
+    const 减 = Number(c.总攻减冷却) || 1;
+    for (const u of (ctx.allies || [])) {
+      if (!u || u.hp <= 0) continue;
+      for (const e of (u.weapons || [])) {
+        if (!e) continue;
+        if (e.cd > 0) e.cd = Math.max(0, e.cd - 减);
+        if (e.readyTurn && e.readyTurn > 1) e.readyTurn = Math.max(1, e.readyTurn - 减);
+      }
+    }
+    pushLog(ctx, `〔战术〕⚡ 全军总攻发动！全队伤害 ×${c.总攻伤害倍率 || 1.35}、命中 +${c.总攻命中加 || 15}、全武器冷却 −${减}，全员大招解禁！`, {
+      类型: '战术', 战术: '总攻', 伤害倍率: c.总攻伤害倍率 || 1.35, 命中加: c.总攻命中加 || 15, 减冷却: 减, 切换方针,
+    });
+  } else if (型 === '掩护') {
+    const 比 = Number(c.掩护护盾比例) || 0.25;
+    let 护盾总值 = 0, 净化数 = 0;
+    for (const u of (ctx.allies || [])) {
+      if (!u || u.hp <= 0) continue;
+      const 盾 = Math.round(u.maxHp * 比);
+      u.掩护盾 = (u.掩护盾 || 0) + 盾;
+      护盾总值 += 盾;
+      if (c.掩护清减益 !== false) {
+        const 破甲数 = Array.isArray(u.debuffs) ? u.debuffs.length : 0;
+        const 削甲数 = (Number(u.armorCut) || 0) > 0 ? 1 : 0;
+        const 减命中数 = Array.isArray(u.buffs) ? u.buffs.filter(b => b && b.stat === 'hit' && b.val < 0).length : 0;
+        净化数 += 破甲数 + 削甲数 + 减命中数;
+        u.debuffs = [];
+        u.armorCut = 0;
+        if (Array.isArray(u.buffs)) u.buffs = u.buffs.filter(b => !(b && b.stat === 'hit' && b.val < 0));
+      }
+    }
+    pushLog(ctx, `〔战术〕🛡 紧急掩护发动！全队获得 ${Math.round(比 * 100)}% 最大 HP 临时护盾（共 ${护盾总值} 点），清除减益 ${净化数} 项！`, {
+      类型: '战术', 战术: '掩护', 护盾比例: 比, 护盾总值, 净化数,
+    });
+  }
+  return ctx;
+}
+
 /* ---------- 行动顺序 ---------- */
 /* 速度从高到低；同速：我方先，再按列号（方案 3.2）。同速同列再按格子编号，保证决定性。 */
 function actionOrder(ctx) {
@@ -10214,7 +10400,12 @@ function 回合开始(ctx) {
      ② **集中攻击的目标被击破 → 自动回全军突击**，并写一条 `〔方针〕…` 记录
         （界面上的方针栏也跟着变，不会出现「界面写集中攻击、实际在自由攻击」）；
      ③ 敌人没有方针这一层（敌方 AI 照旧，§1.3 第 6 条）。 */
+  if (气势总攻开() && ctx.turn >= 2 && ctx.自然气势已加回合 !== ctx.turn) {
+    ctx.自然气势已加回合 = ctx.turn;
+    加气势(ctx, Number(气势总攻参数().每回合自然加) || 10);
+  }
   方针回合(ctx);
+  战术回合(ctx);
 
   /* 1.5 ★ 月球王国「不动如山」重判（2026-10-11；**2026-10-12 改成始终生效**，见 `72-势力.js`）。
      判定写进 `u.势力状态.月球王国.不动如山`，`20-战斗计算.js` 的 `effArmor()` 通过框架钩子
@@ -10404,6 +10595,18 @@ function resolveAction(actor, action, ctx) {
   if (action.kind === 'defend') {
     actor.defending = true;
     actor.防御回复 = true;
+    if (气势总攻开() && actor.side === 'ally') {
+      const c = 气势总攻参数();
+      const 每台 = Number(c.防御每台加) || 15;
+      const 上限 = Number(c.防御每回合上限) || 45;
+      const 已加 = Number(ctx.本回合防御气势) || 0;
+      const 实加 = Math.max(0, Math.min(每台, 上限 - 已加));
+      if (实加 > 0) {
+        ctx.本回合防御气势 = 已加 + 实加;
+        ctx.累计防御气势 = (Number(ctx.累计防御气势) || 0) + 实加;
+        加气势(ctx, 实加);
+      }
+    }
     /* ★ 2026-10-12（三层反馈 · 第 2 件）：记录**文本一个字都没改**（§1.3 第 4 条那两句），
        只在不是「全军突击」时多一个 `方针` 字段 —— 战报要按方针把「进入防御」算进那一行。 */
     pushLog(ctx, `${actor.name} 进入防御（本回合伤害按防御 +50 结算，下回合开始回复 5% HP）`,
@@ -10442,7 +10645,9 @@ function resolveAction(actor, action, ctx) {
      ★ 2026-10-11 作者拍板「天人的 ×1.3 **挪到威力**」之后，这个口子上**已经没有势力在用了**
      （天人搬到了下面的 `威力倍率`）—— 钩子留着（后续势力随时可以用），恒 1。
      没有势力条目 / 倍率是 1 → `倍率` 与改动前**逐字相同**（`1 * 1`）。 */
-  const 倍率 = Boss伤害倍率(actor) * 势力伤害倍率(actor, w) * (actor.调参伤害倍率 || 1);
+  const 总攻倍 = (气势总攻开() && ctx && ctx.当前战术 === '总攻' && actor.side === 'ally')
+    ? (Number(气势总攻参数().总攻伤害倍率) || 1.35) : 1;
+  const 倍率 = Boss伤害倍率(actor) * 势力伤害倍率(actor, w) * (actor.调参伤害倍率 || 1) * 总攻倍;
   /* ★ 势力特色 · **武器威力倍率**（框架第 14 个数值钩子，`72-势力.js` 的 `势力威力倍率()`；
      作者 2026-10-11 拍板把天人的 ×1.3 挪到这里）—— 一路传进 `resolveAttack()`，
      **乘在 `wv(att,w,'power')`（武器威力）上、进 `dmgCore()` 之前**，
@@ -10635,6 +10840,9 @@ function endTurn(ctx) {
     });
     u.defending = false;
   }
+  ctx.当前战术 = null;
+  ctx.本回合防御气势 = 0;
+  for (const u of (ctx.allies || [])) if (u) u.掩护盾 = 0;
   /* 势力特色（框架在 `72-势力.js`）：回合结束的钩子。
      第一件 = 卫星国防军 SEED 的「每回合 +5」—— 战棋挂在**我方阶段开始**（17b:220-226），
      我们挂在回合结束：第 N 回合结束 = 第 N+1 回合开始，加点与次数和战棋一致。 */
@@ -10662,6 +10870,14 @@ function 开局(我方编成, 敌方编成, 种子, 单位开关表, 选项) {
     /* ★ 杠杆 ④：这一场的回合上限（按敌方阵容里最硬的那一档现算），见 `71-改动.js` 的 `难度调整.回合上限`。
        传**规格**（`{键, 位, 等级}`）就行 —— `回合上限()` 只看键；不重复造一遍单位。 */
     回合上限: 回合上限(敌方编成),
+    气势: Number(气势总攻参数().开场气势) || 0,
+    预约战术: null,
+    当前战术: null,
+    本回合防御气势: 0,
+    累计防御气势: 0,
+    全队憋大招: false,
+    曾满气势回合: null,
+    自然气势已加回合: 1,
     log: [], result: null, again: [],
     /* `强化` = 敌方强度倍率（`70-编成.js` 的 `编成波次到单位()` 按编成条目的层 × 梯队算好的一程，
        见 `71-改动.js` 的「难度调整」段）；不传 = 1 = 与改前逐字相同。 */
@@ -10687,6 +10903,7 @@ function 开局(我方编成, 敌方编成, 种子, 单位开关表, 选项) {
        开场冷却 3 回合 = 第 4 回合才能用；普通冷却 cd 开场一律是 0。 */
     u.weapons = u.weapons.map(e => Object.assign({}, e, { cd: 0 }));
     u.holdUlt = false;
+    u.掩护盾 = 0;
     /* 天人 TRANS-AM 的单位级开关（2026-10-11）：默认自动、本回合没点开；
        紧接着的 `设单位开关(ctx, 单位开关表)` 会按表覆盖掉。 */
     u.TRANSAM手动 = false; u.本回合开TRANSAM = false;
@@ -10758,7 +10975,14 @@ function 打一回合(ctx) {
     /* ★ 杠杆 ④（`71-改动.js` 的 `难度调整.回合上限`）：上限随敌方档位收紧，`ctx.回合上限` 在 `开局()` 里算好 */
     const 上限 = ctx.回合上限 || MAX_TURN;
     if (ctx.turn >= 上限) ctx.result = { 结果: '败', 原因: `第 ${上限} 回合结束还没分出胜负（按撤退处理）` };
-    else { endTurn(ctx); ctx.turn++; }
+    else {
+      endTurn(ctx);
+      ctx.turn++;
+      if (气势总攻开() && ctx.turn >= 2 && ctx.自然气势已加回合 !== ctx.turn) {
+        ctx.自然气势已加回合 = ctx.turn;
+        加气势(ctx, Number(气势总攻参数().每回合自然加) || 10);
+      }
+    }
   }
   return ctx.log.slice(起);
 }
@@ -10781,8 +11005,28 @@ function 第几回合的方针(方针, 回合) {
   if (!是方针对照表(方针)) return 方针 || {};
   const 键 = Object.keys(方针).filter(k => /^\d+$/.test(k)).map(Number).sort((a, b) => a - b);
   let 取 = null;
-  for (const k of 键) if (k <= 回合) 取 = 方针[String(k)] != null ? 方针[String(k)] : 方针[k];
+  for (const k of 键) {
+    if (k > 回合) continue;
+    const v = 方针[String(k)] != null ? 方针[String(k)] : 方针[k];
+    if (v === '总攻' || v === '掩护') continue;
+    if (v && typeof v === 'object' && v.类型 == null && (v.战术 != null || v.全队憋大招 != null)) continue;
+    取 = v;
+  }
   return 取 == null ? {} : 取;
+}
+
+function 第几回合的战术(方针, 回合) {
+  if (!是方针对照表(方针)) return null;
+  const v = 方针[String(回合)] != null ? 方针[String(回合)] : 方针[回合];
+  if (!v) return null;
+  if (v === '总攻' || v === '掩护') return { 战术: v };
+  if (typeof v === 'object') {
+    const 出 = {};
+    if (v.战术 === '总攻' || v.战术 === '掩护') 出.战术 = v.战术;
+    if (v.全队憋大招 !== undefined) 出.全队憋大招 = !!v.全队憋大招;
+    return Object.keys(出).length ? 出 : null;
+  }
+  return null;
 }
 
 function simulate(我方, 敌方, 方针, 种子, 选项) {
@@ -10798,7 +11042,14 @@ function simulate(我方, 敌方, 方针, 种子, 选项) {
      **没有调参时 `ctx.回合上限 ≤ MAX_TURN`（难度调整那张表最大 12）→ 护栏顶恒等于 14，与改动前逐字相同。** */
   const 护栏顶 = Math.max(MAX_TURN, ctx.回合上限 || MAX_TURN) + 2;
   while (!ctx.result && 护栏++ < 护栏顶) {
-    if (表) ctx.当局方针 = 第几回合的方针(表, ctx.turn);
+    if (表) {
+      ctx.当局方针 = 第几回合的方针(表, ctx.turn);
+      const 战 = 第几回合的战术(表, ctx.turn);
+      if (战) {
+        if (战.全队憋大招 !== undefined) 设全队憋大招(ctx, 战.全队憋大招);
+        if (战.战术) ctx.当局战术 = 战.战术;
+      }
+    }
     打一回合(ctx);
   }
   if (!ctx.result) ctx.result = { 结果: '败', 原因: '超出回合上限' };
@@ -17325,14 +17576,17 @@ const 防御姿态吗 = (u, ctx) => 按防御结算(u, ctx);
  *   · 取**最快的那一把**（玩家关心的是「大招什么时候能放」，不是哪一把）；
  *   · 已经能放 → `可放: true`、`冷却剩: 0`。 */
 function 大招状态(u, ctx) {
-  const 手 = (u && u.holdUlt) ? true : false;
-  const 空 = { 有大招: false, 可放: false, 冷却剩: null, 保留: 手, 名字: [] };
+  const 强制放 = !!(typeof 气势总攻开 === 'function' && 气势总攻开() && ctx && ctx.当前战术 === '总攻' && u && u.side === 'ally' && 气势总攻参数().总攻强制放大招 !== false);
+  const 手 = !强制放 && !!((u && u.holdUlt) || (typeof 气势总攻开 === 'function' && 气势总攻开() && ctx && ctx.全队憋大招 && u && u.side === 'ally'));
+  const 未解锁 = u ? (u.weapons || []).filter(e => e && e.t && isUltimate(e.t) && u.lv < e.t.unlock) : [];
+  const 解锁等级 = 未解锁.length ? Math.min.apply(null, 未解锁.map(e => Number(e.t.unlock) || 20)) : null;
+  const 空 = { 有大招: false, 可放: false, 冷却剩: null, 保留: 手, 名字: [], 未解锁大招: 未解锁.length > 0, 解锁等级 };
   if (!u || !ctx) return 空;
   const 有 = (u.weapons || []).filter(e => e && e.t && isUltimate(e.t) && u.lv >= e.t.unlock && weaponPlayable(e.t));
   if (!有.length) return 空;
   const 剩 = e => Math.max(0, Math.max((e.readyTurn || 1) - ctx.turn, e.cd || 0));
   const 冷却剩 = Math.min.apply(null, 有.map(剩));
-  return { 有大招: true, 可放: 冷却剩 <= 0, 冷却剩, 保留: 手, 名字: 有.map(e => e.t.name) };
+  return { 有大招: true, 可放: 冷却剩 <= 0, 冷却剩, 保留: 手, 名字: 有.map(e => e.t.name), 未解锁大招: false, 解锁等级: null };
 }
 
 /* ---------------- 预告⑤：敌人机制（**敌人卡第一批** · 作者 2026-10-12 拍板的三张卡） ----------------
@@ -17413,6 +17667,8 @@ function 预告快照(ctx) {
     /* ★ 标定经济（作者 2026-10-13）：**敌机卡**上的「标定 ×N（来自 XX）+ 将被狙击引爆…」，
        以及我方**产标者 / 引爆者**的角标。没有标定 → 空对象（一张卡都不多画）。 */
     标定: 标定经济预告(ctx),
+    /* ★ 气势与战术指令（总攻 / 紧急掩护，2026-10-13）：方针栏上的气势条与战术预告 */
+    气势战术: 气势战术预告(ctx),
   };
 }
 
@@ -17438,7 +17694,75 @@ function 反馈标签(ev) {
   if (ev.反弹 != null) 们.push(`镜甲反弹 ${ev.反弹}`);
   if (ev.自爆) 们.push('自爆');
   if (ev.防御少挨 != null) 们.push(`防御 少挨 ${ev.防御少挨}`);
+  if (ev.总攻 && ev.总攻增伤 > 0) 们.push(`⚡ 总攻 +${ev.总攻增伤}`);
+  if (ev.掩护吸收 > 0) 们.push(`🛡 掩护 −${ev.掩护吸收}`);
   return 们.join(' · ');
+}
+
+/* ---------------- 预告⑦：气势与战术指令（总攻 / 紧急掩护，2026-10-13） ----------------
+ * 纯读函数：不改状态、不消耗 `ctx.rng`。供方针栏显示气势进度与两颗战术按钮的收益预告。 */
+function 气势战术预告(ctx) {
+  const c = (typeof 气势总攻参数 === 'function') ? 气势总攻参数() : {};
+  const 上限 = Number(c.上限) || 100;
+  const 空 = {
+    开: false, 气势: 0, 上限, 可发动: false, 预约战术: null, 当前战术: null,
+    全队憋大招: false, 预计总攻增伤: 0, 预计掩护护盾: 0, 预计净化数: 0, 文本: '',
+  };
+  if (!ctx || typeof 气势总攻开 !== 'function' || !气势总攻开()) return 空;
+  const 气势 = Math.max(0, Math.min(上限, Number(ctx.气势) || 0));
+  const 可发动 = 气势 >= 上限;
+  const 预约战术 = ctx.预约战术 || null;
+  const 当前战术 = ctx.当前战术 || null;
+  const 全队憋大招 = !!ctx.全队憋大招;
+  const 倍 = Number(c.总攻伤害倍率) || 1.35;
+  const 命中加 = Number(c.总攻命中加) || 15;
+  const 减冷却 = Number(c.总攻减冷却) || 1;
+  const 盾比 = Number(c.掩护护盾比例) || 0.25;
+
+  let 预计总攻增伤 = 0;
+  const 活敌 = (ctx.enemies || []).filter(e => e && e.hp > 0);
+  const 靶 = 活敌[0] || null;
+  if (靶) {
+    for (const u of (ctx.allies || [])) {
+      if (!u || u.hp <= 0) continue;
+      const 池 = 攻击武器们(u, ctx);
+      if (!池.length) continue;
+      let 最佳 = 0;
+      for (const e of 池) {
+        const exp = expectedDamage(u, 靶, e.t, { turn: ctx.turn, ctx });
+        if (exp > 最佳) 最佳 = exp;
+      }
+      预计总攻增伤 += Math.max(0, Math.round(最佳 * (倍 - 1)));
+    }
+  }
+
+  let 预计掩护护盾 = 0, 预计净化数 = 0;
+  for (const u of (ctx.allies || [])) {
+    if (!u || u.hp <= 0) continue;
+    预计掩护护盾 += Math.round(u.maxHp * 盾比);
+    if (c.掩护清减益 !== false) {
+      const 破甲数 = Array.isArray(u.debuffs) ? u.debuffs.length : 0;
+      const 削甲数 = (Number(u.armorCut) || 0) > 0 ? 1 : 0;
+      const 减命中数 = Array.isArray(u.buffs) ? u.buffs.filter(b => b && b.stat === 'hit' && b.val < 0).length : 0;
+      预计净化数 += 破甲数 + 削甲数 + 减命中数;
+    }
+  }
+
+  let 文本 = '';
+  if (预约战术 === '总攻') {
+    文本 = `已预约【⚡ 全军总攻】：开打后消耗 ${上限} 气势，本回合全队伤害 ×${倍}（预计多打约 ${预计总攻增伤}）、命中 +${命中加}、全武器冷却 −${减冷却}，全员大招解禁！`;
+  } else if (预约战术 === '掩护') {
+    文本 = `已预约【🛡 紧急掩护】：开打后消耗 ${上限} 气势，本回合全队获得 ${Math.round(盾比 * 100)}% 最大 HP 临时护盾（共 ${预计掩护护盾} 点）并清除减益（当前可清 ${预计净化数} 项）。`;
+  } else if (可发动) {
+    文本 = `气势已满（${气势}/${上限}）！可点【⚡ 全军总攻】（伤害 ×${倍} / 命中 +${命中加} / 冷却 −${减冷却}，预计增伤约 ${预计总攻增伤}）或【🛡 紧急掩护】（全队护盾共 ${预计掩护护盾} 点 + 清减益 ${预计净化数} 项）。`;
+  } else {
+    文本 = `气势 ${气势}/${上限}（每回合 +${c.每回合自然加 || 10} · 防御每台 +${c.防御每台加 || 15} · 击破 +${c.击破加 || 15} · 标定引爆 +${c.标定引爆加 || 10} · 受重击 +${c.受重击加 || 10}；攒满 ${上限} 可发动总攻或紧急掩护）`;
+  }
+
+  return {
+    开: true, 气势, 上限, 可发动, 预约战术, 当前战术, 全队憋大招,
+    预计总攻增伤, 预计掩护护盾, 预计净化数, 文本,
+  };
 }
 
 /* ---------------- 预告⑥：**标定经济**（作者 2026-10-13 拍板「OK」；全职业通用的「传球」机制） ----------------
@@ -17631,6 +17955,16 @@ function 战报统计(战斗) {
   const 标定引爆者 = [...new Set(引爆录.map(x => x.单位))];
   const 标定总账 = 总伤害 + 标定额外伤害;
 
+  /* ⑩ ★ **气势与战术指令**（总攻 / 紧急掩护，2026-10-13）的结算 —— 全部从记录与战斗状态统计 */
+  const 战术录 = log.filter(x => x.类型 === '战术');
+  const 总攻次数 = 战术录.filter(x => x.战术 === '总攻').length;
+  const 掩护录 = 战术录.filter(x => x.战术 === '掩护');
+  const 掩护次数 = 掩护录.length;
+  const 总攻增伤 = 我方攻击.reduce((n, x) => n + 战报数(x.总攻增伤), 0);
+  const 掩护吸收 = 伤害记录.reduce((n, x) => n + 战报数(x.掩护吸收), 0);
+  const 掩护净化 = 掩护录.reduce((n, x) => n + 战报数(x.净化数), 0);
+  const 曾满气势回合 = (战斗 && (战斗.曾满气势回合 != null ? 战斗.曾满气势回合 : (战斗.ctx && 战斗.ctx.曾满气势回合 != null ? 战斗.ctx.曾满气势回合 : null))) || null;
+
   return {
     结果: (战斗 && (战斗.结果 || (战斗.ctx && 战斗.ctx.result && 战斗.ctx.result.结果))) || null,
     回合数: (战斗 && 战斗.回合数) || (战斗 && 战斗.ctx && 战斗.ctx.turn) || 0,
@@ -17650,6 +17984,7 @@ function 战报统计(战斗) {
     标定狙击: 引爆录.filter(x => x.结果 === '狙击引爆').length,
     标定范围: 引爆录.filter(x => x.结果 === '范围引爆').length,
     标定产标者, 标定引爆者, 标定记录: 标定录,
+    总攻次数, 总攻增伤, 掩护次数, 掩护吸收, 掩护净化, 曾满气势回合,
   };
 }
 
@@ -17696,6 +18031,16 @@ function 战报行们(战斗) {
     行.push(`标定：产 ${t.标定产层} 层（${产名}）· 引爆 ${t.标定引爆次数} 次`
       + `（狙击 ${t.标定狙击} / 范围 ${t.标定范围}，${引名}）`
       + `· 额外伤害 ${t.标定额外伤害}（占全场 ${占比(t.标定额外伤害, t.标定总账)}%）`);
+  }
+  /* ⑩ ★ **气势与战术指令**（总攻 / 紧急掩护，2026-10-13）的结算行 */
+  if (t.总攻次数 > 0) {
+    行.push(`全军总攻：发动 ${t.总攻次数} 次，额外造成 ${t.总攻增伤} 伤害（占我方总输出 ${占比(t.总攻增伤, t.我方伤害)}%）`);
+  }
+  if (t.掩护次数 > 0) {
+    行.push(`紧急掩护：发动 ${t.掩护次数} 次，临时护盾共吸收 ${t.掩护吸收} 伤害，清除 ${t.掩护净化} 个减益`);
+  }
+  if (t.总攻次数 === 0 && t.掩护次数 === 0 && t.曾满气势回合 != null) {
+    行.push(`气势曾在第 ${t.曾满气势回合} 回合攒满，但本场未发动总攻或掩护`);
   }
   /* ⑧ ★ **战后回血**（作者 2026-10-12 拍板）那一行 —— 它**不在战斗记录里**（是肉鸽名册上的事），
      所以由 `90-肉鸽.js` 的 `记战后回血行()` 写进 `肉鸽界面.战后休整行`，这里**只读**地并进来。
@@ -20188,7 +20533,7 @@ const 上报 = {
 
 /** 决策动作族 —— **唯一真源**（`tools/replay.mjs` 与 `tests/录像.js` 第 [6] 段都读它）。 */
 const 决策动作们 = ['选分队', '去节点', '使用零件', '招募', '用券', '丢券', '晋升', '黑市买', '黑市卖',
-  '黑市刷新', '奇遇', '弹窗', '休整', '前进', '方针', '点敌人', '大招', 'TRANSAM', '开TRANSAM'];
+  '黑市刷新', '奇遇', '弹窗', '休整', '前进', '方针', '点敌人', '大招', 'TRANSAM', '开TRANSAM', '战术', '全队大招'];
 
 /** 一条决策里最多存几个选项（超了只存前 40 + `截断:true`；**`选` 一定留在里面**）。 */
 const 决策选项上限 = 40;
@@ -20296,6 +20641,16 @@ function 位码们(界面, 名, 方) {
 }
 /** 5 条方针（`方针们`，`60-战斗.js`）。 */
 function 方针码们() { return 试读(() => (方针们 || []).map(k => `方针:${k}`), []); }
+/** 战术指令（`战术:总攻` / `战术:掩护`）：只在战斗屏且气势满上限（100）时出现。 */
+function 战术码们(界面) {
+  const J = 决策界面(界面);
+  const ctx = J && J.ctx;
+  if (!J || !ctx || J.屏 !== '战斗') return [];
+  if (typeof 气势总攻开 !== 'function' || !气势总攻开()) return [];
+  const 上限 = Number(气势总攻参数().上限) || 100;
+  if ((Number(ctx.气势) || 0) < 上限) return [];
+  return ['战术:总攻', '战术:掩护'];
+}
 /** 编队屏能点的：选人 / 摆位 / 取回 / 默认五人队 / 清空 / 开战（摆位是**拖动**出来的，
  *  所以这一族只服务「当时的选项」这份账，不进 `决策动作们`）。 */
 function 编队码们(界面) {
@@ -20337,6 +20692,8 @@ const 决策族码们 = {
   大招: 界面 => 位码们(界面, '大招', 'ally'),
   TRANSAM: 界面 => 位码们(界面, 'TRANSAM', 'ally'),
   开TRANSAM: 界面 => 位码们(界面, '开TRANSAM', 'ally'),
+  战术: 界面 => 战术码们(界面),
+  全队大招: () => ['全队大招'],
   编队: 界面 => 编队码们(界面),
 };
 
@@ -20360,7 +20717,7 @@ const 屏决策族 = {
   '奇遇': () => ['奇遇'],
   '晋升': () => ['晋升'],
   '编队': () => ['编队'],
-  '战斗': () => ['方针', '点敌人', '大招', 'TRANSAM', '开TRANSAM'],
+  '战斗': () => ['方针', '点敌人', '大招', 'TRANSAM', '开TRANSAM', '战术'],
 };
 
 /* ---------------------------------------------------------------------------
@@ -20828,6 +21185,8 @@ const 界面 = {
     方针: function (参) { return this.选方针(参); },
     点敌人: function (参) { return this.点敌人(Number(参)); },
     大招: function (参) { return this.切大招(Number(参)); },
+    战术: function (参) { return this.选战术(参); },
+    全队大招: function () { return this.切全队大招(); },
     /* ★ 天人的 TRANS-AM 单位级开关（作者 2026-10-11 拍板）：切自动 / 手动、手动档本回合点开 */
     TRANSAM: function (参) { return this.切TRANSAM(Number(参)); },
     开TRANSAM: function (参) { return this.开TRANSAM(Number(参)); },
@@ -21238,12 +21597,24 @@ const 界面 = {
       ? `<p class="small" data-heal-forecast="1">战后休整（预告）：这一场打完，名册上<b>每一台</b>都回 ` +
         `<b>${Math.round(回血比例 * 100)}%</b> 最大 HP —— <b>0 HP 的也会回到 ${Math.round(回血比例 * 100)}%</b>（不会再有人躺在地上不出战）。</p>`
       : '';
+    const 气预 = (this.ctx && typeof 气势战术预告 === 'function') ? 气势战术预告(this.ctx) : null;
+    const 气势块 = (气预 && 气预.开)
+      ? `<div class="cmds morale-bar" data-center="1" data-morale="${气预.气势}" data-morale-max="${气预.上限}">
+          <span class="morale-label">气势 <b>${气预.气势} / ${气预.上限}</b></span>
+          <div class="bar morale"><i style="width:${Math.max(0, Math.min(100, Math.round(气预.气势 / 气预.上限 * 100)))}%"></i></div>
+          <button class="mini${气预.预约战术 === '总攻' ? ' on' : ''}" data-act="战术:总攻"${可点 && 气预.可发动 ? '' : ' disabled'}>⚡ 全军总攻${气预.预约战术 === '总攻' ? '（已预约）' : ''}</button>
+          <button class="mini${气预.预约战术 === '掩护' ? ' on' : ''}" data-act="战术:掩护"${可点 && 气预.可发动 ? '' : ' disabled'}>🛡 紧急掩护${气预.预约战术 === '掩护' ? '（已预约）' : ''}</button>
+          <button class="mini${气预.全队憋大招 ? ' on' : ''}"${可点 ? ' data-act="全队大招"' : ' disabled'}>全队大招：${气预.全队憋大招 ? '憋住' : '自动'}</button>
+        </div>
+        <p class="small tactic-forecast" data-tactic-forecast="1">${气预.文本}</p>`
+      : '';
     return `<div class="cmdpanel policybar">
       <h3>全队方针 · <b>${当前}</b>${目标 ? ` → ${目标.name}（${位名(目标.slot)}）` : ''}
         <span class="small">保持到改为止 · 单位层只有大招开关</span></h3>
       <div class="cmds" data-center="1">${方针们.map(k => `<button class="mini${当前 === k ? ' on' : ''}"${可点 ? ` data-act="方针:${k}"` : ' disabled title="这一回合正在播放，等它播完才能改（方针保持到改为止）"'}>${k}</button>`).join('')}</div>
       <p class="small">${一句[当前] || ''}${当前 === '集中攻击' ? (目标 ? '　目标已选。' : '　<b>还没点目标</b>：点一张敌方卡片。') : ''}
         ${可点 && this.选目标 ? '　<b>正在选目标：点一个敌人。</b>' : ''}${可点 ? '' : '　<b>播放中不能改方针</b>：这一回合播完就回到指令阶段。'}</p>
+      ${气势块}
       ${回血预告}
       ${可点 && this.提示 ? `<p class="warn small">${this.提示}</p>` : ''}
     </div>`;
@@ -21257,9 +21628,11 @@ const 界面 = {
     const u = this.ctx.allies.find(x => x.slot === 位);
     if (!u) return '';
     const c = this.当前指令(位);
+    const 大招 = (this.ctx && typeof 大招状态 === 'function') ? 大招状态(u, this.ctx) : null;
+    const 锁提示 = (大招 && 大招.未解锁大招) ? ` <span class="ult-lock" data-ult-locked="1">大招：Lv${大招.解锁等级 || 20} 解锁</span>` : '';
     return `<div class="cmdpanel">
       <h3>单位开关 · ${u.name}<span class="small">${u.key} · ${u.tags.战斗分类} · ${位名(位)}</span></h3>
-      <div class="cmds" data-center="1"><button class="mini${c.保留大招 ? ' on' : ''}" data-act="大招:${位}">大招：${c.保留大招 ? '保留' : '自动'}</button></div>
+      <div class="cmds" data-center="1"><button class="mini${c.保留大招 ? ' on' : ''}" data-act="大招:${位}">大招：${c.保留大招 ? '保留' : '自动'}</button>${锁提示}</div>
       ${this.天人开关(位, u, c)}
       <p class="small">「保留」= 这一回合不放这个大招（推迟，不是作废）。其余交给上面的全队方针。</p>
       ${this.提示 ? `<p class="warn small">${this.提示}</p>` : ''}
@@ -21295,7 +21668,10 @@ const 界面 = {
     const hp = Math.max(0, Math.round(u.hp / u.maxHp * 100));
     const 动 = 可点 ? (方 === 'ally' ? ` data-act="选单位:${u.slot}"` : ` data-act="点敌人:${u.slot}"`) : '';
     const c = 方 === 'ally' ? this.当前指令(u.slot) : null;
-    const 指令行 = c ? `大招：${c.保留大招 ? '保留' : '自动'}` : '';
+    const 大招卡 = (方 === 'ally' && 预告 && 预告.大招) ? 预告.大招[u.slot] : ((方 === 'ally' && this.ctx && typeof 大招状态 === 'function') ? 大招状态(u, this.ctx) : null);
+    const 锁行 = (大招卡 && 大招卡.未解锁大招) ? ` · <span class="ult-lock" data-ult-locked="1">大招：Lv${大招卡.解锁等级 || 20} 解锁</span>` : '';
+    const 全队憋 = !!(方 === 'ally' && this.ctx && this.ctx.全队憋大招);
+    const 指令行 = c ? `大招：${(c.保留大招 || 全队憋) ? '保留' : '自动'}${全队憋 ? '（全队憋住）' : ''}${锁行}` : '';
     /* ★ 2026-10-12（§1.7）：被「集中攻击」点名的敌机卡片上**一直挂标记**，直到它被击破或方针改掉。
        判定读**引擎的当前方针**（`ctx.方针`）—— 目标被击破时引擎会自动回到全军突击，
        界面跟着变，不会出现「界面写集中攻击、实际在自由攻击」。 */
@@ -21564,6 +21940,7 @@ const 界面 = {
     this.战报 = {
       结果: c.result ? c.result.结果 : '败', 原因: c.result ? c.result.原因 : '—',
       回合数: c.turn, 记录: c.log, 我方: c.allies, 敌方: c.enemies, 种子: c.种子,
+      曾满气势回合: c.曾满气势回合 || null,
     };
     /* ★ 作战记录（作者 2026-10-12：「作战记录你看看能不能安排保存一下」）：
        **胜 / 败都存一份**完整逐条记录 —— 独立键 `mecha-autobattle-战斗记录`，与肉鸽存档无关
@@ -21956,6 +22333,28 @@ const 界面 = {
   切大招(位) {
     const c = this.当前指令(位);
     return this.设某开关(位, { 保留大招: !c.保留大招 });
+  },
+  选战术(参) {
+    if (this.阶段 !== '指令' || !this.ctx) return false;
+    if (typeof 气势总攻开 !== 'function' || !气势总攻开()) return false;
+    const 上限 = Number(气势总攻参数().上限) || 100;
+    if ((Number(this.ctx.气势) || 0) < 上限 && 参 !== '取消' && 参 != null) {
+      this.提示 = `气势未满（当前 ${this.ctx.气势 || 0}/${上限}），满 ${上限} 才能发动战术指令。`;
+      this.刷();
+      return false;
+    }
+    设战术(this.ctx, 参);
+    this.提示 = '';
+    this.刷();
+    return this.ctx.预约战术;
+  },
+  切全队大招() {
+    if (this.阶段 !== '指令' || !this.ctx) return false;
+    if (typeof 气势总攻开 !== 'function' || !气势总攻开()) return false;
+    设全队憋大招(this.ctx, !this.ctx.全队憋大招);
+    this.提示 = '';
+    this.刷();
+    return this.ctx.全队憋大招;
   },
   /* ★ TRANS-AM 的单位级开关（作者 2026-10-11 拍板「TRANS-AM 应该是单个单位开关的」；
      2026-10-12 起它和「大招：自动 / 保留」一起构成**单位层的全部**决策，§1.1）：
@@ -24224,6 +24623,7 @@ const G = {
      `tools/replay.mjs --导出决策` 改为**调这一份**（线上记的选项与重放导出的可选项 = 同一份代码）。 */
   选项, 决策录, 决策动作们, 决策选项上限, 决策条数上限,
   方针们, 默认方针, 规整方针, 当前方针, 禁止攻击, 按防御结算, 是方针对照表, 第几回合的方针, 方针回合,
+  战术集合, 加气势, 设战术, 设全队憋大招, 战术回合, 第几回合的战术,
   /* ★ **三层反馈**（作者 2026-10-12 拍板的第 2 件，`协作/方向调整-全队方针与反馈.md` 第 2 节）——
      实现在新文件 `84-反馈.js`（预告 + 结算，全是纯读）+ `60-战斗.js` / `20-战斗计算.js`（即时，记录字段）：
        · 预告：`集中攻击预告` / `打得到后排` / `大招状态` / `防御姿态吗` / `预告快照`；
@@ -24231,7 +24631,7 @@ const G = {
                界面上的小标签由 `反馈标签(记录)` 拼（`chooseAttack` 一起暴露给测试对账用）；
        · 结算：`战报统计(ctx)` / `战报行们(ctx)` / `本场战报Html(行们)` / `是记录大招(战斗, 记录)`。 */
   chooseAttack,
-  集中攻击预告, 打得到后排, 打得到位, 攻击武器们, 大招状态, 防御姿态吗, 预告快照, 反馈标签,
+  集中攻击预告, 打得到后排, 打得到位, 攻击武器们, 大招状态, 防御姿态吗, 预告快照, 反馈标签, 气势战术预告,
   战报统计, 战报行们, 本场战报Html, 是记录大招, 是记录直射,
   /* ★ 敌人卡第一批（2026-10-12）：三张卡的**预告**（隐匿 / 镜甲 / 濒死自爆，按格子号给）——
      `预告快照(ctx).敌人机制` 也带着同一份（界面画卡片时直接读它）。 */
@@ -24289,6 +24689,7 @@ const G = {
   标定经济狙击加成, 标定经济消耗一, 标定经济引爆, 标定连锁文本, 标定经济记录, 标定经济预告, 标定角标,
   武器debuff, 应用武器debuff, debuff文字,   // ★ 2026-10-11 敌方武器 debuff（复用 buffs / debuffs / armorCut 三条现成管线）
   HP继承开, HP继承参数, 按比例算HP,   // ★ 2026-10-11 HP 继承（战斗之间不自动回满）的三个小工具
+  气势总攻参数, 气势总攻开,            // ★ 2026-10-13 气势与战术指令（总攻 / 紧急掩护）+ 全队憋大招
   月光祝福范围, 残月余响范围, 再动, 残月余响标记,
   /* ---- 势力特色（作者 2026-10-10；框架在 72-势力.js，参数表在 71-改动.js）----
      第一件 = 卫星国防军 SEED 觉醒；第二件 = 流星小队「单独行动」；

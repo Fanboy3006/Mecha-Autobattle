@@ -177,3 +177,13 @@ function 按比例算HP(maxHp, 比, 参数) {
   if (比 == null || !Number.isFinite(Number(比))) return maxHp;
   return Math.max(最低, Math.min(maxHp, Math.round(maxHp * Number(比))));
 }
+
+/* ---------- ⑧ 气势与战术指令（总攻 / 紧急掩护）的参数入口 ---------- */
+function 气势总攻参数() {
+  return (战斗结构 && 战斗结构.气势总攻) || {};
+}
+function 气势总攻开() {
+  const c = 气势总攻参数();
+  return c.开 !== false;
+}
+

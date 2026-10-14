@@ -87,7 +87,9 @@ function hitRate(att, w, def, opts = {}) {
      ★ 它是「减在原始命中上」的（和「特种 −20」「被挡 −20」同一条管线、同一个位置）——
        `raw` 会变、`hit` 再夹到 0–100。 */
   const 隐匿 = 隐匿惩罚值(def, w);
-  const h = (opts.baseHit ?? w.hit) - eva + Math.round(((att.aim ?? 160) - 160) / 2) + buffSum(att, 'hit') + (opts.blockPenalty || 0) - 隐匿;
+  const 总攻命中 = (气势总攻开() && opts && opts.ctx && opts.ctx.当前战术 === '总攻' && att && att.side === 'ally')
+    ? (Number(气势总攻参数().总攻命中加) || 0) : 0;
+  const h = (opts.baseHit ?? w.hit) - eva + Math.round(((att.aim ?? 160) - 160) / 2) + buffSum(att, 'hit') + (opts.blockPenalty || 0) - 隐匿 + 总攻命中;
   return { hit: clamp(Math.round(h), 0, 100), raw: Math.round(h), eva, 尖兵闪, 隐匿 };
 }
 
@@ -584,6 +586,9 @@ function 标定经济引爆(ctx, 攻击者, 目标, w, 主伤害) {
   d.层数 = 0;                                                 // ★ 消耗**全部**层数
   const 剩HP = Math.max(0, 目标.hp - 总);
   const 公式 = `${主伤害} × ${每层} × ${层数} 层 = ${总}`;
+  if (气势总攻开() && 攻击者 && 攻击者.side === 'ally' && typeof 加气势 === 'function') {
+    加气势(ctx, Number(气势总攻参数().标定引爆加) || 10);
+  }
   if (Array.isArray(ctx.log)) pushLog(ctx, `〔标定〕${来源.join('、') || '（无来源）'} 的标定 → ${攻击者.name}【${w.name}】引爆 ${层数} 层，`
     + `溅射 ${总}（${公式}）`, {
     类型: '标定', 事件: '引爆', 结果: '范围引爆',
@@ -651,7 +656,13 @@ const 命中段步长 = (att, w, 段) => 段内命中加成(att, w, 段);
 function resolveAttack(att, def, w, ctx, opts = {}) {
   const rng = ctx.rng;
   const blockPenalty = opts.blockPenalty || 0;
-  const 倍率 = opts.伤害倍率 == null ? 1 : opts.伤害倍率;
+  const 原HP = def ? def.hp : 0;
+  const 是总攻 = !!(气势总攻开() && ctx && ctx.当前战术 === '总攻' && att && att.side === 'ally');
+  const 总攻乘子 = 是总攻 ? (Number(气势总攻参数().总攻伤害倍率) || 1.35) : 1;
+  const 倍率 = opts.伤害倍率 == null ? 总攻乘子 : opts.伤害倍率;
+  const 基准倍率 = 是总攻 && 总攻乘子 > 0 ? (倍率 / 总攻乘子) : 倍率;
+  let 总攻增伤合计 = 0;
+  let 掩护吸收合计 = 0;
   /* ★ 威力倍率（框架第 14 个钩子，`72-势力.js` 的 `势力威力倍率()`；作者 2026-10-11 拍板「天人的 ×1.3 挪到威力」）：
      乘在**武器威力**上（`wv(att, w, 'power') * 威力倍率`）、进 `dmgCore()` 之前 ——
      和战棋 `15-战斗计算.js:36` 的 `wPow = round(wv(u,w,'power') * tierUp * taPowMul(u))` 同一个落点。
@@ -702,6 +713,9 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
         记号.公式 = `（暴击段 ×${记号.伤害倍率}）`;
         return 记号;
       })() : null;
+      if (段标 && 气势总攻开() && att && att.side === 'ally' && typeof 加气势 === 'function') {
+        加气势(ctx, Number(气势总攻参数().标定引爆加) || 10);
+      }
       /* ★ 三层反馈 · 「防御少挨了多少」（§2.4）：**同一套参数、不带防御加成再算一次 `dmgCore`**，
          两次取差值。三个要点：
            ① **先算预览、再算真的** —— 预览走 `preview: true`（屏障 / 力场 / 护盾一个计数器都不动），
@@ -711,10 +725,20 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
            ③ **只用来显示**：`total` 加的还是原来那一个 `d`（`少挨合计` 只进记录字段）。 */
       const 无防 = 按防 ? dmgCore(att, w, def, { power: wv(att, w, 'power') * 威力倍率, crit: cr, preview: true, turn: ctx.turn, 不带防御加成: true, ctx }).dmg : 0;
       const c = dmgCore(att, w, def, { power: wv(att, w, 'power') * 威力倍率, crit: cr, preview: false, turn: ctx.turn, defending: opts.defending, ctx });
-      const d = Math.round(c.dmg * 倍率 * (段标 ? 段标.伤害倍率 : 1));
+      let d = Math.round(c.dmg * 倍率 * (段标 ? 段标.伤害倍率 : 1));
+      if (是总攻) {
+        const 基准d = Math.round(c.dmg * 基准倍率 * (段标 ? 段标.伤害倍率 : 1));
+        总攻增伤合计 += Math.max(0, d - 基准d);
+      }
       /* 「少挨了多少」＝**不带防御加成时会挨的** − **实际挨的**（大减小，所以是正数；
          防御只会让伤害更低，`Math.max(0, …)` 只是兜底：万一某条减免让反向差出现，也不写负数）。 */
       if (按防) 少挨合计 += Math.max(0, Math.round(无防 * 倍率) - d);
+      if (def && def.掩护盾 > 0 && d > 0) {
+        const 吸 = Math.min(def.掩护盾, d);
+        d -= 吸;
+        if (!opts.preview) def.掩护盾 -= 吸;
+        掩护吸收合计 += 吸;
+      }
       total += d; landed++; if (cr) crits++;
       /* ★ 标定经济：这一段的伤害里有**多少是标定加成带来的**（差值账，给记录 / 战报读）。
          没有标定记号 → 这一行什么都不做（`段标` 是 null）。 */
@@ -748,6 +772,15 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
      ★ 一个随机数都不消耗；没有标定 / 不是范围武器 → `null`，一个字段都不多（默认路径逐字不变）。 */
   const 引爆 = 标定经济引爆(ctx, att, def, w, total);
   if (引爆) def.hp = 引爆.剩余HP;
+  if (!opts.preview && 气势总攻开() && typeof 加气势 === 'function') {
+    const 气参 = 气势总攻参数();
+    if (def && def.side === 'ally' && def.maxHp > 0 && total >= def.maxHp * (Number(气参.受重击阈值) || 0.25)) {
+      加气势(ctx, Number(气参.受重击加) || 10);
+    }
+    if (att && att.side === 'ally' && def && def.side === 'enemy' && 原HP > 0 && def.hp <= 0) {
+      加气势(ctx, Number(气参.击破加) || 15);
+    }
+  }
   /* 尖兵：这一回合的「第一次被攻击闪避 +20」用掉了 */
   if (尖兵加成) def.尖兵闪避Turn = ctx.turn;
   /* ★ 2026-10-13（关卡变体池 · `2-E3`【光学迷彩机】的词条键 `隐身刷新`）：**打中一下就摘掉隐身**
@@ -800,6 +833,8 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
       命中: landed > 0, 伤害: total, 段数: hits, 命中段数: landed, 暴击: crits, 目标剩余HP: def.hp,
       特种减命中, debuff: 挂上的debuff || null, 详情: rolls.join('；'),
     }, 少挨合计 > 0 ? { 防御少挨: 少挨合计 } : null,
+    掩护吸收合计 > 0 ? { 掩护吸收: 掩护吸收合计 } : null,
+    (是总攻 && landed > 0) ? { 总攻: true, 总攻增伤: 总攻增伤合计 } : null,
     (隐匿罚 > 0 && landed === 0) ? { 隐匿: true, 隐匿惩罚: 隐匿罚 } : null,
     /* ★ 2026-10-13 标定经济（即时那一层）：**只有真的用上了才写字段** ——
        默认路径（开关关掉 / 没有标定）一个字段都不多，记录逐字不变。
