@@ -517,7 +517,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
   <header class="bar">
     <div class="brand">
       <span class="mark">机甲指挥</span>
-      <span class="ver">试作版 <span id="ver">v0.6.11</span> · <span id="ms">文档：设计 / 实现分家（说明书写成索引）</span></span>
+      <span class="ver">试作版 <span id="ver">v0.6.11</span> · <span id="ms">重构：源码机械拆分（产物逐字节不变）</span></span>
     </div>
     <div class="hud" id="hud"></div>
     <div class="ctrl" id="ctrl">
@@ -3976,9 +3976,22 @@ window.MECHA_MUSIC_BASE = (typeof location !== 'undefined' && String(location.pa
  *   各带一份**全标题索引**（原引用「任务板 M6 段」照索引搜得到）。
  *   旧「第 N 节」的跳转表在 `CLAUDE.md` 的「★ 文档地图」那一节。
  *   `VERSION` `0.6.10 → 0.6.11`、`MILESTONE` → 「**文档：设计 / 实现分家（说明书写成索引）**」
- *   （`src/shell.html:13` 的静态兜底同步；`tests/smoke.js` 第 [4] 段的白名单再加一条）。 */
+ *   （`src/shell.html:13` 的静态兜底同步；`tests/smoke.js` 第 [4] 段的白名单再加一条）。
+ * ★ 2026-10-13 **P1 · 源码机械拆分**（作者拍板「先做 p0 p1 p2」；**纯粹搬家，一行行为都不改**）：
+ *   8 个超过 900 行的片段按**职责**切成 **34 个编号片段**（`90-肉鸽.js` → `90-肉鸽-1-…` 起；
+ *   编号插在原位、`src/shell.html` 的 `@include` 顺序不变）——**一个标识符没改、一行没重排、
+ *   一个字的新注释都没加**（注释会进产物，所以「这段原本属于谁、负责什么」只写在结构表里）。
+ *   7 个超过 900 行的测试套件按段切成「**同名入口 + 编号片段**」（入口仍是 `tests/<名>.js`，
+ *   `tools/verify-all.mjs` 一个字没动、套件总数不变、**断言一行没改**）。
+ *   ★ **硬验收**：拼接产物**逐字节不变**（`index.html` SHA256 拆分前 == 拆分后 =
+ *   `85D7A593…76D1`）/ `node tools/build-src.mjs --check` 绿 / `node tools/verify-all.mjs` 绿 22 / 22。
+ *   结构表 · 逐字节证据 · 「旧 → 新 → 为什么」= `docs/实现/结构表.md`。
+ *   ⚠ `VERSION` **不动（仍是 `0.6.11`）**：这个号归**文档线**那一笔（`d80a2db`）。
+ *   P1 只换 `MILESTONE` → 「**重构：源码机械拆分（产物逐字节不变）**」
+ *   （`src/shell.html:13` 的静态兜底同步；`tests/smoke.js` 第 [4] 段的白名单再加一条）。
+ *   写法照本文件上面**出口线**那条先例：一个版本号可以对应多条线的连续提交，副标题谁最后落地归谁。 */
 const VERSION = '0.6.11';
-const MILESTONE = '文档：设计 / 实现分家（说明书写成索引）';
+const MILESTONE = '重构：源码机械拆分（产物逐字节不变）';
 
 /* ---------- 小工具 ---------- */
 const $ = s => document.querySelector(s);

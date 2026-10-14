@@ -25,6 +25,7 @@ import { dirname, join } from 'path';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { loadPage } from './lib/dom-stub.mjs';
+import { 读源码 } from './lib/读源码.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
@@ -598,8 +599,9 @@ console.log('\n[12] §3.6 的三条验收口径 + 一处顺手修掉的真 bug')
   G.设方针(ctx, '全军防御');
   if (ctx.方针.类型 === '全军防御') ok('`设方针(ctx, \'全军防御\')` 现在真的下得出全军防御（接口约定 §1.4 一直这么写）');
   else bad(`字符串方针还是被吞掉了：${ctx.方针.类型}`);
-  /* 调参室不许有 Math.random（注释里提到的那几次不算：先把注释剥掉再看代码） */
-  const 全 = readFileSync(join(ROOT, 'src/js/95-调参室.js'), 'utf8');
+  /* 调参室不许有 Math.random（注释里提到的那几次不算：先把注释剥掉再看代码）
+     ★ 2026-10-13 P1 源码拆分后走 `读源码()`（`95-调参室.js` 被拆成 3 段 → 拼接文本与拆分前逐字节相同） */
+  const 全 = 读源码(ROOT, 'src/js/95-调参室.js');
   const 代码 = 全.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[^\n]*\/\/[^\n]*$/gm, '');
   if (!/Math\.random/.test(代码)) ok(`\`95-调参室.js\` 里一处 \`Math.random\` 都没有（剥掉注释后查的 ${代码.length} 字符；种子从 1 连续）`);
   else bad('调参室里用了 Math.random');

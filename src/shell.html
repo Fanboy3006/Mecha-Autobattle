@@ -10,7 +10,7 @@
   <header class="bar">
     <div class="brand">
       <span class="mark">机甲指挥</span>
-      <span class="ver">试作版 <span id="ver">v0.6.11</span> · <span id="ms">文档：设计 / 实现分家（说明书写成索引）</span></span>
+      <span class="ver">试作版 <span id="ver">v0.6.11</span> · <span id="ms">重构：源码机械拆分（产物逐字节不变）</span></span>
     </div>
     <div class="hud" id="hud"></div>
     <div class="ctrl" id="ctrl">
@@ -44,29 +44,55 @@ window.MECHA_MUSIC_BASE = (typeof location !== 'undefined' && String(location.pa
 <!-- @include js/10-数据.js -->
 <!-- @include js/11-敌方梯队.js -->
 <!-- @include js/12-档位职业.js -->
-<!-- @include js/71-改动.js -->
-<!-- @include js/72-势力.js -->
+<!-- @include js/71-改动-1-角色与Boss.js -->
+<!-- @include js/71-改动-2-势力特色.js -->
+<!-- @include js/71-改动-3-难度调整.js -->
+<!-- @include js/71-改动-4-战斗结构.js -->
+<!-- @include js/71-改动-5-参数入口.js -->
+<!-- @include js/72-势力-1-框架与钩子.js -->
+<!-- @include js/72-势力-2-卫星国防军与流星.js -->
+<!-- @include js/72-势力-3-月球王国.js -->
+<!-- @include js/72-势力-4-天人与ATX.js -->
+<!-- @include js/72-势力-5-秘银.js -->
 <!-- @include js/30-射程.js -->
 <!-- @include js/20-战斗计算.js -->
 <!-- @include js/40-单位.js -->
 <!-- @include js/50-AI.js -->
-<!-- @include js/60-战斗.js -->
+<!-- @include js/60-战斗-1-方针与记录.js -->
+<!-- @include js/60-战斗-2-回合流程.js -->
+<!-- @include js/60-战斗-3-开局与simulate.js -->
 <!-- @include js/61-Boss.js -->
 <!-- @include js/70-编成.js -->
 <!-- @include js/78-图标.js -->
 <!-- @include js/91-地图.js -->
-<!-- @include js/90-肉鸽.js -->
+<!-- @include js/90-肉鸽-1-数据与规则.js -->
+<!-- @include js/90-肉鸽-2-招募券与晋升.js -->
+<!-- @include js/90-肉鸽-3-开局与移动.js -->
+<!-- @include js/90-肉鸽-4-节点结算.js -->
+<!-- @include js/90-肉鸽-5-晋升与通关.js -->
+<!-- @include js/90-肉鸽-6-存档与收尾.js -->
 <!-- @include js/94-零件.js -->
-<!-- @include js/92-肉鸽界面.js -->
+<!-- @include js/92-肉鸽界面-1-大图与记录.js -->
+<!-- @include js/92-肉鸽界面-2-招募与结算.js -->
 <!-- @include js/93-藏品.js -->
 <!-- @include js/85-播放.js -->
 <!-- @include js/84-反馈.js -->
 <!-- @include js/88-战斗记录.js -->
-<!-- @include js/89-录像.js -->
+<!-- @include js/89-录像-1-存储与运行期.js -->
+<!-- @include js/89-录像-2-对账与摘要.js -->
+<!-- @include js/89-录像-3-会话与导出.js -->
+<!-- @include js/89-录像-4-界面与接线.js -->
 <!-- @include js/8a-上报.js -->
 <!-- @include js/8b-决策日志.js -->
-<!-- @include js/80-界面.js -->
-<!-- @include js/95-调参室.js -->
+<!-- @include js/80-界面-1-基础与拖动.js -->
+<!-- @include js/80-界面-2-顶栏菜单编队.js -->
+<!-- @include js/80-界面-3-战斗屏与方针栏.js -->
+<!-- @include js/80-界面-4-结算与作战记录.js -->
+<!-- @include js/80-界面-5-肉鸽接线与节点.js -->
+<!-- @include js/80-界面-6-晋升零件与尾部.js -->
+<!-- @include js/95-调参室-1-设置与规整.js -->
+<!-- @include js/95-调参室-2-注入口与跑批.js -->
+<!-- @include js/95-调参室-3-界面.js -->
 <!-- @include js/96-音乐.js -->
 <!-- @include js/99-boot.js -->
 </script>
