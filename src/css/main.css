@@ -396,3 +396,98 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .vcr-reason-in{flex:1 1 260px;min-width:180px;background:var(--panel2);color:var(--fg);
   border:1px solid var(--line);border-radius:4px;font:inherit;font-size:13px;padding:4px 8px}
 .vcr-reason-in:focus{outline:none;border-color:var(--accent)}
+
+/* ============================================================================
+ * ★ K3 UI 改版（v0.7.0 · K3 版分叉）
+ * ----------------------------------------------------------------------------
+ * 只动布局与样式：DOM 结构 / data-act / 类名 / 文本一个字节都没改（22 套测试照旧）。
+ *   1) 战斗屏：方针栏整行置顶；我方 / 敌方双栏均分；记录列固定右侧 300px——
+ *      修掉原版「敌方被挤进记录列宽、卡片逐字竖排」的问题；
+ *   2) 单位卡：排版重排（图标+名字一行、血条与数字分行、意图行整段可读）；
+ *   3) 大地图屏：长说明段折叠（悬停展开，文本还在，测试照过），格子放大；
+ *   4) 编队屏加宽编队格一侧；5) 结算屏戏剧化；6) 按钮 / 滚动条等小件打磨。
+ * ========================================================================== */
+
+/* ---------- 1) 战斗屏骨架 ---------- */
+.战斗屏{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 300px;gap:14px}
+.战斗屏 .policybar{grid-column:1/-1;margin-bottom:0}
+@media (max-width:980px){.战斗屏{grid-template-columns:minmax(0,1fr)}.战斗屏 .policybar{grid-column:1/-1}}
+
+/* 方针栏压扁成一条：标题在左、五条按钮居中、说明小字整行垫底 */
+.policybar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;padding:8px 14px}
+.policybar h3{margin:0;white-space:nowrap;font-size:14px}
+.policybar .cmds{flex:1 1 auto;justify-content:center;margin:0;max-width:none}
+.policybar p.small{width:100%;margin:2px 0 0;line-height:1.45}
+.policybar .mini{font-size:13px;padding:4px 14px;transition:transform .1s,box-shadow .1s}
+.policybar .mini:hover:not(:disabled){transform:translateY(-1px)}
+.policybar .mini.on{box-shadow:0 0 0 1px var(--accent),0 0 10px color-mix(in srgb,var(--accent) 45%,transparent)}
+
+/* 两侧面板：卡片网格拉开一点 */
+.战斗屏 .side{padding:12px}
+.战斗屏 .side h3{font-size:13px;letter-spacing:.12em;display:flex;align-items:baseline;justify-content:space-between}
+.战斗屏 .row{gap:7px;margin-bottom:7px}
+
+/* ---------- 2) 单位卡 ---------- */
+.uc{min-height:88px;padding:6px 8px;border-radius:8px;border-top:1px solid var(--line);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--fc) 7%,var(--panel2)) 0%,var(--panel2) 46%);
+  box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.uc[data-act]:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.35);border-color:var(--muted)}
+.uc .pos{top:5px;right:7px}
+.uc .head{gap:7px;margin-bottom:2px}
+.uc .head .nm{flex:1 1 auto}
+.uc .head .nm b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.uc .head .nm small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uc .bar.hp{height:6px;margin:3px 0 2px;box-shadow:inset 0 1px 2px rgba(0,0,0,.5)}
+.uc .bar.hp i{background:linear-gradient(90deg,#3f9d63,#5cc08a)}
+.uc .nums{display:flex;justify-content:space-between;font-size:10px;margin-bottom:1px}
+.uc .tags{font-size:10px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 意图 / 预告 / 势力行：整段可读（原版在窄卡里逐字竖排）；数字不断开 */
+.uc .intent,.uc .fb-line,.uc .cmd,.uc .faction{font-size:10px;line-height:1.45;overflow-wrap:anywhere;margin-top:3px}
+.uc .intent{background:color-mix(in srgb,#ffb38a 8%,transparent);border-radius:4px;padding:2px 5px}
+.uc .fb-line{background:color-mix(in srgb,var(--ally) 8%,transparent);border-radius:4px;padding:2px 5px}
+.uc .cmd{color:var(--accent)}
+.uc .marked{outline:2px solid var(--enemy);outline-offset:-2px}
+.uc .pickable{outline:2px dashed var(--accent);outline-offset:-2px;cursor:pointer}
+.uc .pickable:hover{outline-style:solid}
+/* 暴击数字带辉光，更显眼 */
+.uc .float.crit{text-shadow:0 0 8px color-mix(in srgb,var(--accent) 80%,transparent),0 1px 3px #000}
+
+/* ---------- 3) 记录列：跟随滚动 + 更高 ---------- */
+.logcol{position:sticky;top:12px;align-self:start}
+#log{max-height:72vh}
+#log::-webkit-scrollbar,.logbox::-webkit-scrollbar,.picks::-webkit-scrollbar{width:8px}
+#log::-webkit-scrollbar-thumb,.logbox::-webkit-scrollbar-thumb,.picks::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+#log::-webkit-scrollbar-thumb:hover,.logbox::-webkit-scrollbar-thumb:hover,.picks::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+
+/* ---------- 4) 大地图屏：长说明段折叠（悬停展开），格子放大 ---------- */
+.card>p.small[data-deploy-cap],.card>p.small[data-hope-src],.card>p.small[data-prop-plan]{
+  font-size:11px;line-height:1.5;opacity:.6;max-height:3em;overflow:hidden;position:relative;
+  transition:max-height .25s ease,opacity .25s ease;cursor:default;
+  -webkit-mask-image:linear-gradient(#000 55%,transparent 96%);mask-image:linear-gradient(#000 55%,transparent 96%)}
+.card>p.small[data-deploy-cap]:hover,.card>p.small[data-hope-src]:hover,.card>p.small[data-prop-plan]:hover{
+  max-height:40em;opacity:1;-webkit-mask-image:none;mask-image:none}
+.gmap .grow{gap:8px}
+.gcell{min-height:68px;padding:7px 5px;border-radius:8px}
+.gcell i{font-size:17px}
+.gcell b{font-size:12px}
+.gcell small{font-size:9.5px}
+.rv-bar2 .rv-chip{padding:4px 12px}
+
+/* ---------- 5) 编队屏：编队格一侧加宽 ---------- */
+.编队屏{grid-template-columns:minmax(0,1fr) 500px}
+@media (max-width:980px){.编队屏{grid-template-columns:minmax(0,1fr)}}
+.编队屏 .slot{min-height:76px}
+
+/* ---------- 6) 结算屏戏剧化 ---------- */
+.card.end{margin:6vh auto 0;max-width:660px;text-align:center;padding:26px 30px}
+.card.end h2{font-size:44px;letter-spacing:.14em;margin:4px 0 12px}
+.card.end.win h2{color:var(--good);text-shadow:0 0 24px color-mix(in srgb,var(--good) 50%,transparent)}
+.card.end.lose h2{color:var(--enemy);text-shadow:0 0 24px color-mix(in srgb,var(--enemy) 50%,transparent)}
+.card.end ul{text-align:left;display:inline-block}
+.card.end .acts{justify-content:center}
+
+/* ---------- 7) 小件 ---------- */
+.mini{transition:transform .1s,border-color .12s,color .12s}
+.mini:hover:not(:disabled){transform:translateY(-1px)}
+.primary{box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 60%,transparent),0 2px 8px color-mix(in srgb,var(--accent) 30%,transparent)}
+.chip{box-shadow:0 1px 2px rgba(0,0,0,.2)}
