@@ -501,7 +501,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
   <header class="bar">
     <div class="brand">
       <span class="mark">机甲指挥</span>
-      <span class="ver">试作版 <span id="ver">v0.6.9</span> · <span id="ms">战斗：标定经济（特种产标 → 狙击引爆）</span></span>
+      <span class="ver">试作版 <span id="ver">v0.6.10</span> · <span id="ms">修复：播放到〔嘲讽〕卡住</span></span>
     </div>
     <div class="hud" id="hud"></div>
     <div class="ctrl" id="ctrl">
@@ -3933,9 +3933,24 @@ window.MECHA_MUSIC_BASE = (typeof location !== 'undefined' && String(location.pa
  *   `VERSION` `0.6.8 → 0.6.9`、`MILESTONE` → 「**战斗：标定经济（特种产标 → 狙击引爆）**」
  *   （`src/shell.html:13` 的静态兜底同步；`tests/smoke.js` 第 [4] 段的白名单再加一条）。
  *   ⚠ 样式（`.标定` / `.标定角标` / `.标定闪框`）**只挂类名、本体等 CSS 线落地后补** ——
- *     K3 那条线正在搬 `src/css/main.css`，本线一个字节都没碰那个文件。 */
-const VERSION = '0.6.9';
-const MILESTONE = '战斗：标定经济（特种产标 → 狙击引爆）';
+ *     K3 那条线正在搬 `src/css/main.css`，本线一个字节都没碰那个文件。
+ * ★ 2026-10-13 **战斗线 · 播放层修「播放到〔嘲讽〕卡住」**（作者报的第二次，卡死级）：
+ *   作者原话：「战斗播放到 **〔嘲讽〕布鲁克林 把这一击勾了过去** 这一条时**卡住**，必须点『跳过动画』才能继续」。
+ *   **根因不在记录上**（那条记录 `{类型:'嘲讽', 目标:'A4', 原目标:'B2', 单位方/单位位/目标方/目标位}` 字段齐全、
+ *   时长也照算 500ms）：`80-界面.js` 的 `刷卡()` 里写着 `el.classList.add(飘.暴击 ? 'hit crit' : 'hit')` ——
+ *   **一个 token 带空格**，真浏览器按 DOM 规范抛 `InvalidCharacterError`；异常从 `播一步()` 冒出去，
+ *   把 `85-播放.js` 的 `tick()` 末尾那句 `排一次()` 跳过 → **定时器链断掉**。`tick()` 先 `位置++` 再叫钩子，
+ *   所以画面停在**前一条**上（暴击那一发前面紧挨着的正好是〔嘲讽〕）；「跳过动画」能救是因为 `跳到结尾()`
+ *   不走 `刷卡()`。（`tests/lib/dom-stub.mjs` 的 classList 不校验 token，所以 Node 里一直没抓住 ——
+ *   真浏览器用 CDP 复现到的那条异常栈：`刷卡 ← 播一步 ← 播放.钩子.每步 ← tick`。）
+ *   **修法（只在播放层）**：① 那一行拆成 `add('hit')` + `add('crit')`（一个 token 一次调用）；
+ *   ② `85-播放.js` 加 `时长表` + `默认毫秒` —— **认不出的类型 / 缺 `类型` / 算出来不是正数一律给默认时长**；
+ *   ③ 新 `叫每步()`：每步钩子抛异常**只记一笔（`播放.上次出错`）、绝不弄断播放链**。
+ *   **不动战斗结果、不动记录内容与顺序**（无 RUN 三快照逐字节不变）。
+ *   `VERSION` `0.6.9 → 0.6.10`、`MILESTONE` → 「**修复：播放到〔嘲讽〕卡住**」
+ *   （`src/shell.html:13` 的静态兜底同步；`tests/smoke.js` 第 [4] 段的白名单再加一条）。 */
+const VERSION = '0.6.10';
+const MILESTONE = '修复：播放到〔嘲讽〕卡住';
 
 /* ---------- 小工具 ---------- */
 const $ = s => document.querySelector(s);
@@ -16995,6 +17010,14 @@ function 藏品卡片Html() {
 const 每步毫秒 = 500;        // 方案 8.1：「每次行动 0.5 秒左右」
 const 快进毫秒 = 120;        // 回合标记 / 开始 / 结束这类没有动作的记录
 
+/* ★ 2026-10-13（播放层兜底，作者报的「播放到〔嘲讽〕卡住」收尾）：
+ * **记录怎么放，只认这张表**；表里没有的（以后新加的任何 `类型`）走 `默认毫秒`。
+ * 以前是一句三元表达式（`回合/开始/结束` ? 快进 : 每步），认不出的类型**碰巧**也走每步 —— 但那是巧合，
+ * 不是兜底：哪天表改成「查不到就是 undefined」，`setTimeout(fn, undefined)` 就等于**这一步永远不推进**。
+ * 现在写成明面上的兜底：**认不出的类型 / 缺 `类型` / 算出来不是正数 → 一律 `默认毫秒`**。 */
+const 时长表 = { 回合: 快进毫秒, 开始: 快进毫秒, 结束: 快进毫秒 };
+const 默认毫秒 = 每步毫秒;
+
 const 播放 = {
   战报: null,
   位置: 0,
@@ -17005,6 +17028,7 @@ const 播放 = {
   快进: false,
   手动: false,       // 测试用：true 时不排计时器，由测试自己调 tick()
   计时: null,
+  上次出错: null,    // 上一次「每步」钩子抛的异常（吞掉了但要留证据，见 `叫每步()`）
   钩子: { 每步: null, 结束: null },
 
   载入(战报) {
@@ -17015,6 +17039,7 @@ const 播放 = {
     this.快进 = false;
     this.当前 = null;
     this.单位 = {};
+    this.上次出错 = null;    // 每一回合 / 每一场重新起算（上一回合吞掉的异常不带到这一场）
     /* 血条从**这一回合开始时**的状态开始走（打一回合之后传进来的快照就是这个状态） */
     for (const u of 战报.我方.concat(战报.敌方)) {
       const 满 = u.maxHp, 血 = u.hp != null ? u.hp : 满;
@@ -17040,9 +17065,25 @@ const 播放 = {
     const ev = this.事件()[this.位置];
     this.计时 = setTimeout(() => this.tick(), this.时长(ev) / this.倍速);
   },
+  /** 这一条记录该等多少毫秒。★ **任何记录都有时长**（认不出的类型 → `默认毫秒`）：
+   *  `setTimeout(fn, undefined / NaN / 0)` 在浏览器里虽然会当成 0 立刻跑，但那属于「碰巧」——
+   *  这里给出一个**正数**，播放层就永远有一根能烧到头的引线（作者 2026-10-13 报的卡死要的就是这条）。 */
   时长(ev) {
     const t = ev && ev.类型;
-    return (t === '回合' || t === '开始' || t === '结束') ? 快进毫秒 : 每步毫秒;
+    const ms = Object.prototype.hasOwnProperty.call(时长表, t) ? 时长表[t] : 默认毫秒;
+    return Number.isFinite(ms) && ms > 0 ? ms : 默认毫秒;
+  },
+
+  /** 叫一次「每步」钩子（界面画那一条）。★ **钩子抛异常只记一笔、绝不往外扔** ——
+   *  播放层对「怎么放」负全责：任何一条记录（包括以后新加的类型、包括界面自己写错的一行）
+   *  都不许把播放链弄断。2026-10-13 的真 bug 就是这里的反面：`界面.播一步()` 抛了
+   *  `InvalidCharacterError`（`classList.add('hit crit')`），异常从 `tick()` 里冒出去，
+   *  把末尾那句 `排一次()` 跳过 → 停在暴击那一条、必须点「跳过动画」才能继续。 */
+  叫每步(ev) {
+    if (!this.钩子.每步) return this;
+    try { this.钩子.每步(ev, this); }
+    catch (e) { this.上次出错 = (e && e.message) ? e.message : String(e); }
+    return this;
   },
 
   /** 应用**一条**记录（浏览器里由计时器调，测试里手动调）。 */
@@ -17054,7 +17095,7 @@ const 播放 = {
     this.当前 = ev;
     this.应用(ev);
     this.位置++;
-    if (this.钩子.每步) this.钩子.每步(ev, this);
+    this.叫每步(ev);
     if (this.在放()) this.排一次(); else this.收尾();
     return this;
   },
@@ -17078,7 +17119,7 @@ const 播放 = {
     if (!this.战报) return this;
     while (this.在放()) { const ev = this.事件()[this.位置]; this.当前 = ev; this.应用(ev); this.位置++; }
     this.当前 = null;
-    if (this.钩子.每步) this.钩子.每步(null, this);
+    this.叫每步(null);
     this.收尾();
     return this;
   },
@@ -21278,7 +21319,20 @@ const 界面 = {
     if (n) n.textContent = `HP ${Math.max(0, s.hp)} / ${s.maxHp}${s.shieldHp ? ` · 盾 ${s.shieldHp}` : ''}`;
     el.classList && el.classList.toggle('down', s.死);
     if (飘) {
-      el.classList && el.classList.add(飘.暴击 ? 'hit crit' : 'hit');
+      /* ★ 2026-10-13 **真 bug · 作者报的「播放到〔嘲讽〕卡住」的根因**（他遇到过两次）：
+         这一行原来写的是 `el.classList.add(飘.暴击 ? 'hit crit' : 'hit')` —— **一个 token 里带空格**。
+         真浏览器按 DOM 规范（`DOMTokenList.add`：token 不许含 ASCII 空白）直接抛
+         `InvalidCharacterError: The token provided ('hit crit') contains HTML space characters...`；
+         这个异常从 `播一步()` 冒出去，把 `播放.tick()`（`85-播放.js:76`）末尾那句 `排一次()` **整句跳过**
+         → **定时器链断掉、这一回合再也不往下播**。而 `tick()` 是**先把 `位置++` 再叫钩子**的，
+         所以画面停在**这一条的前一条**上 —— 暴击那一发前面紧挨着的那条正好是〔嘲讽〕（作者看到的就是它）。
+         「跳过动画」能救：`跳到结尾()` 只调一次 `每步(null)`，**不走 `刷卡()`**。
+         ⚠ 为什么测试一直没抓住：`tests/lib/dom-stub.mjs` 的 `classList` 不校验 token（吃掉空格照加），
+         只有真浏览器会抛 —— 所以 `tests/battle_ui.js` 第 [14] 段现在**给替身补上同款校验**再钉这一条。
+         改法：**一个 token 一次调用**（`hit` / `crit` 两个类照旧都挂上，`.uc.hit` 那颗闪白一个字没变；
+         `crit` 只当标记类，与 `.float.crit` 同一族），不引入新 helper、不动别的类名。 */
+      el.classList && el.classList.add('hit');
+      if (飘.暴击 && el.classList) el.classList.add('crit');
       /* ★ 三层反馈的**即时**（作者 2026-10-12 拍板的第 2 件，§2.2 的「即时」列）：
          「伤害数字旁」那一个小标签（`集中` / `被挡 −20` / `防御 少挨 N`）——
          字段来自记录，`反馈标签()` 把记录翻成人话；没有那三个字段时**一个字都不多**（默认路径的显示也不变）。 */

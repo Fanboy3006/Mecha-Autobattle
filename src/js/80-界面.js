@@ -908,7 +908,20 @@ const 界面 = {
     if (n) n.textContent = `HP ${Math.max(0, s.hp)} / ${s.maxHp}${s.shieldHp ? ` · 盾 ${s.shieldHp}` : ''}`;
     el.classList && el.classList.toggle('down', s.死);
     if (飘) {
-      el.classList && el.classList.add(飘.暴击 ? 'hit crit' : 'hit');
+      /* ★ 2026-10-13 **真 bug · 作者报的「播放到〔嘲讽〕卡住」的根因**（他遇到过两次）：
+         这一行原来写的是 `el.classList.add(飘.暴击 ? 'hit crit' : 'hit')` —— **一个 token 里带空格**。
+         真浏览器按 DOM 规范（`DOMTokenList.add`：token 不许含 ASCII 空白）直接抛
+         `InvalidCharacterError: The token provided ('hit crit') contains HTML space characters...`；
+         这个异常从 `播一步()` 冒出去，把 `播放.tick()`（`85-播放.js:76`）末尾那句 `排一次()` **整句跳过**
+         → **定时器链断掉、这一回合再也不往下播**。而 `tick()` 是**先把 `位置++` 再叫钩子**的，
+         所以画面停在**这一条的前一条**上 —— 暴击那一发前面紧挨着的那条正好是〔嘲讽〕（作者看到的就是它）。
+         「跳过动画」能救：`跳到结尾()` 只调一次 `每步(null)`，**不走 `刷卡()`**。
+         ⚠ 为什么测试一直没抓住：`tests/lib/dom-stub.mjs` 的 `classList` 不校验 token（吃掉空格照加），
+         只有真浏览器会抛 —— 所以 `tests/battle_ui.js` 第 [14] 段现在**给替身补上同款校验**再钉这一条。
+         改法：**一个 token 一次调用**（`hit` / `crit` 两个类照旧都挂上，`.uc.hit` 那颗闪白一个字没变；
+         `crit` 只当标记类，与 `.float.crit` 同一族），不引入新 helper、不动别的类名。 */
+      el.classList && el.classList.add('hit');
+      if (飘.暴击 && el.classList) el.classList.add('crit');
       /* ★ 三层反馈的**即时**（作者 2026-10-12 拍板的第 2 件，§2.2 的「即时」列）：
          「伤害数字旁」那一个小标签（`集中` / `被挡 −20` / `防御 少挨 N`）——
          字段来自记录，`反馈标签()` 把记录翻成人话；没有那三个字段时**一个字都不多**（默认路径的显示也不变）。 */
