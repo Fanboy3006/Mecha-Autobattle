@@ -53,6 +53,12 @@
  *        ⑧ 是一段**清单式断言（随代码增长）**：把能画出来的屏全画一遍收齐 `data-act`，
  *        含 ≥2 个 `:` 的每一个都必须落在 8 条形状里；然后**逐一从屏上真按钮经委托点一次**，
  *        断言派发到的 `(动, 参)` 与该走的处理逻辑；外加「没有 `:` → 参恰好 null」「任意段数」「今天修的三处仍在」。
+ *   [27] ★ 2026-10-13 录像线「一键保存录像」（作者：「太复杂了，你再想想还有什么方法可以保存录像」）：
+ *        **大地图屏 / 本局结算屏**上那两颗「💾 保存本局录像（存到你的下载文件夹）」——
+ *        还是第 [26] 段那条**真派发点击**；替身里桩掉下载（Blob / URL / a[download] +
+ *        `showSaveFilePicker` 计数器），断言「真的构造了 Blob、真的落到下载文件夹、真下载计数器恒 0」。
+ *        ⚠ 完整六条（空局 / 内容字段 / 同种子两遍逐字相同 / 全部录像 N 条与 20 局上限）在
+ *          `tests/battle_ui.js` 第 [14] 段 —— 这一段只补「在肉鸽这一屏上也真的点得动」。
  *
  * 数值出处全部写在 `src/js/91-地图.js` / `src/js/90-肉鸽.js` 的注释里（标 `26-地图生成.js:行号`）。
  * 不依赖任何 npm 包：用 tests/lib/dom-stub.mjs 把 index.html 的内联脚本跑起来。
@@ -3598,6 +3604,71 @@ Promise.resolve().then(async () => {
           ok(`⑧-6 整键动作「开新局」：参 = null（**不是空串**）→ 照旧现取时间当种子、真的开了一局` +
             `（种子 ${种子} 落在 [100000, 1000000) = 现取那一支；分队 = ${肉鸽.RUN.分队}）`);
         } else bad('⑧-6 「开新局」不对：' + JSON.stringify({ 记: r.记, 种子, 分队: 肉鸽.RUN && 肉鸽.RUN.分队 }));
+      }
+
+      /* ======================= ⑦ [27] 一键「保存本局录像」（2026-10-13 录像线） =======================
+       * 作者原话：「（导出本局日志复制粘贴 / 把表格发布成 CSV）**太复杂了，你再想想还有什么方法可以保存录像**」。
+       * 做法（`89-录像.js` 的 ⑥b）：点一次 → 一个自包含 JSON 直接下到**浏览器默认下载目录**
+       *   （统筹实测 `C:\Users\zxwu0\Downloads` 能列能读 → 作者什么都不用发）。
+       * **完整六条断言在 `tests/battle_ui.js` 第 [14] 段**（空局 / 内容字段 / 同种子两遍逐字相同 /
+       * 「保存全部录像」的 N 条与 20 局上限 / 真下载计数器恒 0）。
+       * 这一段只补这一条：**在肉鸽这一屏（大地图 / 本局结算屏）上也真的点得动、真的落到下载文件夹** ——
+       * 用的是本文件第 [26] 段的**真派发点击**（`#screen` 上那一条 `[data-act]` 委托），不直调 `录像.保存本局()`。 */
+      {
+        const sb = page.sandbox;
+        const 桩 = { 块: [], 址: [], 撤销: [], 点击: [], 真下载: 0 };
+        const 原Blob = sb.Blob, 原URL = sb.URL, 原建 = sb.document.createElement;
+        /* ★ 桩掉真实下载：替身里没有 `Blob` / `URL`（会走到「不支持下载」兜底），这里补上替身；
+           `showSaveFilePicker` 装成会抛的计数器 —— 断言这条路**一次都没走**。 */
+        sb.Blob = class { constructor(p, o) { this.parts = p; this.type = (o || {}).type || ''; } };
+        sb.URL = {
+          createObjectURL(b) { 桩.块.push(b); const u = 'blob:桩/' + 桩.块.length; 桩.址.push(u); return u; },
+          revokeObjectURL(u) { 桩.撤销.push(u); },
+        };
+        sb.showSaveFilePicker = () => { 桩.真下载++; throw new Error('不许调 showSaveFilePicker'); };
+        sb.document.createElement = tag => {
+          const el = 原建.call(sb.document, tag);
+          if (String(tag).toLowerCase() === 'a') el.click = () => 桩.点击.push(el.download);
+          return el;
+        };
+        const 收桩 = () => {
+          sb.document.createElement = 原建;
+          if (原Blob === undefined) delete sb.Blob; else sb.Blob = 原Blob;
+          if (原URL === undefined) delete sb.URL; else sb.URL = 原URL;
+          delete sb.showSaveFilePicker;
+        };
+        const k = 站到旁边(20261014, 1, '作战');
+        if (k == null) { info('[27] 这一局摆不到「作战」格旁边 —— 这一段跳过（不是失败）'); 收桩(); }
+        else {
+          界面.开屏('大地图'); 界面.刷();
+          const 有钮 = /data-act="保存本局录像"/.test(屏文字()) && /data-act="保存全部录像"/.test(屏文字());
+          const r = 点('保存本局录像');
+          const 文 = 桩.块.length ? 桩.块[0].parts.join('') : '';
+          const 局 = (() => { try { return JSON.parse(文); } catch (e) { return null; } })();
+          const 反馈 = G.录像.保存结果 || {};
+          if (有钮 && r.找到 && r.记.join() === '保存本局录像' && 桩.块.length === 1 && 桩.点击.length === 1
+            && 桩.撤销.length === 1 && 桩.真下载 === 0 && 局 && 局.种子 === 20261014 && 局.版本 === G.version
+            && /^机甲指挥-录像-20261014-\d{8}-\d{6}\.json$/.test(String(反馈.文件名))
+            && Array.isArray(局.操作) && 局.操作.length > 0 && Array.isArray(局.日志) && Array.isArray(局.决策)) {
+            ok(`⑦ [27] 大地图上**真点**「保存本局录像」→ 一个自包含 JSON（${Buffer.byteLength(文, 'utf8')} 字节）落到下载文件夹：` +
+              `文件名 ${反馈.文件名} · 种子 ${局.种子} · 操作 ${局.操作.length} 步 · 决策 ${局.决策.length} 条 · 日志 ${局.日志.length} 行 ·` +
+              ` 真下载计数器 ${桩.真下载}（没走 showSaveFilePicker）`);
+          } else bad('⑦ [27] 大地图上那一颗不对：' + JSON.stringify({ 有钮, 记: r.记, 块: 桩.块.length,
+            点击: 桩.点击, 撤销: 桩.撤销.length, 真下载: 桩.真下载, 种子: 局 && 局.种子,
+            操作: 局 && 局.操作 && 局.操作.length, 名: 反馈.文件名 }));
+          /* 本局结算屏（通关 / 本局结束 / 难度失败都走这一屏）上也有一颗 */
+          界面.动作('放弃本局');
+          const 结算有 = 界面.屏 === '肉鸽结算' && /data-act="保存本局录像"/.test(屏文字());
+          桩.块.length = 0; 桩.点击.length = 0; 桩.撤销.length = 0;
+          const r2 = 点('保存本局录像');
+          const 反馈2 = G.录像.保存结果 || {};
+          if (结算有 && r2.找到 && r2.记.join() === '保存本局录像' && 桩.块.length === 1 && 桩.真下载 === 0
+            && /^机甲指挥-录像-20261014-\d{8}-\d{6}\.json$/.test(String(反馈2.文件名))) {
+            ok(`⑦ [27] 本局结算屏上那一颗也真的点得动、真的下了文件（${反馈2.文件名}）`);
+          } else bad('⑦ [27] 本局结算屏那一颗不对：' + JSON.stringify({ 结算有, 记: r2.记, 块: 桩.块.length, 名: 反馈2.文件名 }));
+          G.录像.清(); 肉鸽.RUN = null; 肉鸽.进行中 = false; 界面.开屏('菜单');
+          收桩();
+        }
       }
     }
   } catch (e) {

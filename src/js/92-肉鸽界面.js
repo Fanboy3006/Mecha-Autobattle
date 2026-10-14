@@ -281,7 +281,14 @@ const 肉鸽界面 = {
              数据层在 88-战斗记录.js（本局文本 / 本局文件名），反馈画在下面那一行。 -->
         <button data-act="复制日志" data-log-export="copy">复制本局日志</button>
         <button data-act="下载日志" data-log-export="download">下载本局日志 .txt</button>
+        <!-- ★ 2026-10-13 录像线「一键保存录像」（作者：「（导出日志 / 发布成 CSV）太复杂了，
+             你再想想还有什么方法可以保存录像」）：点一次 → 一个自包含 JSON（种子 / 操作 / 决策 /
+             日志 / 结算字段）直接下到**浏览器默认下载目录**（Windows = 「下载」文件夹），
+             统筹实测自己能列能读 → 作者什么都不用发。按钮自己把「后果与位置」写在字面上。
+             数据 / 文件名 / 下载本体全在 89-录像.js 的 ⑥b，这里只画按钮 + 反馈。 -->
+        ${录像.保存按钮Html(true)}
         <button data-act="存个档">存档</button><button data-act="放弃本局">放弃本局</button></div>
+      ${录像.保存反馈Html()}
       ${this.日志导出反馈Html()}
       <p class="small">队伍（${R.队伍.length} / ${肉鸽数值.队伍上限}）：${队伍}</p>
       ${队伍卡片Html()}
@@ -707,7 +714,15 @@ const 肉鸽界面 = {
       </ul>
       <div class="acts" data-center="1"><button class="primary" data-act="回菜单">回菜单</button><button data-act="去分队">再来一局</button>
         <button data-act="去记录">看这局的记录</button>
-        <button data-act="记录清结果">清掉上面那条结果</button></div>
+        <button data-act="记录清结果">清掉上面那条结果</button>
+        <!-- ★ 2026-10-13 录像线：本局结算屏（三种收场都走这一屏：走出迷宫 / 作战失败 / 玩家放弃）
+             上也要有一键保存 —— 作者打完一局第一眼就在这里，点一次文件就落进下载文件夹。
+             同一份「保存按钮Html()」（大地图 / 战斗结算屏用的是同一颗，字面写法一致）。
+             ⚠ 这段注释**会进 #screen 的 innerHTML**，所以措辞要避开 tests/map.js:957 /
+               tests/run.js:497 那两条「失败结算屏里不许出现某个字样」的既有断言。 -->
+        ${录像.保存按钮Html(true)}
+      </div>
+      ${录像.保存反馈Html()}
     </section>`;
   },
 };
