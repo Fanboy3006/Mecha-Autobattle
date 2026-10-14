@@ -406,7 +406,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
   <header class="bar">
     <div class="brand">
       <span class="mark">机甲指挥</span>
-      <span class="ver">试作版 <span id="ver">v0.6.3</span> · <span id="ms">界面：声音开关常驻 + 选项居中</span></span>
+      <span class="ver">试作版 <span id="ver">v0.6.4</span> · <span id="ms">界面：修 data-act 三段被截断（调参室选项）</span></span>
     </div>
     <div class="hud" id="hud"></div>
     <div class="ctrl" id="ctrl">
@@ -3794,9 +3794,11 @@ window.MECHA_MUSIC_BASE = (typeof location !== 'undefined' && String(location.pa
  *   **v0.6.2 → v0.6.3**；副标题（`MILESTONE`，顶栏 `#ms` 那一段）也换成本次改动的说法
  *   （原来写死在「M6 平衡工具」那个里程碑上，两次界面改动都没动过它）。
  *   ⚠ `tests/smoke.js` 第 [4] 段的白名单跟着加了一条（那是「顶栏文字被脚本填对了」的冒烟断言，
- *     不是历史常量钉死 —— 见 `协作/协作框架.md` §16）。 */
-const VERSION = '0.6.3';
-const MILESTONE = '界面：声音开关常驻 + 选项居中';
+ *     不是历史常量钉死 —— 见 `协作/协作框架.md` §16）。
+ * ★ 2026-10-13 第三次改界面：修「含 ≥2 个 `:` 的 `data-act` 被事件委托截断」（调参室那一屏
+ *   所有带参数的选项点了行为不对）→ **v0.6.3 → v0.6.4**，副标题一起换。 */
+const VERSION = '0.6.4';
+const MILESTONE = '界面：修 data-act 三段被截断（调参室选项）';
 
 /* ---------- 小工具 ---------- */
 const $ = s => document.querySelector(s);
@@ -19512,7 +19514,23 @@ const 界面 = {
       el.addEventListener(事件, e => {
         const t = e.target && e.target.closest ? e.target.closest(选择器) : null;
         if (!t) return;
-        const [动, 参] = String(t.getAttribute('data-act')).split(':');
+        /* ★★ 2026-10-13 修**真 bug**（界面线报「调参室那一屏的选项点了行为不对 / 没反应」）：
+           这一句原来写的是 `const [动, 参] = String(data-act).split(':')` ——
+           **解构只取前两个元素**，所以含 **≥2 个 `:`** 的 `data-act`（`调参室:类型:精英`、`调参室:层:3`…）
+           第三段起**全被丢掉**：`动作()` 收到 `('调参室', '类型')`，`调参室动作()` 再拆一次只剩空参数
+           （`类型 = ''` / `层 = 0` / `场次 = 1`）→ **选项点了行为不对**（不是没画出来，是画出来了、点了不算数）。
+           ⚠ **这不是 Node / `split` 的 bug**（界面线一度这么诊断，已被统筹判错）：
+             `'a:b:c'.split(':')` 老老实实给三个元素；错的是**解构只要两个**，全仓库没有一处 `split` 写错。
+           改法：按**第一个** `:` 拆一次，**它之后的所有段原样留着**当「参」
+           （下游 `动作内()` / `调参室动作()` 那两处「再按第一个 `:` 拆一次」的写法一个字都没改）。
+           没有 `:` 时「参」= `null`：**不是 `''`**，与 `split` 时代的 `undefined` 一样都过 `参 == null` 的判定。
+           为什么这样最小：只动这一句、只多一个 `indexOf`，派发的形状（`动作(动, 参)`）没变，
+           整键动作（`开新局`）/ 两段式 `弹窗:藤蔓` / 一段式 `选分队:近卫` 三条老路逐字同路；
+           而且对**任意段数**都成立（4 段、5 段也不会再丢）。 */
+        const 串 = String(t.getAttribute('data-act'));
+        const 切点 = 串.indexOf(':');
+        const 动 = 切点 < 0 ? 串 : 串.slice(0, 切点);
+        const 参 = 切点 < 0 ? null : 串.slice(切点 + 1);
         this.动作(动, t.tagName === 'SELECT' ? t.value : 参);
       });
     };
