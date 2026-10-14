@@ -860,12 +860,27 @@ const 界面 = {
       for (const 行 of (预.敌人机制[u.slot].行们 || [])) 预告行们.push(行);
     }
     const 预告行 = 预告行们.length ? `<div class="fb-line" data-forecast="1">${预告行们.join('<br>')}</div>` : '';
+    /* ★ 2026-10-13 **标定经济（全职业通用的「传球」机制，作者拍板「OK」）· 预告那一层**：
+       **敌机卡**上写「标定 ×N（来自 XX）」+ 一行「将被狙击引爆：暴击 +25 / 伤害 +30%」；
+       **我方的产标者 / 引爆者**在自己的卡上挂一行 `.标定角标`（「产标：特种命中 +1 层」这种）。
+       文本全部来自 `84-反馈.js` 的 `标定经济预告()`（**纯读**：不改状态、不消耗随机数）；
+       没有标定 / 开关关掉 → 一个字都不多（一张卡都不多画）。
+       ★ 样式**等 CSS 线落地后补**（K3 那条线正在搬 `src/css/main.css`，本线**只挂类名、不写样式**）：
+         `标定` = 这张卡上带着标定（敌机）；`标定角标` = 我方的产标 / 引爆者。 */
+    const 标定经 = 预 && 预.标定 ? 预.标定 : null;
+    const 标定我 = 标定经 ? 标定经['我' + u.slot] : null;
+    const 敌标定 = (方 === 'enemy' && 标定经) ? 标定经[u.slot] : null;
+    const 标定经济行 = (方 === 'enemy' && 敌标定 && 敌标定.层数)
+      ? `标定 ×${敌标定.层数}（来自 ${(敌标定.来源 || []).join('、') || '—'}）`
+        + `<br>${敌标定.预告}`
+      : ((方 === 'ally' && 标定我) ? 标定我.角标 : '');
+    const 标定类 = (方 === 'enemy' && 敌标定 && 敌标定.层数) ? ' 标定' : (标定经济行 ? ' 标定角标' : '');
     /* ★ 敌人卡第一批 · 卡 C「献祭者」：进入**濒死区间**（HP 比例 < 35%，【初稿】）时敌机卡变红。
        判据 `濒死自爆吗()` 是**纯读**的（只读 `abilities` + HP 比例，不挂状态、不改战斗判定，
        配置在 `71-改动.js`）；播放阶段看的是这一回合开始时的快照，所以这回合里一直是红的。
        没有这个键的敌人 → `''`（class 字符串与改前**逐字相同**）。 */
     const 濒死 = 方 === 'enemy' && 濒死自爆吗(u);
-    return `<div class="uc${u.hp <= 0 ? ' down' : ''}${濒死 ? ' dying' : ''}${选中}${被点名 ? ' marked' : ''}${点目标中 ? ' pickable' : ''}" id="u-${方}-${u.slot}" data-side="${方}" data-slot="${u.slot}" style="--fc:${色}"${动}>
+    return `<div class="uc${u.hp <= 0 ? ' down' : ''}${濒死 ? ' dying' : ''}${选中}${被点名 ? ' marked' : ''}${点目标中 ? ' pickable' : ''}${标定类}" id="u-${方}-${u.slot}" data-side="${方}" data-slot="${u.slot}" style="--fc:${色}"${动}>
       <span class="pos">${位名(u.slot)}</span>
       <div class="head">${图标.卡(u.key, 方, 图标.尺寸.卡)}<div class="nm"><b>${u.name}</b><small>${u.key} · 速 ${speedOf(u)}</small></div></div>
       <div class="bar hp"><i style="width:${hp}%"></i></div>
@@ -873,6 +888,7 @@ const 界面 = {
       <div class="tags">${(u.tags && u.tags.战斗分类) || ''}${u.weapons && u.weapons.filter(e => isUltimate(e.t)).length ? ' · 大招' : ''}</div>
       ${势力行 ? `<div class="faction">${势力行}</div>` : ''}
       ${标定行 ? `<div class="faction">${标定行}</div>` : ''}
+      ${标定经济行 ? `<div class="faction 标定经济卡行" data-标定卡行="1">${标定经济行}</div>` : ''}
       ${被点名 ? `<div class="cmd">集中攻击（全队打它）</div>` : ''}
       ${预告行}
       ${方 === 'ally' && 指令行 ? `<div class="cmd">${指令行}</div>` : ''}
@@ -1011,6 +1027,17 @@ const 界面 = {
        `集中` / `被挡 −20` / `防御 少挨 N`（字段由引擎写在记录上；没有就一个标签都不画）。 */
     const 签 = 反馈标签(ev);
     if (ev && ev.目标方 != null) this.刷卡(ev.目标方, ev.目标位, { 伤害: ev.伤害, 暴击: ev.暴击 > 0, 标签: 签 });
+    /* ★ 2026-10-13 **标定经济 · 即时（屏上给两张卡加「可见标记」）**：引爆那一下的记录
+       （`类型:'标定'` 的 `引爆连锁` / `狙击连锁`）→ **引爆者**与**目标**两张卡都挂 `标定闪框`。
+       ★ 作者 2026-10-13 的边界：**样式先不写死在这条线**（K3 那条线正在搬 `src/css/main.css`）——
+        这里**只挂类名**，样式本体等 CSS 线落地后补（写在任务板里）。
+       ★ 别的记录（`类型` 不是「标定」）→ 一段都不执行，播放时序与改动前**逐字相同**。 */
+    if (ev && ev.类型 === '标定' && (ev.事件 === '狙击连锁' || ev.事件 === '引爆连锁')) {
+      for (const [方, 位] of [[ev.单位方, ev.单位位], [ev.目标方, ev.目标位]]) {
+        const el = $(`#u-${方}-${位}`);
+        if (el && el.classList) el.classList.add('标定闪框');
+      }
+    }
     const 屏 = $('#screen');
     const 旧的 = 屏 && 屏.querySelectorAll ? 屏.querySelectorAll('.uc.act') : [];
     for (const el of 旧的) el.classList && el.classList.remove('act');
