@@ -501,7 +501,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
   <header class="bar">
     <div class="brand">
       <span class="mark">机甲指挥</span>
-      <span class="ver">试作版 <span id="ver">v0.6.10</span> · <span id="ms">修复：播放到〔嘲讽〕卡住</span></span>
+      <span class="ver">试作版 <span id="ver">v0.6.11</span> · <span id="ms">文档：设计 / 实现分家（说明书写成索引）</span></span>
     </div>
     <div class="hud" id="hud"></div>
     <div class="ctrl" id="ctrl">
@@ -3949,8 +3949,20 @@ window.MECHA_MUSIC_BASE = (typeof location !== 'undefined' && String(location.pa
  *   **不动战斗结果、不动记录内容与顺序**（无 RUN 三快照逐字节不变）。
  *   `VERSION` `0.6.9 → 0.6.10`、`MILESTONE` → 「**修复：播放到〔嘲讽〕卡住**」
  *   （`src/shell.html:13` 的静态兜底同步；`tests/smoke.js` 第 [4] 段的白名单再加一条）。 */
-const VERSION = '0.6.10';
-const MILESTONE = '修复：播放到〔嘲讽〕卡住';
+/* ---------- 版本 / 里程碑：文档拆分（P2）· 设计 / 实现分家 ----------
+ * ★ 2026-10-13 **文档线 · 设计 / 实现分家**（作者拍板「**主要是从想法到代码落地实现这个要分清楚**，
+ *   代码怎么写的是一回事，**想法规则需要方便交给其他 ai review 改进，加入新的想法**」）：
+ *   `CLAUDE.md` 从 2145 行收成 **≤300 行的「索引 + 铁律」**，正文按两类搬走（**逐字未改、一字没删**）——
+ *   **想法与规则** → `docs\设计\**`（规则总览 / 职业与势力特色 / 难度与数值目标 / 待定与开放问题 /
+ *   设计稿与作者决定 / 参考资料索引）；**代码怎么写** → `docs\实现\**`（交付记录 / 构建与测试 /
+ *   接口约定-摘要 / 坑与红线 / 结构表 · P1 交付后填充）；
+ *   1 MB 的 `协作\任务板.md` 与 `协作\协作日志.md` 按**日期**归档进 `协作\任务板\**` / `协作\日志\**`，
+ *   各带一份**全标题索引**（原引用「任务板 M6 段」照索引搜得到）。
+ *   旧「第 N 节」的跳转表在 `CLAUDE.md` 的「★ 文档地图」那一节。
+ *   `VERSION` `0.6.10 → 0.6.11`、`MILESTONE` → 「**文档：设计 / 实现分家（说明书写成索引）**」
+ *   （`src/shell.html:13` 的静态兜底同步；`tests/smoke.js` 第 [4] 段的白名单再加一条）。 */
+const VERSION = '0.6.11';
+const MILESTONE = '文档：设计 / 实现分家（说明书写成索引）';
 
 /* ---------- 小工具 ---------- */
 const $ = s => document.querySelector(s);
