@@ -3,14 +3,18 @@
  * 全量验收（统筹 2026-10-11 写）
  *
  * 用法：
- *   node tools/verify-all.mjs            # 二十一条测试 + 生成物同步检查
+ *   node tools/verify-all.mjs            # 二十二条测试 + 生成物同步检查
  *   node tools/verify-all.mjs --quiet    # 只打失败的套件与总结
  *
- * 为什么要有这个：交付前必须跑「**二十一条测试全绿 + `--check` 通过**」，
+ * 为什么要有这个：交付前必须跑「**二十二条测试全绿 + `--check` 通过**」，
  * 手工一条条敲容易漏套（历史上就漏过 `art_icons` / `audio` 这类新拆出来的套）。
  *
  * ★ 本机的一个坑（写在 CLAUDE.md 第 4 节）：DSH 沙箱**不给子进程开管道**，
  *   所以子进程必须用 `stdio:'inherit'`（`spawnSync` 默认的 `'pipe'` 会 EPERM）。
+ *
+ * ★ 2026-10-13 架构 2.0：末尾多了 `arch`（架构门禁，`tests/arch.js`）—— 它只验证
+ *   **机器可读的架构事实与不变量**（快照同步 / 随机数纪律 / 状态 Owner 边界 / 默认路径零污染 /
+ *   Replay 协议 / 债务账本 + Owner 自洽），**不读任何散文措辞**（`AI速查卡.md` 只当导航地图）。
  *
  * 退出码：全绿 = 0；有任何一条失败 = 1。
  */
@@ -23,7 +27,7 @@ import { fileURLToPath } from 'node:url';
 const 根 = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const 静默 = process.argv.includes('--quiet');
 
-/** 二十一条测试（顺序照 CLAUDE.md 第 4 节；加新套件要同步这里与 CLAUDE.md） */
+/** 二十二条测试（顺序照 CLAUDE.md 第 4 节；加新套件要同步这里与 CLAUDE.md） */
 const 套件 = [
   'smoke', 'sim', 'battle_ui', 'commands', 'run', 'comp', 'map',
   'art_icons', 'audio', 'boss', 'heal', 'relic', 'rank', 'balance', 'grid', 'faction',
@@ -34,6 +38,11 @@ const 套件 = [
   '上报',
   // ★ 2026-10-13 决策日志（作者：「记录下我当时的选项和我的实际选择」，紧凑、程序可读）
   '决策',
+  // ★ 2026-10-13 架构 2.0 门禁（Architecture 2.0 Baseline）：只验证机器可读的架构事实与不变量 ——
+  //   `协作/架构快照.json` 同步（版本 / `规则签名` / `@include` 清单）/ 随机数纪律 /
+  //   Simulation-Presentation 隔离（真扫 56 个片段的越权写入）/ 默认路径零污染 / Replay 协议 /
+  //   债务账本对齐 + Owner 定义自洽。**绝不用正则去绑架 `AI速查卡.md` 的散文措辞**。
+  'arch',
 ];
 
 const 结果 = [];
@@ -50,7 +59,7 @@ let 有失败 = false;
   if (!通过) console.log('  ↑ 生成物落后于源文件：先跑 `node tools/build-src.mjs` 再提交');
 }
 
-/* ---- ② 二十一条测试 ---- */
+/* ---- ② 二十二条测试 ---- */
 for (const 名 of 套件) {
   const 文件 = join(根, 'tests', `${名}.js`);
   if (!existsSync(文件)) {

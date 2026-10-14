@@ -1,5 +1,7 @@
 # 实现层 AI 速查卡（架构与铁律 · 施工唯一必读）
 
+> **★ 真相源定位：本速查卡仅是「AI 导航地图」，永远不定义游戏规则。唯一真相源为：`L0 铁律(CLAUDE.md)` → `L3 源码 + 协作/架构快照.json` → `L4 门禁(tests/arch.js)`。**
+
 > **用途**：供代码施工 Agent（`ds4f` / Worker `subagent`）开机定位文件、核对接口与遵守红线。施工前只需读本卡 + 当前任务单。
 
 ## §1 `src/js/` 56 个源码片段分组速查表（按 `src/shell.html` `@include` 顺序拼接）
@@ -29,6 +31,18 @@
 - **五步战斗循环**：`开局(我方, 敌方, 种子, 单位开关表, 选项)` → `设方针(ctx, 方针)` / `设单位开关(ctx, 开关表)` → `算意图(ctx)`（纯函数） → `打一回合(ctx)`；整场模拟封装为 `simulate(我方, 敌方, 方针, 种子, 选项)`。
 - **`localStorage` 7 个独立键**：`mecha-autobattle-run-v4`（肉鸽存档）、`mecha-autobattle-录像`（最近20局）、`mecha-autobattle-战斗记录`（最近5场/500KB）、`mecha-autobattle-已上报`、`mecha-autobattle-上报开关`、`mecha-autobattle-tune`（仅调参室生效）、`mecha-autobattle-sound`。
 
+## §2.5 5 大状态唯一 Owner 表 + 变更影响图（Change Impact Map · 机器可查 = `tests/arch.js` + `协作/架构快照.json`）
+
+| 状态 | 唯一 Owner（只许它写） | 谁只读 | 改了它谁先红 |
+|---|---|---|---|
+| `ctx`（单场战斗上下文） | `20-战斗计算.js` · `60-战斗-1..3` · `61-Boss.js` · `72-势力-1..5` · `93-藏品.js` | `84-反馈.js` / `80-界面-3` / `8b-决策日志.js`（**全纯读**） | `tests/arch.js`[3] + `sim` / `commands` / `boss` / `faction` |
+| `ctx.log`（逐条战绩） | **只有** `60-战斗-1-方针与记录.js`（`pushLog`） | `84` / `85` / `88` / `8b` / `80-界面-4` | `tests/arch.js`[3][4] + `commands-1`[1] 的 **2925 条**基线 |
+| `RUN`（肉鸽整局存档） | `90-肉鸽-1..6` · `93-藏品.js` · `94-零件.js` | `92-肉鸽界面-1..2`（纯读） | `tests/run` / `map` / `rank` / `relic`（存档键 `mecha-autobattle-run-v4`） |
+| `播放`（播放时序） | **唯一** `85-播放.js` | `80-界面-3` 的 `刷卡()` / `播一步()` | `tests/battle_ui-5` + `tests/arch.js`[2][3] |
+| `界面`（屏 / DOM / `data-act`） | `80-界面-1..6` · `92-肉鸽界面-1..2` | 测试与 `tools/replay.mjs` | `tests/battle_ui` / `map` / `录像`；**接口变更先登记 `协作/接口约定.md`** |
+
+**变更影响图**：改 `71-改动-4-战斗结构.js` / `71-改动-3-难度调整.js` / `71-改动-2-势力特色.js` / `90-肉鸽-1-数据与规则.js`（`肉鸽数值` + `守军奖励`）这 **5 张顶层规则表**的**任一参数** → `rulesSignature` 变 → `tests/arch.js`[1] 立刻红（必须同步 `协作/架构快照.json`）→ 手上有旧录像的人要重跑 `node tools/replay.mjs <录像>` 看 `[跨规则版本重放]` 诊断（**旧录像没有 `规则签名` 字段、或顶层只有 `版本`，也算「跨规则」**）；只改 `80-界面-*` / `85-播放.js` / `88-战斗记录.js` 这类表现层 → 只影响屏与导出，**不许碰 `ctx` / `ctx.log`**。
+
 ## §3 改代码四大铁律（违反任意一条即打回）
 1. **先登记接口再动代码**：凡新增/修改 `window.__game` 导出项、模块间字段、`ctx.log` 记录字段或 `data-act`，必须先在 `协作/接口约定.md` 登记。
 2. **新机制必带 `战斗结构.*` 开关且默认路径逐字节不变**：新机制在 `71-改动-4-战斗结构.js` 设总开关（`开: false` 时与改前**逐字节相同**）；新增记录字段**只有在实际触发时才写入对象**，未触发时绝不挂 `undefined/false/0` 污染旧快照。
@@ -40,6 +54,6 @@
   ```bash
   node tools/build-src.mjs           # 1. 从 src/** 重建 index.html 与 src/artifact-fragment.html
   node tools/build-src.mjs --check   # 2. 校验两份生成物与源文件完全同步（必绿）
-  node tools/verify-all.mjs          # 3. 跑全量 21 套测试 + 生成物检查（必须 绿 22 / 22，红 0）
+  node tools/verify-all.mjs          # 3. 跑 23 项 verify-all 门禁（必须 绿 23 / 23，红 0；含架构门禁 arch）
   ```
 - **共享文档（`协作/接口约定.md`、`协作/任务板.md`、`协作/协作日志.md`）按 §12.1 只追加自己那一节**：严禁整文件重写或覆盖他人未提交改动；测试套件拆分的 7 套由同名入口调 `tests/lib/跑分段.mjs` 执行，读被拆源码统一走 `tests/lib/读源码.mjs`。
