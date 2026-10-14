@@ -10,12 +10,18 @@
   <header class="bar">
     <div class="brand">
       <span class="mark">机甲指挥</span>
-      <span class="ver">试作版 <span id="ver">v0.6.1</span> · <span id="ms">晋升+零件</span> 大地图上换（10→20→30 / 喷气背包·河谷祭祈…）</span>
+      <span class="ver">试作版 <span id="ver">v0.6.3</span> · <span id="ms">界面：声音开关常驻 + 选项居中</span></span>
     </div>
     <div class="hud" id="hud"></div>
-    <div class="ctrl" id="ctrl"></div>
-    <!-- 声音开关（M5）：读不到本地版权曲时整体不可用，按钮由 96-音乐.js 隐藏 -->
-    <button class="sndbtn" id="btnSound" aria-pressed="true" title="声音开关（按 M）">声音</button>
+    <div class="ctrl" id="ctrl">
+      <!-- ★ 2026-10-13 作者拍板「音乐开关要显眼、每一屏都有」：它跟着 `#ctrl` 一起**居中**
+           （`.ctrl` 的 margin:auto + justify-content:center，见 `main.css` 的「选项集中在画面中间」那一段），
+           所以顶栏中间就是 `.ctrl` 那一排按钮 + 这一颗「🔊 音乐：开」。
+           ★ 静态兜底：`80-界面.js` 的 `声音钮Html()` 画的正是这一份（页面上由它统一补上，见那一处的注释）。
+           文字口径：`96-音乐.js` 的 `写按钮()` 只写 '声音 / 静音'（`tests/audio.js` 第 [7] 段逐字钉着），
+           所以 `同步声音钮()` 认的是**开关状态**（`音乐.开关`），顺手把图标换掉。 -->
+      <button class="sndbtn" id="btnSound" data-snd-top="1" aria-pressed="true" title="音乐开关（按 M 也行）：点一下开 / 关">🔊 音乐：开</button>
+    </div>
   </header>
   <main class="main" id="screen"></main>
 </div>

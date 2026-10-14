@@ -661,14 +661,14 @@ function 调参编队Html(界面对象) {
   }
   const 格 = [...行格.entries()].map(([r, 列表2]) => `<div class="row" style="--cols:${最大列数}">${列表2.join('')}</div>`).join('');
   return `<h4>我方（${B.出击.length} / ${调参出击上限}）<span class="small">拖到格子里，或点一名再点格子</span></h4>
-    <div class="filters">
+    <div class="filters" data-center="1">
       ${[10, 20, 30].map(n => `<button class="mini${B.等级 === n ? ' on' : ''}" data-act="等级:${n}">Lv${n}</button>`).join('')}
       <span class="sep"></span>
       ${势力们.map(f => `<button class="mini${B.势力 === f ? ' on' : ''}" data-act="势力:${f}">${f}</button>`).join('')}
     </div>
-    <div class="acts"><button data-act="默认五人队">默认五人队</button><button data-act="清空">清空</button></div>
+    <div class="acts" data-center="1"><button data-act="默认五人队">默认五人队</button><button data-act="清空">清空</button></div>
     <div class="tune-grid">${格}</div>
-    <div class="picks">${列表}</div>`;
+    <div class="picks" data-center="1">${列表}</div>`;
 }
 
 /** 左列：选战斗（§3.2）。 */
@@ -693,14 +693,14 @@ function 调参左列Html(界面对象) {
     `<button class="mini${s.方针 === p ? ' on' : ''}" data-act="调参室:方针:${encodeURIComponent(p)}">${p === 调参简单策略 ? '简单策略（第 1 回合全军防御 → 之后全军突击）' : p}</button>`).join('');
   return `<div class="col">
     <h3>① 选战斗</h3>
-    <h4>层</h4><div class="cmds">${层按钮}</div>
-    <h4>节点类型</h4><div class="cmds">${类型按钮}</div>
-    <h4>具体编成条目</h4><div class="cmds">${条目按钮}</div>
+    <h4>层</h4><div class="cmds" data-center="1">${层按钮}</div>
+    <h4>节点类型</h4><div class="cmds" data-center="1">${类型按钮}</div>
+    <h4>具体编成条目</h4><div class="cmds" data-center="1">${条目按钮}</div>
     ${候选.length ? '' : '<p class="warn small">这一层没有这个类型的编成：换一层或换一个类型。</p>'}
     <p class="small">${s.类型 === '终点'
       ? '「终点」= **第 4 层**的 Boss（蓝色大肥鱼那一档），层选择对它无效。'
       : `第 ${s.层} 层 ${s.类型}：${候选.length} 条编成（选「这一类全部」时，按场次轮着抽：第 1 场第 1 条、第 2 场第 2 条…）。`}</p>
-    <h4>方针（整场）</h4><div class="cmds">${方针钮}</div>
+    <h4>方针（整场）</h4><div class="cmds" data-center="1">${方针钮}</div>
     ${调参编队Html(界面对象)}
   </div>`;
 }
@@ -727,7 +727,7 @@ function 调参中列Html() {
       ${调参滑条Html(`Boss:${k}:伤害倍率`, '伤害倍率', b.伤害倍率 != null ? b.伤害倍率 : 基础.伤害倍率, 调参倍率范围, '×')}
       ${调参滑条Html(`Boss:${k}:阶段间隔`, '半血后间隔', b.阶段间隔 != null ? b.阶段间隔 : (阶段.大技能间隔 != null ? 阶段.大技能间隔 : 0), { 最小: 0, 最大: 12, 步: 1 }, ' 回合')}
       ${调参滑条Html(`Boss:${k}:阶段倍率`, '半血后倍率', b.阶段倍率 != null ? b.阶段倍率 : (阶段.伤害倍率 != null ? 阶段.伤害倍率 : 1), 调参倍率范围, '×')}
-      <div class="acts"><button class="mini" data-act="调参室:Boss清:${k}">这一台恢复正式表</button></div>
+      <div class="acts" data-center="1"><button class="mini" data-act="调参室:Boss清:${k}">这一台恢复正式表</button></div>
     </div>`;
   }).join('');
   const 敌人键们 = Object.keys(ENEMY_T).sort();
@@ -753,7 +753,7 @@ function 调参中列Html() {
     ${调参滑条Html(`覆盖底:${当前键}:HP倍率`, 'HP ×', 覆盖底.HP倍率, 调参倍率范围, '×')}
     ${调参滑条Html(`覆盖底:${当前键}:装甲倍率`, '装甲 ×', 覆盖底.装甲倍率, 调参倍率范围, '×')}
     ${调参滑条Html(`覆盖底:${当前键}:威力倍率`, '威力 ×', 覆盖底.威力倍率, 调参倍率范围, '×')}
-    <div class="acts"><button class="mini" data-act="调参室:覆盖加上:${当前键}">加上「${当前键}」的覆盖</button></div>
+    <div class="acts" data-center="1"><button class="mini" data-act="调参室:覆盖加上:${当前键}">加上「${当前键}」的覆盖</button></div>
     ${覆盖行 || '<p class="small">还没有任何按键覆盖。</p>'}
 
     <h4>Boss 脚本</h4>
@@ -763,9 +763,9 @@ function 调参中列Html() {
     ${调参滑条Html('回合上限', '上限', s.回合上限 != null ? s.回合上限 : 0, 调参回合上限范围, '')}
     <p class="small">0 = 用引擎自己那套（按敌方档位：杂兵/精锐 12、头目 11、Boss 11）。</p>
 
-    <h4>场次</h4><div class="cmds">${场次钮}</div>
+    <h4>场次</h4><div class="cmds" data-center="1">${场次钮}</div>
     <p class="small">种子从 1 开始连续（第 1 场种子 ${s.种子起}，共 ${s.场次} 场 → 到 ${s.种子起 + s.场次 - 1}）。</p>
-    <div class="acts">
+    <div class="acts" data-center="1">
       <button class="primary" data-act="调参室:跑">跑 ${s.场次} 场</button>
       <button data-act="调参室:清结果">清空结果</button>
       <button data-act="调参室:存储存">存进 localStorage</button>
@@ -829,7 +829,7 @@ function 调参右列Html() {
     </div>
     <div class="tune-card">
       <h4>交回给作者 / Claude</h4>
-      <div class="acts">
+      <div class="acts" data-center="1">
         <button class="primary" data-act="调参室:复制设置">复制设置</button>
         <button data-act="调参室:读回">读回这段文字</button>
       </div>

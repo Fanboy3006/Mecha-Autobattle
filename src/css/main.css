@@ -328,6 +328,50 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .sndbtn[aria-pressed="false"]{color:var(--muted)}
 .sndbtn.on{border-color:var(--accent);color:var(--accent)}
 
+/* ============================================================================
+ * ★ 2026-10-13 作者亲手提的两条 UI 修改（B：「**所有可选项都需要集中在画面中间**」）
+ * ----------------------------------------------------------------------------
+ * 作者原话：「音乐关闭的按钮位置也不明显。每一个画面都要有，然后**所有可选项都需要集中在画面中间**，
+ * 这个是 UI 层面的修改」。这一节就是第二条：**只动布局与样式** ——
+ * 一个 `data-act` 值、一个动作名、一句屏的语义都没改（今天的界面 bug 全是那一族，不再碰）。
+ *
+ * 判据（测试读的就是它，口径写清）：**装选项的那些容器一律带 `data-center="1"`**
+ *   —— `data-center` 是这一节定的**显式标记**（不是靠位置 / 类名去猜），
+ *   测试 `tests/battle_ui.js` 第 [13] 段逐屏断言「这一屏里每一个动作容器的 HTML 里都带 `data-center="1"`」。
+ *   容器一共五族（`80-界面.js` / `92-肉鸽界面.js` 里一处一处标的）：
+ *     `.acts`（`.card .acts` / 编队屏 / 肉鸽各屏的按钮行）· `.cmds`（方针栏 / 单位开关 / 调参室的选择钮）·
+ *     `.picks`（候选卡片网格）· `.filters`（编队屏的等级 / 势力筛选）· `.snd-row`（每屏那一行声音开关）。
+ *
+ * 居中的手法（不改变可读与点击区域，只挪位置）：
+ *   · **按行居中**：容器 `display:flex; flex-wrap:wrap; justify-content:center`；
+ *   · **整块居中**：容器自己 `margin-left:auto; margin-right:auto` 并且给一个**最大宽度**
+ *     （`--opt-max`，默认 96ch 的可读宽度），于是标题贴着左边、按钮群落在画面中间那一竖条里；
+ *   · **网格居中**：`.picks` 三列 / 五列网格按 `justify-content:center` 收拢，卡片本身尺寸一点没动
+ *     （`.pick` 的 padding / 字号 / 边框都沿用上面那几段，点击区域不变）。
+ * 别的屏（战斗 / 顶栏 / 音乐鉴赏自己的样式）一个字节都不动。
+ * ========================================================================== */
+.opt-center{margin-left:auto;margin-right:auto;max-width:var(--opt-max,96ch)}
+.card .acts[data-center="1"]{justify-content:center;margin-left:auto;margin-right:auto;max-width:var(--opt-max,96ch)}
+/* ★ 兜底（同一套居中）：**卡片里的动作行一律居中**，即使那一处没标 `data-center`
+   —— 全仓库只有两处没标：`89-录像.js` 的三块与 `8a-上报.js` 的菜单块。
+   那两个文件是**别的线**的（录像线 / 上报线），界面这条线不越线去改它们，
+   所以居中在这里用**通用选择器**兜住：`.card .acts`（录像屏的 `<section class="card">` 里那三块）。 */
+.card .acts:not([data-center]){justify-content:center;margin-left:auto;margin-right:auto;max-width:var(--opt-max,96ch)}
+.cmds[data-center="1"]{justify-content:center;margin-left:auto;margin-right:auto;max-width:var(--opt-max,96ch)}
+.filters[data-center="1"]{justify-content:center;margin-left:auto;margin-right:auto;max-width:var(--opt-max,96ch)}
+.picks[data-center="1"]{justify-content:center;margin-left:auto;margin-right:auto;max-width:var(--opt-max,96ch)}
+/* 每一屏末尾那一行声音开关（`80-界面.js` 的 `声音行Html()`）：图标 + 文字，居中、好点 */
+.snd-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;
+  margin:12px auto 2px;padding-top:10px;border-top:1px dashed var(--line)}
+.snd-row .sndbtn{margin-left:0}
+.snd-inline{font-size:13px;padding:6px 14px}
+/* 顶栏那一排（`#ctrl`）也跟「选项集中在画面中间」一起居中 —— 顶栏的声音开关就在这一排里。
+   手法只在 `.bar` 这一层：左右两块用 `flex:1 1 auto` 平分空白、`.ctrl` 走 `margin:auto` 居中，
+   于是顶栏上的操作按钮（含声音开关）落在**画面中间**，而不是贴在右上角。 */
+.bar .brand{flex:1 1 auto}
+.bar .hud{flex:1 1 auto;justify-content:flex-end}
+.bar .ctrl{margin-left:auto;margin-right:auto;justify-content:center}
+
 /* 弹窗骨架：音乐鉴赏页（audio/music-room.js）自己只带页面内的样式，
    外面的 .modal / .dlg / .btn / .eyebrow 这些壳儿从战棋的 main.css:154-168 搬最小一份过来。 */
 .modal[hidden]{display:none}

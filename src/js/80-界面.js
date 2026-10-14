@@ -117,9 +117,15 @@ const 界面 = {
 
   刷() {
     const 屏 = $('#screen');
-    if (屏) 屏.innerHTML = this[this.屏 + '屏'] ? this[this.屏 + '屏']() : '';
+    /* ★ 2026-10-13（作者拍板 A）：**每一屏的选项区末尾都挂一行「🔊 音乐：开 / 🔇 音乐：关」**——
+       它画在 `#screen` **里面**，所以「每一个画面都要有」这条**不依赖顶栏**（顶栏那一颗读不到曲子时
+       会被 `96-音乐.js` 隐藏；音乐鉴赏那种盖住顶栏的全屏层也照样点得到屏内这一颗）。
+       一律加在屏本体之后：**屏自己的 HTML 一个字都没改**（只多这一行），老的 `data-act` 断言照旧能匹配。 */
+    if (屏) 屏.innerHTML = (this[this.屏 + '屏'] ? this[this.屏 + '屏']() : '') + this.声音行Html();
     this.刷顶栏(); this.刷控件();
     this.接线();
+    /* 顶栏那一颗也要显示成「🔊 音乐：开」这种**图标 + 文字**（`96-音乐.js` 只写 '声音 / 静音'，这里补图标）。 */
+    this.同步声音钮();
     return this;
   },
   刷顶栏() { const t = $('#hud'); if (t) t.innerHTML = this.顶栏(); },
@@ -414,7 +420,7 @@ const 界面 = {
     const d = this.弹窗;
     if (!d) return '';
     return `<div class="rv-card dlg"><h3>${d.标题}</h3><p class="small">${d.文本 || ''}</p>
-      <div class="acts">${(d.选项 || []).map(o => `<button data-act="弹窗:${o.值}">${o.名}</button>`).join('')}</div></div>`;
+      <div class="acts" data-center="1">${(d.选项 || []).map(o => `<button data-act="弹窗:${o.值}">${o.名}</button>`).join('')}</div></div>`;
   },
 
   /* ---------------- 顶栏 ---------------- */
@@ -427,6 +433,69 @@ const 界面 = {
     }
     return `<div class="chip"><span class="lbl">机师</span><b>${ALLY_T.length}</b></div><div class="chip"><span class="lbl">敌人</span><b>${Object.keys(ENEMY_T).length}</b></div>`;
   },
+  /* ---------------- ★ 声音开关：每一屏都有、而且显眼（作者 2026-10-13 亲手提的两条 UI 修改之 A） ----------------
+   * 作者原话：「**音乐关闭的按钮位置也不明显。每一个画面都要有**」「所有可选项都需要集中在画面中间」。
+   *
+   * **现状（改之前，逐处读过）**：开关全仓库**只有一颗** —— `src/shell.html:18` 的
+   *   `<button class="sndbtn" id="btnSound">声音</button>`，钉在**顶栏 `.bar` 最右**（`.ctrl` 之后）。
+   *   它由 `96-音乐.js` 的 `初始化()`（`src/js/96-音乐.js:83-101`）接线：点击 → `切开关()`（`:111-124`）、
+   *   `M` 键 → 同一处、偏好存 `localStorage['mecha-autobattle-sound']`。
+   *   ① 它**本来是全局的**（顶栏在 `#screen` 之外），但**长得不显眼**：只有两个字「声音 / 静音」、
+   *      贴在 `.ctrl` 后面（那一排按屏变来变去），而且**只有点了才知道状态**（文字是「声音」= 开着，
+   *      「静音」= 关着 —— 反过来读才对得上意思）；
+   *   ② **读不到曲子时它整颗被隐藏**（`96-音乐.js:91-93` 的 `钮.hidden = true`；测试环境就是这样，
+   *      `tests/audio.js` 第 [6] 段还逐字钉着这条降级）→ 那种机器上**一屏都看不到**这个开关；
+   *   ③ **盖住顶栏的屏点不到它**：音乐鉴赏页（`audio/music-room.js` 的 `.modal`，`main.css:334` 是
+   *      `position:fixed; inset:0` 的全屏层）把它整个压在下面。
+   *
+   * **改法（只动界面 / 布局层，`96-音乐.js` 一个字节都没动）**：
+   *   · 开关**统一由 `声音钮Html()` 画**：**图标 + 文字**（`🔊 音乐：开 / 🔇 音乐：关`），
+   *     `data-act="声音"` → 走**现成的动作表**（`动作表.声音` → `音乐.切开关()`，那条路一直在）；
+   *   · **每一屏的 `#screen` 末尾各画一颗**（`.snd-inline`，`界面.刷()` 里自动加）——
+   *     「每一个画面都要有」这条由它保证：**屏幕自己那段 HTML 里就有**，不靠顶栏在不在、也不靠顶栏可不可见；
+   *   · **顶栏那一颗也补成同款**（补图标 + 文字，不再只是「声音」两个字），并且挪进 `.ctrl` 里，
+   *     跟着「选项集中在画面中间」那条 CSS **一起居中** —— 一共两处，一屏都不少；
+   *   · `M` 键**既有行为一个字没动**（那一条在 `96-音乐.js` 的 `初始化()` 里）；音乐鉴赏那条全屏层
+   *     照样点得到：见文件末尾 `声音点击兜底()`（`document` 捕获层）。
+   *   · 每次 `刷()` 调一次 `同步声音钮()`：**从 `音乐.开关` 现读**（不重画屏、不动音乐层、不绑死它的按钮 HTML），
+   *     顶栏被音乐层隐藏时屏内那一颗照旧显示 —— 这台机器上读不到曲子时，开关仍然看得见、点得动。 */
+  /** 一颗开关要写的字：**图标 + 文字**（开着 🔊 / 关着 🔇 —— 文字说的是「现在的状态」，不是「点它会发生什么」）。 */
+  声音钮文字() { return (this.声音开着() ? '🔊 音乐：开' : '🔇 音乐：关'); },
+  /** 现在声音是开着还是关着（**只读** `音乐.开关`；取不到音乐层时按「开着」显示，绝不抛异常）。 */
+  声音开着() {
+    try { return !(typeof 音乐 !== 'undefined' && 音乐 && 音乐.开关 === false); } catch (e) { return true; }
+  },
+  /** 一颗声音开关（`data-center` 由外面那一行带 —— 「选项集中在画面中间」那一条的判据就是这个属性）。 */
+  声音钮Html(内联) {
+    const 开 = this.声音开着();
+    return `<button class="sndbtn${内联 ? ' snd-inline' : ''}${开 ? ' on' : ' off'}" data-act="声音"`
+      + ` aria-pressed="${开 ? 'true' : 'false'}" title="音乐开关（按 M 也行）：点一下开 / 关">${this.声音钮文字()}</button>`;
+  },
+  /** 每一屏最后一行的声音开关（居中；`data-center="1"` = `main.css` 里那条居中的判据）。 */
+  声音行Html() {
+    return `<div class="opt-center snd-row" data-center="1" data-snd-row="1">${this.声音钮Html(true)}`
+      + `<span class="small">点这里或者按 <b>M</b>：音乐开 / 关（这一屏就有，不用去顶栏找）</span></div>`;
+  },
+  /** 把页面上**每一颗**声音开关刷成现在的状态（顶栏那一颗 + 屏内那一颗）。
+   *  ★ 只写 `textContent` / `aria-pressed` / `class`：**不重画屏**、不动 `96-音乐.js` 的按钮逻辑。 */
+  同步声音钮() {
+    const 文 = this.声音钮文字(), 开 = this.声音开着();
+    const 刷一颗 = 钮 => {
+      if (!钮) return;
+      if (钮.textContent !== 文) 钮.textContent = 文;
+      if (typeof 钮.setAttribute === 'function') 钮.setAttribute('aria-pressed', 开 ? 'true' : 'false');
+      if (钮.classList && typeof 钮.classList.toggle === 'function') 钮.classList.toggle('on', 开);
+    };
+    try {
+      if (typeof $ === 'function') 刷一颗($('#btnSound'));                          // 顶栏那一颗（屏外、所有屏都在）
+      if (typeof document !== 'undefined' && document.querySelectorAll)
+        for (const 钮 of document.querySelectorAll('.snd-inline')) 刷一颗(钮);        // 每一屏那一颗
+    } catch (e) { /* 取不到 DOM（裸 Node / 测试替身）：一个字都不改，绝不抛 */ }
+    return 文;
+  },
+  /** 顶栏那一颗的图标也要跟着状态走（`96-音乐.js` 的 `写按钮()` **只写文字** '声音 / 静音' ——
+   *  那条口径是 `tests/audio.js` 第 [7] 段逐字钉着的，所以这里**不动它**；图标由 `同步声音钮()` 每屏补上）。 */
+
   控件() {
     if (this.屏 === '战斗') {
       const 播放中 = this.阶段 === '播放';
@@ -470,7 +539,7 @@ const 界面 = {
           单位层只有「大招：自动 / 保留」，天人另有 TRANS-AM）→ 看敌人意图 →「开打 ▶」自动打完。</li>
         <li><b>练习</b>：不进肉鸽，直接用编队界面挑一队打一场（试数值用）。</li>
       </ul>
-      <div class="acts">
+      <div class="acts" data-center="1">
         <button class="primary" data-act="去分队">新的一局（肉鸽）→</button>
         ${有存档 ? `<button data-act="继续上一局">继续上一局（第 ${肉鸽.读存档().层} 层）</button>` : ''}
         <button data-act="去编队">练习：直接编队打一场</button>
@@ -564,12 +633,12 @@ const 界面 = {
     return `<section class="编队屏">
       <div class="col 候选" data-drop="候选">
         <h3>${肉鸽模式 ? `名册（${候选.length} 台）` : `机师（${候选.length} 名）`}<span class="small">拖到右边格子里，或者点一名再点格子；格子之间也能拖（互换）</span></h3>
-        ${肉鸽模式 ? '' : `<div class="filters">
+        ${肉鸽模式 ? '' : `<div class="filters" data-center="1">
           ${[10, 20, 30].map(n => `<button class="mini${B.等级 === n ? ' on' : ''}" data-act="等级:${n}">Lv${n}</button>`).join('')}
           <span class="sep"></span>
           ${势力们.map(f => `<button class="mini${B.势力 === f ? ' on' : ''}" data-act="势力:${f}">${f}</button>`).join('')}
         </div>`}
-        <div class="picks">${列表}</div>
+        <div class="picks" data-center="1">${列表}</div>
       </div>
       <div class="col 站位">
         <h3>出击编队（${B.出击.length} / ${上限}）<span class="small">9 格阵型：上排 = 后排 5 格，下排 = 前排 4 格；${this.出击上限说明()}</span></h3>
@@ -577,15 +646,15 @@ const 界面 = {
              那两句提示设了也没人看得到。这里补一行（空的时候不画，别的屏一个字都不改）。 -->
         ${this.提示 ? `<p class="warn small" data-form-hint="1">${this.提示}</p>` : ''}
         <div class="grid">${格.join('')}</div>
-        <div class="acts">
+        <div class="acts" data-center="1">
           <button data-act="默认五人队">${肉鸽模式 ? `把名册前 ${上限} 台摆上` : `摆上前 ${上限} 台`}</button>
           <button data-act="清空">清空</button>
         </div>
         ${肉鸽模式 ? `<p class="small">这一场：第 ${肉鸽.RUN.层} 层 <b>${节点类型表[当前节点 && 当前节点.类型] ? 节点类型表[当前节点.类型].名 : '作战'}</b>（敌人由编成表随机抽；敌人等级按层数走）</p>
-          <div class="acts"><button class="primary" data-act="开战">开战 →</button><button data-act="回大地图">回大地图</button></div>`
+          <div class="acts" data-center="1"><button class="primary" data-act="开战">开战 →</button><button data-act="回大地图">回大地图</button></div>`
         : `<h3>敌方编成<span class="small">（方案第 10 节第 4 条：这 3 条是初稿，等作者配）</span></h3>
           <select id="编成选" data-act="编成" class="sel">${编成选项}</select>
-          <div class="acts"><button class="primary" data-act="开战">开战 →</button></div>`}
+          <div class="acts" data-center="1"><button class="primary" data-act="开战">开战 →</button></div>`}
         ${选中 ? `<p class="small">已选：${this.单位名(B.选中, 'ally')}（${B.选中}，速度 ${选中.速度}${选中.大招.length ? `，大招：${选中.大招.join('、')}，第 ${选中.开场} 回合起` : '，没有大招'}）</p>` : '<p class="small">还没选机师。</p>'}
       </div>
     </section>`;
@@ -659,7 +728,7 @@ const 界面 = {
     return `<div class="cmdpanel policybar">
       <h3>全队方针 · <b>${当前}</b>${目标 ? ` → ${目标.name}（${位名(目标.slot)}）` : ''}
         <span class="small">保持到改为止 · 单位层只有大招开关</span></h3>
-      <div class="cmds">${方针们.map(k => `<button class="mini${当前 === k ? ' on' : ''}"${可点 ? ` data-act="方针:${k}"` : ' disabled title="这一回合正在播放，等它播完才能改（方针保持到改为止）"'}>${k}</button>`).join('')}</div>
+      <div class="cmds" data-center="1">${方针们.map(k => `<button class="mini${当前 === k ? ' on' : ''}"${可点 ? ` data-act="方针:${k}"` : ' disabled title="这一回合正在播放，等它播完才能改（方针保持到改为止）"'}>${k}</button>`).join('')}</div>
       <p class="small">${一句[当前] || ''}${当前 === '集中攻击' ? (目标 ? '　目标已选。' : '　<b>还没点目标</b>：点一张敌方卡片。') : ''}
         ${可点 && this.选目标 ? '　<b>正在选目标：点一个敌人。</b>' : ''}${可点 ? '' : '　<b>播放中不能改方针</b>：这一回合播完就回到指令阶段。'}</p>
       ${回血预告}
@@ -677,7 +746,7 @@ const 界面 = {
     const c = this.当前指令(位);
     return `<div class="cmdpanel">
       <h3>单位开关 · ${u.name}<span class="small">${u.key} · ${u.tags.战斗分类} · ${位名(位)}</span></h3>
-      <div class="cmds"><button class="mini${c.保留大招 ? ' on' : ''}" data-act="大招:${位}">大招：${c.保留大招 ? '保留' : '自动'}</button></div>
+      <div class="cmds" data-center="1"><button class="mini${c.保留大招 ? ' on' : ''}" data-act="大招:${位}">大招：${c.保留大招 ? '保留' : '自动'}</button></div>
       ${this.天人开关(位, u, c)}
       <p class="small">「保留」= 这一回合不放这个大招（推迟，不是作废）。其余交给上面的全队方针。</p>
       ${this.提示 ? `<p class="warn small">${this.提示}</p>` : ''}
@@ -700,7 +769,7 @@ const 界面 = {
         + ` title="${判.可以 ? '点了就在本回合开' : '开不了：' + 判.原因}">`
         + `开 TRANS-AM${手.本回合开TRANSAM ? '（本回合已点）' : ''}${判.可以 ? '' : `（${判.原因}）`}</button>`
       : '';
-    return `<div class="cmds">
+    return `<div class="cmds" data-center="1">
         <button class="mini${手动 ? ' on' : ''}" data-act="TRANSAM:${位}">TRANS-AM：${手动 ? '手动' : '自动'}</button>${开}
       </div>
       <p class="small">${手动
@@ -1024,7 +1093,7 @@ const 界面 = {
       ${本场战报Html(战报行, `第 ${b.回合数} 回合 · ${b.结果} · 共 ${b.记录.length} 条记录`)}
       ${this.本场记录Html()}
       ${typeof 录像 !== 'undefined' ? 录像.当前块Html() : ''}
-      <div class="acts">
+      <div class="acts" data-center="1">
         <button class="primary" data-act="再来一场">再来一场（换种子）</button>
         <button data-act="再来一场:${b.种子}">重放这一场（同种子）</button>
         <button data-act="去编队">改编队</button>
@@ -1197,7 +1266,7 @@ const 界面 = {
     return `<h3>${副标题 || '本场记录'}<span class="small">逐条记录（原文照抄，共 <b>${(场.记录 || []).length}</b> 条）</span></h3>
       <p class="small" data-log-summary="1">${战斗记录.摘要行(场)}</p>
       ${this.记录行Html(场)}
-      <div class="acts">
+      <div class="acts" data-center="1">
         <button data-act="复制记录">复制为文本</button>
         <button data-act="下载记录">下载 .txt</button>
       </div>
@@ -1224,7 +1293,7 @@ const 界面 = {
       return `<section class="card">
         <h3>作战记录<span class="small">第 ${Number(this.记录选) + 1} / ${表.length} 场（最老 = 第 1 场；最新 = 第 ${表.length} 场）</span></h3>
         ${this.记录块Html(场, '这一场')}
-        <div class="acts">
+        <div class="acts" data-center="1">
           <button class="primary" data-act="回战斗记录">← 回列表</button>
           <button data-act="回菜单">回菜单</button>
         </div>
@@ -1246,9 +1315,9 @@ const 界面 = {
       <h3>作战记录<span class="small">最近 <b>${表.length}</b> 场（最多留 ${战斗记录.场数上限} 场 /
         ${Math.round(战斗记录.容量上限 / 1024)} KB，超了从最老的丢）</span></h3>
       ${表.length
-        ? `<div class="picks" data-record-list="1">${卡}</div>`
+        ? `<div class="picks" data-center="1" data-record-list="1">${卡}</div>`
         : '<p class="small" data-record-empty="1">还没有作战记录。打完一场战斗就会自动存一份（<b>胜 / 败都存</b>）：完整逐条记录 + 种子 / 编成 / 方针 / 单位开关 —— 够复现这一场。</p>'}
-      <div class="acts">
+      <div class="acts" data-center="1">
         ${刚打的 ? '<button data-act="复制记录">复制刚打完那一场</button><button data-act="下载记录">下载刚打完那一场 .txt</button>' : ''}
         <button data-act="回菜单">回菜单</button>
       </div>
@@ -1993,3 +2062,57 @@ const 界面 = {
     return this.编队.出击;
   },
 };
+
+/* ============================================================================
+ * ★ 声音开关的点击兜底（作者 2026-10-13 拍板 A：「每一个画面都要有」）
+ * ----------------------------------------------------------------------------
+ * 为什么要这一层：**音乐鉴赏页是全屏层**（`audio/music-room.js` 的 `.modal`，
+ * `main.css:334` 是 `position:fixed; inset:0`），它把顶栏整个压在下面 ——
+ * 顶栏那一颗鼠标点不到。屏内那一颗（`声音行Html()`）虽然画在 `#screen` 里，
+ * 但鉴赏页打开时 `#screen` 也在它下面。
+ *
+ * 所以这里在 `document` 的**捕获阶段**接一次：只要点到的元素是 `.sndbtn` / `#btnSound`，
+ * 就地切一次声音开关（**公开方法** `音乐.切开关()` —— `96-音乐.js` 一个字节都没改），
+ * `preventDefault + stopPropagation` 之后鉴赏页自己那套监听不会跟着动。
+ *
+ * ★★ **不能让一颗按钮被切两次**（两次 = 没变）——所以先认「这颗是不是已经有人管」：
+ *   ① 顶栏那一颗（`#btnSound` / `[data-snd-top]`）：`96-音乐.js` 自己挂了 click → **这里不碰**；
+ *   ② 屏内那一颗（`.snd-inline`）在 `#screen` 里：`接线()` 的 `[data-act]` 委托 → **这里也不碰**
+ *      （测试替身里也是走这条，`tests/battle_ui.js` / `tests/map.js` 的「真派发点击」正是它）。
+ *   ③ 只剩**下面没有人接的**（例如被全屏鉴赏层压住、`#screen` 之外的那一份）才由这里兜底。
+ *
+ * 浏览器里只挂一次（`_挂了` 标记）；测试替身里 `document.addEventListener` 是空实现 ——
+ * 那种环境下**什么都不做**（屏内那一颗照旧走 `#screen` 上现成的 `data-act="声音"` 委托），
+ * 所以这一层对测试与离线路径**完全透明**。 */
+function 声音点击兜底() {
+  try {
+    if (typeof document === 'undefined' || !document.addEventListener) return false;
+    if (document._声音兜底挂了) return true;
+    document._声音兜底挂了 = true;
+    /* 提醒音乐层：这颗按钮**已经有人管**（顶栏由 `96-音乐.js` 管、屏内由 `接线()` 的委托管），
+       不要重复处理 —— 那会让一次点击切两次（等于没切）。`96-音乐.js` 一个字节都没改，这也是它自己的选择。 */
+    try { if (typeof 音乐 !== 'undefined' && 音乐) 音乐.有界面兜底 = true; } catch (e) {}
+    /** 这颗按钮是不是已经有人管了（顶栏由音乐层管、屏内由 `接线()` 的委托管）。 */
+    const 已有人管 = 钮 => {
+      if (!钮) return true;
+      if (钮.id === 'btnSound') return true;
+      if (typeof 钮.getAttribute === 'function' && 钮.getAttribute('data-snd-top') != null) return true;
+      const 屏 = (typeof $ === 'function') ? $('#screen') : null;
+      let n = 钮;
+      while (n) { if (屏 && n === 屏) return true; n = n.parentNode || null; }
+      return false;
+    };
+    document.addEventListener('click', e => {
+      const t = e && e.target;
+      const 钮 = (t && t.closest) ? (t.closest('.sndbtn') || (t.id === 'btnSound' ? t : null)) : null;
+      if (!钮 || 已有人管(钮)) return;               // 有人管的：走它自己那条路，这里一个字都不动
+      if (e.preventDefault) e.preventDefault();
+      if (e.stopPropagation) e.stopPropagation();
+      if (typeof 音乐 !== 'undefined' && 音乐 && typeof 音乐.切开关 === 'function') 音乐.切开关();
+      /* 屏内那一颗的文字立刻跟上（顶栏那一颗由 `96-音乐.js` 的 `写按钮()` 自己写）。 */
+      if (typeof 界面 !== 'undefined' && 界面 && typeof 界面.同步声音钮 === 'function') 界面.同步声音钮();
+    }, true);
+    return true;
+  } catch (e) { return false; }
+}
+声音点击兜底();

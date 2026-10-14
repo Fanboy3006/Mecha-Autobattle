@@ -349,6 +349,50 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .sndbtn[aria-pressed="false"]{color:var(--muted)}
 .sndbtn.on{border-color:var(--accent);color:var(--accent)}
 
+/* ============================================================================
+ * ★ 2026-10-13 作者亲手提的两条 UI 修改（B：「**所有可选项都需要集中在画面中间**」）
+ * ----------------------------------------------------------------------------
+ * 作者原话：「音乐关闭的按钮位置也不明显。每一个画面都要有，然后**所有可选项都需要集中在画面中间**，
+ * 这个是 UI 层面的修改」。这一节就是第二条：**只动布局与样式** ——
+ * 一个 `data-act` 值、一个动作名、一句屏的语义都没改（今天的界面 bug 全是那一族，不再碰）。
+ *
+ * 判据（测试读的就是它，口径写清）：**装选项的那些容器一律带 `data-center="1"`**
+ *   —— `data-center` 是这一节定的**显式标记**（不是靠位置 / 类名去猜），
+ *   测试 `tests/battle_ui.js` 第 [13] 段逐屏断言「这一屏里每一个动作容器的 HTML 里都带 `data-center="1"`」。
+ *   容器一共五族（`80-界面.js` / `92-肉鸽界面.js` 里一处一处标的）：
+ *     `.acts`（`.card .acts` / 编队屏 / 肉鸽各屏的按钮行）· `.cmds`（方针栏 / 单位开关 / 调参室的选择钮）·
+ *     `.picks`（候选卡片网格）· `.filters`（编队屏的等级 / 势力筛选）· `.snd-row`（每屏那一行声音开关）。
+ *
+ * 居中的手法（不改变可读与点击区域，只挪位置）：
+ *   · **按行居中**：容器 `display:flex; flex-wrap:wrap; justify-content:center`；
+ *   · **整块居中**：容器自己 `margin-left:auto; margin-right:auto` 并且给一个**最大宽度**
+ *     （`--opt-max`，默认 96ch 的可读宽度），于是标题贴着左边、按钮群落在画面中间那一竖条里；
+ *   · **网格居中**：`.picks` 三列 / 五列网格按 `justify-content:center` 收拢，卡片本身尺寸一点没动
+ *     （`.pick` 的 padding / 字号 / 边框都沿用上面那几段，点击区域不变）。
+ * 别的屏（战斗 / 顶栏 / 音乐鉴赏自己的样式）一个字节都不动。
+ * ========================================================================== */
+.opt-center{margin-left:auto;margin-right:auto;max-width:var(--opt-max,96ch)}
+.card .acts[data-center="1"]{justify-content:center;margin-left:auto;margin-right:auto;max-width:var(--opt-max,96ch)}
+/* ★ 兜底（同一套居中）：**卡片里的动作行一律居中**，即使那一处没标 `data-center`
+   —— 全仓库只有两处没标：`89-录像.js` 的三块与 `8a-上报.js` 的菜单块。
+   那两个文件是**别的线**的（录像线 / 上报线），界面这条线不越线去改它们，
+   所以居中在这里用**通用选择器**兜住：`.card .acts`（录像屏的 `<section class="card">` 里那三块）。 */
+.card .acts:not([data-center]){justify-content:center;margin-left:auto;margin-right:auto;max-width:var(--opt-max,96ch)}
+.cmds[data-center="1"]{justify-content:center;margin-left:auto;margin-right:auto;max-width:var(--opt-max,96ch)}
+.filters[data-center="1"]{justify-content:center;margin-left:auto;margin-right:auto;max-width:var(--opt-max,96ch)}
+.picks[data-center="1"]{justify-content:center;margin-left:auto;margin-right:auto;max-width:var(--opt-max,96ch)}
+/* 每一屏末尾那一行声音开关（`80-界面.js` 的 `声音行Html()`）：图标 + 文字，居中、好点 */
+.snd-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;
+  margin:12px auto 2px;padding-top:10px;border-top:1px dashed var(--line)}
+.snd-row .sndbtn{margin-left:0}
+.snd-inline{font-size:13px;padding:6px 14px}
+/* 顶栏那一排（`#ctrl`）也跟「选项集中在画面中间」一起居中 —— 顶栏的声音开关就在这一排里。
+   手法只在 `.bar` 这一层：左右两块用 `flex:1 1 auto` 平分空白、`.ctrl` 走 `margin:auto` 居中，
+   于是顶栏上的操作按钮（含声音开关）落在**画面中间**，而不是贴在右上角。 */
+.bar .brand{flex:1 1 auto}
+.bar .hud{flex:1 1 auto;justify-content:flex-end}
+.bar .ctrl{margin-left:auto;margin-right:auto;justify-content:center}
+
 /* 弹窗骨架：音乐鉴赏页（audio/music-room.js）自己只带页面内的样式，
    外面的 .modal / .dlg / .btn / .eyebrow 这些壳儿从战棋的 main.css:154-168 搬最小一份过来。 */
 .modal[hidden]{display:none}
@@ -378,12 +422,18 @@ button:disabled{opacity:.4;cursor:not-allowed}
   <header class="bar">
     <div class="brand">
       <span class="mark">机甲指挥</span>
-      <span class="ver">试作版 <span id="ver">v0.6.1</span> · <span id="ms">晋升+零件</span> 大地图上换（10→20→30 / 喷气背包·河谷祭祈…）</span>
+      <span class="ver">试作版 <span id="ver">v0.6.3</span> · <span id="ms">界面：声音开关常驻 + 选项居中</span></span>
     </div>
     <div class="hud" id="hud"></div>
-    <div class="ctrl" id="ctrl"></div>
-    <!-- 声音开关（M5）：读不到本地版权曲时整体不可用，按钮由 96-音乐.js 隐藏 -->
-    <button class="sndbtn" id="btnSound" aria-pressed="true" title="声音开关（按 M）">声音</button>
+    <div class="ctrl" id="ctrl">
+      <!-- ★ 2026-10-13 作者拍板「音乐开关要显眼、每一屏都有」：它跟着 `#ctrl` 一起**居中**
+           （`.ctrl` 的 margin:auto + justify-content:center，见 `main.css` 的「选项集中在画面中间」那一段），
+           所以顶栏中间就是 `.ctrl` 那一排按钮 + 这一颗「🔊 音乐：开」。
+           ★ 静态兜底：`80-界面.js` 的 `声音钮Html()` 画的正是这一份（页面上由它统一补上，见那一处的注释）。
+           文字口径：`96-音乐.js` 的 `写按钮()` 只写 '声音 / 静音'（`tests/audio.js` 第 [7] 段逐字钉着），
+           所以 `同步声音钮()` 认的是**开关状态**（`音乐.开关`），顺手把图标换掉。 -->
+      <button class="sndbtn" id="btnSound" data-snd-top="1" aria-pressed="true" title="音乐开关（按 M 也行）：点一下开 / 关">🔊 音乐：开</button>
+    </div>
   </header>
   <main class="main" id="screen"></main>
 </div>
@@ -3754,9 +3804,15 @@ window.MECHA_MUSIC_BASE = (typeof location !== 'undefined' && String(location.pa
 (() => {
 'use strict';
 
-/* ---------- 版本 / 里程碑（顶栏会显示，测试也会读） ---------- */
-const VERSION = '0.6.2';
-const MILESTONE = 'M6 平衡工具';
+/* ---------- 版本 / 里程碑（顶栏会显示，测试也会读） ----------
+ * ★ 2026-10-13 作者与统筹都点了这条：「两次改界面没动版本号 → 没法区分新旧版本」。
+ *   界面那两条（A 声音开关每一屏都常驻且显眼 / B 所有可选项集中在画面中间）落地，
+ *   **v0.6.2 → v0.6.3**；副标题（`MILESTONE`，顶栏 `#ms` 那一段）也换成本次改动的说法
+ *   （原来写死在「M6 平衡工具」那个里程碑上，两次界面改动都没动过它）。
+ *   ⚠ `tests/smoke.js` 第 [4] 段的白名单跟着加了一条（那是「顶栏文字被脚本填对了」的冒烟断言，
+ *     不是历史常量钉死 —— 见 `协作/协作框架.md` §16）。 */
+const VERSION = '0.6.3';
+const MILESTONE = '界面：声音开关常驻 + 选项居中';
 
 /* ---------- 小工具 ---------- */
 const $ = s => document.querySelector(s);
@@ -14780,8 +14836,8 @@ const 肉鸽界面 = {
       <b>${x.名}</b><small>${x.说明}</small></button>`).join('');
     return `<section class="card">
       <h3>选分队（方案第 7 节）<span class="small">分队决定**开局第一张券**与招募券的倾向；队伍上限 ${肉鸽数值.队伍上限} 台（上阵 9 格阵型，出击上限 ${出击上限初值} 台起、肉鸽部队每 ${每几级加一台} 级 +1，**等级那条最多 ${等级成长顶} 台**；7–9 台只能靠藏品的「出击上限 +1/+2」，**绝对封顶 ${绝对顶} 台**）</span></h3>
-      <div class="picks">${卡}</div>
-      <div class="acts">
+      <div class="picks" data-center="1">${卡}</div>
+      <div class="acts" data-center="1">
         <button class="primary" data-act="开新局"${this.分队ID ? '' : ' disabled'}>出发（新的一局）→</button>
         <button data-act="回菜单">回菜单</button>
       </div>
@@ -14918,7 +14974,7 @@ const 肉鸽界面 = {
         再点一次「使用」可以取消。</p>` : ''}
       <div class="gmap" data-gmap="1" data-cols="${R.地图.列数}" data-rows="${R.地图.行数}" style="--格数:${R.地图.列数}">${行们.join('')}</div>
       <p class="small">当前格：<b>${当前格 ? (节点类型表[当前格.类型] || {}).名 : '—'}</b>${当前格 ? `（${坐标文字(当前格)}）` : ''}${守军已清 ? '' : '　·　出口守军还没打掉，打掉它两个出口才放行'}　·　出口：${出口们.map(k => `${(节点类型表[R.地图.格[k].类型] || {}).名} ${坐标文字(R.地图.格[k])}`).join('、')}（<b>二选一</b>：尽头 = 剩余推进剂 ${R.推进剂} → 希望 +${R.推进剂 * 肉鸽数值.出口换希望}；小径 = 第 ${R.层 + 1} 层推进剂上限 +${肉鸽数值.出口小径加成}）　·　图例：${图例Html()}</p>
-      <div class="acts">${按钮 || '<span class="small">这一格没有可做的事，往别的格子走吧。</span>'}
+      <div class="acts" data-center="1">${按钮 || '<span class="small">这一格没有可做的事，往别的格子走吧。</span>'}
         <button data-act="去晋升">晋升（希望 ${R.希望}）</button>
         <button data-act="去记录" data-log-entry="1">记录（${(R.日志 || []).length} 条）</button>
         <!-- ★ 2026-10-12「记录导出」（作者要「检视我的游戏记录 + 理解我的游戏思路」）：
@@ -14970,7 +15026,7 @@ const 肉鸽界面 = {
         （一条一行、带序号，<b>最老的在最前</b>；正文一个字都没有改写）。
         拿它 + 作战记录就能复盘「走了哪条路、钱花在哪、什么时候晋升」。</p>
       ${this.日志导出反馈Html()}
-      <div class="acts">
+      <div class="acts" data-center="1">
         <button data-act="复制日志">复制为文本</button>
         <button data-act="下载日志">下载本局日志 .txt</button>
         <button data-act="记录清结果">清掉顶部那条结果（记录本身不清）</button>
@@ -15095,7 +15151,7 @@ const 肉鸽界面 = {
         所以按钮上写「N 希望 ＋ 1 张同类券」；**缺券点不动**（券与希望同时消耗 —— 券不是免费票，是类别选择权）。</p>
       <div class="rv-card"><h3>名册（${R.队伍.length} / ${肉鸽数值.队伍上限}）</h3>${行}</div>
       <p class="small">全场最便宜的下一档：${次序.length ? `${次序[0].名} Lv${次序[0].等级} → Lv${次序[0].到}（${次序[0].价} 希望 ＋ 1 张同类券）` : '（都已经 Lv30 了）'}</p>
-      <div class="acts"><button data-act="去招募">去招募（用券招人）</button>
+      <div class="acts" data-center="1"><button data-act="去招募">去招募（用券招人）</button>
         <button class="primary" data-act="回大地图">回大地图</button>
         <button data-act="存个档">存档</button></div>
       ${this.结果条Html()}
@@ -15136,7 +15192,7 @@ const 肉鸽界面 = {
       <div class="rv-card"><h3>手上的零件</h3>${行}</div>
       <p class="small">用法：点「使用」→ 回大地图 → 点高亮的格子（<b>不花推进剂</b>，照战棋 <code>30:6-16</code>；
         次数用光就自动消失）。</p>
-      <div class="acts"><button class="primary" data-act="回大地图">回大地图</button>
+      <div class="acts" data-center="1"><button class="primary" data-act="回大地图">回大地图</button>
         <button data-act="去晋升">晋升</button><button data-act="存个档">存档</button></div>
       ${this.结果条Html()}
       <details><summary class="small">战棋零件全表（13 件，逐条标了能不能用）</summary><div class="rv-card">${全}</div></details>
@@ -15184,12 +15240,12 @@ const 肉鸽界面 = {
         <code>94-零件.js</code> 的 <code>卖零件()</code> 早就写好了，这一版才接上界面）与
         原作的<b>刷新</b>（初始 4、每次 +4、每格最多 4 次）都做进来了；货架从 2 件提到 <b>${肉鸽数值.黑市货件数} 件</b>
         （原作诡意行商满档 4 件，见方案书 §3.4）。</p>
-      <div class="picks">${卡}</div>
-      <div class="acts">${刷行}<button class="primary" data-act="黑市离开">离开黑市</button><button data-act="回大地图">回大地图</button></div>
+      <div class="picks" data-center="1">${卡}</div>
+      <div class="acts" data-center="1">${刷行}<button class="primary" data-act="黑市离开">离开黑市</button><button data-act="回大地图">回大地图</button></div>
       <div class="rv-card"><h3>卖零件（${零件们.length} / ${R.零件箱 || 零件箱初值}）</h3>
         <p class="small">战棋 <code>30:105,119</code>：<b>自然物按估价</b>卖出，<b>其他零件一律 2 源碳结晶</b>。
           零件箱满了的时候，这是腾位置的地方。</p>
-        <div class="acts">${卖行 || '<span class="small">手上没有零件。</span>'}</div></div>
+        <div class="acts" data-center="1">${卖行 || '<span class="small">手上没有零件。</span>'}</div></div>
       ${this.结果条Html()}
     </section>`;
   },
@@ -15269,12 +15325,12 @@ const 肉鸽界面 = {
           <h3>可招募的机师（${候选.length} 名）<span class="small">${用中
             ? `点一下或者拖过来就招募（Lv${招募等级(R.层)}，用掉一张 ${券名(用中)}）`
             : '现在一张都点不了：先在上面选一张券'}</span></h3>
-          <div class="picks">${卡}</div>
+          <div class="picks" data-center="1">${卡}</div>
         </div>
         <div class="col 站位">
           <h3>当前队伍（${R.队伍.length} / ${肉鸽数值.队伍上限}）</h3>
           ${队 || '<p class="small">还没有人。</p>'}
-          <div class="acts"><button data-act="去晋升">去晋升（用券升级）</button>
+          <div class="acts" data-center="1"><button data-act="去晋升">去晋升（用券升级）</button>
             <button data-act="回大地图">先留着券，回大地图</button>
             <!-- ★ 2026-10-13：这一屏原来**只能**用券招人或拿希望换人，玩家站在招募站格上
                  除了招人没有第二条出口（招募站的「节点完成()」原本只在「用券招成」那一下才走）。
@@ -15298,7 +15354,7 @@ const 肉鸽界面 = {
     if (!R || 型 !== '事件') {
       return `<section class="card"><h3>奇遇</h3>
         <p>路上遇到一支友军残骸。你要：</p>
-        <div class="acts">
+        <div class="acts" data-center="1">
           <button class="primary" data-act="奇遇:收下 3 希望">收拢士气（希望 +3）</button>
           <button class="primary" data-act="奇遇:收下 10 源碳结晶">回收结晶（源碳 +10）</button>
           <button data-act="回大地图">离开</button>
@@ -15320,7 +15376,7 @@ const 肉鸽界面 = {
     return `<section class="card">
       <h3>事件${事 ? `：${事.名}` : ''}<span class="small">照抄战棋原版事件（30-移动与节点.js:123-129）/ 黑流树海（方案书 §1.6.2）</span></h3>
       ${事 ? `<p>${事.文}</p><p class="small">出处：<code>${事.出处}</code></p>` : '<p class="small">这一格没有事件。</p>'}
-      <div class="acts">${选}<button data-act="回大地图">先不选，回大地图</button></div>
+      <div class="acts" data-center="1">${选}<button data-act="回大地图">先不选，回大地图</button></div>
       ${拦们.length ? `<p class="small" data-事件拦="1"><b style="color:var(--enemy)">做不了的选项（按钮已变灰）</b>：${
         拦们.map(x => `「${x.文}」—— ${x.why}`).join('；')}</p>` : ''}
       <p class="small">★ 每一个选项都有代价（或者放弃一部分收益）：推进剂 / 作战耐久 / 源碳 / 经验 里换一样。
@@ -15351,7 +15407,7 @@ const 肉鸽界面 = {
         <li>推进剂：<b>${R.推进剂}</b> / ${推进剂上限(R)}　种子：<b>${R.种子}</b></li>
         <li>记录：<b>${(R.日志 || []).length}</b> 条（本局结束前可以随时在大地图上点「记录」翻）</li>
       </ul>
-      <div class="acts"><button class="primary" data-act="回菜单">回菜单</button><button data-act="去分队">再来一局</button>
+      <div class="acts" data-center="1"><button class="primary" data-act="回菜单">回菜单</button><button data-act="去分队">再来一局</button>
         <button data-act="去记录">看这局的记录</button>
         <button data-act="记录清结果">清掉上面那条结果</button></div>
     </section>`;
@@ -19451,9 +19507,15 @@ const 界面 = {
 
   刷() {
     const 屏 = $('#screen');
-    if (屏) 屏.innerHTML = this[this.屏 + '屏'] ? this[this.屏 + '屏']() : '';
+    /* ★ 2026-10-13（作者拍板 A）：**每一屏的选项区末尾都挂一行「🔊 音乐：开 / 🔇 音乐：关」**——
+       它画在 `#screen` **里面**，所以「每一个画面都要有」这条**不依赖顶栏**（顶栏那一颗读不到曲子时
+       会被 `96-音乐.js` 隐藏；音乐鉴赏那种盖住顶栏的全屏层也照样点得到屏内这一颗）。
+       一律加在屏本体之后：**屏自己的 HTML 一个字都没改**（只多这一行），老的 `data-act` 断言照旧能匹配。 */
+    if (屏) 屏.innerHTML = (this[this.屏 + '屏'] ? this[this.屏 + '屏']() : '') + this.声音行Html();
     this.刷顶栏(); this.刷控件();
     this.接线();
+    /* 顶栏那一颗也要显示成「🔊 音乐：开」这种**图标 + 文字**（`96-音乐.js` 只写 '声音 / 静音'，这里补图标）。 */
+    this.同步声音钮();
     return this;
   },
   刷顶栏() { const t = $('#hud'); if (t) t.innerHTML = this.顶栏(); },
@@ -19748,7 +19810,7 @@ const 界面 = {
     const d = this.弹窗;
     if (!d) return '';
     return `<div class="rv-card dlg"><h3>${d.标题}</h3><p class="small">${d.文本 || ''}</p>
-      <div class="acts">${(d.选项 || []).map(o => `<button data-act="弹窗:${o.值}">${o.名}</button>`).join('')}</div></div>`;
+      <div class="acts" data-center="1">${(d.选项 || []).map(o => `<button data-act="弹窗:${o.值}">${o.名}</button>`).join('')}</div></div>`;
   },
 
   /* ---------------- 顶栏 ---------------- */
@@ -19761,6 +19823,69 @@ const 界面 = {
     }
     return `<div class="chip"><span class="lbl">机师</span><b>${ALLY_T.length}</b></div><div class="chip"><span class="lbl">敌人</span><b>${Object.keys(ENEMY_T).length}</b></div>`;
   },
+  /* ---------------- ★ 声音开关：每一屏都有、而且显眼（作者 2026-10-13 亲手提的两条 UI 修改之 A） ----------------
+   * 作者原话：「**音乐关闭的按钮位置也不明显。每一个画面都要有**」「所有可选项都需要集中在画面中间」。
+   *
+   * **现状（改之前，逐处读过）**：开关全仓库**只有一颗** —— `src/shell.html:18` 的
+   *   `<button class="sndbtn" id="btnSound">声音</button>`，钉在**顶栏 `.bar` 最右**（`.ctrl` 之后）。
+   *   它由 `96-音乐.js` 的 `初始化()`（`src/js/96-音乐.js:83-101`）接线：点击 → `切开关()`（`:111-124`）、
+   *   `M` 键 → 同一处、偏好存 `localStorage['mecha-autobattle-sound']`。
+   *   ① 它**本来是全局的**（顶栏在 `#screen` 之外），但**长得不显眼**：只有两个字「声音 / 静音」、
+   *      贴在 `.ctrl` 后面（那一排按屏变来变去），而且**只有点了才知道状态**（文字是「声音」= 开着，
+   *      「静音」= 关着 —— 反过来读才对得上意思）；
+   *   ② **读不到曲子时它整颗被隐藏**（`96-音乐.js:91-93` 的 `钮.hidden = true`；测试环境就是这样，
+   *      `tests/audio.js` 第 [6] 段还逐字钉着这条降级）→ 那种机器上**一屏都看不到**这个开关；
+   *   ③ **盖住顶栏的屏点不到它**：音乐鉴赏页（`audio/music-room.js` 的 `.modal`，`main.css:334` 是
+   *      `position:fixed; inset:0` 的全屏层）把它整个压在下面。
+   *
+   * **改法（只动界面 / 布局层，`96-音乐.js` 一个字节都没动）**：
+   *   · 开关**统一由 `声音钮Html()` 画**：**图标 + 文字**（`🔊 音乐：开 / 🔇 音乐：关`），
+   *     `data-act="声音"` → 走**现成的动作表**（`动作表.声音` → `音乐.切开关()`，那条路一直在）；
+   *   · **每一屏的 `#screen` 末尾各画一颗**（`.snd-inline`，`界面.刷()` 里自动加）——
+   *     「每一个画面都要有」这条由它保证：**屏幕自己那段 HTML 里就有**，不靠顶栏在不在、也不靠顶栏可不可见；
+   *   · **顶栏那一颗也补成同款**（补图标 + 文字，不再只是「声音」两个字），并且挪进 `.ctrl` 里，
+   *     跟着「选项集中在画面中间」那条 CSS **一起居中** —— 一共两处，一屏都不少；
+   *   · `M` 键**既有行为一个字没动**（那一条在 `96-音乐.js` 的 `初始化()` 里）；音乐鉴赏那条全屏层
+   *     照样点得到：见文件末尾 `声音点击兜底()`（`document` 捕获层）。
+   *   · 每次 `刷()` 调一次 `同步声音钮()`：**从 `音乐.开关` 现读**（不重画屏、不动音乐层、不绑死它的按钮 HTML），
+   *     顶栏被音乐层隐藏时屏内那一颗照旧显示 —— 这台机器上读不到曲子时，开关仍然看得见、点得动。 */
+  /** 一颗开关要写的字：**图标 + 文字**（开着 🔊 / 关着 🔇 —— 文字说的是「现在的状态」，不是「点它会发生什么」）。 */
+  声音钮文字() { return (this.声音开着() ? '🔊 音乐：开' : '🔇 音乐：关'); },
+  /** 现在声音是开着还是关着（**只读** `音乐.开关`；取不到音乐层时按「开着」显示，绝不抛异常）。 */
+  声音开着() {
+    try { return !(typeof 音乐 !== 'undefined' && 音乐 && 音乐.开关 === false); } catch (e) { return true; }
+  },
+  /** 一颗声音开关（`data-center` 由外面那一行带 —— 「选项集中在画面中间」那一条的判据就是这个属性）。 */
+  声音钮Html(内联) {
+    const 开 = this.声音开着();
+    return `<button class="sndbtn${内联 ? ' snd-inline' : ''}${开 ? ' on' : ' off'}" data-act="声音"`
+      + ` aria-pressed="${开 ? 'true' : 'false'}" title="音乐开关（按 M 也行）：点一下开 / 关">${this.声音钮文字()}</button>`;
+  },
+  /** 每一屏最后一行的声音开关（居中；`data-center="1"` = `main.css` 里那条居中的判据）。 */
+  声音行Html() {
+    return `<div class="opt-center snd-row" data-center="1" data-snd-row="1">${this.声音钮Html(true)}`
+      + `<span class="small">点这里或者按 <b>M</b>：音乐开 / 关（这一屏就有，不用去顶栏找）</span></div>`;
+  },
+  /** 把页面上**每一颗**声音开关刷成现在的状态（顶栏那一颗 + 屏内那一颗）。
+   *  ★ 只写 `textContent` / `aria-pressed` / `class`：**不重画屏**、不动 `96-音乐.js` 的按钮逻辑。 */
+  同步声音钮() {
+    const 文 = this.声音钮文字(), 开 = this.声音开着();
+    const 刷一颗 = 钮 => {
+      if (!钮) return;
+      if (钮.textContent !== 文) 钮.textContent = 文;
+      if (typeof 钮.setAttribute === 'function') 钮.setAttribute('aria-pressed', 开 ? 'true' : 'false');
+      if (钮.classList && typeof 钮.classList.toggle === 'function') 钮.classList.toggle('on', 开);
+    };
+    try {
+      if (typeof $ === 'function') 刷一颗($('#btnSound'));                          // 顶栏那一颗（屏外、所有屏都在）
+      if (typeof document !== 'undefined' && document.querySelectorAll)
+        for (const 钮 of document.querySelectorAll('.snd-inline')) 刷一颗(钮);        // 每一屏那一颗
+    } catch (e) { /* 取不到 DOM（裸 Node / 测试替身）：一个字都不改，绝不抛 */ }
+    return 文;
+  },
+  /** 顶栏那一颗的图标也要跟着状态走（`96-音乐.js` 的 `写按钮()` **只写文字** '声音 / 静音' ——
+   *  那条口径是 `tests/audio.js` 第 [7] 段逐字钉着的，所以这里**不动它**；图标由 `同步声音钮()` 每屏补上）。 */
+
   控件() {
     if (this.屏 === '战斗') {
       const 播放中 = this.阶段 === '播放';
@@ -19804,7 +19929,7 @@ const 界面 = {
           单位层只有「大招：自动 / 保留」，天人另有 TRANS-AM）→ 看敌人意图 →「开打 ▶」自动打完。</li>
         <li><b>练习</b>：不进肉鸽，直接用编队界面挑一队打一场（试数值用）。</li>
       </ul>
-      <div class="acts">
+      <div class="acts" data-center="1">
         <button class="primary" data-act="去分队">新的一局（肉鸽）→</button>
         ${有存档 ? `<button data-act="继续上一局">继续上一局（第 ${肉鸽.读存档().层} 层）</button>` : ''}
         <button data-act="去编队">练习：直接编队打一场</button>
@@ -19898,12 +20023,12 @@ const 界面 = {
     return `<section class="编队屏">
       <div class="col 候选" data-drop="候选">
         <h3>${肉鸽模式 ? `名册（${候选.length} 台）` : `机师（${候选.length} 名）`}<span class="small">拖到右边格子里，或者点一名再点格子；格子之间也能拖（互换）</span></h3>
-        ${肉鸽模式 ? '' : `<div class="filters">
+        ${肉鸽模式 ? '' : `<div class="filters" data-center="1">
           ${[10, 20, 30].map(n => `<button class="mini${B.等级 === n ? ' on' : ''}" data-act="等级:${n}">Lv${n}</button>`).join('')}
           <span class="sep"></span>
           ${势力们.map(f => `<button class="mini${B.势力 === f ? ' on' : ''}" data-act="势力:${f}">${f}</button>`).join('')}
         </div>`}
-        <div class="picks">${列表}</div>
+        <div class="picks" data-center="1">${列表}</div>
       </div>
       <div class="col 站位">
         <h3>出击编队（${B.出击.length} / ${上限}）<span class="small">9 格阵型：上排 = 后排 5 格，下排 = 前排 4 格；${this.出击上限说明()}</span></h3>
@@ -19911,15 +20036,15 @@ const 界面 = {
              那两句提示设了也没人看得到。这里补一行（空的时候不画，别的屏一个字都不改）。 -->
         ${this.提示 ? `<p class="warn small" data-form-hint="1">${this.提示}</p>` : ''}
         <div class="grid">${格.join('')}</div>
-        <div class="acts">
+        <div class="acts" data-center="1">
           <button data-act="默认五人队">${肉鸽模式 ? `把名册前 ${上限} 台摆上` : `摆上前 ${上限} 台`}</button>
           <button data-act="清空">清空</button>
         </div>
         ${肉鸽模式 ? `<p class="small">这一场：第 ${肉鸽.RUN.层} 层 <b>${节点类型表[当前节点 && 当前节点.类型] ? 节点类型表[当前节点.类型].名 : '作战'}</b>（敌人由编成表随机抽；敌人等级按层数走）</p>
-          <div class="acts"><button class="primary" data-act="开战">开战 →</button><button data-act="回大地图">回大地图</button></div>`
+          <div class="acts" data-center="1"><button class="primary" data-act="开战">开战 →</button><button data-act="回大地图">回大地图</button></div>`
         : `<h3>敌方编成<span class="small">（方案第 10 节第 4 条：这 3 条是初稿，等作者配）</span></h3>
           <select id="编成选" data-act="编成" class="sel">${编成选项}</select>
-          <div class="acts"><button class="primary" data-act="开战">开战 →</button></div>`}
+          <div class="acts" data-center="1"><button class="primary" data-act="开战">开战 →</button></div>`}
         ${选中 ? `<p class="small">已选：${this.单位名(B.选中, 'ally')}（${B.选中}，速度 ${选中.速度}${选中.大招.length ? `，大招：${选中.大招.join('、')}，第 ${选中.开场} 回合起` : '，没有大招'}）</p>` : '<p class="small">还没选机师。</p>'}
       </div>
     </section>`;
@@ -19993,7 +20118,7 @@ const 界面 = {
     return `<div class="cmdpanel policybar">
       <h3>全队方针 · <b>${当前}</b>${目标 ? ` → ${目标.name}（${位名(目标.slot)}）` : ''}
         <span class="small">保持到改为止 · 单位层只有大招开关</span></h3>
-      <div class="cmds">${方针们.map(k => `<button class="mini${当前 === k ? ' on' : ''}"${可点 ? ` data-act="方针:${k}"` : ' disabled title="这一回合正在播放，等它播完才能改（方针保持到改为止）"'}>${k}</button>`).join('')}</div>
+      <div class="cmds" data-center="1">${方针们.map(k => `<button class="mini${当前 === k ? ' on' : ''}"${可点 ? ` data-act="方针:${k}"` : ' disabled title="这一回合正在播放，等它播完才能改（方针保持到改为止）"'}>${k}</button>`).join('')}</div>
       <p class="small">${一句[当前] || ''}${当前 === '集中攻击' ? (目标 ? '　目标已选。' : '　<b>还没点目标</b>：点一张敌方卡片。') : ''}
         ${可点 && this.选目标 ? '　<b>正在选目标：点一个敌人。</b>' : ''}${可点 ? '' : '　<b>播放中不能改方针</b>：这一回合播完就回到指令阶段。'}</p>
       ${回血预告}
@@ -20011,7 +20136,7 @@ const 界面 = {
     const c = this.当前指令(位);
     return `<div class="cmdpanel">
       <h3>单位开关 · ${u.name}<span class="small">${u.key} · ${u.tags.战斗分类} · ${位名(位)}</span></h3>
-      <div class="cmds"><button class="mini${c.保留大招 ? ' on' : ''}" data-act="大招:${位}">大招：${c.保留大招 ? '保留' : '自动'}</button></div>
+      <div class="cmds" data-center="1"><button class="mini${c.保留大招 ? ' on' : ''}" data-act="大招:${位}">大招：${c.保留大招 ? '保留' : '自动'}</button></div>
       ${this.天人开关(位, u, c)}
       <p class="small">「保留」= 这一回合不放这个大招（推迟，不是作废）。其余交给上面的全队方针。</p>
       ${this.提示 ? `<p class="warn small">${this.提示}</p>` : ''}
@@ -20034,7 +20159,7 @@ const 界面 = {
         + ` title="${判.可以 ? '点了就在本回合开' : '开不了：' + 判.原因}">`
         + `开 TRANS-AM${手.本回合开TRANSAM ? '（本回合已点）' : ''}${判.可以 ? '' : `（${判.原因}）`}</button>`
       : '';
-    return `<div class="cmds">
+    return `<div class="cmds" data-center="1">
         <button class="mini${手动 ? ' on' : ''}" data-act="TRANSAM:${位}">TRANS-AM：${手动 ? '手动' : '自动'}</button>${开}
       </div>
       <p class="small">${手动
@@ -20358,7 +20483,7 @@ const 界面 = {
       ${本场战报Html(战报行, `第 ${b.回合数} 回合 · ${b.结果} · 共 ${b.记录.length} 条记录`)}
       ${this.本场记录Html()}
       ${typeof 录像 !== 'undefined' ? 录像.当前块Html() : ''}
-      <div class="acts">
+      <div class="acts" data-center="1">
         <button class="primary" data-act="再来一场">再来一场（换种子）</button>
         <button data-act="再来一场:${b.种子}">重放这一场（同种子）</button>
         <button data-act="去编队">改编队</button>
@@ -20531,7 +20656,7 @@ const 界面 = {
     return `<h3>${副标题 || '本场记录'}<span class="small">逐条记录（原文照抄，共 <b>${(场.记录 || []).length}</b> 条）</span></h3>
       <p class="small" data-log-summary="1">${战斗记录.摘要行(场)}</p>
       ${this.记录行Html(场)}
-      <div class="acts">
+      <div class="acts" data-center="1">
         <button data-act="复制记录">复制为文本</button>
         <button data-act="下载记录">下载 .txt</button>
       </div>
@@ -20558,7 +20683,7 @@ const 界面 = {
       return `<section class="card">
         <h3>作战记录<span class="small">第 ${Number(this.记录选) + 1} / ${表.length} 场（最老 = 第 1 场；最新 = 第 ${表.length} 场）</span></h3>
         ${this.记录块Html(场, '这一场')}
-        <div class="acts">
+        <div class="acts" data-center="1">
           <button class="primary" data-act="回战斗记录">← 回列表</button>
           <button data-act="回菜单">回菜单</button>
         </div>
@@ -20580,9 +20705,9 @@ const 界面 = {
       <h3>作战记录<span class="small">最近 <b>${表.length}</b> 场（最多留 ${战斗记录.场数上限} 场 /
         ${Math.round(战斗记录.容量上限 / 1024)} KB，超了从最老的丢）</span></h3>
       ${表.length
-        ? `<div class="picks" data-record-list="1">${卡}</div>`
+        ? `<div class="picks" data-center="1" data-record-list="1">${卡}</div>`
         : '<p class="small" data-record-empty="1">还没有作战记录。打完一场战斗就会自动存一份（<b>胜 / 败都存</b>）：完整逐条记录 + 种子 / 编成 / 方针 / 单位开关 —— 够复现这一场。</p>'}
-      <div class="acts">
+      <div class="acts" data-center="1">
         ${刚打的 ? '<button data-act="复制记录">复制刚打完那一场</button><button data-act="下载记录">下载刚打完那一场 .txt</button>' : ''}
         <button data-act="回菜单">回菜单</button>
       </div>
@@ -21327,6 +21452,60 @@ const 界面 = {
     return this.编队.出击;
   },
 };
+
+/* ============================================================================
+ * ★ 声音开关的点击兜底（作者 2026-10-13 拍板 A：「每一个画面都要有」）
+ * ----------------------------------------------------------------------------
+ * 为什么要这一层：**音乐鉴赏页是全屏层**（`audio/music-room.js` 的 `.modal`，
+ * `main.css:334` 是 `position:fixed; inset:0`），它把顶栏整个压在下面 ——
+ * 顶栏那一颗鼠标点不到。屏内那一颗（`声音行Html()`）虽然画在 `#screen` 里，
+ * 但鉴赏页打开时 `#screen` 也在它下面。
+ *
+ * 所以这里在 `document` 的**捕获阶段**接一次：只要点到的元素是 `.sndbtn` / `#btnSound`，
+ * 就地切一次声音开关（**公开方法** `音乐.切开关()` —— `96-音乐.js` 一个字节都没改），
+ * `preventDefault + stopPropagation` 之后鉴赏页自己那套监听不会跟着动。
+ *
+ * ★★ **不能让一颗按钮被切两次**（两次 = 没变）——所以先认「这颗是不是已经有人管」：
+ *   ① 顶栏那一颗（`#btnSound` / `[data-snd-top]`）：`96-音乐.js` 自己挂了 click → **这里不碰**；
+ *   ② 屏内那一颗（`.snd-inline`）在 `#screen` 里：`接线()` 的 `[data-act]` 委托 → **这里也不碰**
+ *      （测试替身里也是走这条，`tests/battle_ui.js` / `tests/map.js` 的「真派发点击」正是它）。
+ *   ③ 只剩**下面没有人接的**（例如被全屏鉴赏层压住、`#screen` 之外的那一份）才由这里兜底。
+ *
+ * 浏览器里只挂一次（`_挂了` 标记）；测试替身里 `document.addEventListener` 是空实现 ——
+ * 那种环境下**什么都不做**（屏内那一颗照旧走 `#screen` 上现成的 `data-act="声音"` 委托），
+ * 所以这一层对测试与离线路径**完全透明**。 */
+function 声音点击兜底() {
+  try {
+    if (typeof document === 'undefined' || !document.addEventListener) return false;
+    if (document._声音兜底挂了) return true;
+    document._声音兜底挂了 = true;
+    /* 提醒音乐层：这颗按钮**已经有人管**（顶栏由 `96-音乐.js` 管、屏内由 `接线()` 的委托管），
+       不要重复处理 —— 那会让一次点击切两次（等于没切）。`96-音乐.js` 一个字节都没改，这也是它自己的选择。 */
+    try { if (typeof 音乐 !== 'undefined' && 音乐) 音乐.有界面兜底 = true; } catch (e) {}
+    /** 这颗按钮是不是已经有人管了（顶栏由音乐层管、屏内由 `接线()` 的委托管）。 */
+    const 已有人管 = 钮 => {
+      if (!钮) return true;
+      if (钮.id === 'btnSound') return true;
+      if (typeof 钮.getAttribute === 'function' && 钮.getAttribute('data-snd-top') != null) return true;
+      const 屏 = (typeof $ === 'function') ? $('#screen') : null;
+      let n = 钮;
+      while (n) { if (屏 && n === 屏) return true; n = n.parentNode || null; }
+      return false;
+    };
+    document.addEventListener('click', e => {
+      const t = e && e.target;
+      const 钮 = (t && t.closest) ? (t.closest('.sndbtn') || (t.id === 'btnSound' ? t : null)) : null;
+      if (!钮 || 已有人管(钮)) return;               // 有人管的：走它自己那条路，这里一个字都不动
+      if (e.preventDefault) e.preventDefault();
+      if (e.stopPropagation) e.stopPropagation();
+      if (typeof 音乐 !== 'undefined' && 音乐 && typeof 音乐.切开关 === 'function') 音乐.切开关();
+      /* 屏内那一颗的文字立刻跟上（顶栏那一颗由 `96-音乐.js` 的 `写按钮()` 自己写）。 */
+      if (typeof 界面 !== 'undefined' && 界面 && typeof 界面.同步声音钮 === 'function') 界面.同步声音钮();
+    }, true);
+    return true;
+  } catch (e) { return false; }
+}
+声音点击兜底();
 /* ============================================================================
  * 调参室（作者亲手调难度）· 模型层
  * ----------------------------------------------------------------------------
@@ -21990,14 +22169,14 @@ function 调参编队Html(界面对象) {
   }
   const 格 = [...行格.entries()].map(([r, 列表2]) => `<div class="row" style="--cols:${最大列数}">${列表2.join('')}</div>`).join('');
   return `<h4>我方（${B.出击.length} / ${调参出击上限}）<span class="small">拖到格子里，或点一名再点格子</span></h4>
-    <div class="filters">
+    <div class="filters" data-center="1">
       ${[10, 20, 30].map(n => `<button class="mini${B.等级 === n ? ' on' : ''}" data-act="等级:${n}">Lv${n}</button>`).join('')}
       <span class="sep"></span>
       ${势力们.map(f => `<button class="mini${B.势力 === f ? ' on' : ''}" data-act="势力:${f}">${f}</button>`).join('')}
     </div>
-    <div class="acts"><button data-act="默认五人队">默认五人队</button><button data-act="清空">清空</button></div>
+    <div class="acts" data-center="1"><button data-act="默认五人队">默认五人队</button><button data-act="清空">清空</button></div>
     <div class="tune-grid">${格}</div>
-    <div class="picks">${列表}</div>`;
+    <div class="picks" data-center="1">${列表}</div>`;
 }
 
 /** 左列：选战斗（§3.2）。 */
@@ -22022,14 +22201,14 @@ function 调参左列Html(界面对象) {
     `<button class="mini${s.方针 === p ? ' on' : ''}" data-act="调参室:方针:${encodeURIComponent(p)}">${p === 调参简单策略 ? '简单策略（第 1 回合全军防御 → 之后全军突击）' : p}</button>`).join('');
   return `<div class="col">
     <h3>① 选战斗</h3>
-    <h4>层</h4><div class="cmds">${层按钮}</div>
-    <h4>节点类型</h4><div class="cmds">${类型按钮}</div>
-    <h4>具体编成条目</h4><div class="cmds">${条目按钮}</div>
+    <h4>层</h4><div class="cmds" data-center="1">${层按钮}</div>
+    <h4>节点类型</h4><div class="cmds" data-center="1">${类型按钮}</div>
+    <h4>具体编成条目</h4><div class="cmds" data-center="1">${条目按钮}</div>
     ${候选.length ? '' : '<p class="warn small">这一层没有这个类型的编成：换一层或换一个类型。</p>'}
     <p class="small">${s.类型 === '终点'
       ? '「终点」= **第 4 层**的 Boss（蓝色大肥鱼那一档），层选择对它无效。'
       : `第 ${s.层} 层 ${s.类型}：${候选.length} 条编成（选「这一类全部」时，按场次轮着抽：第 1 场第 1 条、第 2 场第 2 条…）。`}</p>
-    <h4>方针（整场）</h4><div class="cmds">${方针钮}</div>
+    <h4>方针（整场）</h4><div class="cmds" data-center="1">${方针钮}</div>
     ${调参编队Html(界面对象)}
   </div>`;
 }
@@ -22056,7 +22235,7 @@ function 调参中列Html() {
       ${调参滑条Html(`Boss:${k}:伤害倍率`, '伤害倍率', b.伤害倍率 != null ? b.伤害倍率 : 基础.伤害倍率, 调参倍率范围, '×')}
       ${调参滑条Html(`Boss:${k}:阶段间隔`, '半血后间隔', b.阶段间隔 != null ? b.阶段间隔 : (阶段.大技能间隔 != null ? 阶段.大技能间隔 : 0), { 最小: 0, 最大: 12, 步: 1 }, ' 回合')}
       ${调参滑条Html(`Boss:${k}:阶段倍率`, '半血后倍率', b.阶段倍率 != null ? b.阶段倍率 : (阶段.伤害倍率 != null ? 阶段.伤害倍率 : 1), 调参倍率范围, '×')}
-      <div class="acts"><button class="mini" data-act="调参室:Boss清:${k}">这一台恢复正式表</button></div>
+      <div class="acts" data-center="1"><button class="mini" data-act="调参室:Boss清:${k}">这一台恢复正式表</button></div>
     </div>`;
   }).join('');
   const 敌人键们 = Object.keys(ENEMY_T).sort();
@@ -22082,7 +22261,7 @@ function 调参中列Html() {
     ${调参滑条Html(`覆盖底:${当前键}:HP倍率`, 'HP ×', 覆盖底.HP倍率, 调参倍率范围, '×')}
     ${调参滑条Html(`覆盖底:${当前键}:装甲倍率`, '装甲 ×', 覆盖底.装甲倍率, 调参倍率范围, '×')}
     ${调参滑条Html(`覆盖底:${当前键}:威力倍率`, '威力 ×', 覆盖底.威力倍率, 调参倍率范围, '×')}
-    <div class="acts"><button class="mini" data-act="调参室:覆盖加上:${当前键}">加上「${当前键}」的覆盖</button></div>
+    <div class="acts" data-center="1"><button class="mini" data-act="调参室:覆盖加上:${当前键}">加上「${当前键}」的覆盖</button></div>
     ${覆盖行 || '<p class="small">还没有任何按键覆盖。</p>'}
 
     <h4>Boss 脚本</h4>
@@ -22092,9 +22271,9 @@ function 调参中列Html() {
     ${调参滑条Html('回合上限', '上限', s.回合上限 != null ? s.回合上限 : 0, 调参回合上限范围, '')}
     <p class="small">0 = 用引擎自己那套（按敌方档位：杂兵/精锐 12、头目 11、Boss 11）。</p>
 
-    <h4>场次</h4><div class="cmds">${场次钮}</div>
+    <h4>场次</h4><div class="cmds" data-center="1">${场次钮}</div>
     <p class="small">种子从 1 开始连续（第 1 场种子 ${s.种子起}，共 ${s.场次} 场 → 到 ${s.种子起 + s.场次 - 1}）。</p>
-    <div class="acts">
+    <div class="acts" data-center="1">
       <button class="primary" data-act="调参室:跑">跑 ${s.场次} 场</button>
       <button data-act="调参室:清结果">清空结果</button>
       <button data-act="调参室:存储存">存进 localStorage</button>
@@ -22158,7 +22337,7 @@ function 调参右列Html() {
     </div>
     <div class="tune-card">
       <h4>交回给作者 / Claude</h4>
-      <div class="acts">
+      <div class="acts" data-center="1">
         <button class="primary" data-act="调参室:复制设置">复制设置</button>
         <button data-act="调参室:读回">读回这段文字</button>
       </div>

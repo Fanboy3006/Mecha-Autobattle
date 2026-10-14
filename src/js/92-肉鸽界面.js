@@ -134,8 +134,8 @@ const 肉鸽界面 = {
       <b>${x.名}</b><small>${x.说明}</small></button>`).join('');
     return `<section class="card">
       <h3>选分队（方案第 7 节）<span class="small">分队决定**开局第一张券**与招募券的倾向；队伍上限 ${肉鸽数值.队伍上限} 台（上阵 9 格阵型，出击上限 ${出击上限初值} 台起、肉鸽部队每 ${每几级加一台} 级 +1，**等级那条最多 ${等级成长顶} 台**；7–9 台只能靠藏品的「出击上限 +1/+2」，**绝对封顶 ${绝对顶} 台**）</span></h3>
-      <div class="picks">${卡}</div>
-      <div class="acts">
+      <div class="picks" data-center="1">${卡}</div>
+      <div class="acts" data-center="1">
         <button class="primary" data-act="开新局"${this.分队ID ? '' : ' disabled'}>出发（新的一局）→</button>
         <button data-act="回菜单">回菜单</button>
       </div>
@@ -272,7 +272,7 @@ const 肉鸽界面 = {
         再点一次「使用」可以取消。</p>` : ''}
       <div class="gmap" data-gmap="1" data-cols="${R.地图.列数}" data-rows="${R.地图.行数}" style="--格数:${R.地图.列数}">${行们.join('')}</div>
       <p class="small">当前格：<b>${当前格 ? (节点类型表[当前格.类型] || {}).名 : '—'}</b>${当前格 ? `（${坐标文字(当前格)}）` : ''}${守军已清 ? '' : '　·　出口守军还没打掉，打掉它两个出口才放行'}　·　出口：${出口们.map(k => `${(节点类型表[R.地图.格[k].类型] || {}).名} ${坐标文字(R.地图.格[k])}`).join('、')}（<b>二选一</b>：尽头 = 剩余推进剂 ${R.推进剂} → 希望 +${R.推进剂 * 肉鸽数值.出口换希望}；小径 = 第 ${R.层 + 1} 层推进剂上限 +${肉鸽数值.出口小径加成}）　·　图例：${图例Html()}</p>
-      <div class="acts">${按钮 || '<span class="small">这一格没有可做的事，往别的格子走吧。</span>'}
+      <div class="acts" data-center="1">${按钮 || '<span class="small">这一格没有可做的事，往别的格子走吧。</span>'}
         <button data-act="去晋升">晋升（希望 ${R.希望}）</button>
         <button data-act="去记录" data-log-entry="1">记录（${(R.日志 || []).length} 条）</button>
         <!-- ★ 2026-10-12「记录导出」（作者要「检视我的游戏记录 + 理解我的游戏思路」）：
@@ -324,7 +324,7 @@ const 肉鸽界面 = {
         （一条一行、带序号，<b>最老的在最前</b>；正文一个字都没有改写）。
         拿它 + 作战记录就能复盘「走了哪条路、钱花在哪、什么时候晋升」。</p>
       ${this.日志导出反馈Html()}
-      <div class="acts">
+      <div class="acts" data-center="1">
         <button data-act="复制日志">复制为文本</button>
         <button data-act="下载日志">下载本局日志 .txt</button>
         <button data-act="记录清结果">清掉顶部那条结果（记录本身不清）</button>
@@ -449,7 +449,7 @@ const 肉鸽界面 = {
         所以按钮上写「N 希望 ＋ 1 张同类券」；**缺券点不动**（券与希望同时消耗 —— 券不是免费票，是类别选择权）。</p>
       <div class="rv-card"><h3>名册（${R.队伍.length} / ${肉鸽数值.队伍上限}）</h3>${行}</div>
       <p class="small">全场最便宜的下一档：${次序.length ? `${次序[0].名} Lv${次序[0].等级} → Lv${次序[0].到}（${次序[0].价} 希望 ＋ 1 张同类券）` : '（都已经 Lv30 了）'}</p>
-      <div class="acts"><button data-act="去招募">去招募（用券招人）</button>
+      <div class="acts" data-center="1"><button data-act="去招募">去招募（用券招人）</button>
         <button class="primary" data-act="回大地图">回大地图</button>
         <button data-act="存个档">存档</button></div>
       ${this.结果条Html()}
@@ -490,7 +490,7 @@ const 肉鸽界面 = {
       <div class="rv-card"><h3>手上的零件</h3>${行}</div>
       <p class="small">用法：点「使用」→ 回大地图 → 点高亮的格子（<b>不花推进剂</b>，照战棋 <code>30:6-16</code>；
         次数用光就自动消失）。</p>
-      <div class="acts"><button class="primary" data-act="回大地图">回大地图</button>
+      <div class="acts" data-center="1"><button class="primary" data-act="回大地图">回大地图</button>
         <button data-act="去晋升">晋升</button><button data-act="存个档">存档</button></div>
       ${this.结果条Html()}
       <details><summary class="small">战棋零件全表（13 件，逐条标了能不能用）</summary><div class="rv-card">${全}</div></details>
@@ -538,12 +538,12 @@ const 肉鸽界面 = {
         <code>94-零件.js</code> 的 <code>卖零件()</code> 早就写好了，这一版才接上界面）与
         原作的<b>刷新</b>（初始 4、每次 +4、每格最多 4 次）都做进来了；货架从 2 件提到 <b>${肉鸽数值.黑市货件数} 件</b>
         （原作诡意行商满档 4 件，见方案书 §3.4）。</p>
-      <div class="picks">${卡}</div>
-      <div class="acts">${刷行}<button class="primary" data-act="黑市离开">离开黑市</button><button data-act="回大地图">回大地图</button></div>
+      <div class="picks" data-center="1">${卡}</div>
+      <div class="acts" data-center="1">${刷行}<button class="primary" data-act="黑市离开">离开黑市</button><button data-act="回大地图">回大地图</button></div>
       <div class="rv-card"><h3>卖零件（${零件们.length} / ${R.零件箱 || 零件箱初值}）</h3>
         <p class="small">战棋 <code>30:105,119</code>：<b>自然物按估价</b>卖出，<b>其他零件一律 2 源碳结晶</b>。
           零件箱满了的时候，这是腾位置的地方。</p>
-        <div class="acts">${卖行 || '<span class="small">手上没有零件。</span>'}</div></div>
+        <div class="acts" data-center="1">${卖行 || '<span class="small">手上没有零件。</span>'}</div></div>
       ${this.结果条Html()}
     </section>`;
   },
@@ -623,12 +623,12 @@ const 肉鸽界面 = {
           <h3>可招募的机师（${候选.length} 名）<span class="small">${用中
             ? `点一下或者拖过来就招募（Lv${招募等级(R.层)}，用掉一张 ${券名(用中)}）`
             : '现在一张都点不了：先在上面选一张券'}</span></h3>
-          <div class="picks">${卡}</div>
+          <div class="picks" data-center="1">${卡}</div>
         </div>
         <div class="col 站位">
           <h3>当前队伍（${R.队伍.length} / ${肉鸽数值.队伍上限}）</h3>
           ${队 || '<p class="small">还没有人。</p>'}
-          <div class="acts"><button data-act="去晋升">去晋升（用券升级）</button>
+          <div class="acts" data-center="1"><button data-act="去晋升">去晋升（用券升级）</button>
             <button data-act="回大地图">先留着券，回大地图</button>
             <!-- ★ 2026-10-13：这一屏原来**只能**用券招人或拿希望换人，玩家站在招募站格上
                  除了招人没有第二条出口（招募站的「节点完成()」原本只在「用券招成」那一下才走）。
@@ -652,7 +652,7 @@ const 肉鸽界面 = {
     if (!R || 型 !== '事件') {
       return `<section class="card"><h3>奇遇</h3>
         <p>路上遇到一支友军残骸。你要：</p>
-        <div class="acts">
+        <div class="acts" data-center="1">
           <button class="primary" data-act="奇遇:收下 3 希望">收拢士气（希望 +3）</button>
           <button class="primary" data-act="奇遇:收下 10 源碳结晶">回收结晶（源碳 +10）</button>
           <button data-act="回大地图">离开</button>
@@ -674,7 +674,7 @@ const 肉鸽界面 = {
     return `<section class="card">
       <h3>事件${事 ? `：${事.名}` : ''}<span class="small">照抄战棋原版事件（30-移动与节点.js:123-129）/ 黑流树海（方案书 §1.6.2）</span></h3>
       ${事 ? `<p>${事.文}</p><p class="small">出处：<code>${事.出处}</code></p>` : '<p class="small">这一格没有事件。</p>'}
-      <div class="acts">${选}<button data-act="回大地图">先不选，回大地图</button></div>
+      <div class="acts" data-center="1">${选}<button data-act="回大地图">先不选，回大地图</button></div>
       ${拦们.length ? `<p class="small" data-事件拦="1"><b style="color:var(--enemy)">做不了的选项（按钮已变灰）</b>：${
         拦们.map(x => `「${x.文}」—— ${x.why}`).join('；')}</p>` : ''}
       <p class="small">★ 每一个选项都有代价（或者放弃一部分收益）：推进剂 / 作战耐久 / 源碳 / 经验 里换一样。
@@ -705,7 +705,7 @@ const 肉鸽界面 = {
         <li>推进剂：<b>${R.推进剂}</b> / ${推进剂上限(R)}　种子：<b>${R.种子}</b></li>
         <li>记录：<b>${(R.日志 || []).length}</b> 条（本局结束前可以随时在大地图上点「记录」翻）</li>
       </ul>
-      <div class="acts"><button class="primary" data-act="回菜单">回菜单</button><button data-act="去分队">再来一局</button>
+      <div class="acts" data-center="1"><button class="primary" data-act="回菜单">回菜单</button><button data-act="去分队">再来一局</button>
         <button data-act="去记录">看这局的记录</button>
         <button data-act="记录清结果">清掉上面那条结果</button></div>
     </section>`;
