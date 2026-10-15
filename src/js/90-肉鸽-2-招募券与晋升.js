@@ -443,3 +443,61 @@ function 出口选择表(R) {
  *  （界面「记录屏」更窄：只画最近 `92-肉鸽界面.js` 的 `记录屏条数上限 = 200` 条。） */
 const 肉鸽日志上限 = 300;
 
+/* ============================================================================
+ * ★ 2026-10-13 **战术卡牌系统 P1 · 肉鸽招募/晋升 3 选 1 获牌**（0 `rng`）
+ * ----------------------------------------------------------------------------
+ * 接口登记 = `协作/接口约定.md` §26.2：
+ *   · `候选战术牌们(RUN, 机体键, 数量 = 3)`：从该机体的（职业牌 + 势力牌 + 角色牌）中筛出尚未在
+ *     `RUN.战术牌库` 中的牌（优先分别取 1 张职业牌、1 张势力牌、1 张角色牌，确定性排序，0 `rng`）；
+ *   · `选战术牌(RUN, cardId)`：将选中的牌并入 `RUN.战术牌库`。
+ * ========================================================================== */
+function 候选战术牌们(RUN, 机体键, 数量 = 3) {
+  const r = (RUN && typeof RUN === 'object') ? RUN : ((typeof 肉鸽 !== 'undefined' && 肉鸽.RUN) || null);
+  const 已有 = new Set(Array.isArray(r && r.战术牌库)
+    ? r.战术牌库.map(x => typeof x === 'string' ? x : (x && x.id)).filter(Boolean)
+    : []);
+  const info = typeof 提取单位三层信息 === 'function' ? 提取单位三层信息(机体键) : { 键: String(机体键 || ''), 职业: '', 势力: '' };
+  const 全表 = Array.isArray(战术卡牌表) ? 战术卡牌表 : [];
+  const 职业池 = 全表.filter(c => c && c.层级 === '职业' && c.归属 === info.职业 && !已有.has(c.id));
+  const 势力池 = 全表.filter(c => c && c.层级 === '势力' && c.归属 === info.势力 && !已有.has(c.id));
+  const 角色池 = 全表.filter(c => c && c.层级 === '角色' && c.归属 === info.键 && !已有.has(c.id));
+
+  const 选出 = [];
+  const 已选Id = new Set();
+  const 加一张 = c => {
+    if (!c || 已选Id.has(c.id) || 选出.length >= 数量) return;
+    已选Id.add(c.id);
+    选出.push(typeof 克隆战术牌 === 'function' ? 克隆战术牌(c) : Object.assign({}, c));
+  };
+  if (职业池.length) 加一张(职业池[0]);
+  if (势力池.length) 加一张(势力池[0]);
+  if (角色池.length) 加一张(角色池[0]);
+  for (const c of 职业池.concat(势力池, 角色池)) {
+    if (选出.length >= 数量) break;
+    加一张(c);
+  }
+  return 选出;
+}
+
+function 选战术牌(RUN, cardId) {
+  let r = RUN;
+  let id = cardId;
+  if (typeof RUN === 'string' && cardId === undefined) {
+    id = RUN;
+    r = (typeof 肉鸽 !== 'undefined' && 肉鸽.RUN) || null;
+  }
+  if (!r || typeof r !== 'object' || !id) return false;
+  const 全表 = Array.isArray(战术卡牌表) ? 战术卡牌表 : [];
+  const found = 全表.find(c => c && (c.id === id || c.名 === id));
+  if (!found) return false;
+  if (!Array.isArray(r.战术牌库)) r.战术牌库 = [];
+  if (!r.战术牌库.includes(found.id)) {
+    r.战术牌库.push(found.id);
+  }
+  if (Array.isArray(r.待选战术牌)) {
+    r.待选战术牌 = null;
+  }
+  return true;
+}
+
+

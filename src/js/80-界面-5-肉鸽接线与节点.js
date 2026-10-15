@@ -96,6 +96,27 @@
     this.刷();
     return this.ctx.全队憋大招;
   },
+  打战术牌(cardId) {
+    if (this.阶段 !== '指令' || !this.ctx) return false;
+    const r = 打战术牌(this.ctx, cardId);
+    if (!r || !r.成功) {
+      this.提示 = (r && r.原因) || '无法打出该战术牌。';
+      this.刷();
+      return false;
+    }
+    this.提示 = `发动【${r.牌.名}】（当前气势 ${r.气势}）：${r.牌.效果说明}`;
+    this.刷();
+    return r;
+  },
+  选战术牌(cardId) {
+    const R = (typeof 肉鸽 !== 'undefined' && 肉鸽.RUN) || null;
+    const ok = 选战术牌(R, cardId);
+    if (ok && typeof 肉鸽界面 !== 'undefined' && 肉鸽界面) {
+      肉鸽界面.设结果('成功', `已将战术牌【${cardId}】收入本局战术牌库（共 ${(R && R.战术牌库 ? R.战术牌库.length : 0)} 张）。`);
+    }
+    this.刷();
+    return ok;
+  },
   /* ★ TRANS-AM 的单位级开关（作者 2026-10-11 拍板「TRANS-AM 应该是单个单位开关的」；
      2026-10-12 起它和「大招：自动 / 保留」一起构成**单位层的全部**决策，§1.1）：
      ① `切TRANSAM(位)`：在「自动 / 手动」之间切（存开关表，逐回合保留；切回自动时清掉本回合那次点击）；

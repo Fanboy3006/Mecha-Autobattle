@@ -57,6 +57,10 @@
     const 后 = 重算名册属性(键).后;
     this.记(`${m.键} 晋升到 Lv${到}（−${价} 希望，剩 ${R.希望}；用掉一张 ${券名(找.券)}）：HP ${前.maxHp} → ${后.maxHp}、` +
       `装甲 ${前.armor} → ${后.armor}、防御 ${前.defense} → ${后.defense}、机动 ${前.mov} → ${后.mov}`);
+    if (typeof 战术卡牌开 === 'function' && 战术卡牌开() && typeof 候选战术牌们 === 'function') {
+      R.战术牌库 = Array.isArray(R.战术牌库) ? R.战术牌库 : [];
+      R.待选战术牌 = 候选战术牌们(R, 键, 3).map(c => c.id);
+    }
     this.存档();
     return { ok: true, 键, 名: allyName(键), 从, 到, 价, 前, 后, 券: 找.券, 券名: 券名(找.券), 券下标: 找.下标, 希望: R.希望 };
   },
@@ -142,6 +146,10 @@
     }
     /* 招募之后：把还没用掉的教范藏品用掉（照战棋 23b:130-134 的 relicPendingPromo） */
     if (typeof 用掉待晋升 === 'function') 用掉待晋升(R);
+    if (typeof 战术卡牌开 === 'function' && 战术卡牌开() && typeof 候选战术牌们 === 'function') {
+      R.战术牌库 = Array.isArray(R.战术牌库) ? R.战术牌库 : [];
+      R.待选战术牌 = 候选战术牌们(R, 键, 3).map(c => c.id);
+    }
     this.节点完成();
     return { ok: true, 费, 键, 券: 用券, 券名: 券名(用券), 券下标: 下标, 用券: true,
       带队核心: 是带队核心, 等级: 入队等级 };   // ★ 带队核心这两个字段给界面 / 测试用（不改任何既有字段）

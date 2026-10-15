@@ -73,6 +73,14 @@ function endTurn(ctx) {
      第一件 = 卫星国防军 SEED 的「每回合 +5」—— 战棋挂在**我方阶段开始**（17b:220-226），
      我们挂在回合结束：第 N 回合结束 = 第 N+1 回合开始，加点与次数和战棋一致。 */
   势力回合结束(ctx);
+  if (typeof 战术卡牌开 === 'function' && 战术卡牌开(ctx)) {
+    for (const c of (ctx.战术手牌 || [])) {
+      if (c && c.当前冷却 > 0) c.当前冷却 = Math.max(0, c.当前冷却 - 1);
+    }
+    if (typeof 检查条件发牌 === 'function') {
+      检查条件发牌(ctx, '回合结束', { 回合: ctx.turn });
+    }
+  }
 }
 
 /* ---------- 开场 ----------
@@ -139,6 +147,20 @@ function 开局(我方编成, 敌方编成, 种子, 单位开关表, 选项) {
   /* 势力特色（作者 2026-10-10；框架在 `72-势力.js`）：开场钩子 —— 本场状态清零 / 开场一次性效果。
      放在最后，所以「战斗开始」永远是第 1 条记录（测试与单点查询的逐条记录按这个数行）。 */
   势力开局(ctx);
+  if (选项 && typeof 选项 === 'object' && 选项.战术卡牌 !== undefined) {
+    ctx.选项 = Object.assign({}, ctx.选项, { 战术卡牌: !!选项.战术卡牌 });
+  }
+  if (typeof 战术卡牌开 === 'function' && 战术卡牌开(ctx) && typeof 生成队伍牌池 === 'function') {
+    ctx.战术卡牌开 = true;
+    const 默气 = Number(战术卡牌参数().初始默认气力);
+    ctx.气势 = (选项 && Number.isFinite(Number(选项.初始气势))) ? Number(选项.初始气势) : (Number.isFinite(默气) ? 默气 : 25);
+    const 池 = 生成队伍牌池(ctx.allies, 选项);
+    ctx.战术牌池 = 池.全部牌池;
+    ctx.战术手牌 = 池.初始手牌;
+    ctx.待触发战术牌 = 池.待触发牌;
+    ctx.已打出战术牌 = [];
+    ctx.累计未命中段数 = 0;
+  }
   return ctx;
 }
 

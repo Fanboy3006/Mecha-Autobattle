@@ -78,6 +78,32 @@
         </div>
         <p class="small tactic-forecast" data-tactic-forecast="1">${气预.文本}</p>`
       : '';
+    const 手牌开 = !!(this.ctx && typeof 战术卡牌开 === 'function' && 战术卡牌开(this.ctx));
+    const 手牌块 = 手牌开 ? (() => {
+      const 手牌们 = Array.isArray(this.ctx.战术手牌) ? this.ctx.战术手牌 : [];
+      const 待触发数 = Array.isArray(this.ctx.待触发战术牌) ? this.ctx.待触发战术牌.length : 0;
+      const 当前气 = Number(this.ctx.气势) || 0;
+      const 上限 = Number(战术卡牌参数().手牌总上限) || 8;
+      const 卡Html = 手牌们.map(c => {
+        const 耗 = Number(c.耗气) || 0;
+        const 回 = Number(c.回气) || 0;
+        const 够气 = 当前气 >= 耗 && (Number(c.当前冷却) || 0) <= 0 && (c.剩余次数 == null || c.剩余次数 > 0);
+        const 可打 = 可点 && 够气;
+        const 层类 = c.层级 === '职业' ? 'tier-class' : (c.层级 === '势力' ? 'tier-faction' : (c.层级 === '角色' ? 'tier-char' : 'tier-cmd'));
+        const 新类 = c.新触发 ? ' is-triggered' : '';
+        const 气标 = 回 > 0 ? (耗 > 0 ? `-${耗}/+${回}气` : `+${回}气`) : `${耗}气`;
+        return `<button class="tactical-card ${层类}${新类}${可打 ? ' ready' : ''}" data-act="打战术牌:${c.id}" data-card-id="${c.id}" data-tier="${c.层级}"${可打 ? '' : ' disabled'} title="【${c.名}】（${c.层级}·${c.归属}）${c.效果说明}">
+          <span class="tc-top"><span class="tc-tag">${c.精神标签 || c.层级}</span><span class="tc-cost">${气标}</span></span>
+          <b class="tc-name">${c.名}</b>
+          <span class="tc-sub">${c.层级}·${c.归属}${c.新触发 ? ' · ★条件触发' : ''}</span>
+          <span class="tc-desc">${c.效果说明}</span>
+        </button>`;
+      }).join('');
+      return `<div class="tactical-hand-bar" data-tactical-hand="1" data-hand-count="${手牌们.length}" data-pending-count="${待触发数}">
+        <div class="th-head"><span>战术手牌 <b>${手牌们.length}/${上限}</b></span><span class="small">当前气势 <b>${当前气}</b> · 待触发条件牌 <b>${待触发数}</b> 张</span></div>
+        <div class="th-cards">${卡Html || '<span class="small">（当前无可用手牌）</span>'}</div>
+      </div>`;
+    })() : '';
     return `<div class="cmdpanel policybar">
       <h3>全队方针 · <b>${当前}</b>${目标 ? ` → ${目标.name}（${位名(目标.slot)}）` : ''}
         <span class="small">保持到改为止 · 单位层只有大招开关</span></h3>
@@ -85,6 +111,7 @@
       <p class="small">${一句[当前] || ''}${当前 === '集中攻击' ? (目标 ? '　目标已选。' : '　<b>还没点目标</b>：点一张敌方卡片。') : ''}
         ${可点 && this.选目标 ? '　<b>正在选目标：点一个敌人。</b>' : ''}${可点 ? '' : '　<b>播放中不能改方针</b>：这一回合播完就回到指令阶段。'}</p>
       ${气势块}
+      ${手牌块}
       ${回血预告}
       ${可点 && this.提示 ? `<p class="warn small">${this.提示}</p>` : ''}
     </div>`;

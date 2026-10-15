@@ -532,3 +532,599 @@ function 应用全场词条(ctx) {
   return 台;
 }
 
+/* ============================================================================
+ * ★ 2026-10-13 **战术卡牌系统 P1**：手牌生成、条件触发发牌与打牌结算（0 `rng`）
+ * ----------------------------------------------------------------------------
+ * 接口登记 = `协作/接口约定.md` §26；设计文档 = `docs/设计/战术卡牌系统.md`。
+ * ★ 红线：`战术卡牌开(ctx) === false`（默认）时绝不写任何记录、不改气势初值，
+ *   保证既有 47 场默认路径 `2788` 条记录逐字节不变。
+ * ========================================================================== */
+function 提取单位三层信息(u) {
+  if (!u) return { 键: '', 职业: '', 势力: '' };
+  const 键 = typeof u === 'string' ? u : (u.tplKey || u.key || u.mech || u.键 || '');
+  const tpl = (typeof tplOf === 'function' && 键) ? tplOf(键) : null;
+  const 职业 = (u.tags && u.tags.战斗分类) || u.职业 || (tpl && tpl.tags && tpl.tags.战斗分类) || '';
+  const 势力 = (u.tags && u.tags.势力) || u.势力 || (tpl && tpl.tags && tpl.tags.势力) || '';
+  return { 键, 职业, 势力 };
+}
+
+function 克隆战术牌(c) {
+  if (!c) return null;
+  return Object.assign({}, c, {
+    剩余次数: c.限次 != null ? Number(c.限次) : 1,
+    当前冷却: 0,
+    新触发: false,
+    触发回合: null,
+  });
+}
+
+function 生成队伍牌池(allies, 选项) {
+  const 列表 = Array.isArray(allies) ? allies : [];
+  const 职业集 = new Set();
+  const 势力集 = new Set();
+  const 角色集 = new Set();
+  for (const u of 列表) {
+    const info = 提取单位三层信息(u);
+    if (info.职业) 职业集.add(info.职业);
+    if (info.势力) 势力集.add(info.势力);
+    if (info.键) 角色集.add(info.键);
+  }
+  const 全表 = Array.isArray(战术卡牌表) ? 战术卡牌表 : [];
+  const 已选原始 = (选项 && Array.isArray(选项.已选战术牌) && 选项.已选战术牌.length)
+    ? 选项.已选战术牌
+    : ((选项 && Array.isArray(选项.战术牌库) && 选项.战术牌库.length)
+      ? 选项.战术牌库
+      : (( (!选项 || 选项.使用肉鸽牌库 !== false) && typeof 肉鸽 !== 'undefined' && 肉鸽.RUN && Array.isArray(肉鸽.RUN.战术牌库) && 肉鸽.RUN.战术牌库.length)
+        ? 肉鸽.RUN.战术牌库 : []));
+  const 已选Ids = 已选原始.map(x => typeof x === 'string' ? x : (x && x.id)).filter(Boolean);
+
+  const 已收 = new Set();
+  const 全部牌池 = [];
+  for (const id of 已选Ids) {
+    const found = 全表.find(c => c && c.id === id);
+    if (found && !已收.has(found.id)) {
+      已收.add(found.id);
+      全部牌池.push(克隆战术牌(found));
+    }
+  }
+  for (const c of 全表) {
+    if (!c || 已收.has(c.id)) continue;
+    const 匹配 = (c.层级 === '职业' && 职业集.has(c.归属))
+      || (c.层级 === '势力' && 势力集.has(c.归属))
+      || (c.层级 === '角色' && 角色集.has(c.归属))
+      || (c.层级 === '统帅' && 选项 && 选项.含统帅牌);
+    if (匹配) {
+      已收.add(c.id);
+      全部牌池.push(克隆战术牌(c));
+    }
+  }
+  const 初始上限 = Number((选项 && 选项.初始手牌上限) || 战术卡牌参数().初始手牌上限) || 6;
+  const 初始手牌 = 全部牌池.filter(c => c.入牌 === '初始').slice(0, 初始上限).map(克隆战术牌);
+  const 待触发牌 = 全部牌池.filter(c => c.入牌 === '条件').map(克隆战术牌);
+  const 职业牌池 = 全部牌池.filter(c => c.层级 === '职业');
+  const 势力牌池 = 全部牌池.filter(c => c.层级 === '势力');
+  const 角色牌池 = 全部牌池.filter(c => c.层级 === '角色');
+  return {
+    全部牌池,
+    初始手牌,
+    待触发牌,
+    职业牌池,
+    势力牌池,
+    角色牌池,
+  };
+}
+
+function 单位匹配职业或势力(ctx, key, 目标值, 字段) {
+  if (!ctx || !key) return false;
+  const u = ((ctx.allies || []).concat(ctx.enemies || [])).find(x => x && (x.key === key || x.tplKey === key));
+  if (!u) return false;
+  const info = 提取单位三层信息(u);
+  return info[字段] === 目标值;
+}
+
+function 是否满足卡牌触发条件(card, ctx, 事件类型, 载荷) {
+  if (!card || !ctx) return false;
+  const code = card.触发条件码;
+  if (事件类型 && 事件类型 === code) return true;
+  const allies = (ctx.allies || []).filter(u => u && u.hp > 0);
+  const enemies = (ctx.enemies || []).filter(e => e && e.hp > 0);
+  const p = 载荷 || {};
+
+  switch (code) {
+    case 'HEAVY_LOW_HP': {
+      if (p.目标 && p.目标.side === 'ally' && 职业是(p.目标, '重装') && p.目标.maxHp > 0 && (p.目标.hp / p.目标.maxHp) < 0.65) return true;
+      return (ctx.allies || []).some(u => u && u.maxHp > 0 && 职业是(u, '重装') && u.hp > 0 && (u.hp / u.maxHp) < 0.65);
+    }
+    case 'GUARD_KILL_OR_CRIT': {
+      if (p.攻击者 && p.攻击者.side === 'ally' && 职业是(p.攻击者, '近卫') && (p.击破 || (Number(p.暴击) || 0) > 0)) return true;
+      return (ctx.log || []).some(r => r && r.单位方 === 'ally' && (
+        r.类型 === '连斩' || (r.类型 === '攻击' && (Number(r.暴击) || 0) > 0 && 单位匹配职业或势力(ctx, r.单位, '近卫', '职业'))
+      ));
+    }
+    case 'ANY_MISS': {
+      if ((Number(ctx.累计未命中段数) || 0) >= 1 || (Number(p.未命中段数) || 0) >= 1 || p.未命中) return true;
+      if (事件类型 === '未命中' || 事件类型 === '闪避') return true;
+      return (ctx.log || []).some(r => r && r.类型 === '攻击' && (r.命中 === false || (Number(r.段数) || 1) > (Number(r.命中段数) || (r.命中 ? 1 : 0))));
+    }
+    case 'ENEMY_MARK_2': {
+      if ((Number(p.层数) || 0) >= 2) return true;
+      return enemies.some(e => {
+        const 经 = typeof 标定经济层数 === 'function' ? 标定经济层数(e) : 0;
+        const 秘 = (e.debuffs || []).filter(b => b && String(b.src || '').includes('秘银')).length;
+        return 经 >= 2 || 秘 >= 2 || (Number(e.标定层数) || 0) >= 2;
+      });
+    }
+    case 'CMD_TURN2_OR_ENEMY3': {
+      return (Number(ctx.turn) || 1) >= 2 || enemies.length >= 3;
+    }
+    case 'SPEC_HIT': {
+      if (p.攻击者 && p.攻击者.side === 'ally' && 职业是(p.攻击者, '特种') && p.命中) return true;
+      return (ctx.log || []).some(r => r && r.类型 === '攻击' && r.单位方 === 'ally' && r.命中 && 单位匹配职业或势力(ctx, r.单位, '特种', '职业'));
+    }
+    case 'SEED_30': {
+      if ((Number(p.SEED累计) || 0) >= 30) return true;
+      return (ctx.allies || []).some(u => {
+        if (!u) return false;
+        const 累 = typeof SEED累计 === 'function' ? SEED累计(u) : ((u.势力状态 && u.势力状态.卫星国防军 && u.势力状态.卫星国防军.累计) || 0);
+        const 觉 = typeof SEED已觉醒 === 'function' ? SEED已觉醒(u) : !!(u.势力状态 && u.势力状态.卫星国防军 && u.势力状态.卫星国防军.已觉醒);
+        return 累 >= 30 || 觉 || (Number(u.seed) || 0) >= 30;
+      });
+    }
+    case 'METEOR_SOLO': {
+      return allies.some(u => {
+        if (提取单位三层信息(u).势力 !== '流星小队') return false;
+        if (u.势力状态 && u.势力状态.流星小队 && u.势力状态.流星小队.单独行动) return true;
+        if (u.slot == null || typeof 相邻位 !== 'function') return false;
+        const 邻 = 相邻位(u.slot) || [];
+        const 挡 = typeof 遮挡位 === 'function' ? (遮挡位(u.slot) || []) : [];
+        const 禁 = new Set(邻.concat(挡));
+        return !allies.some(other => other !== u && 禁.has(other.slot));
+      });
+    }
+    case 'MOON_ECHO_OR_HIT': {
+      if (p.攻击者 && p.攻击者.side === 'ally' && 提取单位三层信息(p.攻击者).势力 === '月球王国' && (Number(p.伤害) || 0) > 0) return true;
+      return (ctx.log || []).some(r => r && (
+        r.类型 === '残月余响'
+        || (r.类型 === '势力' && r.势力 === '月球王国' && r.特色 === '残月的余响')
+        || (r.类型 === '攻击' && r.单位方 === 'ally' && (Number(r.伤害) || 0) > 0 && 单位匹配职业或势力(ctx, r.单位, '月球王国', '势力'))
+      ));
+    }
+    case 'CB_TRANSAM_OR_HIT': {
+      if (p.目标 && p.目标.side === 'ally' && 提取单位三层信息(p.目标).势力 === '天人' && (Number(p.伤害) || 0) > 0) return true;
+      return (ctx.allies || []).some(u => u && 提取单位三层信息(u).势力 === '天人' && (
+        (typeof 天人激活 === 'function' && 天人激活(u))
+        || (u.势力状态 && u.势力状态.天人 && u.势力状态.天人.激活)
+        || (u.maxHp > 0 && u.hp < u.maxHp)
+      ));
+    }
+    case 'ATX_MISS_2': {
+      const 累计 = Number(ctx.累计未命中段数) || 0;
+      if (累计 >= 2) return true;
+      const 日志未中 = (ctx.log || []).filter(r => r && r.类型 === '攻击').reduce((s, r) => {
+        const hits = Number(r.段数) || 1;
+        const landed = r.命中 === false ? 0 : (r.命中段数 != null ? Number(r.命中段数) : 1);
+        return s + Math.max(0, hits - landed);
+      }, 0);
+      return 日志未中 >= 2;
+    }
+    case 'MITH_MARK': {
+      if (p.攻击者 && p.攻击者.side === 'ally' && 提取单位三层信息(p.攻击者).势力 === '秘银' && p.命中) return true;
+      return (ctx.log || []).some(r => r && (
+        (r.类型 === '势力' && r.势力 === '秘银')
+        || (r.类型 === '标定' && 单位匹配职业或势力(ctx, r.单位 || r.引爆键, '秘银', '势力'))
+      ));
+    }
+    case 'CB1_HIT_OR_TA': {
+      if (p.攻击者 && (p.攻击者.key === 'CB1' || p.攻击者.tplKey === 'CB1') && (Number(p.伤害) || 0) > 0) return true;
+      return (ctx.allies || []).some(u => u && (u.key === 'CB1' || u.tplKey === 'CB1') && (
+        u.已造成伤害 || (typeof 天人激活 === 'function' && 天人激活(u)) || (u.势力状态 && u.势力状态.天人 && u.势力状态.天人.激活)
+      )) || (ctx.log || []).some(r => r && r.单位 === 'CB1' && ((r.类型 === '攻击' && r.伤害 > 0) || (r.类型 === '势力' && r.特色 === 'TRANS-AM')));
+    }
+    case 'A1_HIT_OR_MISS': {
+      if ((Number(ctx.累计未命中段数) || 0) >= 1 || (Number(p.未命中段数) || 0) >= 1) return true;
+      return (ctx.allies || []).some(u => u && (u.key === 'A1' || u.tplKey === 'A1') && u.maxHp > 0 && u.hp < u.maxHp)
+        || (ctx.log || []).some(r => r && r.类型 === '攻击' && (r.命中 === false || (Number(r.段数) || 1) > (Number(r.命中段数) || 1)));
+    }
+    default:
+      return false;
+  }
+}
+
+function 检查条件发牌(ctx, 事件类型, 载荷) {
+  if (!ctx || !战术卡牌开(ctx)) return [];
+  if (!Array.isArray(ctx.待触发战术牌) || !ctx.待触发战术牌.length) return [];
+  if (!Array.isArray(ctx.战术手牌)) ctx.战术手牌 = [];
+  const 手牌总上限 = Number(战术卡牌参数().手牌总上限) || 8;
+  const 新发牌们 = [];
+  const 剩余待触发 = [];
+  for (const card of ctx.待触发战术牌) {
+    if (!card) continue;
+    if (ctx.战术手牌.length < 手牌总上限 && 是否满足卡牌触发条件(card, ctx, 事件类型, 载荷)) {
+      card.新触发 = true;
+      card.触发回合 = ctx.turn || 1;
+      ctx.战术手牌.push(card);
+      新发牌们.push(card);
+      if (Array.isArray(ctx.log)) {
+        pushLog(ctx, `〔发牌〕满足「${card.触发说明}」→ 获得战术牌【${card.名}】`, {
+          类型: '发牌',
+          卡牌ID: card.id,
+          牌名: card.名,
+          层级: card.层级,
+          归属: card.归属,
+          触发条件码: card.触发条件码,
+          触发说明: card.触发说明,
+          精神标签: card.精神标签,
+          回合: ctx.turn || 1,
+        });
+      }
+    } else {
+      剩余待触发.push(card);
+    }
+  }
+  ctx.待触发战术牌 = 剩余待触发;
+  return 新发牌们;
+}
+
+function 加卡牌护盾(u, 盾值) {
+  if (!u || !(盾值 > 0)) return 0;
+  const v = Math.round(盾值);
+  u.shield = Math.max(Number(u.shield) || 0, v);
+  u.shieldHp = (Number(u.shieldHp) || 0) + v;
+  return v;
+}
+
+function 减单位大招冷却(u, 减值, 清零 = false) {
+  if (!u || !Array.isArray(u.weapons)) return;
+  for (const e of u.weapons) {
+    if (!e || !e.t) continue;
+    const 是大 = (typeof isUltimate === 'function' && isUltimate(e.t)) || (e.t.unlock >= 20) || (e.t.cd > 0);
+    if (!是大) continue;
+    if (清零) {
+      e.cd = 0;
+      if (e.readyTurn && e.readyTurn > 1) e.readyTurn = 1;
+      u.holdUlt = false;
+    } else {
+      const n = Number(减值) || 1;
+      if (e.cd > 0) e.cd = Math.max(0, e.cd - n);
+      if (e.readyTurn && e.readyTurn > 1) e.readyTurn = Math.max(1, e.readyTurn - n);
+    }
+  }
+}
+
+function 卡牌加标定(目标, 层数, 来源名 = '战术牌', 补满 = false) {
+  if (!目标 || typeof 标定经济拿条 !== 'function') return 0;
+  const 上限 = typeof 标定层数上限 === 'function' ? 标定层数上限() : 3;
+  const d = 标定经济拿条(目标);
+  if (!d) return 0;
+  d.上限 = 上限;
+  const 前 = Math.max(0, Number(d.层数) || 0);
+  d.层数 = 补满 ? 上限 : Math.min(上限, 前 + (Number(层数) || 1));
+  if (!(d.来源们 || []).some(g => g && g.名 === 来源名)) {
+    d.来源们 = (d.来源们 || []).concat([{ 键: 'CARD', 名: 来源名, 方: 'ally', 怎么来的: '战术牌' }]);
+  }
+  return d.层数;
+}
+
+function 打战术牌(ctx, cardId) {
+  if (!ctx) return { 成功: false, 原因: '无战斗上下文' };
+  if (!Array.isArray(ctx.战术手牌)) ctx.战术手牌 = [];
+  let card = ctx.战术手牌.find(c => c && (c.id === cardId || c.名 === cardId));
+  if (!card && (cardId === 'CMD_ALL_OUT' || cardId === 'CMD_COVER')) {
+    const found = (战术卡牌表 || []).find(c => c && c.id === cardId);
+    if (found) {
+      card = 克隆战术牌(found);
+      ctx.战术手牌.push(card);
+    }
+  }
+  if (!card) return { 成功: false, 原因: '手牌中不存在该战术牌' };
+  if (card.剩余次数 != null && card.剩余次数 <= 0) return { 成功: false, 原因: '使用次数已用尽' };
+  if ((Number(card.当前冷却) || 0) > 0) return { 成功: false, 原因: '冷却中' };
+  const 耗 = Number(card.耗气) || 0;
+  const 回 = Number(card.回气) || 0;
+  const 气势前 = Number(ctx.气势) || 0;
+  if (气势前 < 耗) return { 成功: false, 原因: '气势不足' };
+
+  const 上限 = Number(气势总攻参数().上限) || 100;
+  ctx.气势 = Math.max(0, Math.min(上限, 气势前 - 耗 + 回));
+
+  const allies = livingOf('ally', ctx);
+  const enemies = livingOf('enemy', ctx);
+  const src = `卡牌:${card.id}`;
+
+  switch (card.id) {
+    case 'C_HEAVY_1': { // 【铁壁】前排及重装防御 +40、15% HP 护盾
+      for (const u of allies) {
+        if (unitRow(u) === ROW_FRONT || 职业是(u, '重装')) {
+          换同源增益(u, src, { def: 40, 剩余: 1 });
+          加卡牌护盾(u, Math.round(u.maxHp * 0.15));
+        }
+      }
+      break;
+    }
+    case 'C_HEAVY_2': { // 【根性】受创重装回复 25% HP 并防御 +30（2回合）
+      const 重装们 = allies.filter(u => 职业是(u, '重装'));
+      const 目标们 = 重装们.length ? 重装们 : (allies.length ? [allies.slice().sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0]] : []);
+      for (const u of 目标们) {
+        u.hp = Math.min(u.maxHp, u.hp + Math.round(u.maxHp * 0.25));
+        换同源增益(u, src, { def: 30, 剩余: 2 });
+      }
+      break;
+    }
+    case 'C_GUARD_1': { // 【热血】近卫造成伤害 ×1.35、命中 +15
+      for (const u of allies) {
+        if (职业是(u, '近卫')) 换同源增益(u, src, { dmgMul: 0.35, hit: 15, 剩余: 1 });
+      }
+      break;
+    }
+    case 'C_GUARD_2': { // 【连斩追击】全队近战伤害 +20% 且近卫大招冷却 −1
+      for (const u of allies) {
+        换同源增益(u, src, { meleeDmgMul: 0.20, 剩余: 1 });
+        if (职业是(u, '近卫')) 减单位大招冷却(u, 1);
+      }
+      break;
+    }
+    case 'C_VANG_1': { // 【集中】尖兵闪避 +25、命中 +15、暴击 +15%
+      for (const u of allies) {
+        if (职业是(u, '尖兵')) 换同源增益(u, src, { eva: 25, hit: 15, crit: 15, 剩余: 1 });
+      }
+      break;
+    }
+    case 'C_VANG_2': { // 【幻影反击】尖兵暴击率 +35%、伤害 +20%
+      for (const u of allies) {
+        if (职业是(u, '尖兵')) 换同源增益(u, src, { crit: 35, dmgMul: 0.20, 剩余: 1 });
+      }
+      break;
+    }
+    case 'C_SNIPE_1': { // 【必中·直击】狙击命中 +40、暴击 +20%、伤害 +20%
+      for (const u of allies) {
+        if (职业是(u, '狙击')) 换同源增益(u, src, { hit: 40, crit: 20, dmgMul: 0.20, 剩余: 1 });
+      }
+      break;
+    }
+    case 'C_SNIPE_2': { // 【精密锁敌】带标敌机追加 防御 −30（2回合）并补满至 3 层标定
+      const 带标 = enemies.filter(e => (typeof 标定经济层数 === 'function' ? 标定经济层数(e) : 0) > 0);
+      const 靶 = 带标.length ? 带标 : enemies;
+      for (const e of 靶) {
+        换同源增益(e, src, { def: -30, 剩余: 2 });
+        卡牌加标定(e, 3, card.名, true);
+      }
+      break;
+    }
+    case 'C_CMD_1': { // 【激励】全队 +25 气势（已加），本回合全队命中 +10
+      for (const u of allies) 换同源增益(u, src, { hit: 10, 剩余: 1 });
+      break;
+    }
+    case 'C_CMD_2': { // 【战术点名】敌方当前 HP 最高者与后排各挂 1 层标定 + 命中 −15
+      const 最高 = enemies.slice().sort((a, b) => b.hp - a.hp || a.slot - b.slot)[0];
+      const 靶集 = new Set(enemies.filter(e => unitRow(e) === ROW_BACK));
+      if (最高) 靶集.add(最高);
+      for (const e of 靶集) {
+        卡牌加标定(e, 1, card.名);
+        换同源增益(e, src, { hit: -15, 剩余: 1 });
+      }
+      break;
+    }
+    case 'C_SPEC_1': { // 【扰乱】敌方全体挂 { src:'卡牌扰乱', hit: -20, turns: 1 }
+      for (const e of enemies) {
+        换同源增益(e, '卡牌扰乱', { hit: -20, turns: 1, 剩余: 1 });
+      }
+      break;
+    }
+    case 'C_SPEC_2': { // 【破甲引信】所有带标定敌机额外挂 { src:'破甲引信', def: -25, turns: 2 }
+      const 带标 = enemies.filter(e => (typeof 标定经济层数 === 'function' ? 标定经济层数(e) : 0) > 0);
+      const 靶 = 带标.length ? 带标 : enemies;
+      for (const e of 靶) {
+        换同源增益(e, '破甲引信', { def: -25, turns: 2, 剩余: 2 });
+      }
+      break;
+    }
+    case 'F_SEED_1': { // 【防线死守】卫星国防军及前排获得 15% 最大 HP 护盾
+      for (const u of allies) {
+        if (提取单位三层信息(u).势力 === '卫星国防军' || unitRow(u) === ROW_FRONT) {
+          加卡牌护盾(u, Math.round(u.maxHp * 0.15));
+        }
+      }
+      break;
+    }
+    case 'F_SEED_2': { // 【SEED·爆种】国防军成员伤害 +30%、闪避 +20、大招冷却 −1
+      for (const u of allies) {
+        if (提取单位三层信息(u).势力 === '卫星国防军') {
+          换同源增益(u, src, { dmgMul: 0.30, eva: 20, 剩余: 1 });
+          减单位大招冷却(u, 1);
+        }
+      }
+      break;
+    }
+    case 'F_METEOR_1': { // 【游击机动】流星小队闪避 +25、攻击能力 +25
+      for (const u of allies) {
+        if (提取单位三层信息(u).势力 === '流星小队') {
+          换同源增益(u, src, { eva: 25, dmg: 25, 剩余: 1 });
+        }
+      }
+      break;
+    }
+    case 'F_METEOR_2': { // 【孤狼突袭】流星小队暴击率 +30%、伤害 ×1.3
+      for (const u of allies) {
+        if (提取单位三层信息(u).势力 === '流星小队') {
+          换同源增益(u, src, { crit: 30, dmgMul: 0.30, 剩余: 1 });
+        }
+      }
+      break;
+    }
+    case 'F_MOON_1': { // 【月光祈愿·信赖】HP 比例最低单位回复 30% 最大 HP 并全队 +10 气势
+      if (allies.length) {
+        const 最低 = allies.slice().sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp) || a.slot - b.slot)[0];
+        最低.hp = Math.min(最低.maxHp, 最低.hp + Math.round(最低.maxHp * 0.30));
+      }
+      break;
+    }
+    case 'F_MOON_2': { // 【残月共鸣】月球王国成员伤害 +25%、防御 +20
+      for (const u of allies) {
+        if (提取单位三层信息(u).势力 === '月球王国') {
+          换同源增益(u, src, { dmgMul: 0.25, def: 20, 剩余: 1 });
+        }
+      }
+      break;
+    }
+    case 'F_CB_1': { // 【TRANS-AM 解放】激活在场天人机体 TRANS-AM 状态
+      for (const u of allies) {
+        if (提取单位三层信息(u).势力 === '天人') {
+          if (typeof 势力状态 === 'function') {
+            const 状 = 势力状态(u, '天人');
+            状.激活 = true;
+            状.剩余回合 = 2;
+            状.启动回合 = ctx.turn || 1;
+            状.结束回合 = (ctx.turn || 1) + 2;
+          }
+          换同源增益(u, src, { eva: 15, dmgMul: 0.30, 剩余: 2 });
+        }
+      }
+      break;
+    }
+    case 'F_CB_2': { // 【GN 粒子力场】天人机体 25% HP 护盾并大招冷却 −1
+      for (const u of allies) {
+        if (提取单位三层信息(u).势力 === '天人') {
+          加卡牌护盾(u, Math.round(u.maxHp * 0.25));
+          减单位大招冷却(u, 1);
+        }
+      }
+      break;
+    }
+    case 'F_ATX_1': { // 【好运加护·必闪】ATX 成员闪避 +25、暴击率 +20%
+      for (const u of allies) {
+        if (提取单位三层信息(u).势力 === 'ATX') {
+          换同源增益(u, src, { eva: 25, crit: 20, 剩余: 1 });
+        }
+      }
+      break;
+    }
+    case 'F_ATX_2': { // 【赌徒孤注】全队大招冷却 −2、本回合命中 +25
+      for (const u of allies) {
+        减单位大招冷却(u, 2);
+        换同源增益(u, src, { hit: 25, 剩余: 1 });
+      }
+      break;
+    }
+    case 'F_MITH_1': { // 【ECS 光学迷彩】秘银成员闪避 +25、命中 +15
+      for (const u of allies) {
+        if (提取单位三层信息(u).势力 === '秘银') {
+          换同源增益(u, src, { eva: 25, hit: 15, 剩余: 1 });
+        }
+      }
+      break;
+    }
+    case 'F_MITH_2': { // 【SRT 突击接力】全队秘银伤害 +25% 并给所有存活敌机挂 1 层通用标定
+      for (const u of allies) {
+        if (提取单位三层信息(u).势力 === '秘银') {
+          换同源增益(u, src, { dmgMul: 0.25, 剩余: 1 });
+        }
+      }
+      for (const e of enemies) 卡牌加标定(e, 1, card.名);
+      break;
+    }
+    case 'U_CB1': { // 【觉醒·七剑解放】刹那大招冷却清零、伤害 ×1.4、命中 +25
+      for (const u of allies) {
+        if (u.key === 'CB1' || u.tplKey === 'CB1') {
+          减单位大招冷却(u, 99, true);
+          换同源增益(u, src, { dmgMul: 0.40, hit: 25, 剩余: 1 });
+        }
+      }
+      break;
+    }
+    case 'U_CB2': { // 【乱射·狙击神技】洛克昂暴击率 +40%、伤害 ×1.35
+      for (const u of allies) {
+        if (u.key === 'CB2' || u.tplKey === 'CB2') {
+          换同源增益(u, src, { crit: 40, dmgMul: 0.35, 剩余: 1 });
+        }
+      }
+      break;
+    }
+    case 'U_M1': { // 【满月·星落】全队回复 15% HP、命中 +15，Feena 大招冷却 −2
+      for (const u of allies) {
+        u.hp = Math.min(u.maxHp, u.hp + Math.round(u.maxHp * 0.15));
+        换同源增益(u, src, { hit: 15, 剩余: 1 });
+        if (u.key === 'M1' || u.tplKey === 'M1') 减单位大招冷却(u, 2);
+      }
+      break;
+    }
+    case 'U_A1': { // 【王牌决断·魂】响介大招冷却清零且伤害 ×1.5
+      for (const u of allies) {
+        if (u.key === 'A1' || u.tplKey === 'A1') {
+          减单位大招冷却(u, 99, true);
+          换同源增益(u, src, { dmgMul: 0.50, 剩余: 1 });
+        }
+      }
+      break;
+    }
+    case 'U_S1': { // 【永恒之爱】全队回复 25% HP、清除负面减益并伤害 +25%
+      for (const u of allies) {
+        u.hp = Math.min(u.maxHp, u.hp + Math.round(u.maxHp * 0.25));
+        u.debuffs = [];
+        u.armorCut = 0;
+        if (Array.isArray(u.buffs)) u.buffs = u.buffs.filter(b => !(b && ((b.hit || 0) < 0 || (b.def || 0) < 0)));
+        换同源增益(u, src, { dmgMul: 0.25, 剩余: 1 });
+      }
+      break;
+    }
+    case 'U_B1': { // 【突击号令】宗介 20% HP 护盾、伤害 +25% 并给对位敌机挂 2 层标定
+      for (const u of allies) {
+        if (u.key === 'B1' || u.tplKey === 'B1') {
+          加卡牌护盾(u, Math.round(u.maxHp * 0.20));
+          换同源增益(u, src, { dmgMul: 0.25, 剩余: 1 });
+          const 同路敌 = enemies.find(e => colOfSlot(e.slot) === colOfSlot(u.slot)) || enemies[0];
+          if (同路敌) 卡牌加标定(同路敌, 2, card.名);
+        }
+      }
+      break;
+    }
+    case 'CMD_ALL_OUT': { // 【⚡全军总攻】
+      ctx.当前战术 = '总攻';
+      for (const u of allies) {
+        换同源增益(u, src, { dmgMul: 0.35, hit: 15, 剩余: 1 });
+        减单位大招冷却(u, 1);
+      }
+      break;
+    }
+    case 'CMD_COVER': { // 【🛡紧急掩护】
+      ctx.当前战术 = '掩护';
+      for (const u of allies) {
+        加卡牌护盾(u, Math.round(u.maxHp * 0.25));
+        u.debuffs = [];
+        u.armorCut = 0;
+      }
+      break;
+    }
+    default:
+      break;
+  }
+
+  card.剩余次数 = (card.剩余次数 != null ? Number(card.剩余次数) : 1) - 1;
+  card.当前冷却 = Number(card.冷却) || 1;
+  card.新触发 = false;
+  if (card.剩余次数 <= 0) {
+    ctx.战术手牌 = ctx.战术手牌.filter(c => c !== card);
+  }
+  if (!Array.isArray(ctx.已打出战术牌)) ctx.已打出战术牌 = [];
+  ctx.已打出战术牌.push(card.id);
+
+  const 气势字 = 回 > 0 ? `-${耗}/+${回}` : `-${耗}`;
+  if (Array.isArray(ctx.log)) {
+    pushLog(ctx, `〔战术牌〕发动【${card.名}】（气势 ${气势字}）：${card.效果说明}`, {
+      类型: '战术牌',
+      卡牌ID: card.id,
+      牌名: card.名,
+      层级: card.层级,
+      归属: card.归属,
+      精神标签: card.精神标签,
+      耗气: 耗,
+      回气: 回,
+      气势前,
+      气势后: ctx.气势,
+      效果说明: card.效果说明,
+      回合: ctx.turn || 1,
+    });
+  }
+  return { 成功: true, 牌: card, 气势: ctx.气势 };
+}
+
+

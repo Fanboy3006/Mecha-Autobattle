@@ -89,6 +89,9 @@ function 回合开始(ctx) {
      没有词条的编成这两句都是空转（**逐字不变**）。 */
   词条冷却延长(ctx);
   词条隐身刷新(ctx);
+  if (typeof 战术卡牌开 === 'function' && 战术卡牌开(ctx) && typeof 检查条件发牌 === 'function') {
+    检查条件发牌(ctx, '回合开始', { 回合: ctx.turn });
+  }
 }
 
 /* ---------- 增援（作者 2026-10-10 拍板：敌方被击坠后按波次补人） ----------
@@ -412,6 +415,24 @@ function resolveAction(actor, action, ctx) {
        ③ 没有镜甲敌人的战斗：`镜甲反弹()` 第一行就返回 0，**一个字段都不多**。
       ★ 2026-10-13：第 5 个参数把**这一发的武器**传下去 —— 词条键 `反弹` 的 `仅近战`（`2-EE`）要判射程。 */
     if (rec.字段.伤害 > 0) 镜甲反弹(ctx, actor, 实际, rec.字段, w);
+    if (typeof 战术卡牌开 === 'function' && 战术卡牌开(ctx) && typeof 检查条件发牌 === 'function') {
+      const 段数 = Number(rec.字段.段数) || 1;
+      const 命中段 = rec.字段.命中 === false ? 0 : (rec.字段.命中段数 != null ? Number(rec.字段.命中段数) : 1);
+      const 未中段 = Math.max(0, 段数 - 命中段);
+      if (未中段 > 0) ctx.累计未命中段数 = (Number(ctx.累计未命中段数) || 0) + 未中段;
+      if (rec.字段.伤害 > 0) actor.已造成伤害 = true;
+      检查条件发牌(ctx, '攻击后', {
+        攻击者: actor,
+        目标: 实际,
+        武器: w,
+        记录: rec.字段,
+        伤害: rec.字段.伤害,
+        命中: rec.字段.命中,
+        暴击: rec.字段.暴击,
+        击破: 打死了,
+        未命中段数: 未中段,
+      });
+    }
   }
   spendWeapon(actor, action.entry);
   /* ★ 2026-10-11 新加的势力钩子 `势力武器用后(ctx, 使用者, 条目, 武器)`（框架第 12 个，`72-势力.js`）：

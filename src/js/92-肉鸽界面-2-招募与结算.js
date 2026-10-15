@@ -79,6 +79,12 @@
         <span class="rv-chip${没券 ? ' warn' : ''}" data-tickets="1">招募券 <b>${券们.length}</b>${没券
           ? '<small>（一张都没有 —— 招募 / 晋升都要用券）</small>'
           : `<small>${券汇总文字(R)}</small>`}</span></span></h3>
+      ${(typeof 战术卡牌开 === 'function' && 战术卡牌开() && Array.isArray(R.待选战术牌) && R.待选战术牌.length)
+        ? `<div class="rv-card tactical-pick-box" data-tactical-pick="1"><h3>战术牌 3 选 1（招募/晋升奖励）</h3><div class="th-cards">${R.待选战术牌.map(cid => {
+            const c = (战术卡牌表 || []).find(x => x && x.id === cid);
+            if (!c) return '';
+            return `<button class="tactical-card ready" data-act="选战术牌:${c.id}" data-card-id="${c.id}"><span class="tc-top"><span class="tc-tag">${c.精神标签 || c.层级}</span><span class="tc-cost">${c.耗气}气</span></span><b class="tc-name">${c.名}</b><span class="tc-sub">${c.层级}·${c.归属}</span><span class="tc-desc">${c.效果说明}</span></button>`;
+          }).join('')}</div></div>` : ''}
       <div class="rv-card"><h3>手上的招募券（${券们.length}）<span class="small">点「选这张券」→ 下面的候选池只留这张券对得上的人；**「先留着」就是什么都不点**（券随时还能用来晋升）</span></h3>
         ${券卡}</div>
       <p class="small" data-tickets="1">${用中

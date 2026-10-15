@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "gameVersion": "0.6.11",
-  "rulesSignature": "r1:fe18ca10",
+  "rulesSignature": "r1:82cbf7db",
   "simulation": {
     "deterministic": true,
     "rngProvider": "mulberry32",
