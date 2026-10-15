@@ -1,0 +1,1526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>演出原型 · 阶段 1（三招一播放器）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+SC:wght@400;700&display=swap">
+<style>
+/* 版式照 demo-残月陨石.html：上面 GBA 比例舞台，下面控制条 + 拍子时间轴，单列。 */
+:root{
+  --bg:#0c0d16; --panel:#151827; --line:#2a2f48; --fg:#e8eaf2; --muted:#8f96ad;
+  --gold:#f2c45a; --gold-dim:#8a6e30;
+  --f-px:"Press Start 2P","Courier New",monospace;
+  --f-body:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--f-body);padding-block:20px 40px;padding-inline:16px;margin:0}
+.wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-direction:column;gap:6px}
+h1{margin:0;font-family:var(--f-px);font-weight:400;font-size:clamp(12px,2vw,17px);color:var(--gold);letter-spacing:.06em;line-height:1.6}
+h1 span{font-family:var(--f-body);font-weight:700;font-size:1.25em;letter-spacing:.02em}
+header p{margin:0;color:var(--muted);font-size:13px;line-height:1.7;max-width:78ch}
+.stage{width:100%;aspect-ratio:3/2;max-width:100%;background:#000;border:2px solid var(--line);border-radius:4px;overflow:hidden}
+canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+.controls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:12px 14px}
+.grp{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lbl{color:var(--muted);font-size:12px;letter-spacing:.08em}
+button{font:inherit;font-size:13px;color:var(--fg);background:#1e2236;border:1px solid var(--line);border-radius:3px;padding:6px 12px;cursor:pointer}
+button:hover{border-color:var(--gold-dim)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+button.primary{background:var(--gold);color:#1a1406;border-color:var(--gold);font-weight:700}
+button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
+input[type=range]{width:110px;accent-color:var(--gold)}
+.val{font-family:var(--f-px);font-size:10px;color:var(--gold);min-width:6ch}
+.tl{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.tl-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:12px}
+.tl-head b{font-family:var(--f-px);font-size:10px;color:var(--fg);font-weight:400}
+.track{position:relative;display:flex;height:40px;overflow:hidden;cursor:pointer;user-select:none;touch-action:none}
+.seg{border-right:2px solid var(--bg);background:#1f2438;display:flex;align-items:center;justify-content:center;min-width:0;font-size:11px;color:var(--muted);overflow:hidden;white-space:nowrap}
+.seg.on{background:#33301e;color:var(--gold)}
+.seg.key{background:#2e1c1c}
+.seg.key.on{background:#55291f;color:#ffd2b8}
+.seg.seg-hit{background:#243033}
+.seg.seg-hit.on{background:#1e4a48;color:#9ff0e0}
+.head{position:absolute;top:0;bottom:0;width:2px;background:var(--gold);pointer-events:none}
+.beats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 16px;font-size:12px;color:var(--muted)}
+.beats div{display:flex;gap:8px;min-width:0}
+.beats .t{font-family:var(--f-px);font-size:9px;line-height:18px;color:var(--fg);min-width:7ch}
+.note{font-size:12px;color:var(--muted);line-height:1.7;margin:0}
+code{font-family:var(--f-px);font-size:10px;color:var(--gold)}
+.io{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.io h2{margin:0;font-size:13px;color:var(--fg);font-weight:700}
+.io pre{margin:0;font-family:var(--f-px);font-size:10px;line-height:1.9;color:#c9d0e6;background:#0f1220;border:1px solid var(--line);border-radius:3px;padding:10px;overflow-x:auto;white-space:pre}
+.io .warn{color:#ffb060}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:760px){ .duo{grid-template-columns:1fr} }
+table.mod{width:100%;border-collapse:collapse;font-size:12px;color:var(--muted)}
+table.mod th,table.mod td{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left}
+table.mod th{color:var(--fg);font-weight:700}
+table.mod td.y{color:#7fe0a0}
+@media (max-width:520px){ .seg{font-size:0} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>STAGE 1 <span>三招 · 同一个播放器</span></h1>
+    <p>
+      演出线路线图<b>阶段 1</b>的交付：把 <code>demo-残月陨石.html</code> 拆成「<b>播放器 + 模块库 + 每招一份数据脚本</b>」，
+      再用同一套模块做出第二、三招（光束直射、近战乱舞），证明模块能复用。
+      画面照已定规则第 1 条：<b>240×160 原生、整数倍放大、不平滑</b>；时间照演出语法<b>语-9</b>的四段结构，
+      <b>命中时刻 T0 是唯一同步点</b>，停顿插在 T0 上、T0 之后的拍整体顺延。
+      上面切招，中间是拍子时间轴（点或拖跳到任意一拍），下面两个框是给 DSH 的接入信息（语-20）与本次运行的模块表。
+    </p>
+  </header>
+
+  <div class="stage"><canvas id="cv" width="240" height="160" aria-label="像素横版战斗演出"></canvas></div>
+
+  <div class="controls">
+    <div class="grp"><span class="lbl">招式</span><button id="mA" aria-pressed="true">大招·陨石</button><button id="mB" aria-pressed="false">光束直射</button><button id="mC" aria-pressed="false">近战乱舞</button></div>
+    <div class="grp"><button class="primary" id="play">▶ 播放（带音效）</button><button id="pause">暂停</button></div>
+    <div class="grp"><span class="lbl">结果</span><button id="rKill" aria-pressed="true">击破</button><button id="rLive" aria-pressed="false">未击破</button></div>
+    <div class="grp"><span class="lbl">速度</span>
+      <button data-sp="0.25" aria-pressed="false">¼</button><button data-sp="0.5" aria-pressed="false">½</button>
+      <button data-sp="1" aria-pressed="true">1×</button><button data-sp="2" aria-pressed="false">2×</button></div>
+    <div class="grp"><span class="lbl">命中停顿</span><input type="range" id="stop" min="0" max="250" step="10" value="100"><span class="val" id="stopV">100ms</span></div>
+    <div class="grp"><span class="lbl">震动</span><input type="range" id="shake" min="0" max="200" step="10" value="100"><span class="val" id="shakeV">100%</span></div>
+    <div class="grp"><span class="lbl">音效</span><button id="snd" aria-pressed="true">开</button></div>
+  </div>
+
+  <div class="tl">
+    <div class="tl-head"><span id="tlName">时间轴（1× 下的真实时长，点或拖动跳到那一拍）</span><span><b id="now">0</b> / <b id="total">0</b> ms</span></div>
+    <div class="track" id="track"><div class="head" id="head"></div></div>
+    <div class="beats" id="beats"></div>
+    <p class="note">红拍是这一招的命中时刻（T0），蓝绿拍是被压缩过的多段命中；拖到红拍上就能看清「命中停顿」把画面冻住了多久。</p>
+  </div>
+
+  <div class="duo">
+    <div class="io">
+      <h2>给 DSH 的接入信息（演出语法 语-20 / 语-15）</h2>
+      <pre id="ioOut"></pre>
+      <p class="note">上面 <b id="ioCount">—</b> 这一行是<b>接入时的唯一一处</b>：真实条数由 <code>85-播放.js</code> 从战斗记录里数出来填进去，
+      演出层只拿 <code>{脚本, 档, 输入}</code>。脚本里<b>一个伤害数字、一条战斗状态都没有</b> —— 血条落点和数字全从输入来。</p>
+    </div>
+    <div class="io">
+      <h2>本次运行的模块表（模块能复用的证据）</h2>
+      <table class="mod" id="modTab"></table>
+      <p class="note">打 <b class="y">✓</b> 的是这份脚本用到、并且在别的招里也挂上的模块；<b>核心</b>那一行是三招共用的同一个播放器，
+      它不认识任何一招 —— <code>选模板()</code> 只按脚本的 <code>模板</code> 字段找模块。</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+/* ============================================================================
+ * 演出原型 · 阶段 1（协作/演出/演出协作.md 第 5 节）    Claude 演出会话 2026-10-12
+ * ----------------------------------------------------------------------------
+ * 文件构成（自顶向下）：
+ *   一、核心   画布 / 数学 / 确定性随机（绝不碰 Math.random 与 ctx.rng → 语-13）
+ *   二、注册表 模块表（模板 / 镜头 / 特效 / HUD 都往里注册）
+ *   三、素材   字符点阵 → canvas（demo 的 Feena/小兵/陨石 + 雷萨/小兵）
+ *   四、世界   地面线 y=118、我方右敌方左、视差背景
+ *   五、镜头   cine（4 种镜头，语-8）
+ *   六、HUD    frame9 / hpBar / hud（不跟着震，语-5）
+ *   七、特效   弹道 / 冲击 / 击破 / 数字 / 印章 / 切入（被三招共用）
+ *   八、模板   summon_drop（陨石）/ shoot_beam（光束）/ melee_multi（乱舞）
+ *   九、脚本   每招一份数据（没写脚本的招按语-23 最后一列自动选模板）
+ *   十、时间   拍子表 → 命中停顿表 → 显示时间 ⇄ 内容时间（T0 唯一同步点）
+ *   十一、播放器 绘一帧 / 时间轴 UI / 播放循环 / 跳过 / 倍速
+ *   十二、自检   window.__演出（确定性抽样口，tests/演出.js 靠它跑帧）
+ * ========================================================================== */
+
+/* ===================== 一、核心 ===================== */
+const cv = document.getElementById('cv');
+const g = cv.getContext('2d');
+g.imageSmoothingEnabled = false;                    // 已定规则第 1 条
+const W = 240, H = 160;
+const GROUND = 118;                                 // 语-6：地面线
+const ENEMY_X = 70, ALLY_X = 330;                   // 语-6：世界坐标，我方右、敌方左
+const CAM_ALLY = 280, CAM_ENEMY = 116;
+
+const S = { stop: 100, shake: 1, speed: 1, kill: true, sound: true, 招: 'A' };
+const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const prog = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+const easeIn = t => t * t * t, easeOut = t => 1 - Math.pow(1 - t, 3);
+const easeInOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const r = Math.round;
+const step = (t, ms) => Math.floor(t / ms) * ms;    // 语-11：GBA 那种一顿一顿的观感
+/** 演出自己的伪随机：种子 = 战报种子 ^ 记录序号（语-13）。绝不调用 ctx.rng / Math.random。 */
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+const px = (x, y, c) => { g.fillStyle = c; g.fillRect(r(x), r(y), 1, 1); };
+const rect = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(r(x), r(y), r(w), r(h)); };
+function disc(cx, cy, rad, c, dither) {             // 像素圆，可选棋盘抖动
+  g.fillStyle = c; const R2 = rad * rad;
+  for (let y = -rad; y <= rad; y++) for (let x = -rad; x <= rad; x++) {
+    if (x * x + y * y > R2) continue;
+    if (dither && ((x + y + r(cx) + r(cy)) & 1)) continue;
+    g.fillRect(r(cx) + x, r(cy) + y, 1, 1);
+  }
+}
+function ring(cx, cy, rx, ry, c) {                  // 像素椭圆描边
+  g.fillStyle = c; const n = Math.max(12, r((rx + ry) * 3));
+  for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; g.fillRect(r(cx + Math.cos(a) * rx), r(cy + Math.sin(a) * ry), 1, 1); }
+}
+function line(x0, y0, x1, y1, c) {
+  const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+  g.fillStyle = c;
+  for (let i = 0; i <= n; i++) g.fillRect(r(x0 + (x1 - x0) * i / n), r(y0 + (y1 - y0) * i / n), 1, 1);
+}
+
+/* ===================== 二、模块注册表 ===================== */
+/* 三种东西都往这里注册，播放器和互相之间只按名字拿：
+ *   模板  = 一招怎么演（发 / 中 / 收三段的画面）  ← 阶段 1 做了 3 个
+ *   镜头  = 画面中心横向平移的曲线              ← 语-8 的 4 种
+ *   特效  = 弹体 / 命中 / 击破，被模板按名字点名  ← 三招共用
+ * 这样「300 招」只需要新增第九节的脚本数据；新增一种演法才需要新增模板。 */
+const 模块表 = { 模板: {}, 镜头: {}, 特效: {}, 核心: {} };
+const 注册 = (类, 名, 值) => { 模块表[类][名] = 值; return 值; };
+/** 每份脚本跑一遍：把「用到哪些模块」记下来，界面上的模块表直接读这个（不靠注释）。 */
+let 用到 = new Set();
+let 用到当前 = new Set();
+/** 当前这一帧的上下文（镜头要读冲刺区间，模板要读节奏）。 */
+let 当前甲 = null;
+const 选模板 = 名 => { 用到.add('模板:' + 名); return 模块表.模板[名]; };
+const 选镜头 = 名 => { 用到.add('镜头:' + 名); return 模块表.镜头[名]; };
+const 选特效 = 名 => { 用到.add('特效:' + 名); return 模块表.特效[名]; };
+const 选核心 = 名 => { 用到.add('核心:' + 名); return 模块表.核心[名]; };
+
+/* ===================== 三、素材 ===================== */
+/* 字符点阵 → canvas，自动加 1 像素深色描边（语-18）。朝向：资产一律画成面朝右，我方镜像由程序做。 */
+const PAL = {
+  K:'#141623', W:'#f2f4fa', L:'#c3cde3', B:'#8794b6', D:'#4d5878', G:'#f2c45a', g:'#a8742c', C:'#7ff0ff',
+  M:'#b4524a', m:'#5e2830', n:'#e3876a', Y:'#ffe066', w:'#ffffff', r:'#3a1e22', R:'#9aa0aa', k:'#555a66',
+  /* 雷萨（B1，影界紫）：V 紫 / P 亮紫 / E 能量芯 */
+  V:'#8f6adf', P:'#e45ad0', E:'#7ff0ff', Z:'#1b1727', z:'#2a2438',
+};
+function buildSprite(layers, w, h, outline = PAL.K, flip = false) {
+  const grid = Array.from({ length: h }, () => Array(w).fill(null));
+  for (const L of layers) L.grid.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (ch !== '.' && PAL[ch]) { const yy = y + L.y, xx = x + L.x; if (yy >= 0 && yy < h && xx >= 0 && xx < w) grid[yy][xx] = PAL[ch]; }
+  }));
+  const c = document.createElement('canvas'); c.width = w + 2; c.height = h + 2;
+  const q = c.getContext('2d');
+  const at = (x, y) => (y >= 0 && y < h && x >= 0 && x < w) ? grid[y][x] : null;
+  for (let y = -1; y <= h; y++) for (let x = -1; x <= w; x++) {
+    const v = at(x, y);
+    const fx = flip ? (w - 1 - x) : x;
+    if (v) { q.fillStyle = v; q.fillRect(fx + 1, y + 1, 1, 1); }
+    else if (at(x - 1, y) || at(x + 1, y) || at(x, y - 1) || at(x, y + 1)) { q.fillStyle = outline; q.fillRect(fx + 1, y + 1, 1, 1); }
+  }
+  return c;
+}
+function whiteOf(sp) { const c = document.createElement('canvas'); c.width = sp.width; c.height = sp.height; const q = c.getContext('2d'); q.drawImage(sp, 0, 0); q.globalCompositeOperation = 'source-in'; q.fillStyle = '#fff'; q.fillRect(0, 0, c.width, c.height); return c; }
+function tintOf(sp, color) { const c = document.createElement('canvas'); c.width = sp.width; c.height = sp.height; const q = c.getContext('2d'); q.drawImage(sp, 0, 0); q.globalCompositeOperation = 'source-in'; q.fillStyle = color; q.fillRect(0, 0, c.width, c.height); return c; }
+function ditherOf(sp) { const c = document.createElement('canvas'); c.width = sp.width; c.height = sp.height; const q = c.getContext('2d'); q.drawImage(sp, 0, 0); const d = q.getImageData(0, 0, c.width, c.height); for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) { if ((x + y) & 1) d.data[(y * c.width + x) * 4 + 3] = 0; } q.putImageData(d, 0, 0); return c; }
+function leanSprite(sp, k) {                         // 整排横移，做「后仰」
+  const c = document.createElement('canvas'); c.width = sp.width + 8; c.height = sp.height;
+  const q = c.getContext('2d');
+  for (let y = 0; y < sp.height; y++) { const dx = Math.round((sp.height - 1 - y) * k); q.drawImage(sp, 0, y, sp.width, 1, dx + 4, y, sp.width, 1); }
+  return c;
+}
+
+/* ---- demo 的 Feena（34×43）与小兵（30×28）---- */
+const FEENA = [
+'..........GGGGGGGG............',
+'........GG........GG..........',
+'........GG........GG..........',
+'..........GGGGGGGG............',
+'...........LLLLLL.............',
+'..........LWWWWWWL............',
+'.........LWWWWWWWWL...........',
+'........LWWWWWWWWWWL..........',
+'.......LWWWWWWWWWWWBL.........',
+'......LWWWWWWWWWWWWBBL........',
+'......DDDDDDDDDWWWWBBL........',
+'......DCCCCCCCDWWWWBBL........',
+'......DCWCCCCCDWWWWBBL........',
+'......DDDDDDDDDWWWWBBL........',
+'.......LWWWWWWWWWWWBBL..BB.....',
+'.......LLWGGWWWWWWBBL..BLB.....',
+'........LLLWWWWWWBBBL.BLLB.....',
+'.........DDLLLLLLBBD.BLLB......',
+'..........DDDDDDDD..BLLB.......',
+'.......LLLLDDDDLLLLBLB.........',
+'.....LWWWWBDDDDBWWWWLB.........',
+'....LWWWWWBWGGWBWWWWWL.........',
+'....LWWWWBWGGWBWWWWWL..........',
+'....BLLLLLBWWWWBLLLLLB.........',
+'..........BWWWWB...............',
+'.........DLWWWWLD..............',
+'.........DLWWWWLD..............',
+'........DLLWWWWLLD.............',
+'........DLWWWWWWLD.............',
+'.......DLWWWWWWWWLD............',
+'.......DLWWWGWWWWLD............',
+'......DLWWWWGWWWWWLD...........',
+'......DLWWWWGWWWWWLD...........',
+'.....DLWWWWWGWWWWWWLD..........',
+'.....DLWWWWWGWWWWWWLD..........',
+'....DLLWWWWWGWWWWWWLLD.........',
+'....DBLLLLLLGLLLLLLLBD.........',
+'....DBBBBBBBGBBBBBBBBD.........',
+'.....GGGGGGGGGGGGGGGG..........',
+'.........DBB....BBD............',
+'.........DBB....BBD............',
+'........DBBB...DBBB............',
+'.......DDDDD...DDDDD...........',
+];
+const ARM_DOWN = ['..LL..', '.LWWL.', 'LWWWWL', 'LWWWBL', '.LWWB.', '.LWWB.', '.BLLB.', '.DBBD.'];
+const ARM_UP = ['.DBBD.', '.BLLB.', '.LWWB.', '.LWWB.', '.LWWB.', '.LWWB.', '.LWWB.', '.LWWB.', 'LWWWBL', 'LWWWWL', '.LWWL.'];
+const GRUNT = [
+'.......mmmmmmmmm..............',
+'......mMMMMMMMMMm.............',
+'.....mMMnnMMMMMMMm............',
+'.....mMnnMMMMMMMMm............',
+'.....mmmmmmmmmmmmm............',
+'.....mrrrrrrrYYYrm............',
+'.....mrrrrrrrYwYrm............',
+'.....mmmmmmmmmmmmm............',
+'.....mMMMMMMMMMMMm............',
+'......mMMMMMMMMMm.............',
+'.......mmmmmmmmm..............',
+'..nnnnn..mmmmm..nnnnnnnn......',
+'.nMMMMMn.mMMMm.nMMMMMMMMn.....',
+'.nMMMMMMnMMMMMnMMMMMMMMMMn....',
+'.mMMMMMMMMMMMMMMMMMMMMMMMm....',
+'.mmMMMMMMMMMMMMMMMMMMMMMmm....',
+'..mmmMMMMMMYYMMMMMMMMmmmm.....',
+'....mMMMMMMYYMMMMMMMMm........',
+'....mMMMMMMMMMMMMMMMMm........',
+'.....mmMMMMMMMMMMMMmm.........',
+'.....mmmmmmmmmmmmmmmm.........',
+'......mMMMm....mMMMm..........',
+'......mMMMm....mMMMm..........',
+'......mMMMm....mMMMm..........',
+'.....mMMMMm....mMMMMm.........',
+'.....mMMMMm....mMMMMm.........',
+'.....mnnnnm....mnnnnm.........',
+'....mmmmmmmm..mmmmmmmm........',
+];
+const ROCK = ['...rrrr...', '..rkkkkr..', '.rkRkkkkr.', 'rkkkkRkkkr', 'rkRkkkkkkr', 'rkkkkkRkkr', 'rkRkkkkkr.', '.rkkkkkRr.', '..rkkkkr..', '...rrrr...'];
+
+/* ---- 雷萨（B1）：近战乱舞那一招的机体，来自 协作/演出/试用-stepfun-雷萨连斩.html ---- */
+const HEAD = [
+'.......zzzzzzz.......',
+'......zVVVVVVVz......',
+'.....zVVPPPVVVVz.....',
+'....zVVPPPPPPVVVz....',
+'....zVPPPPPPPVVVz....',
+'...zzVVVVVVVVVVVzz...',
+'..zVVVVVVVVVVVVVVVz..',
+'..zVVEEEEEEEEEEEVVz..',
+'..zVEEEEEEEEEEEEEVz..',
+'..zVEEwwwwwwwwwEEVz..',
+'..zVEEwKKKKKKKwEEVz..',
+'..zVEEwwwwwwwwwEEVz..',
+'..zVVEEEEEEEEEEEVVz..',
+'...zVVVVVVVVVVVVVz...',
+'....zzVVVVVVVVVzz....',
+'......zzzzzzzzz......',
+'....zPPz.....zPPz....',
+'...zPPPPz...zPPPPz...',
+'....zzzz.....zzzz....',
+'.....................',
+'.....................',
+];
+const TORSO_C = [
+'...zVVVVVVVVVVVz...',
+'..zVVVVVVVVVVVVVz..',
+'.zVVVVVVVVVVVVVVVz.',
+'.zVVVVVEEEEEVVVVVz.',
+'.zVVVVEEEEEEEVVVVz.',
+'.zVVVVEEEEEEEVVVVz.',
+'.zVVVVVEEEEEVVVVVz.',
+'.zVVVVVVVVVVVVVVVz.',
+'..zVVVVVVVVVVVVVz..',
+'...zPPPPPPPPPz.....',
+'....zVVVVVVVz......',
+'.....zzzzzzz.......',
+'....zVVVVVVVz......',
+'...zVVVVVVVVVz.....',
+'...zVVVVVVVVVz.....',
+];
+const LEGS_C = [
+'..zVVVz...zVVVz...',
+'..zVVVz...zVVVz...',
+'..zVVVz...zVVVz...',
+'..zVVVz...zVVVz...',
+'..zVVVz...zVVVz...',
+'.zVVVVz...zVVVVz..',
+'.zVVVVz...zVVVVz..',
+'.zVVVVVz.zVVVVVz..',
+'.zzzzzzz.zzzzzzz..',
+'.zKKKKKz.zKKKKKz..',
+'.zzzzzzz.zzzzzzz..',
+'..................',
+];
+const LEGS_DRAW = [
+'..zVVVz...zVVVz...',
+'..zVVVz...zVVVz...',
+'.zVVVVz..zVVVVz...',
+'.zVVVVz..zVVVVz...',
+'.zVVVz...zVVVVz...',
+'zVVVVz....zVVVVz..',
+'zVVVz.....zVVVVz..',
+'zVVVz......zVVVVz.',
+'zzzzz......zzzzzz.',
+'zKKKz......zKKKKz.',
+'zzzzz......zzzzzz.',
+'..................',
+];
+const TORSO_DASH = [
+'..zVVVVVVVVVVVz...',
+'.zVVVVVVVVVVVVVz..',
+'zVVVVVVVVVVVVVVVz.',
+'zVVVVVEEEEEVVVVVz.',
+'zVVVVEEEEEEEVVVVz.',
+'zVVVVEEEEEEEVVVVz.',
+'zVVVVVEEEEEVVVVVz.',
+'zVVVVVVVVVVVVVVVz.',
+'.zVVVVVVVVVVVVVz..',
+'..zPPPPPPPPPz.....',
+'...zVVVVVVVz......',
+'....zzzzzzz.......',
+'..zVVVVVVVVVz.....',
+'.zVVVVVVVVVVVz....',
+'.zVVVVVVVVVVVz....',
+];
+const LEGS_DASH = [
+'..zVVVVz..zVVVz...',
+'.zVVVVz...zVVVVz..',
+'.zVVVz....zVVVVz..',
+'zVVVVz.....zVVVz..',
+'zVVVz......zVVVz..',
+'zVVVz.......zVVVz.',
+'zVVVz.......zVVVz.',
+'zzzzz.......zzzzz.',
+'zKKKz.......zKKKz.',
+'zzzzz.......zzzzz.',
+'..................',
+'..................',
+];
+/* 臂 + 刀：整画布坐标上用画线铺出来（比手点字符快，也好改刀路） */
+const N = (w, h) => Array.from({ length: h }, () => Array(w).fill('.'));
+const armGrid = (w, h, fn) => { const gg = N(w, h); fn(gg); return gg.map(rw => rw.join('')); };
+const lineGrid = (gg, x0, y0, x1, y1, c, t = 1) => {
+  const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+  for (let i = 0; i <= n; i++) {
+    const x = Math.round(x0 + (x1 - x0) * i / n), y = Math.round(y0 + (y1 - y0) * i / n);
+    for (let k = 0; k < t; k++) { if (gg[y + k]) gg[y + k][x] = c; }
+  }
+};
+const ARM_IDLE = armGrid(34, 56, gg => {
+  lineGrid(gg, 13, 27, 18, 33, 'K'); lineGrid(gg, 13, 27, 18, 33, 'V');
+  lineGrid(gg, 10, 34, 12, 45, 'K'); lineGrid(gg, 10, 34, 12, 45, 'V');
+  lineGrid(gg, 17, 32, 19, 40, 'K', 2); lineGrid(gg, 17, 32, 19, 40, 'W', 1);
+  lineGrid(gg, 18, 44, 20, 52, 'K'); lineGrid(gg, 18, 44, 20, 52, 'W');
+  gg[29][13] = 'K'; gg[31][15] = 'K';
+});
+const ARM_DRAW = armGrid(34, 56, gg => {
+  lineGrid(gg, 13, 27, 19, 30, 'K'); lineGrid(gg, 13, 27, 19, 30, 'V');
+  lineGrid(gg, 19, 30, 24, 22, 'K', 2); lineGrid(gg, 19, 30, 24, 22, 'W', 1);
+  lineGrid(gg, 20, 29, 25, 21, 'w', 1);
+  lineGrid(gg, 9, 36, 24, 40, 'K', 2); lineGrid(gg, 9, 36, 24, 40, 'z', 1);
+  gg[31][26] = 'K'; gg[33][26] = 'K';
+});
+const ARM_DASH = armGrid(34, 56, gg => {
+  lineGrid(gg, 12, 27, 7, 33, 'K'); lineGrid(gg, 12, 27, 7, 33, 'V');
+  lineGrid(gg, 5, 33, 2, 40, 'K'); lineGrid(gg, 5, 33, 2, 40, 'V');
+  lineGrid(gg, 10, 42, 6, 50, 'K'); lineGrid(gg, 10, 42, 6, 50, 'W');
+  lineGrid(gg, 11, 43, 7, 50, 'w', 1);
+});
+const SL = 50;                                        // 斩击姿势画布（身体在 x16）
+const ARM_H = armGrid(SL, 56, gg => {                 // 横斩
+  lineGrid(gg, 21, 25, 12, 28, 'K', 1); lineGrid(gg, 21, 25, 12, 28, 'V', 1);
+  lineGrid(gg, 12, 28, 1, 28, 'K', 1); lineGrid(gg, 12, 28, 1, 28, 'W', 1);
+  lineGrid(gg, 12, 29, 1, 29, 'w', 1);
+  gg[27][13] = 'K'; gg[30][13] = 'K';
+});
+const ARM_D = armGrid(SL, 56, gg => {                 // 下斩
+  lineGrid(gg, 21, 25, 17, 21, 'K', 1); lineGrid(gg, 21, 25, 17, 21, 'V', 1);
+  lineGrid(gg, 17, 21, 5, 37, 'K', 1); lineGrid(gg, 17, 21, 5, 37, 'W', 1);
+  lineGrid(gg, 18, 21, 6, 37, 'w', 1);
+  gg[20][18] = 'K'; gg[22][18] = 'K';
+});
+const ARM_U = armGrid(SL, 56, gg => {                 // 上挑
+  lineGrid(gg, 21, 25, 15, 31, 'K', 1); lineGrid(gg, 21, 25, 15, 31, 'V', 1);
+  lineGrid(gg, 15, 31, 4, 16, 'K', 1); lineGrid(gg, 15, 31, 4, 16, 'W', 1);
+  lineGrid(gg, 16, 31, 5, 16, 'w', 1);
+  gg[30][16] = 'K'; gg[32][16] = 'K';
+});
+const ARM_FIN = armGrid(SL, 56, gg => {               // 大斩：双手举刀斜落
+  lineGrid(gg, 21, 25, 19, 23, 'K', 1); lineGrid(gg, 21, 25, 19, 23, 'V', 1);
+  lineGrid(gg, 27, 25, 22, 23, 'K', 1); lineGrid(gg, 27, 25, 22, 23, 'V', 1);
+  lineGrid(gg, 20, 24, 6, 42, 'K', 2); lineGrid(gg, 20, 24, 6, 42, 'W', 2);
+  lineGrid(gg, 21, 24, 7, 42, 'w', 2);
+  lineGrid(gg, 21, 24, 7, 42, 'G', 1);
+  gg[23][19] = 'K'; gg[25][19] = 'K'; gg[23][23] = 'K'; gg[25][23] = 'K';
+});
+const LY = (grid, x, y) => ({ grid, x, y });
+const BODY_C = [LY(HEAD, 7, 0), LY(TORSO_C, 0, 21), LY(LEGS_C, 0, 36)];
+const BODY_DRAW = [LY(HEAD, 7, 0), LY(TORSO_C, 0, 21), LY(LEGS_DRAW, 0, 36)];
+const BODY_DASH = [LY(HEAD, 5, 0), LY(TORSO_DASH, 0, 21), LY(LEGS_DASH, 0, 36)];
+const BODY_C16 = BODY_C.map(L => LY(L.grid, L.x + 16, L.y));
+
+const RIFLE = ['RRRRRRRRRRRRR', 'kkkkkkRRkkkkk', '......kk.....'];
+const SP = {
+  /* demo 的 Feena（大招用） */
+  feenaIdle: buildSprite([{ grid: FEENA, x: 3, y: 0 }, { grid: ARM_DOWN, x: 4, y: 20 }], 34, 43),
+  feenaCast: buildSprite([{ grid: FEENA, x: 3, y: 0 }, { grid: ARM_UP, x: 3, y: 10 }], 34, 43),
+  feenaHead: buildSprite([{ grid: FEENA.slice(0, 19), x: 0, y: 0 }], 30, 19),
+  rock: buildSprite([{ grid: ROCK, x: 0, y: 0 }], 10, 10, '#1a0f0a'),
+  /* 雷萨（近战乱舞用） */
+  raIdle: buildSprite([...BODY_C, LY(ARM_IDLE, 0, 0)], 34, 56),
+  raDraw: buildSprite([...BODY_DRAW, LY(ARM_DRAW, 0, 0)], 34, 56),
+  raDash: buildSprite([...BODY_DASH, LY(ARM_DASH, 0, 0)], 34, 56),
+  raH: buildSprite([...BODY_C16, LY(ARM_H, 0, 0)], SL, 56),
+  raD: buildSprite([...BODY_C16, LY(ARM_D, 0, 0)], SL, 56),
+  raU: buildSprite([...BODY_C16, LY(ARM_U, 0, 0)], SL, 56),
+  raFin: buildSprite([...BODY_C16, LY(ARM_FIN, 0, 0)], SL, 56),
+  raHead: buildSprite([LY(HEAD, 0, 0), LY(TORSO_C.slice(0, 6), 0, 21)], 24, 30),
+};
+/* 小兵用同一个字符点阵，两招各摆一份尺寸档（语-7：小兵 40–48） */
+SP.grunt = buildSprite([{ grid: GRUNT, x: 0, y: 0 }, { grid: RIFLE, x: 15, y: 15 }], 30, 28);
+SP.gruntMelee = buildSprite([{ grid: GRUNT, x: 0, y: 0 }, { grid: RIFLE, x: 15, y: 15 }], 26, 42);
+SP.gruntWhite = whiteOf(SP.grunt);
+SP.gruntMeleeWhite = whiteOf(SP.gruntMelee);
+SP.gruntLean = leanSprite(SP.gruntMelee, .12);
+/* 残影：单色 + 抖动版（整图一次 drawImage，不逐像素） */
+SP.ghostV = tintOf(SP.raDash, '#8f6adf');
+SP.ghostVd = ditherOf(SP.ghostV);
+SP.ghostWd = ditherOf(tintOf(SP.raDash, '#ffffff'));
+
+/* ===================== 四、世界（视差背景 + 群众演员） ===================== */
+/* 背景按镜头的视差分开画（语-5 的绘制顺序第 1、2 条）。每招只要挑一套「天空」，其余照旧。 */
+const R = rng(20261012);                             // 布景随机：固定种子 → 每次打开画面一样
+const STARS = Array.from({ length: 90 }, () => ({ x: R() * 520, y: R() * 92, b: R() < .15, tw: R() * 8 }));
+const CRATERS = Array.from({ length: 16 }, () => ({ x: R() * 560 - 60, y: GROUND + 4 + R() * 30, rx: 4 + r(R() * 9), ry: 1 + r(R() * 2) }));
+const MOTES = Array.from({ length: 22 }, () => ({ x: R() * 300, y: 20 + R() * 90, sp: 6 + R() * 14, ph: R() * 8 }));
+const DEBRIS = Array.from({ length: 40 }, () => { const a = -Math.PI * (0.1 + R() * 0.8); const sp = 40 + R() * 120; return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, s: R() < .3 ? 2 : 1, life: 450 + R() * 600, hot: R() < .5 }; });
+const SPARK = Array.from({ length: 16 }, () => ({ a: R() * Math.PI * 2, sp: 30 + R() * 50, life: 220 + R() * 200 }));
+const FIRE = ['#fffbe0', '#ffe066', '#ffa23a', '#e8502c', '#8a2420'];
+
+/** 天空：月面（大招/光束）与影界（近战）。三招共用「山脊 + 地面 + 环形坑」那一段。 */
+const 天空 = {
+  月面(cam, tb) {
+    rect(0, 0, W, H, '#07081a');
+    rect(0, 60, W, 40, '#0c0e24');
+    for (let y = 56; y < 60; y++) for (let x = (y & 1); x < W; x += 2) px(x, y, '#0c0e24');
+    for (const s of STARS) {
+      const x = ((s.x - cam * 0.08) % 520 + 520) % 520 - 140;
+      if (x < 0 || x >= W) continue;
+      const on = s.b || (Math.floor(tb / 260 + s.tw) % 5) !== 0;
+      if (on) px(x, s.y, s.b ? '#ffffff' : '#7d86b8');
+    }
+    const ex = 150 - cam * 0.1, ey = 28;            // 地球
+    disc(ex, ey, 14, '#2a5da8'); disc(ex, ey, 14, '#3f86d6', true);
+    disc(ex - 4, ey - 3, 4, '#5fae5a'); disc(ex + 5, ey + 4, 3, '#5fae5a');
+    for (let y = -14; y <= 14; y++) for (let x = -14; x <= 14; x++) { if (x * x + y * y > 196) continue; if (x + y > 6) px(ex + x, ey + y, '#13284d'); else if (x + y > 2 && ((x + y) & 1)) px(ex + x, ey + y, '#13284d'); }
+  },
+  影界(cam, tb) {
+    rect(0, 0, W, H, '#0a0817');
+    rect(0, 60, W, 40, '#0e0b22');
+    for (let y = 56; y < 60; y++) for (let x = (y & 1); x < W; x += 2) px(x, y, '#0e0b22');
+    for (const s of STARS) {
+      const x = ((s.x - cam * 0.08) % 520 + 520) % 520 - 140;
+      if (x < 0 || x >= W) continue;
+      const on = s.b || (Math.floor(tb / 260 + s.tw) % 5) !== 0;
+      if (on) px(x, s.y, s.b ? '#ffffff' : '#7d86b8');
+    }
+    const mx = 186 - cam * 0.12, my = 26;           // 冷月
+    disc(mx, my, 13, '#cdd0ea'); disc(mx, my, 13, '#a9aed4', true);
+    disc(mx - 4, my - 3, 3, '#8f96bd'); disc(mx + 4, my + 4, 2, '#8f96bd'); disc(mx + 1, my - 6, 1, '#8f96bd');
+    for (const m of MOTES) { const x = ((m.x - cam * .3 + tb / 1000 * m.sp) % 300 + 300) % 300 - 30, y = m.y + Math.sin(tb / 700 + m.ph) * 3; px(x, y, Math.floor(tb / 200 + m.ph) % 3 ? '#2f2a4a' : '#4a4270'); }
+  },
+};
+function 远景山脊(cam, 形) {
+  for (let x = 0; x < W; x++) {
+    const wx = x + cam * 0.4;
+    const h = 形 === '尖' ? r(10 + 9 * Math.abs(Math.sin(wx / 19)) + 4 * Math.sin(wx / 7 + 1.3)) : r(12 + 6 * Math.sin(wx / 26) + 4 * Math.sin(wx / 11 + 1.3));
+    rect(x, 100 - h, 1, h, '#232842'); px(x, 100 - h, '#363d60');
+  }
+}
+/** 地面：三招一字不差（语-6 地面线 y=118 的唯一实现处）。 */
+function 地面(cam) {
+  rect(0, 100, W, H - 100, '#545a72');
+  for (let y = 100; y < 104; y++) for (let x = (y & 1); x < W; x += 2) px(x, y, '#3c4158');
+  rect(0, 100, W, 1, '#8c93ae');
+  for (const c of CRATERS) {
+    const x = c.x - cam + W / 2; if (x < -20 || x > W + 20) continue;
+    for (let i = -c.rx; i <= c.rx; i++) { const hh = Math.max(0, r(c.ry * Math.sqrt(1 - (i * i) / (c.rx * c.rx)))); rect(x + i, c.y - hh, 1, hh * 2 + 1, '#3c4158'); }
+    rect(x - c.rx + 1, c.y + c.ry + 1, c.rx * 2 - 1, 1, '#7d84a0');
+  }
+}
+/** 影子：站位脚下的两像素扁椭圆（语-5 的顺序第 4 条）。 */
+const 影子 = (cx, w) => rect(cx - w / 2, GROUND + 1, w, 2, '#2d3146');
+
+/* ===================== 五、文字（1-bit 二值化） ===================== */
+/* 语-1 第 1 条要求像素字体或二值化渲染：这里把系统字二值化成 1 位，再手动描边。 */
+const TXT = new Map();
+function 文字位图(str, font, color, outline) {
+  const key = str + '|' + font + '|' + color + '|' + outline;
+  let c = TXT.get(key);
+  if (!c) {
+    const m = document.createElement('canvas').getContext('2d'); m.font = font;
+    const 字号 = parseInt((font.match(/(\d+)px/) || [0, 12])[1], 10);
+    const w = Math.ceil(m.measureText(str).width) + 4, h = 字号 + 6;
+    const raw = document.createElement('canvas'); raw.width = w; raw.height = h;
+    const q = raw.getContext('2d'); q.font = font; q.textBaseline = 'top'; q.fillStyle = '#fff'; q.fillText(str, 2, 2);
+    const d = q.getImageData(0, 0, w, h), on = new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) on[i] = d.data[i * 4 + 3] > 120 ? 1 : 0;
+    c = document.createElement('canvas'); c.width = w + 2; c.height = h + 2;
+    const o = c.getContext('2d');
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (on[y * w + x]) { o.fillStyle = color; o.fillRect(x + 1, y + 1, 1, 1); }
+      else if (outline && ((x > 0 && on[y * w + x - 1]) || (x < w - 1 && on[y * w + x + 1]) || (y > 0 && on[(y - 1) * w + x]) || (y < h - 1 && on[(y + 1) * w + x]))) { o.fillStyle = outline; o.fillRect(x + 1, y + 1, 1, 1); }
+    }
+    TXT.set(key, c);
+  }
+  return c;
+}
+function drawText(str, x, y, font, color, outline, align = 'left', scale = 1) {
+  const c = 文字位图(str === null || str === undefined ? '' : String(str), font, color, outline);
+  const w = c.width * scale, h = c.height * scale;
+  const dx = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
+  g.drawImage(c, r(dx), r(y), r(w), r(h));
+  return c.width;
+}
+const FONT_CN = n => `${n}px "Noto Sans SC","Microsoft YaHei","PingFang SC",sans-serif`;
+const FONT_CNB = n => `700 ${n}px "Noto Sans SC","Microsoft YaHei","PingFang SC",sans-serif`;
+const FONT_PX = n => `${n}px "Press Start 2P","Courier New",monospace`;
+const 数字 = n => Number(n).toLocaleString('en-US');
+
+/* ===================== 六、镜头（语-8，只有 4 种） ===================== */
+/* 镜头只管「画面中心的世界坐标横移」；震动、闪白、切入不归它（语-5：HUD 与切入不跟着震）。 */
+注册('镜头', '攻方', { 横移: () => CAM_ALLY });
+注册('镜头', '受方', { 横移: () => CAM_ENEMY });
+注册('镜头', '转镜', {
+  /** 400 毫秒 ease-in-out 横移（demo 的「转镜」拍）。区间由模板的拍子给，不写死数字。 */
+  横移(t) {
+    const p = (当前甲 && 当前甲.拍['转镜']) || [0, 1];
+    return lerp(CAM_ALLY, CAM_ENEMY, easeInOut(prog(t, p[0], p[1])));
+  },
+  /** 转镜期间的速度线（demo 的「转镜」拍）。 */
+  速度线(t, ts) {
+    const p = (当前甲 && 当前甲.拍['转镜']) || null;
+    if (!p || t <= p[0] || t >= p[1]) return;
+    for (let i = 0; i < 10; i++) rect(((i * 61 + ts * .9) % (W + 60)) - 30, 8 + i * 9, 20 + (i % 3) * 12, 1, '#c3cde388');
+  },
+});
+注册('镜头', '同框', {
+  /** 攻方突进到受方前 40 像素处，两台同框；镜头跟攻方走（语-8）。 */
+  横移(t) {
+    const p = (当前甲 && 当前甲.拍['冲刺']) || [0, 1];
+    if (t < p[0]) return CAM_ALLY;
+    const 半 = p[0] + (p[1] - p[0]) * .55;
+    return t < 半 ? lerp(CAM_ALLY, 228, prog(t, p[0], 半)) : lerp(228, 90, easeInOut(prog(t, 半, p[1])));
+  },
+});
+
+/* ===================== 七、HUD（不跟着震，语-5 / 语-6） ===================== */
+function frame9(x, y, w, h) {
+  rect(x, y, w, h, '#101428'); rect(x, y, w, 1, '#c3cde3'); rect(x, y + h - 1, w, 1, '#4d5878'); rect(x, y, 1, h, '#c3cde3'); rect(x + w - 1, y, 1, h, '#4d5878');
+}
+function hpBar(x, y, w, frac, lag) {
+  rect(x - 1, y - 1, w + 2, 5, '#141623');
+  rect(x, y, r(w * clamp(lag, 0, 1)), 3, '#ffffff');
+  const col = frac > .5 ? '#5fd35a' : frac > .25 ? '#ffd23a' : '#ff5a3a';
+  rect(x, y, r(w * clamp(frac, 0, 1)), 3, col);
+  rect(x, y, r(w * clamp(frac, 0, 1)), 1, '#ffffffaa');
+}
+注册('核心', 'HUD', {
+  /** 语-6：敌方 HUD 在左、我方在右，各 119×33，从 y=127 起；和站位同侧。 */
+  画(输入, hp, lag, lag我方) {
+    const 敌 = 输入.目标们[输入.主目标], 我 = 输入.攻击者;
+    frame9(0, 127, 119, 33); frame9(121, 127, 119, 33);
+    drawText(敌.名, 4, 128, FONT_CN(11), '#ff9a86', null);
+    drawText('LV' + 敌.等级, 115, 131, FONT_PX(8), '#8f96ad', null, 'right');
+    hpBar(5, 145, 109, hp / 敌.最大HP, lag / 敌.最大HP);
+    drawText(`${Math.max(0, r(hp))}/${数字(敌.最大HP)}`, 115, 150, FONT_PX(8), '#e8eaf2', null, 'right');
+    drawText(我.名, 125, 128, FONT_CN(11), '#9fd2ff', null);
+    drawText('LV' + 我.等级, 236, 131, FONT_PX(8), '#8f96ad', null, 'right');
+    hpBar(126, 145, 109, 1, 1);
+    drawText(`${数字(我.最大HP)}/${数字(我.最大HP)}`, 236, 150, FONT_PX(8), '#e8eaf2', null, 'right');
+  },
+});
+
+/* ===================== 八、特效（三招共用；模板按名字点名） ===================== */
+/* 语-18：特效优先程序生成 —— 火球、冲击环、碎屑、光束、斩弧全是代码画的，不占美术工作量。 */
+注册('特效', '打击感', {
+  /** 震动：整数像素 + 33ms 跳帧（语-11）。全部命中时刻各贡一份，按时间衰减相加。 */
+  震动(rng, 命中们, tb, 额外) {
+    let sx = 0, sy = 0;
+    命中们.forEach((m, i) => {
+      const ai = tb - m.时刻; if (ai < 0) return;
+      const q = step(ai, 33), amp = m.震动 * S.shake * Math.exp(-q / m.衰减);
+      sx += r(amp * Math.sin(q * (m.频率 || .3) + i)); sy += r(amp * Math.cos(q * (m.频率 || .3) * 1.36 + i));
+    });
+    for (const e of (额外 || [])) { const ai = tb - e.时刻; if (ai < 0) continue; const q = step(ai, 33), amp = e.震动 * S.shake * Math.exp(-q / e.衰减); sx += r(amp * Math.sin(q * .37)); sy += r(amp * Math.cos(q * .29)); }
+    return { sx, sy };
+  },
+  /** 全屏闪白（语-11：小=无 / 中=1 帧扫描线 / 大=1 帧白 + 停顿期网点）。 */
+  闪白(档, 停顿中, 命中后) {
+    if (!停顿中 && !(命中后 >= 0 && 命中后 < 99)) return;
+    if (档 === '小') return;
+    if (停顿中) { if (命中后 >= 0 && 命中后 < 34) rect(0, 0, W, H, '#ffffff'); else for (let y = 0; y < H; y++) for (let x = (y & 1); x < W; x += 2) px(x, y, '#ffffff'); }
+    else for (let y = 0; y < H; y += 2) rect(0, y, W, 1, '#ffe06644');
+  },
+});
+/** 命中火花（三招都一样，尺寸由模板给）。 */
+function 火花(x, y, q, 量, 主色) {
+  for (let k = 0; k < (量 || 7); k++) { const a = k * .9, d = 4 + q * .09; px(x + Math.cos(a) * d, y + Math.sin(a) * d, k % 2 ? '#ffffff' : (主色 || '#ffe066')); }
+}
+/** 伤害数字：目标头顶上方 14 像素，最高不超过 y=20（语-6）。暴击放大一档、黄色（语-14）。 */
+const 字位 = 精灵高 => clamp(GROUND - 精灵高 + 2 - 14, 20, GROUND - 24);
+function 伤害数字(x, 高, 值, ai, 暴击) {
+  if (ai < 0 || ai > 1400) return;
+  const q = step(ai, 33), hop = q < 100 ? -4 : q < 200 ? -1 : 0;
+  const vis = q < 1100 || (Math.floor(q / 66) % 2 === 0);
+  if (!vis) return;
+  drawText(数字(值), x, 字位(高) + hop, FONT_PX(暴击 ? 18 : 16), 暴击 ? '#ffe066' : '#ffffff', 暴击 ? '#7a4a06' : '#c2361e', 'center');
+  if (暴击) drawText('CRITICAL', x, 字位(高) - 12 + hop, FONT_PX(8), '#ffe066', '#7a4a06', 'center');
+}
+/** 印章（击破 / 未中）：语-14。 */
+function 印章(x, 上, 字, 色, 边, t, 出现, 存活) {
+  if (t < 出现 || t > 出现 + 存活) return;
+  const q = t - 出现, big = q < 66;
+  const vis = q < 存活 - 400 || Math.floor(t / 66) % 2;
+  if (vis) drawText(字, x, 上, FONT_CNB(big ? 28 : 22), 色, 边, 'center');
+}
+/** 切镜头像（语-17 的 portrait：缺头像就截 idle 上半身放大）。 */
+const 切入 = {
+  画(p, tb, 数据, 头像) {
+    const inP = prog(p, 0, .12), outP = prog(p, .9, 1);
+    const off = r((1 - easeOut(inP)) * W - easeIn(outP) * W);
+    for (let y = 0; y < H; y++) for (let x = (y & 1); x < W; x += 2) px(x, y, '#000000');
+    g.save(); g.translate(off, 0);
+    const y0 = 28, h = 76;
+    rect(0, y0, W, h, '#0d1430');
+    for (let i = 0; i < 14; i++) { const yy = y0 + 4 + ((i * 23) % (h - 8)); const xx = ((i * 71 - step(tb, 33) * (0.25 + (i % 4) * .08)) % (W + 80) + W + 80) % (W + 80) - 40; rect(xx, yy, 18 + (i % 5) * 8, 1, i % 3 ? '#1f3264' : '#3c5a9c'); }
+    rect(0, y0, W, 2, '#f2c45a'); rect(0, y0 + h - 2, W, 2, '#f2c45a');
+    frame9(8, y0 + 6, 62, 64);
+    g.save(); g.beginPath(); g.rect(9, y0 + 7, 60, 62); g.clip();
+    rect(9, y0 + 7, 60, 62, '#18245a');
+    for (let i = 0; i < 6; i++) rect(9, y0 + 9 + i * 11, 60, 1, '#22306e');
+    const bob = Math.floor(tb / 200) % 2;
+    g.drawImage(头像, 0, 0, 头像.width, 头像.height, 4, y0 + 8 + bob, 头像.width * 2, 头像.height * 2);
+    g.restore();
+    const L1 = 数据.台词[0] || '', L2 = 数据.台词[1] || '';
+    const n1 = Math.floor(prog(p, .12, .42) * L1.length), n2 = Math.floor(prog(p, .42, .6) * L2.length);
+    drawText(数据.机师, 78, y0 + 6, FONT_PX(8), '#8f96ad', null);
+    if (n1) drawText(L1.slice(0, n1), 78, y0 + 18, FONT_CN(12), '#ffffff', null);
+    if (n2) drawText(L2.slice(0, n2), 78, y0 + 34, FONT_CN(12), '#ffffff', null);
+    const nm = prog(p, .55, .66);
+    if (nm > 0 && 数据.招式名) drawText(数据.招式名, 78, y0 + 50, FONT_CNB(14), '#f2c45a', '#3a2408', 'left');
+    g.restore();
+  },
+};
+/** 武器名牌（语-5 第 2 条：HUD 与名牌不跟着震）。 */
+function 名牌(名, 威力, t, a, b) {
+  if (!(t > a && t < b)) return;
+  frame9(64, 2, 112, 15);
+  drawText(名, 70, 2, FONT_CN(11), '#ffffff', null);
+  drawText(数字(威力), 172, 6, FONT_PX(8), '#f2c45a', null, 'right');
+}
+/** 击破序列（三种击破共用；时间锚点由模板给，语-14 最后一行）。 */
+function 击破序列(x, t0, tb, 小, 大) {
+  const kt = tb - t0, ey = GROUND;
+  const POPS = [[-6 * 小, -20 * 小, 0], [8 * 小, -10 * 小, 170], [-2 * 小, -30 * 小, 330]];
+  for (const [dx, dy, at] of POPS) { const lt = kt - 300 - at; if (lt < 0 || lt > 330) continue; const e = lt / 330, rr = r(2 + 8 * easeOut(e) * 小); disc(x + dx, ey + dy, rr, FIRE[e < .4 ? 1 : 3], e > .6); disc(x + dx, ey + dy, Math.max(1, rr - 3), FIRE[0]); }
+  const bt = kt - 760, 大倍 = 大 || 1;
+  if (bt >= 0 && bt < 900) {
+    const e = bt / 900, rr = r((8 + 30 * easeOut(Math.min(1, bt / 300))) * 大倍);
+    [4, 3, 2, 1, 0].forEach((b, k) => { if (e > .5 && b < 2) return; disc(x, ey - 16, Math.max(1, rr - k * 6), FIRE[b], k === 0 && e > .4); });
+    for (const sp of SPARK) { if (bt > sp.life) continue; const d = sp.sp * bt / 1000 * 2 * 大倍; px(x + Math.cos(sp.a) * d, ey - 16 + Math.sin(sp.a) * d, '#ffe066'); }
+  }
+  if (bt > 250) { const e = prog(bt, 250, 1400); for (let k = 0; k < 4; k++) disc(x - 6 + k * 4, ey - 10 - e * 18 - k * 4, r(4 + e * 5), '#4a4658', true); }
+}
+
+/* ===================== 九、三个模板（阶段 1 的交付：同一播放器下的三种演法） ===================== */
+/* 每个模板只实现三件事：
+ *   1) 出拍()      —— 「起 / 发 / 中 / 收」四段怎么切（语-9），返回拍子表
+ *   2) 命中时刻()  —— 这一招的 T0 列表（唯一同步点）与每段的停顿档（语-10 / 语-11）
+ *   3) 画(甲)      —— 给定「内容时间 tb、停顿中不在停顿、镜头 cam」把这一帧画出来
+ * 播放器只管时间、停顿、震动、HUD、切入、跳过、倍速 —— 它不认识任何一招。 */
+
+/* ---------- 模板 1：summon_drop（陨石）—— demo 残月陨石的平移 ---------- */
+const 陨石位 = (tb, cam, 落点, 起) => {
+  const q = easeIn(prog(tb, 起, 起 + 600));
+  const sx = 落点 - cam + W / 2;
+  return { x: lerp(sx + 120, sx + 2, q), y: lerp(-14, GROUND - 16, q), q };
+};
+/** 弹体模块（三招可以共用；现在只有 summon_drop 点名它）。 */
+注册('特效', '弹体·陨石', {
+  /** 画一颗正在坠落的陨石：chunky 拖尾 + 本体 + 溢出的光粒（全是程序画的）。 */
+  画(tb, ts, cam, 落点, 起) {
+    for (let i = 1; i <= 16; i++) {
+      const p = 陨石位(ts - i * 18, cam, 落点, 起); if (p.q <= 0) continue;
+      const sz = Math.max(1, r((5 - i * .28) * (0.6 + p.q * 0.6)));
+      const col = FIRE[Math.min(FIRE.length - 1, Math.floor(i / 3.5))];
+      rect(p.x + ((i * 7) % 3) - 1 - sz / 2 + 5, p.y - sz / 2 + 5, sz, sz, col);
+    }
+    const m = 陨石位(ts, cam, 落点, 起);
+    disc(m.x + 5, m.y + 5, 7, '#ffa23a', true);
+    g.drawImage(SP.rock, r(m.x - 1), r(m.y - 1));
+    px(m.x + 2, m.y + 2, '#ffe066'); px(m.x + 3, m.y + 2, '#fffbe0');
+    for (let i = 0; i < 5; i++) { const ox = (i * 37) % 70 - 20, oy = (i * 23) % 50; rect(m.x + ox, m.y - 40 - oy, 1, 6, '#fffbe055'); }
+  },
+  预兆(exs, ts) {
+    const gx = exs + 120, on = Math.floor(ts / 66) % 2;
+    px(gx, 6, '#ffffff');
+    if (on) { px(gx - 1, 6, '#ffe066'); px(gx + 1, 6, '#ffe066'); px(gx, 5, '#ffe066'); px(gx, 7, '#ffe066'); }
+  },
+});
+注册('模板', 'summon_drop', {
+  /* 拍子全是数据：数字都可以被脚本的「节拍」覆盖（语-22）。收段长度按「扣血段」的倍数推。 */
+  四段: { 起: ['入场', '切入', '蓄力'], 发: ['发射', '转镜', '预兆', '坠落'], 中: [], 收: ['扣血'] },
+  镜头: '转镜', 特效: ['打击感', '弹体·陨石'], 名牌: ['蓄力', '扣血'],
+  默认拍: {
+    '入场': [0, 450], '切入': [450, 1700], '蓄力': [1700, 2550], '发射': [2550, 2850],
+    '转镜': [2850, 3250], '预兆': [3250, 3550], '坠落': [3550, 4150], '扣血': [4500, 5200],
+  },
+  收段比: { 击破: .38, 未击破: .14, 退场留: 300 },
+  命中(拍) { return [{ 名: '坠落', 时刻: 拍['坠落'][1], 停顿: '大' }]; },
+  画(甲) {
+    const { tb, ts, cam, 输入, 拍, 命中们, 停顿中, ai, killT, R: rr } = 甲;
+    const 落点 = ENEMY_X, 起 = 拍['坠落'][0];
+    const 我 = 输入.攻击者, 敌0 = 输入.目标们[输入.主目标];
+    天空.月面(cam, tb); 远景山脊(cam, '缓'); 地面(cam);
+    const exs = 落点 - cam + W / 2, axs = ALLY_X - cam + W / 2;
+    /* 我方（Feena）：入场滑入 → 切入期间不画 → 蓄力举臂 → 发射 → 退场 */
+    const 蓄力中 = tb >= 拍['蓄力'][0] && tb < 拍['发射'][1];
+    const glow = prog(tb, 拍['蓄力'][0] + 50, 拍['蓄力'][1] - 50) * (1 - prog(tb, 拍['发射'][0], 拍['蓄力'][1] + 300));
+    if (tb < 拍['入场'][1]) {
+      const q = easeOut(prog(tb, 0, 320));
+      const ax = lerp(axs + 60, axs, q);
+      影子(ax, 24);
+      g.drawImage(SP.feenaIdle, r(ax - 18), r(GROUND - 44 + (Math.floor(tb / 400) % 2)));
+      if (q < 1) for (let i = 0; i < 5; i++) disc(ax + (i - 2) * 5, GROUND + 2, 3, '#565d7d', true);
+    } else if (tb >= 拍['蓄力'][0] && 拍['发射'][1] > tb) {
+      const sp = 蓄力中 ? SP.feenaCast : SP.feenaIdle;
+      const recoil = (tb >= 拍['发射'][0] && tb < 拍['发射'][0] + 100) ? 2 : 0;
+      影子(axs, 24);
+      g.drawImage(sp, r(axs - 18), r(GROUND - 44 + (Math.floor(tb / 400) % 2) + recoil));
+      const handX = axs - 15, handY = GROUND - 33;
+      if (蓄力中) {
+        const n = Math.min(4, Math.floor(prog(tb, 拍['蓄力'][0] + 50, 拍['蓄力'][1] - 250) * 5));
+        for (let i = 0; i < n; i++) { const yy = handY - 8 - i * 9, flick = (Math.floor(ts / 66) + i) % 3 === 0; ring(handX, yy, 7 - i % 2, 2, flick ? '#ffffff' : '#f2c45a'); }
+        if (tb < 拍['发射'][0]) {
+          for (let i = 0; i < 30; i++) { const a = i / 30 * Math.PI * 2, d0 = 18 + (i % 7) * 4, lt = (ts - 拍['蓄力'][0] - i * 17) % 480; if (lt < 0) continue; const q = lt / 480; px(handX + Math.cos(a) * d0 * (1 - easeIn(q)), handY - 18 + Math.sin(a) * d0 * (1 - easeIn(q)) * .7, q > .7 ? '#ffffff' : '#7ff0ff'); }
+          const rad = 2 + r(glow * 3) + (Math.floor(ts / 66) % 2);
+          disc(handX, handY - 40, rad + 2, '#7ff0ff', true); disc(handX, handY - 40, rad, '#e0f4ff'); disc(handX, handY - 40, Math.max(1, rad - 2), '#ffffff');
+          if (glow > .2) for (let x = -14; x <= 14; x += 2) px(axs + x + (Math.floor(ts / 66) % 2), GROUND + 2, '#7ff0ff');
+        }
+      }
+      if (tb >= 拍['发射'][0] && tb < 拍['发射'][1]) {         // 发射：向上射一道粗光柱
+        const q = prog(tb, 拍['发射'][0], 拍['发射'][0] + 150), fade = 1 - prog(tb, 拍['发射'][0] + 150, 拍['发射'][1]);
+        const top = r(lerp(handY - 40, -20, easeOut(q)));
+        const wB = fade > .5 ? 5 : fade > .2 ? 3 : 1;
+        rect(handX - (wB >> 1) - 1, top, wB + 2, handY - 40 - top + 4, '#7ff0ff');
+        rect(handX - (wB >> 1), top, wB, handY - 40 - top + 4, '#ffffff');
+        if (tb < 拍['发射'][0] + 70) disc(handX, handY - 40, 7, '#ffffff', (Math.floor(ts / 33) % 2) === 1);
+      }
+    } else if (tb > 拍['扣血'][1] && ai < 0 && tb < 拍['回落'][1]) {
+      /* 命中后站定看结果 */
+      const bob = Math.floor(tb / 400) % 2;
+      影子(axs, 24); g.drawImage(SP.feenaIdle, r(axs - 18), r(GROUND - 44 + bob));
+    }
+    /* 敌方小兵：预兆阴影 → 坠落前抬头 → 命中闪白后退 → 击破 */
+    const 活着 = !(killT >= 760);
+    const sh = prog(tb, 拍['预兆'][0], 命中们[0].时刻);
+    if (sh > 0 && tb <= 命中们[0].时刻) { const rw = r(4 + 18 * sh); for (let x = -rw; x <= rw; x++) if (((x + Math.floor(ts / 66)) & 1) === 0) px(exs + 2 + x, GROUND + 2, '#ff5a3a'); }
+    if (活着 && exs > -40 && exs < W + 40) {
+      影子(exs, 22);
+      const knock = ai >= 0 ? r(5 * Math.exp(-ai / 220)) : 0;
+      const 白 = 停顿中 || (ai >= 0 && ai < 100) || (killT >= 0 && killT < 300 && Math.floor(killT / 50) % 2 === 0);
+      const 抬头 = tb > 拍['转镜'][1] && tb < 拍['坠落'][1];
+      g.drawImage(白 ? SP.gruntWhite : SP.grunt, r(exs - 15 - knock), r(GROUND - 29 + (Math.floor(tb / 380) % 2)));
+      if (抬头) drawText('!', exs + 6, GROUND - 46 - (Math.floor(tb / 100) % 2), FONT_PX(8), '#ffe066', '#141623');
+    }
+    /* 弹体：预兆一闪 → 陨石坠落 + 拖尾（都走「弹体·陨石」模块） */
+    if (tb > 拍['预兆'][0] && tb <= 命中们[0].时刻) {
+      const 弹 = 选特效('弹体·陨石');
+      if (tb < 起) 弹.预兆(exs, ts);
+      else 弹.画(tb, ts, cam, 落点, 起);
+    }
+    /* 命中：火球 + 冲击环 + 碎屑 + 尘 + 坑口余晖 */
+    if (ai >= 0) {
+      const q = step(ai, 33), ix = exs + 2, iy = GROUND - 6;
+      if (q < 600) { const R0 = r(6 + 24 * easeOut(Math.min(1, q / 250))); const fade = q / 600; const bands = fade < .3 ? [0, 1, 2, 3] : fade < .6 ? [1, 2, 3, 4] : [2, 3, 4]; bands.slice().reverse().forEach((b, k) => disc(ix, iy - 6, Math.max(1, R0 - k * 5), FIRE[b], k === 0 && fade > .5)); }
+      for (let k = 0; k < 2; k++) { const lt = q - k * 99; if (lt < 0 || lt > 500) continue; const e = easeOut(lt / 500); ring(ix, GROUND + 1, 8 + 70 * e, 2 + 9 * e, k ? '#ffa23a' : '#fffbe0'); }
+      for (const d of DEBRIS) { if (q > d.life) continue; const s2 = q / 1000, x = ix + d.vx * s2, y = iy - 6 + d.vy * s2 + 0.5 * 260 * s2 * s2; if (y > GROUND + 10) continue; rect(x, y, d.s, d.s, d.hot ? FIRE[1 + (q > d.life * .5 ? 2 : 0)] : '#a3a9bd'); }
+      if (q > 120 && q < 1300) { const e = prog(q, 120, 1300); for (let k = -2; k <= 2; k++) disc(ix + k * (8 + 10 * e), GROUND - 2 - e * 6 - (k & 1) * 3, r(4 + 5 * e), e < .5 ? '#8a8fa6' : '#5c6178', true); }
+      if (q < 1500) for (let x = -14; x <= 14; x++) if ((x & 1) || q < 700) px(ix + x, GROUND + 3, q < 700 ? '#ffa23a' : '#8a2420');
+    }
+    if (killT >= 0) 击破序列(exs, 命中们[0].时刻, tb, 1, 1);
+    if (killT > 900) 印章(exs + 2, 26, '击破', '#ff5a3a', '#2a0805', tb, 命中们[0].时刻 + 900, 99999);
+    if (ai >= 0) 伤害数字(exs + 2, SP.grunt.height, 输入.伤害[0], ai, 输入.目标们[0].结果 === '暴击');
+  },
+});
+
+/* ---------- 模板 2：shoot_beam（光束直射）—— 阶段 1 新增的第二种演法 ---------- */
+注册('模板', 'shoot_beam', {
+  四段: { 起: ['入场', '切入', '蓄光'], 发: ['发射', '转镜'], 中: ['命中'], 收: ['扣血', '回落'] },
+  镜头: '转镜', 名牌: ['蓄光', '扣血'],
+  默认拍: { '入场': [0, 400], '切入': [400, 1650], '蓄光': [1650, 2350], '发射': [2350, 2600], '转镜': [2600, 2900], '命中': [2900, 3100], '扣血': [3100, 3600], '回落': [3600, 4300] },
+  收段比: { 击破: 1.0, 未击破: .4, 退场留: 200 },
+  命中(拍) { return [{ 名: '命中', 时刻: 拍['命中'][0], 停顿: '中' }]; },
+  画(甲) {
+    const { tb, ts, cam, 输入, 拍, 命中们, 停顿中, ai, killT } = 甲;
+    const T0 = 命中们[0].时刻;
+    const 有回落 = !!拍['回落'];
+    const 我方收势 = 有回落 ? 拍['回落'][0] - 150 : 拍['扣血'][0] - 100;
+    const 我 = 输入.攻击者, 敌0 = 输入.目标们[输入.主目标];
+    const 主色 = 甲.主色 || '#7ff0ff';
+    天空.月面(cam, tb); 远景山脊(cam, '缓'); 地面(cam);
+    const exs = ENEMY_X - cam + W / 2, axs = ALLY_X - cam + W / 2;
+    const 炮口X = axs - 20, 炮口Y = GROUND - 30;          // 语-18 的 muzzle：资产没带就按画布边缘推
+    /* 我方：入场 → 切入不画 → 举枪蓄光（枪口光球越来越大）→ 发射后坐 → 收势 */
+    const 蓄光 = prog(tb, 拍['蓄光'][0] + 80, 拍['发射'][0]);
+    if (tb < 拍['入场'][1]) {
+      const q = easeOut(prog(tb, 0, 300)), ax = lerp(axs + 60, axs, q);
+      影子(ax, 24); g.drawImage(SP.feenaIdle, r(ax - 18), r(GROUND - 44 + (Math.floor(tb / 400) % 2)));
+      if (q < 1) for (let i = 0; i < 5; i++) disc(ax + (i - 2) * 5, GROUND + 2, 3, '#565d7d', true);
+    } else if (tb >= 拍['蓄光'][0] && tb < 我方收势) {
+      const 后坐 = (tb >= 拍['发射'][0] && tb < 拍['发射'][0] + 140) ? r(3 * (1 - prog(tb, 拍['发射'][0], 拍['发射'][0] + 140))) : 0;
+      影子(axs + 后坐, 24);
+      g.drawImage(SP.feenaCast, r(axs - 18 + 后坐), r(GROUND - 44 + (Math.floor(tb / 400) % 2)));
+      if (tb < 拍['发射'][0]) {                            // 枪口蓄光：三圈收缩 + 中心亮核
+        const n = Math.min(3, Math.floor(蓄光 * 4));
+        for (let i = 0; i < n; i++) ring(炮口X, 炮口Y, r(3 + (1 - 蓄光) * 9 + i * 2), 2, i % 2 ? 主色 : '#ffffff');
+        if (蓄光 > .15) { disc(炮口X, 炮口Y, 1 + r(蓄光 * 3), '#ffffff'); disc(炮口X, 炮口Y, 1 + r(蓄光 * 5), 主色, true); }
+        for (let i = 0; i < 18; i++) { const a = i / 18 * Math.PI * 2, lt = (ts - 拍['蓄光'][0] - i * 21) % 400; if (lt < 0) continue; const q = lt / 400, d = 22 * (1 - easeIn(q)); px(炮口X + Math.cos(a) * d, 炮口Y + Math.sin(a) * d * .8, q > .7 ? '#ffffff' : 主色); }
+      }
+    } else if (ai >= 0) { 影子(axs, 24); g.drawImage(SP.feenaIdle, r(axs - 18), r(GROUND - 44 + (Math.floor(tb / 400) % 2))); }
+    /* 光束：发射 → 命中前一直贯通（宽度按 33ms 跳帧，做「粗→细」的收束） */
+    if (tb >= 拍['发射'][0] && tb <= T0) {
+      const q = prog(tb, 拍['发射'][0], 拍['发射'][0] + 90);
+      const 粗 = r(lerp(6, 3, q)), 长 = lerp(炮口X - 6, exs + 6, easeOut(q));
+      rect(炮口X - 4, 炮口Y - 粗, 长, 粗 * 2, 主色);
+      rect(炮口X - 4, 炮口Y - Math.max(1, 粗 - 2), 长, Math.max(2, 粗 * 2 - 4), '#ffffff');
+      if (tb < 拍['发射'][0] + 120) { disc(炮口X, 炮口Y, 粗 + 4, '#ffffff', Math.floor(ts / 33) % 2 === 0); }
+      for (let i = 0; i < 4; i++) rect(炮口X + i * 14, 炮口Y - 粗 - 2 - i, 10, 1, 主色);   // 沿束溢出的光粒
+    }
+    /* 敌方：站定 → 命中闪白 + 后退 → 击破 / 后仰 */
+    const 活着 = !(killT >= 760);
+    if (活着 && exs > -40 && exs < W + 40) {
+      影子(exs, 22);
+      const knock = ai >= 0 ? r(6 * Math.exp(-ai / 200)) : 0;
+      const 白 = 停顿中 || (ai >= 0 && ai < 120) || (killT >= 0 && killT < 300 && Math.floor(killT / 50) % 2 === 0);
+      if (!S.kill && tb >= 拍['扣血'][0]) {
+        const rt = tb - 拍['扣血'][0];
+        if (rt < 66 && Math.floor(rt / 33) % 2 === 0) g.drawImage(SP.gruntWhite, r(exs - 15 - r(6 * Math.sin(Math.PI * prog(rt, 0, 500)))), r(GROUND - 29));
+        else g.drawImage(SP.grunt, r(exs - 15 - r(6 * Math.sin(Math.PI * prog(rt, 0, 500)))), r(GROUND - 29 + (Math.floor(tb / 380) % 2)));
+      } else g.drawImage(白 ? SP.gruntWhite : SP.grunt, r(exs - 15 - knock), r(GROUND - 29 + (Math.floor(tb / 380) % 2)));
+    }
+    /* 命中：小火花 + 一道竖直白闪 */
+    if (ai >= 0 && ai < 260) { 火花(exs + 4, GROUND - 30, step(ai, 33), 7, 主色); rect(exs + 2, GROUND - 52, 1, 42, '#ffffff'); }
+    if (killT >= 0) 击破序列(exs, T0, tb, .75, .85);
+    if (killT > 900) 印章(exs + 2, 26, '击破', '#ff5a3a', '#2a0805', tb, T0 + 900, 99999);
+    if (!S.kill && tb >= 拍['扣血'][0]) 印章(exs + 2, 30, '后仰', '#c3cde3', '#141623', tb, 拍['扣血'][0], (有回落 ? 拍['回落'][1] : 拍['扣血'][1]) - 拍['扣血'][0]);
+    if (ai >= 0) 伤害数字(exs + 2, SP.grunt.height, 输入.伤害[0], ai, 输入.目标们[0].结果 === '暴击');
+  },
+});
+
+/* ---------- 模板 3：melee_multi（近战乱舞）—— 移植 试用-stepfun-雷萨连斩.html ---------- */
+/* 四段连斩 + 一记大斩。语-10：段间隔 120ms、全段铺开 ≤700ms、只有第一段吃完整命中停顿、
+ * 中间段微停、最后一段再吃一次完整停顿；只显示总伤害。语-11：最小时长 66ms，特效按 33ms 步进。 */
+const COMBO = [
+  { sp: 'raH', x: 150, y: GROUND, 弧: [Math.PI - .95, Math.PI + .95, 15], 色: '#8f6adf' },
+  { sp: 'raD', x: 156, y: GROUND - 20, 弧: [.55, 2.35, 16], 色: '#8f6adf' },
+  { sp: 'raU', x: 146, y: GROUND - 4, 弧: [-2.35, -.55, 16], 色: '#e45ad0' },
+  { sp: 'raH', x: 158, y: GROUND - 12, 弧: [Math.PI - .8, Math.PI + .8, 14], 色: '#8f6adf' },
+];
+const ANCH = { raIdle: 18, raDraw: 18, raDash: 18, raH: 33, raD: 33, raU: 33, raFin: 33 };
+const 画机体 = (sp, cx, feetY) => g.drawImage(SP[sp], r(cx - ANCH[sp]), r(feetY - (SP[sp].height - 2)));
+const 画残影 = (sp, cx, feetY, img) => g.drawImage(img, r(cx - ANCH[sp]), r(feetY - (SP[sp].height - 2)));
+/** 斩击光弧：一段中间粗两头尖的像素圆弧（月牙）。 */
+function slashArc(cx, cy, a0, a1, rad, 比例, cOut, cMid, cIn) {
+  const n = Math.max(10, r(rad * Math.abs(a1 - a0)));
+  const end = a0 + (a1 - a0) * clamp(比例, 0, 1);
+  for (let i = 0; i <= n; i++) {
+    const a = a0 + (a1 - a0) * i / n; if ((a1 > a0 ? a > end : a < end)) continue;
+    const k = (a - a0) / (a1 - a0);
+    const th = Math.max(1, r(Math.sin(Math.PI * clamp(k, 0, 1)) * rad * .32));
+    for (let o = -th; o <= th; o++) {
+      const rr = rad + o, x = r(cx + Math.cos(a) * rr), y = r(cy + Math.sin(a) * rr);
+      px(x, y, o === 0 ? cIn : Math.abs(o) >= th ? cOut : cMid);
+    }
+  }
+}
+注册('模板', 'melee_multi', {
+  四段: { 起: ['入场', '切入', '拔刀'], 发: ['冲刺', '连斩', '大斩'], 中: [], 收: ['扣血'] },
+  镜头: '同框', 名牌: ['拔刀', '扣血'],
+  默认拍: {
+    '入场': [0, 400], '切入': [400, 1750], '拔刀': [1750, 2250], '冲刺': [2250, 2600],
+    /* 语-10：段间隔 120ms，四段铺开 360ms（< 700ms）；大斩紧跟最后一段 */
+    '连斩': [2600, 2720, 2840, 2960], '大斩': [3080, 3280], '扣血': [3280, 3800],
+  },
+  命中(拍) {
+    const 段 = 拍['连斩'].map((at, i) => ({ 名: '连斩' + (i + 1), 时刻: at, 停顿: '微' }));
+    段.push({ 名: '大斩', 时刻: 拍['大斩'][0], 停顿: '大' });
+    return 段;
+  },
+  /* 收段是数据：从「扣血」段起点算，击破时多铺 2.5 秒给连爆与印章（语-14 击破序列）。 */
+  收段比: { 击破: 2.5, 未击破: 1.6, 退场留: 400 },
+  画(甲) {
+    const { tb, ts, cam, 输入, 拍, 命中们, 停顿中, ai, killT } = 甲;
+    const 斩时刻 = 拍['连斩'], T_FIN = 拍['大斩'][0];
+    /* 收段内部的固定偏移（相对大斩命中时刻）：白闪三下 → 连爆两处 → 大爆炸 → 印章 */
+    const 收 = { 白1: [0, 300], 爆1: [250, 580], 爆2: [400, 730], 大爆: [650, 1550], 印章: 900, 尸块: [1010, 2160], 退场留: 400 };
+    const 收段结束 = 甲.收段结束;
+    /* 连斩第 k 段这一刻的姿势：停顿内定格在命中架势，停顿后向下一个架势瞬移（stepfun 的 comboPose） */
+    const comboPose = (k, tb) => {
+      const at = 斩时刻[k], ai2 = tb - at, half = S.stop * .5;
+      const cur = COMBO[k], nxt = COMBO[k + 1] || { sp: 'raFin', x: 162, y: GROUND };
+      if (ai2 < half) return { sp: cur.sp, cx: cur.x, feetY: cur.y };
+      const q = easeInOut(prog(ai2, half, half + 150));
+      return { sp: q < .5 ? cur.sp : nxt.sp, cx: lerp(cur.x, nxt.x, q), feetY: lerp(cur.y, nxt.y, q) };
+    };
+    天空.影界(cam, tb); 远景山脊(cam, '尖'); 地面(cam);
+    const exs = ENEMY_X - cam + W / 2, axs = ALLY_X - cam + W / 2;
+    const 冲 = 拍['冲刺'];
+    /* 冲刺速度线 */
+    if (tb > 冲[0] && tb < 冲[1] + 20) for (let i = 0; i < 12; i++) {
+      const y = 10 + i * 9, len = 26 + (i % 3) * 16;
+      const x = ((i * 79 - ts * 2.4) % (W + 90) + W + 90) % (W + 90) - 45;
+      rect(x, y, len, 1, i % 3 ? '#8f86c488' : '#d8d2ffcc');
+    }
+    /* 雷萨：入场 → 切入不画 → 拔刀蓄势 → 冲刺（残影）→ 连斩 → 大斩 → 收势 → 退场 */
+    const dashP = prog(tb, 冲[0], 冲[1]);
+    let pose = null, 冲刺X = null;
+    if (tb < 拍['入场'][1]) {
+      const q = easeOut(prog(tb, 0, 320));
+      pose = { sp: 'raIdle', cx: lerp(axs + 60, axs, q), feetY: GROUND };
+      if (q < 1) for (let i = 0; i < 5; i++) disc(axs + (i - 2) * 5, GROUND + 2, 3, '#565d7d', true);
+    } else if (tb < 拍['拔刀'][1]) {                       // 拔刀蓄势
+      pose = { sp: 'raDraw', cx: axs, feetY: GROUND };
+      const glow = prog(tb, 拍['拔刀'][0] + 30, 拍['拔刀'][1] - 50);
+      for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2, d = 24 - 16 * glow + (i % 3) * 3; const lt = (ts - 拍['拔刀'][0] - i * 37) % 420; if (lt < 0) continue; const q = lt / 420; px(axs - 4 + Math.cos(a) * d * (1 - easeIn(q)), GROUND - 25 + Math.sin(a) * d * (1 - easeIn(q)) * .7, q > .7 ? '#e8dcff' : '#8f6adf'); }
+      if (glow > .15) ring(axs - 4, GROUND - 25, r(5 + glow * 5), r(2 + glow * 2), glow > .7 ? '#e45ad0' : '#7b5cb2');
+      if (glow > .5) for (let x = -12; x <= 12; x += 2) px(axs + x + (Math.floor(ts / 66) % 2), GROUND + 2, '#8f6adf');
+      if (tb > 拍['拔刀'][1] - 150 && Math.floor(ts / 33) % 2 === 0) { line(axs - 8, GROUND - 20, axs + 16, GROUND - 38, '#ffffff'); line(axs - 8, GROUND - 18, axs + 16, GROUND - 36, '#b9a6ff'); }
+    } else if (tb < 冲[1]) {                               // 冲刺穿过画面
+      冲刺X = dashP < .55 ? lerp(ALLY_X, 160, easeIn(dashP / .55)) : lerp(160, 118, easeOut((dashP - .55) / .45));
+      for (let i = 1; i <= 3; i++) { const q = clamp(dashP - i * .12, 0, 1); const gx = q < .55 ? lerp(ALLY_X, 160, easeIn(q / .55)) : lerp(160, 118, easeOut((q - .55) / .45)); 画残影('raDash', gx - cam + W / 2, GROUND, SP.ghostVd); }
+      pose = { sp: 'raDash', cx: 冲刺X - cam + W / 2, feetY: GROUND };
+      for (let i = 0; i < 6; i++) rect(冲刺X - cam + W / 2 - 14 - i * 6, GROUND - 2 - (i % 2), 8, 1, '#565d7d');
+    } else if (tb < T_FIN) {                               // 连斩①~④
+      const k = 斩时刻.findIndex((at, i) => tb >= at && (i === 3 || tb < 斩时刻[i + 1]));
+      pose = comboPose(clamp(k, 0, 3), tb);
+    } else if (tb < 拍['大斩'][1]) {                        // 大斩定格
+      pose = { sp: 'raFin', cx: 162 + r(4 * prog(tb, T_FIN, 拍['大斩'][1])), feetY: GROUND - 6 };
+    } else { pose = { sp: 'raIdle', cx: 162, feetY: GROUND }; }
+    const 退场 = 收段结束 - 收.退场留;
+    const exitP = prog(tb, 退场, 退场 + 400);
+    if (exitP > 0 && exitP < .9) {
+      const q = exitP / .8;
+      for (let i = 1; i <= 2; i++) 画残影('raDash', lerp(162, 162 + 210 * easeIn(clamp(q - i * .16, 0, 1)), 1), GROUND, SP.ghostVd);
+      pose = { sp: 'raDash', cx: lerp(162, 162 + 210 * easeIn(q), 1), feetY: GROUND };
+    }
+    if (pose) { if (exitP <= 0) 影子(pose.cx, 24); 画机体(pose.sp, pose.cx, pose.feetY); }
+    /* 敌方小兵：受击闪白后退 → 后仰 / 击破 */
+    let 白 = 停顿中, 偏移 = 0;
+    斩时刻.forEach((at, i) => { const ai2 = tb - at; if (ai2 >= 0 && ai2 < (i === 3 ? 90 : 60)) { 白 = true; 偏移 = -2; } });
+    { const ai2 = tb - T_FIN; if (ai2 >= 0 && ai2 < 120) { 白 = true; 偏移 = -3; } }
+    let 后仰 = false;
+    const 尸块终 = T_FIN + 收.大爆[0] + 收.尸块[1];
+    if (killT >= 0) { if (killT < 收.白1[1]) 白 = Math.floor(killT / 50) % 2 === 0; }
+    else if (!S.kill && tb >= 拍['扣血'][0]) { const rt = tb - 拍['扣血'][0]; 后仰 = true; 偏移 = -r(6 * Math.sin(Math.PI * prog(rt, 0, 500))); if (rt < 66 && Math.floor(rt / 33) % 2 === 0) 白 = true; }
+    if (!(killT >= 尸块终) && exs > -40 && exs < W + 40) {
+      影子(exs, 22);
+      const bob = (Math.floor(tb / 380) % 2) && tb < 冲[1];
+      if (后仰) g.drawImage(SP.gruntLean, r(exs - 14 + 偏移), r(GROUND - 42 + bob));
+      else g.drawImage(白 ? SP.gruntMeleeWhite : SP.gruntMelee, r(exs - 14 + 偏移), r(GROUND - 42 + bob));
+    }
+    /* 斩击光弧 + 火花：每段一道月牙，大斩一道大的加贯穿亮线 */
+    const hitY = GROUND - 26;
+    斩时刻.forEach((at, i) => {
+      const ai2 = tb - at; if (ai2 < 0) return;
+      const q = step(ai2, 33), fade = prog(ai2, 0, 260);
+      const [a0, a1, rad] = COMBO[i].弧;
+      const grow = ai2 < 99 ? .45 : ai2 < 165 ? .8 : 1;
+      if (ai2 < 300) { slashArc(exs + 2, hitY, a0, a1, rad, grow * (1 - fade * .35), COMBO[i].色, '#ccd8ee', '#ffffff'); if (ai2 < 130) 火花(exs + 2, hitY, q, 7, '#ffe066'); }
+    });
+    { const ai2 = tb - T_FIN; if (ai2 >= 0 && ai2 < 420) {
+      const grow = ai2 < 132 ? .5 : ai2 < 231 ? .85 : 1;
+      slashArc(exs + 2, hitY, 1.05, 4.55, 30, grow, '#e45ad0', '#e8dcff', '#ffffff');
+      if (ai2 < 260) { line(exs - 26, hitY + 22, exs + 30, hitY - 22, '#ffffff'); line(exs - 26, hitY + 24, exs + 30, hitY - 20, '#b9a6ff'); }
+      if (ai2 < 200) for (let k = 0; k < 12; k++) { const a = k * .52 + ai2 * .01, d = 6 + step(ai2, 33) * .12; px(exs + 2 + Math.cos(a) * d, hitY + Math.sin(a) * d, k % 3 ? '#ffffff' : '#e45ad0'); }
+    } }
+    if (killT >= 0) 击破序列(exs, T_FIN, tb, 1, 1);
+    if (killT > 收.印章) 印章(exs + 2, 26, '击破', '#ff5a3a', '#2a0805', tb, T_FIN + 收.印章, 99999);
+    if (!S.kill && tb >= 拍['扣血'][0] && tb < 拍['扣血'][0] + 600) 印章(exs + 2, 30, '后仰', '#c3cde3', '#141623', tb, 拍['扣血'][0], 600);
+    /* 语-10：只显示总伤害。分段的小数字只用来提示「打了几下」，总和才是记录里的数 */
+    const 段数 = 甲.段数 || 4;
+    斩时刻.forEach((at, i) => { const ai2 = tb - at; if (ai2 < 0 || ai2 > 260) return; const vis = ai2 < 200 || Math.floor(ai2 / 66) % 2 === 0; if (vis) drawText(数字(Math.round(输入.伤害[0] / (段数 + 1))), exs + 2 + (i % 2 ? 6 : -6), hitY - 18 - i * 4, FONT_PX(8), '#ffffff', '#8a2420', 'center'); });
+    if (ai >= 0) 伤害数字(exs + 2, SP.gruntMelee.height, 输入.伤害[0], ai, 输入.目标们[0].结果 === '暴击');
+  },
+});
+
+/* ===================== 十、每招一份数据脚本（第 4.3 节 / 语-22） ===================== */
+/* 键 = 机体键/武器名（记录里直接拼得出来）。字段全可省，不省就用模板默认值。
+ * 这里一个伤害数字、一条战斗状态都没有 —— 那些全从「输入」（第 4.2 节）来。 */
+const 演出脚本 = {
+  'M1/残月的余响': {
+    模板: 'summon_drop', 档次: '大招', 机师: 'Feena',
+    台词: ['质量加速器，充能完毕——', '月光，坠落吧！'],
+    招式名: '残月的余响', 武器名: '残月的余响', 威力: 3200,
+    主色: '#7ff0ff', 停顿: '大', 天空: '月面',
+    音效: { 切入: 'cutin', 蓄力: 'charge', 发射: 'fire', 命中: 'impact' },
+  },
+  'A1/光束步枪': {
+    模板: 'shoot_beam', 档次: '大招', 机师: '刹那',
+    台词: ['目标锁定，告一段落——', '贯穿它！'],
+    招式名: '光束步枪·贯通', 武器名: '光束步枪', 威力: 2800,
+    主色: '#7ff0ff', 停顿: '中', 天空: '月面',
+    音效: { 切入: 'cutin', 蓄力: 'charge', 发射: 'fire_beam', 命中: 'hit_beam' },
+  },
+  'B1/影界·万刃归一': {
+    模板: 'melee_multi', 档次: '大招', 机师: '雷萨',
+    台词: ['刃影已至，皆听我令——', '万刃归一！'],
+    招式名: '影界·万刃归一', 武器名: '影界·万刃归一', 威力: 3200,
+    主色: '#e45ad0', 停顿: '大', 天空: '影界', 段数: 4,
+    音效: { 切入: 'cutin', 蓄力: 'charge', 冲刺: 'dash', 斩: 'slash', 命中: 'impact' },
+  },
+};
+/** 语-23 最后一列：没写脚本的招也能演 —— 按武器数据自动挑模板。 */
+function 自动模板(w) {
+  if (w.fire === 'melee') return (w.hits || 1) > 3 ? 'melee_multi' : 'melee_dash';
+  if (w.dmgType === '光束') return 'shoot_beam';
+  if (w.fire === 'map') return 'map_burst';
+  if (w.fire === 'indirect') return 'shoot_lob';
+  return 'shoot_shell';
+}
+/** 三种档（语-1）：完整 / 短版 / 简版。「本场第二次起」由播放层数次数，这里只认第一次。 */
+function 选档(键, 第几次) {
+  const 定 = 演出脚本[键];
+  if (!定) return '完整';                       // 没写脚本的招也按完整演（阶段 3 接游戏后由设置决定）
+  return 第几次 > 1 ? '短版' : '完整';
+}
+/** 停顿档 → 毫秒。**基准值就是滑条（S.stop，默认 = 语-11 的「中」= 100）**：
+ *  微 = 半档（语-10 中间段 30ms）、小 / 中 / 大 = 基准的 0.6 / 1 / 1.4（默认正好 60 / 100 / 140，语-11）。 */
+const 停顿表 = { 无: 0, 微: .5, 小: .6, 中: 1, 大: 1.4, 击破: 1.8 };
+const 停顿毫秒 = 档 => Math.round(S.stop * (停顿表[档] === undefined ? 1 : 停顿表[档]));
+
+/* ===================== 十一、时间（语-9：命中时刻是唯一同步点） ===================== */
+/** 基准拍子 → 实际拍子（语-9 的四段）。差别只有两处：「起」段在短版里砍掉、
+ *  「发」段在短版里压到 60%；命中之后的拍子在显示时间上整体顺延（由停顿表 + 实时映射给出，不改拍子本身）。 */
+function 算拍(模板, 定, 档) {
+  const 起 = Object.assign({}, 模板.默认拍, 定.节拍 || {});
+  const 四 = 模板.四段;
+  const 名们 = Object.keys(起).sort((a, b) => 起[a][0] - 起[b][0]);
+  const 首 = 名们[0];
+  const 发首 = 四.发[0], 发末 = 四.发[四.发.length - 1];
+  const 起点 = 档 === '短版' ? 起[发首][0] : 起[首][0];
+  const 压 = 档 === '短版' ? .6 : 1;
+  const 映 = b => b <= 起点 ? 起点 : b <= 起[发末][1] ? 起点 + (b - 起点) * 压 : b - (起[发末][1] - 起点) * (1 - 压);
+  const 拍 = {};
+  for (const k of 名们) 拍[k] = 起[k].map(映);              // 数组元素个数原样保留（多段招一行写 4 个时刻）
+  if (档 === '短版') for (const k of 四.起) if (k !== 发首) 拍[k] = [起点, 起点];      // 起段砍掉
+  const 命中们 = 模板.命中(拍).map(m => Object.assign({}, m, { 停顿毫秒: 停顿毫秒(m.停顿) }));
+  /* 收段：从「扣血」段起点起算的数据长度（击破要给连爆留地方，未击破短得多） */
+  const 收段起 = 四.收.length ? 拍[四.收[0]][0] : 拍[名们[名们.length - 1]][1];
+  const 比 = 模板.收段比 || { 击破: 0, 未击破: 0, 退场留: 200 };
+  const 收段结束 = 收段起 + (S.kill ? 比.击破 : 比.未击破) * 700;
+  return { 拍, 命中们, 四, 收段起, 收段结束, 退场留: 比.退场留 || 200, 档 };
+}
+/** 停顿表：每段命中都要停；「微停」按语-10 只停 30 毫秒（多段全铺开不超过 700ms，见脚本的段间隔）。 */
+const 算停顿 = R2 => R2.命中们.map(m => ({ at: m.时刻, d: m.停顿毫秒 })).sort((a, b) => a.at - b.at);
+/** 内容时间 tb → 显示时间（语-9：tb 之后的拍整体顺延；显示与反显共用同一张停顿窗，保证互为逆）。 */
+function 显示(R2, t) { let d = 0; for (const w of 停顿窗(R2)) if (w.at < t) d += w.d; return t + d; }
+function 总长(R2) { return 显示(R2, R2.收段结束); }
+/** 停顿窗口：显示时间 = 内容时间 + **排在它前面**的停顿之和（前缀和；逐个算，不回头用 显示() 自己，
+ *  这样多段连斩的微停窗口也是严格递增、互不重叠的 → 反显一定单调）。 */
+const 停顿窗 = R2 => {
+  const 升 = R2.停顿.slice().sort((a, b) => a.at - b.at);
+  const 出 = [];
+  for (let i = 0; i < 升.length; i++) {
+    let 前 = 0;
+    for (let j = 0; j < i; j++) if (升[j].at < 升[i].at) 前 += 升[j].d;
+    出.push({ at: 升[i].at, d: 升[i].d, w0: 升[i].at + 前 });
+  }
+  return 出;
+};
+/** 显示时间 t → 内容时间 tb（语-9：**停顿期间画面冻结在命中时刻**，整个停顿窗口都返回同一个 tb）。
+ *  窗口之间严格递增、互不重叠 → 反显一定单调不减（tests/演出.js 第 [4] 段钉着）。 */
+function 反显(R2, t) {
+  let d = 0;
+  for (const w of 停顿窗(R2)) {
+    if (t >= w.w0 && t < w.w0 + w.d) return w.at;            // 窗口内：冻在命中时刻
+    if (t >= w.w0 + w.d) d += w.d;                            // 窗口之后：整体顺延
+  }
+  return t - d;
+}
+function 停顿中吗(R2, t) { for (const w of 停顿窗(R2)) if (t >= w.w0 && t < w.w0 + w.d) return true; return false; }
+/** 这一次出手的「档」是不是很值得演（语-1 的三档里，简版留给阶段 4 的战场层）。 */
+const 要演吗 = (键, 第几次) => 选档(键, 第几次) !== '简版';
+
+/* ===================== 十二、输入（第 4.2 节；阶段 1 是演示数据） ===================== */
+/* 阶段 3 接游戏时，这个对象由 85-播放.js 从战斗记录里取，演出层一个字段都不重算。 */
+function 造输入(键) {
+  if (键 === 'A1/光束步枪') return {
+    攻击者: { 键: 'A1', 方: 'ally', 位: 5, 名: '刹那·F·清英', 等级: 30, 最大HP: 12500, 精灵组: 'a1' },
+    目标们: [{ 键: 'grunt', 方: 'enemy', 位: 5, 名: '量产型·小兵', 等级: 14, HP前: 6200, HP后: 0, 最大HP: 6200, 结果: '命中' }],
+    武器: { 名: '光束步枪', 档次: '大招', 伤害类型: '光束', 威力: 2800 },
+    伤害: [6200], 主目标: 0,
+  };
+  if (键 === 'B1/影界·万刃归一') return {
+    攻击者: { 键: 'B1', 方: 'ally', 位: 4, 名: '雷萨·影', 等级: 30, 最大HP: 5000, 精灵组: 'b1' },
+    目标们: [{ 键: 'grunt', 方: 'enemy', 位: 5, 名: '量产型·小兵', 等级: 14, HP前: 6200, HP后: 0, 最大HP: 6200, 结果: '命中' }],
+    武器: { 名: '影界·万刃归一', 档次: '大招', 伤害类型: '格斗', 威力: 3200 },
+    伤害: [5680], 主目标: 0,
+  };
+  return {
+    攻击者: { 键: 'M1', 方: 'ally', 位: 4, 名: 'Feena·月辉', 等级: 20, 最大HP: 11250, 精灵组: 'm1' },
+    目标们: [{ 键: 'grunt', 方: 'enemy', 位: 5, 名: '量产型·小兵', 等级: 14, HP前: 6200, HP后: 0, 最大HP: 6200, 结果: '命中' }],
+    武器: { 名: '残月的余响', 档次: '大招', 伤害类型: '光束', 威力: 3200 },
+    伤害: [5180], 主目标: 0,
+  };
+}
+/** 语-16：主目标 = 本次击破了的 > 伤害最高的 > 第一条记录。阶段 1 只有单目标，规则写在这。 */
+function 选主目标(输入) {
+  let 最好 = 0, 最好分 = -1;
+  输入.目标们.forEach((t, i) => { const 分 = (t.HP后 === 0 ? 1e9 : 0) + (输入.伤害[i] || 0); if (分 > 最好分) { 最好分 = 分; 最好 = i; } });
+  return 最好;
+}
+
+/* ===================== 十三、播放器（三招共用；它不认识任何一招） ===================== */
+const 当前 = { 键: 'M1/残月的余响', 档: '完整', 时间: 0, 播放中: false, 输入: null, R: null };
+
+/** 这一招会用到哪些模块 —— **纯计算，不改状态**（界面上的模块表靠它，不许有副作用）。 */
+function 用到的模块(键, 档) {
+  const 定 = 演出脚本[键] || {};
+  const 模板名 = 定.模板 || 自动模板(定);
+  const 模板 = 模块表.模板[模板名];
+  const 出 = new Set(['模板:' + 模板名, '核心:HUD']);
+  if (模板) {
+    出.add('镜头:' + (模板.镜头 || (定.天空 === '影界' ? '同框' : '转镜')));
+    for (const 特 of (模板.特效 || [])) 出.add('特效:' + 特);
+  }
+  return 出;
+}
+/** 换脚本 / 换档：重算拍子、停顿表、输入。仅数据 = 只算不画（界面上的模块表要临时装别的招）。 */
+function 装招(键, 档, 仅数据) {
+  当前.键 = 键;
+  const 定 = 演出脚本[键] || {};
+  const 模板名 = 定.模板 || 自动模板(定);
+  const 模板 = 选模板(模板名);
+  const 镜头名 = 模板.镜头 || (定.天空 === '影界' ? '同框' : '转镜');
+  选镜头(镜头名); 选核心('HUD');
+  if (模板.特效) for (const 特 of 模板.特效) 选特效(特);
+  用到 = new Set();                                        // 重记「这一招用到哪些模块」
+  const 基础 = 算拍(模板, 定, 档 || 选档(键, 1));
+  当前.R = Object.assign({}, 基础, { 停顿: 算停顿(基础), 模板, 模板名, 镜头名, 定, 名牌段: 模板.名牌 || null });
+  当前.输入 = 造输入(键);
+  当前.输入.主目标 = 选主目标(当前.输入);
+  当前.主目标 = 当前.输入.目标们[当前.输入.主目标];
+  当前.时间 = Math.min(当前.时间, 总长(当前.R));
+  当前.模板名 = 模板名; 当前.镜头名 = 镜头名;
+  用到当前 = 用到;
+  if (!仅数据) 跳到(当前.时间);
+  return 当前.R;
+}
+/** 血量：命中前冻在 HP前，命中后按语-11（停顿后 350ms 起、600ms ease-out）落到记录值。 */
+function 血量(tb, R) {
+  const 目标 = 当前.主目标, T0 = R.命中们[0].时刻, 扣 = R.拍['扣血'];
+  const 到 = S.kill ? 0 : Math.max(0, 目标.HP后);
+  const 冻 = 目标.HP前;
+  if (tb <= T0) return { 现在: 冻, 滞后: 冻, 到 };
+  const 现 = tb <= 扣[0] + 350 ? 冻 : lerp(冻, 到, easeOut(prog(tb, 扣[0] + 350, 扣[0] + 950)));
+  const 滞 = tb < 扣[0] + 550 ? 冻 : lerp(冻, 到, easeInOut(prog(tb, 扣[0] + 550, 扣[0] + 1150)));
+  return { 现在: 现, 滞后: Math.max(现, 滞), 到 };
+}
+
+/** 绘一帧。t 是显示时间（含停顿）；所有时间语义都由它推出来。 */
+function 绘一帧(t) {
+  const R = 当前.R; if (!R) return null;
+  const tb = 反显(R, t), 停顿中 = 停顿中吗(R, t);
+  const T0 = R.命中们[0].时刻;
+  const ai = (t >= 显示(R, T0) + (停顿中 ? 1 : 0)) ? Math.max(0, tb - T0) : (停顿中 ? 0 : -1);
+  const ts = step(tb, 33);                                   // 语-11：特效按 33ms 步进
+  const killT = S.kill ? tb - (R.命中们[R.命中们.length - 1].时刻) : -1;
+  const cam = 模块表.镜头[R.镜头名].横移(tb);
+  const 甲 = {
+    t, tb, ts, cam, 停顿中, ai, killT, R, 拍: R.拍, 命中们: R.命中们, 收段结束: R.收段结束,
+    输入: 当前.输入, 主目标: 当前.主目标, 定: R.定, 主色: R.定.主色, 段数: R.定.段数, 档: R.档,
+  };
+  当前甲 = 甲;
+  const 震 = 选特效('打击感').震动(null, R.命中们, tb, S.kill && killT >= 0 ? [{ 时刻: R.命中们[R.命中们.length - 1].时刻 + 450, 震动: 3.5, 衰减: 220 }] : []);
+  /* 语-5 的绘制顺序：远景 → 地面 → 影子 → 机体 → 弹体/特效 → 数字/印章（以上整体受震动）→ 名牌 → HUD → 切入 → 闪白 → 转场 */
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  rect(0, 0, W, H, '#000');
+  g.save(); g.translate(震.sx, 震.sy);
+  R.模板.画(甲);
+  if (R.镜头名 === '转镜') 模块表.镜头['转镜'].速度线(tb, ts);
+  选特效('打击感').闪白(R.定.停顿 || '中', 停顿中, ai);
+  g.restore();
+  /* 名牌（语-5：不跟着震） */
+  if (R.名牌段) {
+    const 名起 = R.拍[R.名牌段[0]], 名止 = R.拍[R.名牌段[1]];
+    if (名起 && 名止) 名牌(R.定.武器名 || R.键.split('/')[1], R.定.威力 || 0, tb, 名起[0], 名止[0]);
+  }
+  const 血 = 血量(tb, R);
+  选核心('HUD').画(当前.输入, 血.现在, 血.滞后);
+  const 切段 = R.拍['切入'] || R.拍['入场'];
+  if (tb >= 切段[0] && tb < 切段[1] && R.定.台词) 切入.画(prog(tb, 切段[0], 切段[1]), tb, R.定, 头像Of(当前.键));
+  if (t > 总长(R) - 260) { const e = prog(t, 总长(R) - 260, 总长(R)); const lvl = Math.floor(e * 4); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (lvl >= 4 || ((x + y * 2) % 4) < lvl) px(x, y, '#000'); }
+  return 甲;
+}
+const 头像Of = 键 => 键.indexOf('B1') === 0 ? SP.raHead : SP.feenaHead;
+
+/* ===================== 十四、时间轴 UI ===================== */
+const track = document.getElementById('track'), head = document.getElementById('head');
+const beatsEl = document.getElementById('beats'), nowEl = document.getElementById('now'), totEl = document.getElementById('total');
+/** 拍子表按「显示时间」排（语-9 的四段：起 / 发 / 中 / 收）。 */
+function 拍序列(R) {
+  const 名 = Object.keys(R.拍), 四 = R.四, 中名 = 四.收[0] || 名[名.length - 1];
+  const 列表 = 名.filter(k => R.拍[k].length > 1 && R.拍[k][1] > R.拍[k][0]).map(k => ({
+    k, 名: k, a: R.拍[k][0], b: R.拍[k][1],
+    段: 四.起.indexOf(k) >= 0 ? '起' : 四.中.indexOf(k) >= 0 ? '中' : 四.收.indexOf(k) >= 0 ? '收' : '发',
+  }));
+  列表.push({ k: '收', 名: '收（反应 / 退场）', a: R.拍[中名][1], b: R.收段结束, 段: '收' });
+  return 列表.filter(x => x.b > x.a);
+}
+function 建时间轴() {
+  const R = 当前.R, 列 = 拍序列(R);
+  track.querySelectorAll('.seg').forEach(n => n.remove());
+  for (const b of 列) {
+    const d = document.createElement('div');
+    d.className = 'seg' + (b.段 === '中' ? ' key' : '') + (b.k === '连斩' || b.k === '大斩' || b.k === '命中' ? ' seg-hit' : '');
+    d.style.flex = `${Math.max(1, 显示(R, b.b) - 显示(R, b.a))} 0 0`;
+    d.textContent = b.名; d.dataset.k = b.k;
+    track.insertBefore(d, head);
+  }
+  beatsEl.innerHTML = R.命中们.map(m => `<div><span class="t">T0 ${显示(R, m.时刻)}ms</span><span>${m.名}（停顿 ${m.停顿毫秒}ms）</span></div>`).join('')
+    + 列.map(b => `<div><span class="t">${显示(R, b.b) - 显示(R, b.a)}ms</span><span>${b.名}</span></div>`).join('');
+  totEl.textContent = 总长(R);
+  document.getElementById('tlName').textContent = `时间轴 · ${当前.键}（${R.档}）`;
+}
+function 更时间轴(t) {
+  const R = 当前.R, 列 = 拍序列(R);
+  head.style.left = `calc(${(t / Math.max(1, 总长(R))) * 100}% - 1px)`;
+  nowEl.textContent = Math.round(t);
+  for (const n of track.querySelectorAll('.seg')) { const b = 列.find(x => x.k === n.dataset.k); if (b) n.classList.toggle('on', t >= 显示(R, b.a) && t < 显示(R, b.b)); }
+}
+
+/* ===================== 十五、音效（合成；语-19） ===================== */
+/* 语-13：合成音效里的噪声允许用 Math.random（只影响声音，不进画面、不进战斗）。 */
+let AC = null;
+const ac = () => { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } } return AC; };
+function sfx(kind, delay) {
+  if (!S.sound) return; const a = ac(); if (!a || a.state === 'suspended') return;
+  const now = a.currentTime + (delay || 0), out = a.createGain(); out.gain.value = .35; out.connect(a.destination);
+  const tone = (type, f0, f1, dur, vol, at = 0) => { const o = a.createOscillator(), gn = a.createGain(); o.type = type; o.frequency.setValueAtTime(f0, now + at); o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), now + at + dur); gn.gain.setValueAtTime(vol, now + at); gn.gain.exponentialRampToValueAtTime(.0001, now + at + dur); o.connect(gn); gn.connect(out); o.start(now + at); o.stop(now + at + dur + .05); };
+  const noise = (dur, f, vol, at = 0, f1) => { const b = a.createBuffer(1, a.sampleRate * (dur + .1), a.sampleRate), d = b.getChannelData(0); let v = 0; for (let i = 0; i < d.length; i++) { if (i % 6 === 0) v = Math.random() * 2 - 1; d[i] = v; } const s = a.createBufferSource(); s.buffer = b; const fl = a.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.setValueAtTime(f, now + at); if (f1) fl.frequency.exponentialRampToValueAtTime(f1, now + at + dur); const gn = a.createGain(); gn.gain.setValueAtTime(vol, now + at); gn.gain.exponentialRampToValueAtTime(.0001, now + at + dur); s.connect(fl); fl.connect(gn); gn.connect(out); s.start(now + at); s.stop(now + at + dur + .05); };
+  switch (kind) {
+    case 'cutin': tone('square', 880, 1760, .08, .3); tone('square', 1320, 2640, .1, .25, .08); break;
+    case 'blip': tone('square', 1200, 1200, .03, .12); break;
+    case 'charge': tone('square', 110, 880, .85, .14); tone('triangle', 220, 1760, .85, .2); break;
+    case 'fire': noise(.35, 4000, .7, 0, 500); tone('square', 220, 55, .3, .4); break;
+    case 'fire_beam': tone('sawtooth', 1800, 300, .4, .3); noise(.3, 6000, .4, 0, 800); break;
+    case 'dash': noise(.25, 3000, .35, 0, 200); tone('square', 320, 120, .22, .25); break;
+    case 'slash': noise(.12, 8000, .5, 0, 2000); tone('square', 1400, 400, .12, .2); break;
+    case 'whistle': tone('square', 1600, 300, .6, .12); break;
+    case 'hit_beam': noise(.5, 3000, .7, 0, 200); tone('square', 700, 120, .4, .35); break;
+    case 'impact': noise(1.0, 2500, 1, 0, 90); tone('triangle', 120, 30, .8, 1); break;
+    case 'pop': noise(.2, 2000, .6, 0, 300); break;
+    case 'boom': noise(1.3, 1800, 1, 0, 70); tone('triangle', 90, 25, 1.1, 1); break;
+    case 'clang': tone('square', 700, 200, .18, .3); noise(.15, 5000, .3); break;
+  }
+}
+/** 音效全部挂在命中时刻 T0 上（语-9：不各自对时间）。 */
+function 音效表(R) {
+  const 定 = R.定.音效 || {}, 列 = [];
+  const 切 = R.拍['切入'] || R.拍['入场'];
+  if (定.切入) 列.push([切[0] + 10, 定.切入]);
+  const 蓄 = R.拍['蓄力'] || R.拍['拔刀'];
+  if (定.蓄力 && 蓄) 列.push([蓄[0], 定.蓄力]);
+  if (定.发射 && R.拍['发射']) 列.push([R.拍['发射'][0], 定.发射]);
+  if (定.冲刺 && R.拍['冲刺']) 列.push([R.拍['冲刺'][0], 定.冲刺]);
+  R.命中们.forEach((m, i) => {
+    const w = 显示(R, m.时刻);
+    if (定.斩 && R.模板名 === 'melee_multi') 列.push([w, i === R.命中们.length - 1 ? (定.命中 || 'impact') : 定.斩]);
+    else if (定.命中) 列.push([w, 定.命中]);
+    if (i === 0 && S.kill) { const k = 显示(R, R.命中们[R.命中们.length - 1].时刻) + 300; 列.push([k, 'pop'], [k + 170, 'pop'], [k + 330, 'pop'], [k + 460, 'boom']); }
+  });
+  if (!S.kill) 列.push([显示(R, R.拍['扣血'][0]), 'clang']);
+  return 列.sort((a, b) => a[0] - b[0]);
+}
+
+/* ===================== 十六、播放控制 ===================== */
+let 音节 = [], 上次 = 0;
+function 跳到(nt) {
+  当前.播放中 = false;
+  当前.时间 = clamp(nt, 0, 总长(当前.R));
+  当前.甲 = 绘一帧(当前.时间);
+  更时间轴(当前.时间); 写自检();
+}
+function 播(fromStart) {
+  if (fromStart || 当前.时间 >= 总长(当前.R)) 当前.时间 = 0;
+  当前.播放中 = true; 上次 = performance.now(); 音节 = 音效表(当前.R);
+  const a = ac(); if (a && a.state === 'suspended') a.resume();
+  requestAnimationFrame(走);
+}
+function 走(now) {
+  if (!当前.播放中) return;
+  const dt = Math.min(50, now - 上次); 上次 = now;
+  const 前 = 当前.时间;
+  当前.时间 = Math.min(总长(当前.R), 当前.时间 + dt * S.speed);
+  for (const [at, k] of 音节) if (前 <= at && 当前.时间 > at) sfx(k);
+  当前.甲 = 绘一帧(当前.时间);
+  更时间轴(当前.时间); 写自检();
+  if (当前.时间 >= 总长(当前.R)) { 当前.播放中 = false; return; }
+  requestAnimationFrame(走);
+}
+/** 跳过（语-12）：立刻结束，血条直接落到记录值；应用给播放层的记录一个字节都不变。 */
+function 跳过() { 当前.播放中 = false; 跳到(总长(当前.R)); }
+
+/* ===================== 十七、自检口（tests/演出.js 与「看几帧」用） ===================== */
+/** 一帧的确定性摘要：所有输入都是纯函数 → 同一脚本同一档同一 t，摘要必须逐字一样。 */
+function 自检帧(甲) {
+  if (!甲) return null;
+  return [甲.tb, Math.round(甲.cam), 甲.停顿中 ? 1 : 0, Math.round(甲.ai), 甲.命中们[0].时刻, Math.round(甲.收段结束)].join('|');
+}
+function 写自检() {
+  const R = 当前.R; if (!R) return;
+  document.getElementById('ioOut').innerHTML = 接入信息(R);
+  document.getElementById('modTab').innerHTML = 模块表Html();
+  document.getElementById('ioCount').textContent = 条数(R);
+}
+/** 语-15：一次出手吃掉几条记录 —— 范围攻击是「每个目标一条」，所以这里给的是公式与上下界。 */
+function 条数(R) {
+  const n = 当前.输入.目标们.length;
+  return n === 1 ? '1 条（单目标：范围武器也只有 1 条）' : `${n} 条（逐目标；语-15 按「同一单位 + 同一武器」的连续记录收）`;
+}
+function 接入信息(R) {
+  const 输入 = 当前.输入, 主 = 输入.目标们[输入.主目标];
+  return [
+    `演出.要演(战报, ${当前.序号 === undefined ? '位置' : '位置'}, 播放) → {`,
+    `  脚本: '${当前.键}',  档: '${R.档}',  条数: ${条数(R)}`,
+    `  输入: {`,
+    `    攻击者: { 键:'${输入.攻击者.键}', 方:'${输入.攻击者.方}', 位:${输入.攻击者.位}, 名:'${输入.攻击者.名}', 精灵组:'${输入.攻击者.精灵组}' },`,
+    `    目标们: [ { 键:'${主.键}', HP前:${主.HP前}, HP后:${主.HP后}, 最大HP:${主.最大HP}, 结果:'${主.结果}' } ],`,
+    `    武器: { 名:'${输入.武器.名}', 档次:'${输入.武器.档次}', 伤害类型:'${输入.武器.伤害类型}', 威力:${输入.武器.威力} },`,
+    `    伤害: [${输入.伤害.join(', ')}],  主目标: ${输入.主目标}`,
+    `  }`,
+    `}`,
+    `模板 '${R.模板名}' 只读「输入」，不重算任何数值（语-20 / 已定规则第 2 条）。`,
+    `要演() 返回 null 的三种情况：设置里演出=关、这一条是简版（普通攻击）、播放层开着跳过（语-2）。`,
+  ].join('\n');
+}
+/** 模块表：三招各自「会用到哪些模块」的并集 —— 纯读，装招一次都不调（不许有副作用）。 */
+function 模块表Html() {
+  const 全 = new Set();
+  for (const 键 of Object.keys(演出脚本)) for (const x of 用到的模块(键)) 全.add(x);
+  const 前 = 用到当前;
+  return '<tr><th>类</th><th>模块</th><th>这一招</th></tr>'
+    + '<tr><td>核心</td><td>播放器（时间 / 停顿 / 震动 / HUD / 切入 / 跳过 / 倍速）</td><td class="y">✓</td></tr>'
+    + [...全].sort().map(x => { const i = x.indexOf(':'); const 类 = x.slice(0, i), 名 = x.slice(i + 1); return `<tr><td>${类}</td><td>${名}</td><td class="${前.has(x) ? 'y' : ''}">${前.has(x) ? '✓' : ''}</td></tr>`; }).join('');
+}
+
+/* ===================== 十八、界面接线 ===================== */
+const 招钮 = { A: 'M1/残月的余响', B: 'A1/光束步枪', C: 'B1/影界·万刃归一' };
+function 换招(k) {
+  S.招 = k;
+  for (const [名, 键] of Object.entries(招钮)) document.getElementById('m' + 名).setAttribute('aria-pressed', String(名 === k));
+  装招(招钮[k], 选档(招钮[k], 1));
+  TXT.clear(); 建时间轴(); 跳到(0);
+}
+function 设击破(v) {
+  S.kill = v;
+  document.getElementById('rKill').setAttribute('aria-pressed', String(v));
+  document.getElementById('rLive').setAttribute('aria-pressed', String(!v));
+  装招(当前.键, 当前.R.档); TXT.clear(); 建时间轴(); 跳到(Math.min(当前.时间, 总长(当前.R)));
+}
+document.getElementById('mA').addEventListener('click', () => 换招('A'));
+document.getElementById('mB').addEventListener('click', () => 换招('B'));
+document.getElementById('mC').addEventListener('click', () => 换招('C'));
+document.getElementById('play').addEventListener('click', () => { document.getElementById('pause').textContent = '暂停'; 播(true); });
+document.getElementById('pause').addEventListener('click', e => { if (当前.播放中) { 当前.播放中 = false; e.target.textContent = '继续'; } else { e.target.textContent = '暂停'; 播(false); } });
+document.getElementById('rKill').addEventListener('click', () => 设击破(true));
+document.getElementById('rLive').addEventListener('click', () => 设击破(false));
+document.querySelectorAll('[data-sp]').forEach(b => b.addEventListener('click', () => {
+  S.speed = +b.dataset.sp;
+  document.querySelectorAll('[data-sp]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+}));
+const stopI = document.getElementById('stop'), stopV = document.getElementById('stopV');
+stopI.addEventListener('input', () => { S.stop = +stopI.value; stopV.textContent = S.stop + 'ms'; 装招(当前.键, 当前.R.档); 建时间轴(); if (!当前.播放中) 跳到(Math.min(当前.时间, 总长(当前.R))); });
+const shakeI = document.getElementById('shake'), shakeV = document.getElementById('shakeV');
+shakeI.addEventListener('input', () => { S.shake = +shakeI.value / 100; shakeV.textContent = shakeI.value + '%'; if (!当前.播放中) 跳到(当前.时间); });
+const snd = document.getElementById('snd');
+snd.addEventListener('click', () => { S.sound = !S.sound; snd.setAttribute('aria-pressed', String(S.sound)); snd.textContent = S.sound ? '开' : '关'; });
+let 拖 = false;
+const 轨道跳 = e => { const b = track.getBoundingClientRect(); 跳到(((e.clientX - b.left) / b.width) * 总长(当前.R)); };
+track.addEventListener('pointerdown', e => { 拖 = true; track.setPointerCapture(e.pointerId); 轨道跳(e); });
+track.addEventListener('pointermove', e => { if (拖) 轨道跳(e); });
+track.addEventListener('pointerup', () => { 拖 = false; });
+document.addEventListener('keydown', e => { if (e.key === ' ') { e.preventDefault(); 当前.播放中 ? 跳过() : 播(true); } });
+
+/* ===================== 十九、自检口 + 启动 ===================== */
+window.__演出 = {
+  脚本们: () => Object.keys(演出脚本).map(k => ({ 键: k, 模板: 演出脚本[k].模板, 档次: 演出脚本[k].档次 })),
+  模块表: () => 模块表,
+  /** 全部模块名（三招合起来用到的）与当前这一招用到的 —— 纯读。 */
+  模块们: () => {
+    const 全 = new Set();
+    for (const 键 of Object.keys(演出脚本)) for (const x of 用到的模块(键)) 全.add(x);
+    return { 全部: [...全].sort(), 当前: [...用到当前].sort() };
+  },
+  模块表Html: () => 模块表Html(),
+  装了() { return { 键: 当前.键, 模板: 当前.模板名, 档: 当前.R.档, 拍: 当前.R.拍, 四: 当前.R.四, 命中们: 当前.R.命中们, 收段结束: 当前.R.收段结束, 停顿: 当前.R.停顿, 总长: 总长(当前.R) }; },
+  /** 三招各自装一遍并报出「用的是哪个模板」—— 测试直接读这个。 */
+  装了谁: () => Object.keys(演出脚本).map(k => { 装招(k, '完整', true); return { 键: k, 模板: 当前.模板名 }; }),
+  换招, 设击破,
+  /** 直接装某个档（语-1 的完整 / 短版）—— 测试与「看短版」用。 */
+  设档: (档, 招) => { if (招) 当前.键 = 招钮[招]; 装招(当前.键, 档); 建时间轴(); 跳到(0); return window.__演出.装了(); },
+  设停顿: n => { S.stop = n; 装招(当前.键, 当前.R.档); 建时间轴(); 跳到(当前.时间); },
+  停顿: () => S.stop,
+  停顿窗: () => 停顿窗(当前.R),
+  输入: () => 当前.输入,  暂停() { 当前.播放中 = false; },
+  跳到, 跳过, 总长: () => 总长(当前.R),
+  反显: t => 反显(当前.R, t), 显示: t => 显示(当前.R, t), 停顿中吗: t => 停顿中吗(当前.R, t),
+  绘: t => { 跳到(t); return 当前.甲; },
+  帧摘要: t => 自检帧(跳到(t)),
+  /** 跑一帧序列，返回摘要数组（tests/演出.js 的确定性检查用）。 */
+  跑几帧(步长, 帧数) { const 列 = []; for (let i = 0; i < 帧数; i++) { const t = i * 步长; 跳到(t); 列.push(自检帧(当前.甲)); } 跳到(0); return 列; },
+  /** 三招都走一遍（不渲染也行），有异常就抛出来 —— tests 用。 */
+  全部跑一遍() {
+    const 结果 = [];
+    for (const 键 of Object.keys(演出脚本)) {
+      换招(Object.keys(招钮).find(k => 招钮[k] === 键));
+      const 装好 = window.__演出.装了();
+      const 总 = 装好.总长;
+      for (let t = 0; t <= 总; t += 50) 跳到(t);
+      跳过();
+      结果.push({ 键, 实际键: 装好.键, 模板: 装好.模板, 总长: 总, 命中: 装好.命中们.map(m => m.时刻) });
+    }
+    换招('A');
+    return 结果;
+  },
+  重播: () => 播(true),
+};
+function 启动() {
+  if (reduce) { S.shake = 0; shakeI.value = 0; shakeV.textContent = '0%'; }
+  TXT.clear();
+  换招('A');
+  if (reduce) { 跳到(显示(当前.R, 当前.R.命中们[0].时刻) + 300); return; }
+  跳到(0); 播(true);
+}
+const 字体好 = () => (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve());
+/* 测试用的最小 DOM 替身里没有字体、也没有真的 requestAnimationFrame：同步启动一次即可。 */
+if (typeof document.fonts === 'undefined' || !document.fonts) 启动();
+else 字体好().then(启动, 启动);
+})();
+</script>
+</body>
+</html>

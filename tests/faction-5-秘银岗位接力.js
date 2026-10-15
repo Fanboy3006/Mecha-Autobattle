@@ -231,10 +231,12 @@ console.log('\n[13] 秘银 · SRT 交叉训练 · 岗位接力（作者 2026-10-
      这一条同时钉三件事：① 被挡 −20 **从有到无**（贴命中率前后数字）；② **只对已兑现的标定生效**
      （只挂未兑现 → 照旧 −20）；③ **只对我方生效**（敌人当攻击者照旧 −20）。 ---- */
   const cB = G.开局([{ 键: 'U2', 位: 0, 等级: 10 }, { 键: 'U1', 位: 1, 等级: 10 }],
-    [{ 键: 'grunt', 位: 0, 等级: 10 }, { 键: 'shield', 位: 5, 等级: 10 }], 20261011);
+    [{ 键: 'grunt', 位: 1, 等级: 10 }, { 键: 'shield', 位: 5, 等级: 10 }], 20261011);
   const 毛B = 找(cB, 'U2'), 克B = 找(cB, 'U1');
-  const 挡B = cB.enemies.find(u => u.slot === 0);          // 前1：挡着 后2
-  const 靶B = cB.enemies.find(u => u.slot === 5);           // 后2（位 5）—— 遮挡位 = 前1 / 前2
+  /* ★ 2026-10-13 正交 4×2：后2(5) 的 `遮挡位` 从旧的「前1+前2」收成**同路那一个** 前2(1)——
+     所以「挡着 后2」的那台要摆在 slot 1，摆在旧的 slot 0 已经不构成阻挡了。 */
+  const 挡B = cB.enemies.find(u => u.slot === 1);          // 前2：挡着 后2
+  const 靶B = cB.enemies.find(u => u.slot === 5);           // 后2（位 5）—— 遮挡位 = 前2（同路）
   const 直枪 = { name: '测试·直射枪', hit: 100, dmgType: '物理', power: 2000, stat: '射击', range: [1, 9], fire: 'direct', upgrades: [] };
   const 活位B = () => G.livingOf('enemy', cB).map(u => u.slot);
   const 罚 = 攻 => G.rowBlockPenalty('直射', 靶B.slot, 活位B(), 攻, 靶B);

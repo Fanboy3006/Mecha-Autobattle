@@ -61,7 +61,11 @@ const 修理阈值 = 0.6;
  *   参数在 `71-改动.js` 的 `难度调整.AI站位权重`（作者要调就改那一张表）。 */
 function targetScore(exp, t, att) {
   const canKill = exp >= t.hp;
-  const 权 = 站位权重(att, t);
+  /* ★ 2026-10-13（《兰斯10》四路战线 · 正交 4×2）：再乘一个**同路对位权重** ——
+     `同路索敌倍率(att, t)`（`71-改动-5`，纯读）：同列 ×1.35 / 相邻列 ×1.10 / 其余 ×1。
+     `战斗结构.兰斯战线.开 === false` → 恒 1 → `value` 与改前**逐字相同**。
+     （和「站位权重」同一个位置、同一条规矩：只改「都打不死时先打谁」，不动 `canKill`。） */
+  const 权 = 站位权重(att, t) * ((typeof 同路索敌倍率 === 'function') ? 同路索敌倍率(att, t) : 1);
   return { canKill, value: (canKill ? t.hp : exp / Math.max(1, t.hp)) * 权 };
 }
 /* 返回 true 表示 a 比 b 更该打 */
@@ -89,17 +93,26 @@ function weaponPool(actor, ctx) {
 
 /* 目标那一方的「局面」：前排还有没有人（近战够不够得着）+ 还活着的位集合。
  * ★ 作者 2026-10-10 拍板「按位阻挡」之后，直射有没有被挡**不能再只看「前排还有没有人」**——
- *   要看**这个后排位的阻挡位**（`遮挡位()`）里还有没有活人，所以把活位一次性算好传下去。 */
-const 局面Of = foes => ({ 前排有人: frontAlive(foes), 活位: foes.map(u => u.slot) });
+ *   要看**这个后排位的阻挡位**（`遮挡位()`）里还有没有活人，所以把活位一次性算好传下去。
+ * ★ 2026-10-13（《兰斯10》四路战线）：再把**这一方还活着的单位数组**（`单位们`）也带上 ——
+ *   破阵单路近战突袭要按「目标那一路的同列前排位有没有活人」逐格判（`近战可达()`）。
+ *   多带一个字段不影响别的读者（`前排有人` / `活位` 原样保留）。 */
+const 局面Of = foes => ({ 前排有人: frontAlive(foes), 活位: foes.map(u => u.slot), 单位们: foes });
 
 /* 一台机体对某个敌人最划算的（武器, 期望伤害）。
- * 局面 = 上面那个 `{前排有人, 活位}`：决定近战能不能够到后排、直射有没有被挡（−20）。 */
+ * 局面 = 上面那个 `{前排有人, 活位}`：决定近战能不能够到后排、直射有没有被挡（−20）。
+ * ★ 2026-10-13（《兰斯10》四路战线）：近战够不够得着从 `rowReachable()` 换成
+ *   **`近战可达(actor, e.t, target, foes)`**（`30-射程.js`）—— 它是
+ *   「老规则 `rowReachable` **或** 破阵单路近战突袭」的**唯一**一份判据。
+ *   `战斗结构.兰斯战线` 关掉时 `近战可达()` 逐字等价于 `rowReachable()`。 */
 function bestWeaponOn(actor, target, pool, 局面, ctx) {
   let best = null;
   for (const e of pool) {
     const kind = rangeKindOf(e.t);
     const trow = unitRow(target);
-    if (!rowReachable(kind, trow, 局面.前排有人)) continue;
+    if (typeof 近战可达 === 'function'
+      ? !近战可达(actor, e.t, target, 局面.单位们)
+      : !rowReachable(kind, trow, 局面.前排有人)) continue;
     const 罚 = rowBlockPenalty(kind, target.slot, 局面.活位, actor, target);
     const exp = expectedDamage(actor, target, e.t, { blockPenalty: 罚, turn: ctx && ctx.turn, ctx });
     if (!best || exp > best.exp) best = { entry: e, exp, 被挡: 罚 < 0 };
@@ -357,7 +370,9 @@ function pickLowestHp(actor, foes, pool, ctx) {
   const 局面 = 局面Of(foes);
   let best = null;
   for (const t of foes) {
-    if (!pool.some(e => rowReachable(rangeKindOf(e.t), unitRow(t), 局面.前排有人))) continue;
+    if (!pool.some(e => (typeof 近战可达 === 'function'
+      ? 近战可达(actor, e.t, t, 局面.单位们)
+      : rowReachable(rangeKindOf(e.t), unitRow(t), 局面.前排有人)))) continue;
     const w = bestWeaponOn(actor, t, pool, 局面, ctx);
     if (!w) continue;
     if (!best || t.hp < best.target.hp) best = { target: t, entry: w.entry, exp: w.exp, score: targetScore(w.exp, t, actor), 被挡: w.被挡 };

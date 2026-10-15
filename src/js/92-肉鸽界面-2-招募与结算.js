@@ -50,7 +50,8 @@
       /* `disabled` + `title` = 鼠标悬停也看得到理由；`data-drag` 照旧保留（能招时才生效） */
       return `<button class="pick" data-act="招募:${t.mech}" data-drag="候选:${t.mech}" style="--fc:${势力色(t.mech)}"${理由 ? ` disabled title="${理由}"` : ` title="用掉一张 ${券名(用中)}${费 > 0 ? `，花 ${费} 希望` : '（普通档，0 希望）'}${空名册 ? `｜${带队核心预告}` : ''}"`}>
         <span class="pk-top">${图标.卡(t.mech, 'ally', 图标.尺寸.列表)}<span class="pk-nm"><b>${t.pilot}</b><small>${t.mech} · ${t.tags.战斗分类} · ${t.tags.势力}</small></span></span>
-        <span class="nums">速 ${p.速度} · HP ${p.hp}${p核 ? `　·　Lv${带队核心等级}：HP ${p核.hp}` : ''}</span><span class="cost">${空名册 ? `<b data-lead-core-hint="1">${带队核心预告}</b><br>` : ''}招募 ${费} 希望${用中 ? `（用掉 ${券名(用中)}）` : '（要先选一张券）'}</span></button>`;
+        <span class="nums">速 ${p.速度} · HP ${p.hp}${p核 ? `　·　Lv${带队核心等级}：HP ${p核.hp}` : ''}</span><span class="cost">${空名册 ? `<b data-lead-core-hint="1">${带队核心预告}</b><br>` : ''}招募 ${费} 希望${用中 ? `（用掉 ${券名(用中)}）` : '（要先选一张券）'}</span>
+        ${特色摘要(t).文本 ? `<div class="特色摘要" data-特色摘要="1">${特色摘要(t).文本}</div>` : ''}</button>`;
     }).join('');
     /* ★ 2026-10-13 带队核心（结算那一层）：名册第一台挂 `带队核心标记`。 */
     const 队 = R.队伍.map((m, i) => `<div class="rv-row"><span class="pk-top">${图标.卡(m.键, 'ally', 图标.尺寸.列表)}<span class="pk-nm"><b>${allyName(m.键)}</b><small>${m.键} · Lv${m.等级}${带队核心吗(R.队伍, i) ? ` · <b data-lead-core="1">${带队核心标记}</b>` : ''}</small></span></span></div>`).join('');

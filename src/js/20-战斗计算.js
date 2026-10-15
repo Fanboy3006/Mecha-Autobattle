@@ -58,8 +58,15 @@ const defMul = u => Math.max(0, 1 - breakSum(u) / 100);
 const critMul = att => Math.max(1, 2 + buffSum(att, 'critX'));
 
 /* 地图炮必中（战棋原样）。注意：新项目的「范围」类就是从 map / support 换算来的，
-   所以从 map 过来的范围武器保留战棋的必中；从 support 过来的走正常命中判定。 */
-const isSure = w => w.fire === 'map' || w.fire === 'passive';
+   所以从 map 过来的范围武器保留战棋的必中；从 support 过来的走正常命中判定。
+ * ★ 2026-10-13（月球王国 Feena 主动攻击补强）：`残月的余响` / `满月·月蚀` 这两把
+   「友军攻击后追加」的武器在数据里原本就是 `fire:'passive'`（**必中、不暴击**，作者 2026-10-11 换机制时
+   明确写进 desc：「用这把武器的威力走现成公式、必中、不暴击」）。现在它们的 `fire` 被就地改成
+   `'indirect'`（为了能主动曲射，`weaponPlayable()` 放行）—— **必中 / 不暴击这两条语义一个字都不改**，
+   所以这里按标记补回 `isSure = true`（`hitRate()` 直接返回 100、`critRate()` 返回 0、**一个随机数都不掷**
+   → 与改动前逐字相同）。**没有这个标记的武器一个字节都不变**。 */
+const 残月必中 = w => !!(w && w.友军攻击后追加);
+const isSure = w => w.fire === 'map' || w.fire === 'passive' || 残月必中(w);
 
 /* 能力开关。战棋里还有「Lv10 起才生效」的 ABIL 等级表（属于特技），第一期去掉。 */
 const abilOn = (u, k) => !!u && Array.isArray(u.abilities) && u.abilities.includes(k);
@@ -72,7 +79,7 @@ const lsLeft = (u, turn) => u.lsTurn !== turn ? 2 : 2 - (u.lsCount || 0);   // �
  *   狙击：打后排没有被挡惩罚（在 30-射程.js 的 rowBlockPenalty 里）、暴击率 +10。 */
 function hitRate(att, w, def, opts = {}) {
   if (isSure(w)) return { hit: 100, raw: 100, eva: 0, sure: true };
-  const 尖兵闪 = (职业是(def, '尖兵') && def.尖兵闪避Turn !== opts.turn) ? 20 : 0;
+  const 尖兵闪 = (职业是(def, '尖兵') && def.尖兵闪避Turn !== opts.turn) ? (typeof 尖兵首闪值 === 'function' ? 尖兵首闪值(def) : 20) : 0;
   /* `势力闪避(def)`（`72-势力.js` 的框架钩子）＝ 势力特色给的闪避，**只对我方、没有特色恒 0**
      （第一件 = 卫星国防军 SEED 觉醒：闪避 + 觉醒 × 0.15；战棋同款是 `03-能力与减免管线.js:100` 的
      `TRAIT_FX.seed`，那里也是加在闪避上）。所以别的战斗与改动前**逐字相同**。 */
@@ -87,15 +94,28 @@ function hitRate(att, w, def, opts = {}) {
      ★ 它是「减在原始命中上」的（和「特种 −20」「被挡 −20」同一条管线、同一个位置）——
        `raw` 会变、`hit` 再夹到 0–100。 */
   const 隐匿 = 隐匿惩罚值(def, w);
+  /* ★ 2026-10-13 **《兰斯10》四路战线 · 排位命中修正**（正交 4×2，`战斗结构.兰斯战线`）：
+       · 前排远程命中惩罚（`indirect` / 狙击，−N）；· 后排远程命中加成（`indirect` / 狙击 / 指挥，+N）；
+       · 侧翼闪避加成（守方在外侧两路且是尖兵 / 流星小队，有效闪避 +N —— 写在命中上就是 −N）。
+     ★ 与「特种 −20」「被挡 −20」「隐匿 −N」**同一条管线、同一个位置**（都减在原始命中上、`raw` 会变）；
+     ★ **纯读**（`71-改动-5` 的 `兰斯命中修正()`），`兰斯战线.开 === false` → 恒 0 → `h` 与改前逐字相同。 */
+  const 兰斯命中 = (typeof 兰斯命中修正 === 'function') ? 兰斯命中修正(att, def, w, opts.ctx) : 0;
   const 总攻命中 = (气势总攻开() && opts && opts.ctx && opts.ctx.当前战术 === '总攻' && att && att.side === 'ally')
     ? (Number(气势总攻参数().总攻命中加) || 0) : 0;
-  const h = (opts.baseHit ?? w.hit) - eva + Math.round(((att.aim ?? 160) - 160) / 2) + buffSum(att, 'hit') + (opts.blockPenalty || 0) - 隐匿 + 总攻命中;
-  return { hit: clamp(Math.round(h), 0, 100), raw: Math.round(h), eva, 尖兵闪, 隐匿 };
+  const 职排命中 = typeof 职业排位命中修正 === 'function' ? 职业排位命中修正(att, def, w, opts.ctx) : 0;
+  const h = (opts.baseHit ?? w.hit) - eva + Math.round(((att.aim ?? 160) - 160) / 2) + buffSum(att, 'hit') + (opts.blockPenalty || 0) - 隐匿 + 总攻命中 + 兰斯命中 + 职排命中;
+  return { hit: clamp(Math.round(h), 0, 100), raw: Math.round(h), eva, 尖兵闪, 隐匿, 兰斯命中 };
 }
 
 function critRate(w, att) {
   if (isSure(w)) return 0;
-  return clamp(10 + ((att && att.critBase) || 0) + (w.critMod || 0) + buffSum(att, 'crit') + (职业是(att, '狙击') ? 10 : 0), 0, 100);
+  /* ★ 2026-10-13 **《兰斯10》四路战线 · 侧翼暴击**（正交 4×2，`战斗结构.兰斯战线`）：
+       尖兵 / 流星小队站在外侧两路（`col 0` / `col 3`）→ 暴击率 +N。
+     ★ **签名一个字节不改**（仍是 `critRate(w, att)`：`def` 传不进来）—— 这一条只看 `att`，
+       接口口径登记在 `协作/接口约定.md` §22.4。★ `开 === false` → 恒 0 → 与改前逐字相同。 */
+  const 兰斯暴击 = (typeof 兰斯暴击修正 === 'function') ? 兰斯暴击修正(att, w) : 0;
+  const 职排暴击 = typeof 职业排位暴击修正 === 'function' ? 职业排位暴击修正(att, w) : 0;
+  return clamp(10 + ((att && att.critBase) || 0) + (w.critMod || 0) + buffSum(att, 'crit') + (职业是(att, '狙击') ? 10 : 0) + 兰斯暴击 + 职排暴击, 0, 100);
 }
 
 /* ---------- 弱点 / 抗性 ---------- */
@@ -119,7 +139,7 @@ function weakList(def, w, o = {}) {
     const ok = (k === '光束' || k === '物理') ? w.dmgType === k
       : k === '近战' ? w.fire === 'melee'
       : k === '直射' ? w.fire === 'direct'
-      : k === '曲射' ? w.fire === 'indirect'
+      : k === '曲射' ? (w.fire === 'indirect' && !isSure(w))   // ★ 残月两把是「必中」的（见上面 isSure 的说明）→ 不算曲射弱点
       : k === '范围' ? isSure(w)
       : k === '暴击' ? !!o.crit
       : k === '多段' ? (w.special === 'multi' || w.hits > 1)
@@ -174,6 +194,14 @@ const REDUCTIONS = [
   { id: 'guardRed', name: '护卫减伤', stage: 2,
     applies: c => 护卫减伤值(c.def) > 0 && 同侧还有别人(c.def, c.ctx),
     def: c => 护卫减伤值(c.def) },
+  /* ★ 2026-10-13（《兰斯10》四路战线 · 正交 4×2 的**中枢固守**，`战斗结构.兰斯战线.中枢重装防御`）：
+   * 重装站在**前排中枢**（`slot 1` = 前2 / `slot 2` = 前3）时防御值 +N（【初稿】15）。
+   * ★ 判据只此一份（`71-改动-5` 的 `中枢重装防御加成()`，纯读），这里只做 stage 2 的加法；
+   * ★ `兰斯战线.开 === false` / 不是重装 / 不站中枢 → 恒 0 → `applies` 为假 → **一行都不进步骤**，
+   *   `dmgCore` 与改前**逐字相同**。 */
+  { id: 'lanceDef', name: '中枢固守', stage: 2,
+    applies: c => 中枢重装防御加成(c.def) > 0,
+    def: c => 中枢重装防御加成(c.def) },
   {
     id: 'barrier', name: '能量屏障', stage: 1,
     applies: c => abilOn(c.def, 'barrier') && c.def.barrierLeft > 0 && c.dmg <= 2500,
@@ -274,6 +302,25 @@ function dmgCore(att, w, def, o = {}) {
   c.steps.push(`威力 ${W}${A ? ` − 装甲 ${A}` : ''} = ${base}${wn.length > 1 ? `（${wn.join('，')}）` : ''}`);
   c.steps.push(`× statCoef（1 +（攻击 ${atk}${伤害加成 ? `（含伤害加成 +${伤害加成}）` : ''} − 防御 ${D}）/ 100）= ×${+coef.toFixed(2)}${dn.length ? `（防御：${dn.join('、')}）` : ''}`);
   c.steps.push(`= ${c.dmg}${base * coef < 10 ? '（命中后最少 10）' : ''}`);
+  /* ★ 2026-10-13 **《兰斯10》四路战线 · 排位攻防修正 + 同路掩护减伤**（正交 4×2）：
+      乘在**公式算完之后**的逐段伤害上（与 `60-战斗-2` 的 Boss / 势力 / 总攻倍率同一个口子）。四条：
+        · 前排近战增伤 ×(1 + 0.15)；· 后排隔排近战惩罚 ×(1 − 0.25)（同路前排还有存活友军）；
+        · 后排远程增伤 ×(1 + 0.10)；· 同路掩护减伤 ×(1 − 0.30)（直射打被同路前排挡着的后排）。
+      ★ 判据全部在 `71-改动-5` 的 `兰斯伤害倍率()`（**一份**），这里只乘；`开 === false` → 恒 1 →
+        `c.dmg` 与改前**逐字相同**。★ **纯读**：一个随机数都不消耗，`preview` 也照算（预告与实战同一套）。
+      ★ **位置**：在 `ign` 提前返回**之前** —— 这样「无视防御」的武器也照常吃排位修正
+        （它无视觉的是装甲 / 防御 / 屏障，不是站位）。 */
+  if (!c.nullified && typeof 兰斯伤害倍率 === 'function') {
+    const 兰斯倍 = 兰斯伤害倍率(att, def, w, o);
+    const 职排倍 = typeof 职业排位伤害倍率 === 'function' ? 职业排位伤害倍率(att, def, w, o) : 1;
+    const 排位倍 = 兰斯倍 * 职排倍;
+    if (排位倍 !== 1) {
+      c.dmg = Math.max(10, Math.round(c.dmg * 排位倍));
+      c.兰斯倍率 = 兰斯倍;
+      if (职排倍 !== 1) c.职业排位倍率 = 职排倍;
+      c.steps.push(`× 兰斯战线排位 ×${+排位倍.toFixed(2)} → ${c.dmg}`);
+    }
+  }
 
   if (ign) { c.steps.push('无视防御：不经过屏障 / 力场 / 护盾'); return c; }
 
@@ -296,7 +343,7 @@ function expectedDamage(att, def, w, opts = {}) {
   const hits = Math.max(1, w.hits || 1);
   const hr = hitRate(att, w, def, { blockPenalty: opts.blockPenalty || 0, ctx: opts.ctx }).hit / 100;
   const crit = 1 + critRate(w, att) / 100;
-  const dmg = dmgCore(att, w, def, { power: wv(att, w, 'power'), preview: true, turn: opts.turn || 0, ctx: opts.ctx }).dmg;
+  const dmg = dmgCore(att, w, def, { power: 威力取档(att, w, 'power'), preview: true, turn: opts.turn || 0, ctx: opts.ctx }).dmg;
   return hr * dmg * crit * hits;
 }
 
@@ -320,9 +367,19 @@ const startCdOf = w => w.startCd != null ? w.startCd : (w.unlock >= 20 ? 大招�
    另一个例外是作者 2026-10-10 定的两条支援：Feena 的「月光祝福」（buff）和「再动」（grant）——
    没有伤害的支援武器，用 buff / grant 字段标记。 */
 function weaponPlayable(w) {
-  if (w.fire === 'passive' || w.fire === 'device') return false;
-  if (w.special && w.special !== 'multi' && w.special !== 'chain') return false;
-  if (w.fire === 'support' && !hasSupportField(w)) return false;   // 召唤 / 烟雾 / 回复% 之类的支援第一期不做
+  /* ★ 2026-10-13（月球王国 Feena 主动攻击补强）：`残月的余响` / `满月·月蚀` 的属性已经由
+     `71-改动-1-角色与Boss.js` 的 `应用残月主动攻击()` **就地**改好（`fire:'indirect'` → 下面照常放行），
+     所以 `30-射程.js` / `50-AI.js` **一个字节都没改**。这里只留**动态总闸**：
+     `战斗结构.Feena主动攻击.开 === false`（测试在页面加载后关掉它）→ 这两把立刻退回「不可主动使用」
+     （改前它们在数据里是 `fire:'passive'`，也是被下面第一行挡掉的）。**没有这个标记的武器一个字节都不变**。 */
+  if (w && w.友军攻击后追加 && !残月武器可主动(w)) return false;
+  const fire = w && w.fire;
+  /* `special` 折算：这两把武器的 `special` 是 `残月余响标记`（`'echoFollow'`）—— 它不是
+     「第一期不做的 special」，只是一条「走 `势力友军攻击后追加` 钩子」的登记标记，放行。 */
+  const special = (w && w.友军攻击后追加) ? null : (w && w.special);
+  if (fire === 'passive' || fire === 'device') return false;
+  if (special && special !== 'multi' && special !== 'chain') return false;
+  if (fire === 'support' && !hasSupportField(w)) return false;   // 召唤 / 烟雾 / 回复% 之类的支援第一期不做
   return true;
 }
 
@@ -331,7 +388,8 @@ function usableWeapons(u, ctx) {
   return (u.weapons || []).filter(e => {
     const w = e.t;
     if (!weaponPlayable(w)) return false;
-    if (u.lv < w.unlock) return false;
+    /* ★ 等级门用 `残月武器运行期解锁()`（开 = 残月的余响下放到 10；关 = 数据里的 20，**改前逐字相同**） */
+    if (u.lv < 残月武器运行期解锁(w)) return false;
     if (e.uses != null && e.uses <= 0) return false;
     if (e.cd > 0) return false;
     if (ctx && ctx.turn != null && ctx.turn < e.readyTurn) return false;
@@ -343,10 +401,13 @@ function usableWeapons(u, ctx) {
 /** 用掉一次：普通冷却 + 次数 −1（开场冷却由 readyTurn 管，不在这里）
  *  ★ 2026-10-11 大招变稀缺：**大招**（`unlock ≥ 20`）的普通冷却至少 `战斗结构.大招冷却.普通`
  *  （初稿 3 回合），数据里写了更长的就听数据的。敌人自己的大招不走这条（它们的 `cd` 写在数据里、
- *  `unlock` 是 1）→ 只有我方大招被拉长，「大招：保留」这个开关因此才有意义。 */
+ *  `unlock` 是 1）→ 只有我方大招被拉长，「大招：保留」这个开关因此才有意义。
+ *  ★ 2026-10-13：判「这算不算大招」用的是 `残月武器运行期解锁()` —— 开的时候残月的余响是 `unlock 10`
+ *  （不算大招 → 冷却只听数据的 `cd` 0），关的时候是 `unlock 20`（算大招 → 至少 3 回合），**改前逐字相同**。 */
 function spendWeapon(u, entry) {
   if (!entry) return;
-  const 冷却 = entry.t.unlock >= 20 ? Math.max(entry.t.cd || 0, 大招普攻冷却()) : (entry.t.cd || 0);
+  const 门 = 残月武器运行期解锁(entry.t);
+  const 冷却 = 门 >= 20 ? Math.max(entry.t.cd || 0, 大招普攻冷却()) : (entry.t.cd || 0);
   if (冷却) entry.cd = 冷却;
   if (entry.uses != null) entry.uses--;
   /* ★ 2026-10-13（关卡变体池 · 词条键 `冷却延长`）：这一把武器**真的打出去了** → 摘掉
@@ -357,7 +418,7 @@ function spendWeapon(u, entry) {
 }
 
 /* ---------- 修理 ---------- */
-const healAmount = (u, w) => Math.round(w.power * u.shoot / 100);   // 17-战斗执行.js:259
+const healAmount = (u, w) => Math.round(w.power * u.shoot / 100 * (typeof 职业排位修理倍率 === 'function' ? 职业排位修理倍率(u) : 1));   // 17-战斗执行.js:259
 
 /* 特种的降命中值（作者 2026-10-10：先按 20 做，和原来「防御 −20」同一个量级；要调就改这一个常量） */
 const 特种降命中值 = 20;
@@ -478,7 +539,7 @@ function 标定经济产标(ctx, 攻击者, 目标) {
   if (!(d.来源们 || []).some(g => g && g.键 === 攻击者.key)) {
     d.来源们 = (d.来源们 || []).concat([{ 键: 攻击者.key, 名: 攻击者.name, 方: 攻击者.side, 怎么来的: '特种' }]);
   }
-  d.层数 = 前 + 1;
+  d.层数 = 前 + (typeof 特种产标层数 === 'function' ? 特种产标层数(攻击者) : 1);
   if (能写记录) pushLog(ctx, `〔标定〕${攻击者.name}（特种）命中 → ${目标.name} +1 层标定：${d.层数}/${上限} 层`
     + `（来自 ${标定来源名(d).join('、')}）`, {
     类型: '标定', 事件: '产标', 结果: '挂标定', 生产: '特种',
@@ -663,16 +724,23 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
   const 基准倍率 = 是总攻 && 总攻乘子 > 0 ? (倍率 / 总攻乘子) : 倍率;
   let 总攻增伤合计 = 0;
   let 掩护吸收合计 = 0;
+  /* ★ 2026-10-13（《兰斯10》四路战线）：这一发**因为同路掩护少挨了多少**（正整数合计）。
+     只有在真的被掩护救过（`掩 > 0` 且基准那一发更大）时才累计 → 未触发时**一个字段都不挂**。 */
+  let 掩护减伤合计 = 0;
   /* ★ 威力倍率（框架第 14 个钩子，`72-势力.js` 的 `势力威力倍率()`；作者 2026-10-11 拍板「天人的 ×1.3 挪到威力」）：
      乘在**武器威力**上（`wv(att, w, 'power') * 威力倍率`）、进 `dmgCore()` 之前 ——
      和战棋 `15-战斗计算.js:36` 的 `wPow = round(wv(u,w,'power') * tierUp * taPowMul(u))` 同一个落点。
      没有势力条目 / 倍率是 1 → 威力与改动前逐字相同（`wv(...) * 1`）。 */
   const 威力倍率 = opts.威力倍率 == null ? 1 : opts.威力倍率;
+  /* ★ 2026-10-13（月球王国 Feena 主动攻击补强）：威力从这里进来 ——
+     `威力取档()` 只在「残月的余响 + `战斗结构.Feena主动攻击.开 !== false` + `lv < 20`」时
+     换成初稿威力 2200；**其他任何情况 = `wv(att, w, 'power')`，一个字节都不变**（关掉开关逐字退回改前）。 */
+  const 本发威力 = 威力取档(att, w, 'power');
   const sure = isSure(w);
   const hits = Math.max(1, w.hits || 1);
   const rolls = [];
   let total = 0, landed = 0, crits = 0, p = w.hit;
-  const 尖兵加成 = (职业是(def, '尖兵') && def.尖兵闪避Turn !== ctx.turn) ? 20 : 0;
+  const 尖兵加成 = (职业是(def, '尖兵') && def.尖兵闪避Turn !== ctx.turn) ? (typeof 尖兵首闪值 === 'function' ? 尖兵首闪值(def) : 20) : 0;
   /* ★ 2026-10-12（三层反馈 · 第 2 件，§2.4）：这一下是不是按**防御姿态**结算 ——
      判定只此一份（`dmgCore()` 里面那一行用的是同一个函数、同一组来源）。
      `少挨合计` = 逐段「实际挨的这一下」与「不带防御加成时会挨的那一下」的差，**只用来显示**。 */
@@ -684,12 +752,24 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
      「隐匿 −N」那个小标签，战报统计「隐匿共让你打空 N 次」。
      ★ 恒 0（没有 stealth 敌人）→ 这一个字段**一个字节都不多**（默认路径逐字不变）。 */
   const 隐匿罚 = 隐匿惩罚值(def, w);
+  /* ★ 2026-10-13 **《兰斯10》四路战线 · 同路掩护减伤的判据（本次调用只算一次）**：
+     `被挡` = 这一发打在**后排**、而它**同路正前方**（`遮挡位` = `slot - 4`）还有存活敌军。
+     · 它不是「打不到」（打得到，只是命中 −20，`rowBlockPenalty()` 管那一段），
+       而是掩护判据本身：`兰斯伤害倍率()` 的「同路掩护减伤」只看它 + 不是狙击 + 秘银没免掉。
+     · **一次调用算一次、传同一个值下去**（`dmgCore` 走 `o.被挡`）—— 否则一发多段 / 多个落点的
+       中途状态变化会让「算伤害」与「记账」看到不同的掩护状态。
+     · 不是直射（近战 / 曲射 / 范围）时恒 `false`（`兰斯掩护减免()` 第一行就按射程类型挡掉了）。
+     · 纯读：`被挡吗()` 只看活位集合，不改状态、不消耗随机数。 */
+  const 被挡 = (def && def.slot != null && rangeKindOf(w) === KIND_DIRECT
+    && ctx && Array.isArray(def.side === 'ally' ? ctx.allies : ctx.enemies))
+    ? 被挡吗(def.slot, livingOf(def.side, ctx).map(x => x.slot)) : false;
   /* ★ 2026-10-13 **标定经济 · 消费端①（狙击）**：狙击打带标定的目标 → **暴击那一段的伤害 +30%**，消耗 1 层。
      ★ 见 `标定经济狙击加成()` 那一段的注释：**只对真的暴击的那几段生效**、**一个随机数都不消耗**
        （`ctx.rng` 的调用次数与位置一个字没改 → 随机数流与改动前逐字相同）。
      没有标定 / 不是狙击 / 开关关掉 → `加成` 是 null，下面这些语句**一个字段都不多**（默认路径逐字不变）。 */
   const 加成 = (!sure && 职业是(att, '狙击')) ? 标定经济狙击加成(def) : null;
   let 标定记号 = null;
+  const qteSegments = ((typeof 动作QTE开 === 'function' && 动作QTE开()) || opts.强制QTE) && Array.isArray(opts.qte结果?.各段) ? opts.qte结果.各段 : null;
   for (let i = 0; i < hits; i++) {
     /* ★ 2026-10-11：这一段的**命中步长**（势力钩子第 15 个「段内命中加成」，实现在 `72-势力.js`）——
        第一条用它的是月球王国「连射 + 残心」（小太刀 Nagi 的月光狙击枪）：
@@ -698,9 +778,14 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
        ★ 没有条目写它 → 恒 0 → `p` 与改动前逐字相同。 */
     const 步长 = 命中段步长(att, w, { 段号: i + 1, 段数: hits });
     const q = hitRate(att, w, def, { baseHit: p, blockPenalty, turn: ctx.turn, ctx }).hit;
-    const hit = sure || rng() * 100 < q;
+    const seg = qteSegments && qteSegments[i] ? qteSegments[i] : null;
+    const hit = seg ? (sure || Boolean(seg.命中)) : (sure || rng() * 100 < q);
     if (hit) {
-      const cr = !sure && rng() * 100 < critRate(w, att);
+      const cr = seg
+        ? (!sure && (seg.暴击 === true ? true : (seg.暴击 === false ? false : (seg.评价 === 'PERFECT'
+          ? (() => { const qc = critRate(w, att) + (战斗结构?.动作QTE?.完美暴击加成 ?? 25); return qc >= 100 || rng() * 100 < qc; })()
+          : (rng() * 100 < critRate(w, att))))))
+        : (!sure && rng() * 100 < critRate(w, att));
       /* ★ 2026-10-13 **标定经济 · 消费端①（狙击）**：这一**段**真的暴击了、目标身上还有标定 →
          这一段吃「伤害 +30%」并**消耗 1 层**（★ 作者定「消耗 1 层」）。
          ★ 位置很讲究：判据写在 `cr` **之后** —— 所以暴击判定用的还是原来的 `critRate()`，
@@ -723,9 +808,25 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
            ② **不消耗随机数**：这一次调用里一个 `rng` 都没有，`hit / cr` 已经判完了，
               所以段数、命中段数、暴击次数与整场随机数序列**一个都不变**；
            ③ **只用来显示**：`total` 加的还是原来那一个 `d`（`少挨合计` 只进记录字段）。 */
-      const 无防 = 按防 ? dmgCore(att, w, def, { power: wv(att, w, 'power') * 威力倍率, crit: cr, preview: true, turn: ctx.turn, 不带防御加成: true, ctx }).dmg : 0;
-      const c = dmgCore(att, w, def, { power: wv(att, w, 'power') * 威力倍率, crit: cr, preview: false, turn: ctx.turn, defending: opts.defending, ctx });
+      const 无防 = 按防 ? dmgCore(att, w, def, { power: 本发威力 * 威力倍率, crit: cr, preview: true, turn: ctx.turn, 不带防御加成: true, ctx, 被挡 }).dmg : 0;
+      const c = dmgCore(att, w, def, { power: 本发威力 * 威力倍率, crit: cr, preview: false, turn: ctx.turn, defending: opts.defending, ctx, 被挡 });
       let d = Math.round(c.dmg * 倍率 * (段标 ? 段标.伤害倍率 : 1));
+      /* ★ 2026-10-13 **《兰斯10》四路战线 · 同路掩护减伤**（三段口径，**只有真的被掩护救了才记账**）：
+           ① `掩` = 这一次调用里唯一一次算「同路掩护减伤的值」（`兰斯掩护减免()`，0 = 不触发）；
+           ② `基准` = **不带掩护减伤**的同一发（`dmgCore(…, 不带掩护: true)`）——
+              `兰斯伤害倍率()` 见到它就把掩护那一项撤掉，所以基准与实际的差别**只有掩护这一项**
+              （`crit` / 防御姿态 / 排位增伤 / 屏障 / 护盾 / 威力倍率 / 段数**全都一样**）；
+           ③ 记账与 `total` 都走 `d`（**真的挨的那一下**），基准那一发**只用来算差值、不改任何状态**
+              （`preview: true`、屏障 / 力场 / 护盾计数器一个都不动，也不消耗随机数）。
+         ★ `被挡` 由上面算好的那一个值下来（不在 `dmgCore` 里重算）；`掩 <= 0` → **一次都不算基准**，
+           所以「没有掩护」的战斗连多一次 `dmgCore` 都没有（与改前逐字相同）。 */
+      const 掩 = opts.preview ? 0 : 兰斯掩护减免(def, w, ctx, 被挡);
+      if (掩 > 0) {
+        const 原 = dmgCore(att, w, def, { power: 本发威力 * 威力倍率, crit: cr, preview: true, turn: ctx.turn, defending: opts.defending, ctx, 被挡, 不带掩护: true });
+        const 基 = Math.round(原.dmg * 倍率 * (段标 ? 段标.伤害倍率 : 1));
+        const 减 = 掩护减免值(基, d);
+        if (减 > 0) 掩护减伤合计 += 减;
+      }
       if (是总攻) {
         const 基准d = Math.round(c.dmg * 基准倍率 * (段标 ? 段标.伤害倍率 : 1));
         总攻增伤合计 += Math.max(0, d - 基准d);
@@ -790,10 +891,21 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
   /* 特种（作者 2026-10-10）：武器命中后给对方挂「命中 −20」——对方的攻击更难打中（到下回合结束，
      同一个来源只留一份，不叠加）。作者说推人 / 破坏阵型以后可以单独设计，职业特色先做降命中。 */
   let 特种减命中 = 0;
+  let 特种破甲 = 0;
   if (landed && 职业是(att, '特种')) {
     特种减命中 = 特种降命中值;
     def.buffs = (def.buffs || []).filter(b => b.src !== '特种');
     def.buffs.push({ src: '特种', hit: -特种减命中, 剩余: 2 });
+    /* ★ 2026-10-13 职业排位（正交 4×2）：**特种站前排**时额外挂一层破甲（认 `职业排位开()` 总闸）。
+       ★ 只读、开关关掉 / 不在前排 → `特种破甲` 恒 0 → `def.buffs` 与 `字段` 一个字节都不多。 */
+    if (typeof 职业排位开 === 'function' && 职业排位开()
+      && Number.isInteger(att.slot) && rowOfSlot(att.slot) === ROW_FRONT) {
+      特种破甲 = typeof 职业排位数 === 'function' ? 职业排位数('特种前排破甲值', 25) : 25;
+      if (特种破甲 > 0) {
+        def.buffs = (def.buffs || []).filter(b => b.src !== '特种破甲');
+        def.buffs.push({ src: '特种破甲', def: -特种破甲, 剩余: 2, turns: 2 });
+      }
+    }
   }
   /* ★ 2026-10-13 **标定经济 · 生产端①（特种）**：特种**命中即挂标**（目标 +1 层，上限 3）。
      ★ 与上面那条「命中 −20」**并存**（作者 2026-10-13 明确要求保留现有特色，标定是**额外**挂上去的）
@@ -821,7 +933,7 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
   }
 
   const 段 = hits > 1 ? `${landed}/${hits} 段 ` : '';
-  return {
+  const 记录 = {
     /* ★ 2026-10-12（三层反馈 · 第 2 件）：`防御少挨` 只在**真的按防御姿态挨了这一下**时才带上
        （`少挨合计 > 0`）—— 字段不出现 = 这一下与防御无关，默认路径（全军突击）**一个字段都不多**。 */
     文本: landed
@@ -834,8 +946,17 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
       特种减命中, debuff: 挂上的debuff || null, 详情: rolls.join('；'),
     }, 少挨合计 > 0 ? { 防御少挨: 少挨合计 } : null,
     掩护吸收合计 > 0 ? { 掩护吸收: 掩护吸收合计 } : null,
+    /* ★ 2026-10-13（《兰斯10》四路战线 · 即时那一层）：`掩护减伤` **只在真的触发时才挂**
+       （正整数；未触发绝不挂 `0` / `undefined`）—— 界面把它翻成「同路掩护−30%」那个小标签，
+       战报统计把它累加成「同路掩护减免总伤害」。默认路径（没有掩护 / 开关关掉）**一个字段都不多**。 */
+    掩护减伤合计 > 0 ? { 掩护减伤: 掩护减伤合计 } : null,
     (是总攻 && landed > 0) ? { 总攻: true, 总攻增伤: 总攻增伤合计 } : null,
     (隐匿罚 > 0 && landed === 0) ? { 隐匿: true, 隐匿惩罚: 隐匿罚 } : null,
+    /* ★ 2026-10-13 职业排位（正交 4×2 · 即时那一层）：**只有真的触发了才挂字段** ——
+       特种前排破甲 / 近卫连斩追击各一条；未触发（开关关掉 / 不在前排 / 没追第二次）绝不写键。 */
+    (特种破甲 > 0) ? { 特种破甲 } : null,
+    (landed > 0 && att.近卫连斩追击Turn != null && att.近卫连斩追击Turn === ctx.turn
+      && typeof 职业排位开 === 'function' && 职业排位开()) ? { 连斩追击: true } : null,
     /* ★ 2026-10-13 标定经济（即时那一层）：**只有真的用上了才写字段** ——
        默认路径（开关关掉 / 没有标定）一个字段都不多，记录逐字不变。
          · `标定`       = 狙击引爆的记号（`resolveAction()` 用它发连锁日志）；
@@ -847,6 +968,19 @@ function resolveAttack(att, def, w, ctx, opts = {}) {
         : (引爆 ? { 标定溅射: 引爆.伤害, 标定引爆: 引爆.层数, 标定来源: 引爆.来源 } : null),
       标定产 ? { 标定产 } : null) : null),
   };
+  /* ★ 2026-10-13 动作QTE（接口登记 §24）：**只有 `qteSegments` 真的生效时才挂这个字段** ——
+     走 `Object.assign` 之外的这一句挂上去，语义与「作为最后一个参数传给 `Object.assign`」逐字等价
+     （同一个对象、同一个键、同一个值）；不传 `qte结果` / 开关关掉 → 一个字都不挂（旧快照零污染）。 */
+  if (qteSegments) {
+    记录.字段.动作QTE = {
+      模式: opts.qte结果.模式 || 'melee_slash',
+      总段数: hits,
+      命中段数: landed,
+      完美段数: qteSegments.filter(s => s && s.命中 && s.评价 === 'PERFECT').length,
+      详情: qteSegments.map(s => s?.评价 || (s?.命中 ? 'HIT' : 'MISS')),
+    };
+  }
+  return 记录;
 }
 
 /* ---------- 敌方武器 debuff 的落点（2026-10-11，出处见 `71-改动.js` 的 `战斗结构.敌方debuff`） ----------

@@ -14,7 +14,7 @@ console.log('\n[14] 天人 TRANS-AM：改成「单个单位开关」（自动 / 
   const 天人队 = [{ 键: 'CB1', 位: 0, 等级: 10 }, { 键: 'CB2', 位: 1, 等级: 10 },
     { 键: 'CB3', 位: 2, 等级: 10 }, { 键: 'CB4', 位: 3, 等级: 10 }];
   const 肉靶 = [{ 键: 'bluefish', 位: 0, 等级: 1 }];
-  /** 只把双方的 HP 顶高，让 12 回合都走得完（状态机与 HP 无关；和 [11] 段同一个做法）。 */
+  /** 只把双方的 HP 顶高，让这一场的每一个回合（现在上限 16）都走得完（状态机与 HP 无关；和 [11] 段同一个做法）。 */
   const 顶HP = ctx => {
     for (const u of ctx.allies) { u.hp = u.maxHp = 999999; }
     for (const u of ctx.enemies) { u.hp = u.maxHp = 99999999; }
@@ -56,11 +56,14 @@ console.log('\n[14] 天人 TRANS-AM：改成「单个单位开关」（自动 / 
     const ctx = G.开局(天人队, 肉靶, 20261011, 指令);
     顶HP(ctx);
     const 观 = [Object.assign({ 回合: ctx.turn }, 摘(状(ctx, 'CB1')))];
-    for (let i = 0; i < 11 && !ctx.result; i++) { G.打一回合(ctx); 观.push(Object.assign({ 回合: ctx.turn }, 摘(状(ctx, 'CB1')))); }
+    /* ★ 2026-10-13：这一场的回合上限从 11 → **16**（`难度调整.回合上限.Boss`），
+       所以这里也打到 `G.回合上限(肉靶)`（**别再写死 11** —— 写死的话新上限那几回合根本观察不到）。 */
+    const 打满 = G.回合上限(肉靶);
+    for (let i = 1; i < 打满 && !ctx.result; i++) { G.打一回合(ctx); 观.push(Object.assign({ 回合: ctx.turn }, 摘(状(ctx, 'CB1')))); }
     return { ctx, 观 };
   };
   const A = 默认场(null), B = 默认场({ 0: { 类型: '进攻', TRANSAM: '自动' } });
-  /* ★ 2026-10-11 难度调整（杠杆 ④）：这一场敌方有 头目 / Boss 档 → **回合上限不再是 12**（现在是 11），
+  /* ★ 2026-10-11 难度调整（杠杆 ④）：这一场敌方有 头目 / Boss 档 → **回合上限不再是 12**（上一版是 11，现在是 16），
      所以「生效 / 冷却」的回合号表要按 `G.回合上限(敌阵)` 截断（超出去的回合根本不会发生）。 */
   const 上限 = G.回合上限(肉靶);
   /* 每一回合只留**第一条**观察（打完之后 `ctx.turn` 不再前进，会重复记同一回合） */
@@ -74,13 +77,15 @@ console.log('\n[14] 天人 TRANS-AM：改成「单个单位开关」（自动 / 
       + `${String(x.剩余).padStart(3)}  ${String(x.冷却剩余).padStart(6)}  ${String(x.启动回合).padStart(7)}  `
       + `${String(x.结束回合 - 1).padStart(5)}  ${String(x.冷却到回合).padStart(5)}  ${G.天人手动(台(A.ctx, 'CB1')) ? '手动' : '自动'}`);
   }
-  if (JSON.stringify(启动录(A.ctx, 'CB1')) === JSON.stringify([1, 5, 9])) {
+  if (JSON.stringify(启动录(A.ctx, 'CB1')) === JSON.stringify([1, 5, 9, 13])) {
     ok(`① **默认（不动开关）= 仍然是自动开**：CB1（刹那）在**第 ${启动录(A.ctx, 'CB1').join('、')} 回合**各开一次，共 ${启动录(A.ctx, 'CB1').length} 次`
-      + `（= 改之前的开 1/5/9，作者 2026-10-11 拍板的 CD 口径）`);
-  } else bad(`① 默认不再是开 1/5/9：${JSON.stringify(启动录(A.ctx, 'CB1'))}`);
-  if (JSON.stringify(激活回合) === JSON.stringify([1, 2, 5, 6, 9, 10]) && JSON.stringify(冷却回合) === JSON.stringify([3, 4, 7, 8, 11])) {
-    ok(`① **生效的回合号与改之前逐字相同**（只少了被回合上限砍掉的那一回合）：激活 = ${激活回合.join('、')}（每次整整 2 回合）、`
-      + `冷却 = ${冷却回合.join('、')}（**上限 ${上限}，所以第 12 回合那一下不再发生**）；`
+      + `（= 改之前那套 CD 口径开 1/5/9，★ 2026-10-13 回合上限 11 → 16 之后多出第 13 回合那一次）`);
+  } else bad(`① 默认的开法不再是 1/5/9（+上限放宽后的 13）：${JSON.stringify(启动录(A.ctx, 'CB1'))}`);
+  /* ★ 2026-10-13：回合上限 11 → **16** —— 生效 / 冷却的回合号表跟着 `G.回合上限(肉靶)` 走：
+     CD 5（生效 2 + 冷却 3）→ 激活 1,2 / 5,6 / 9,10 / 13,14，冷却 3,4 / 7,8 / 11,12 / 15,16。 */
+  if (JSON.stringify(激活回合) === JSON.stringify([1, 2, 5, 6, 9, 10, 13, 14]) && JSON.stringify(冷却回合) === JSON.stringify([3, 4, 7, 8, 11, 12, 15, 16])) {
+    ok(`① **生效的回合号与改之前同一套节奏**（上限 ${上限}，多出来的只是新上限允许的那两轮）：激活 = ${激活回合.join('、')}（每次整整 2 回合）、`
+      + `冷却 = ${冷却回合.join('、')}（**上限 ${上限}**，第 17 回合那一下不发生）；`
       + `四台天人都一样（${天人队.map(x => `${x.键}×${状(A.ctx, x.键).开启次数}`).join('、')}）`);
   } else bad(`① 生效 / 冷却回合不对（上限 ${上限}）：激活 ${JSON.stringify(激活回合)}、冷却 ${JSON.stringify(冷却回合)}`);
   if (JSON.stringify(A.ctx.log) === JSON.stringify(B.ctx.log)) {
@@ -125,7 +130,7 @@ console.log('\n[14] 天人 TRANS-AM：改成「单个单位开关」（自动 / 
   } else bad(`② 别的三台没照旧自动开：${['CB2', 'CB3', 'CB4'].map(k => `${k}=${状(ctx2, k).开启次数}`).join('、')}`);
   if (JSON.stringify(启动录(ctx2, 'CB1')) === JSON.stringify([1]) && JSON.stringify(启动录(ctx2, 'CB2')) === JSON.stringify([1, 5])) {
     ok(`② 记录里也看得出来：CB1 的启动记录只有 **[${启动录(ctx2, 'CB1').join('、')}]**，CB2 是 **[${启动录(ctx2, 'CB2').join('、')}]**`
-      + `（到第 12 回合 CB1 会一直停在 1 次、CB2 三次）`);
+      + `（每一场只打了这几回合；上限放到 16 之后这几条启动记录本身没变）`);
   } else bad(`② 启动记录不对：CB1 ${JSON.stringify(启动录(ctx2, 'CB1'))}、CB2 ${JSON.stringify(启动录(ctx2, 'CB2'))}`);
   /* 手动档的「待机」：卡行要写清 CD 到没到（第 5 回合已到 → 可以点开） */
   const 卡行手动 = G.势力卡行(CB1);

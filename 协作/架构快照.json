@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "gameVersion": "0.6.11",
-  "rulesSignature": "r1:ec8c8244",
+  "rulesSignature": "r1:ac44d055",
   "simulation": {
     "deterministic": true,
     "rngProvider": "mulberry32",
-    "defaultPathBattleLogCount": 2925,
+    "defaultPathBattleLogCount": 2788,
     "defaultPathBattleLogSpec": {
       "team": "默认五人队",
       "entries": "编成表 全部",
@@ -13,7 +13,8 @@
       "faction": "全军突击",
       "seed": 20261010,
       "options": "波次 = 编成波次到单位(条目, 0)",
-      "precondition": "战斗结构.敌人机制.开 = false",
+      "precondition": "战斗结构.敌人机制.开 = false（阵型 = 正交 4×2 八格；战斗结构.兰斯战线 走默认开）",
+      "note": "★ 2026-10-13：阵型从「错开 9 格（前 4 后 5）」改成 4×2 八格 + 战斗结构.兰斯战线（默认开）之后重量的（上一版基线 2838）；同日「职业排位」→ 2616；同日默认五人队 CB2 从位 3（旧 3+2 的前4）挪到正交 4×2 的 位 6（后3）→ **2788**（`职业排位.开 = false` 时 2589、`Feena主动攻击.开 = false` 时 3108）",
       "assertedBy": "tests/commands-1-默认路径与方针.js [1]"
     }
   },

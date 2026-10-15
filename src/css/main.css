@@ -72,7 +72,11 @@ h3 .small{margin-left:6px;font-weight:400}
 .pick .nums{font-family:var(--font-m);font-size:11px;color:var(--accent)}
 .pick.on{outline:2px solid var(--accent)}
 .pick.used{opacity:.45}
+/* ★ 2026-10-13（正交 4×2 阵型）：棋盘不再是「三列的自适应网格」——
+   编队屏与战斗屏的每一排**固定四列**，且**四路上下严格对齐**（不再错位缩进后排）。
+   `.grid` 本身保留（别的屏 / 调参室还在用三列的自适应网格）。 */
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0 10px}
+.编队屏 .grid .row,.战斗屏 .row{grid-template-columns:repeat(4,1fr)}
 .slot{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-height:66px;background:var(--panel2);
   border:1px dashed var(--line);border-radius:6px;padding:6px 8px;color:var(--fg);text-align:left}
 .slot .pos{font-family:var(--font-m);font-size:10px;color:var(--muted)}
@@ -87,7 +91,8 @@ h3 .small{margin-left:6px;font-weight:400}
 .战斗屏 .side.ally{border-top:3px solid var(--ally)}
 .战斗屏 .side.enemy{border-top:3px solid var(--enemy)}
 .战斗屏 .side h3{margin:0 0 8px}
-.战斗屏 .row{display:grid;grid-template-columns:repeat(var(--cols,3),1fr);gap:6px;margin-bottom:6px}
+/* ★ 2026-10-13（正交 4×2）：四列固定、上下对齐（原 `--cols` 在 4×2 之后恒为 4，留着当兜底） */
+.战斗屏 .row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px}
 .uc{position:relative;background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--fc);
   border-radius:6px;padding:5px 7px;min-height:74px;overflow:hidden;transition:transform .12s,box-shadow .12s,opacity .2s}
 .uc .pos{position:absolute;top:4px;right:6px;font-family:var(--font-m);font-size:10px;color:var(--muted)}
@@ -167,9 +172,9 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .pick[draggable],.slot{cursor:grab}
 .dragghost{position:fixed;z-index:99;pointer-events:none;background:var(--panel2);border:1px solid var(--accent);
   border-radius:4px;padding:3px 8px;font-size:12px;color:var(--fg);box-shadow:0 4px 14px rgba(0,0,0,.5)}
-/* 编队格子：每一排一行，列数由 05-阵型.js 的 --cols 决定（前排 3、后排 2） */
+/* 编队格子：每一排一行，**正交四列**（★ 2026-10-13 从「按 --cols 的错开 9 格」改成固定 4 列对齐） */
 .编队屏 .grid{display:flex;flex-direction:column;gap:6px}
-.编队屏 .grid .row{display:grid;grid-template-columns:repeat(var(--cols,3),1fr);gap:6px;margin:0}
+.编队屏 .grid .row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:0}
 /* ---------- M4 肉鸽：大地图 ---------- */
 .rv-bar2{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
 .rv-bar2 .rv-chip{font-size:13px;padding:3px 10px;border:1px solid var(--line);border-radius:4px;background:var(--panel2)}
@@ -491,3 +496,56 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .mini:hover:not(:disabled){transform:translateY(-1px)}
 .primary{box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 60%,transparent),0 2px 8px color-mix(in srgb,var(--accent) 30%,transparent)}
 .chip{box-shadow:0 1px 2px rgba(0,0,0,.2)}
+/* ============================================================================
+ * ③「看见特色」· 状态角标 / 标定 / 特色摘要（2026-10-13，P1 & P2）
+ * ----------------------------------------------------------------------------
+ * 全部**只挂类名的那几条线现在把样式补齐**：
+ *   · `.标定` / `.标定角标` / `.标定闪框`  = 标定经济（作者 2026-10-13 拍板）在卡片上的标记；
+ *   · `.特色角标`                        = 我方单位卡的状态角标槽位（重装护卫 / 首击闪+20 / 狙击免挡 / 🎰好运暴×3）；
+ *   · `.签-职业` / `.签-势力`            = 即时飘字的两类短签（红=职业、蓝紫=势力）；
+ *   · `.特色摘要`                        = 编队屏 / 招募屏候选卡上的「职业 + 势力一句话」（P2）。
+ * 高对比度描边 + 胶囊背景（深底、亮字），保证在深色卡面上读得清。
+ * ========================================================================== */
+
+/* ---------- 8) ③「看见特色」：标定经济那三个类名 ---------- */
+.uc.标定{border-color:#ffd166;border-left-color:#ffd166;
+  box-shadow:0 0 0 1px color-mix(in srgb,#ffd166 55%,transparent),inset 0 0 12px color-mix(in srgb,#ffd166 14%,transparent)}
+.uc.标定::after{content:'标定';position:absolute;left:6px;bottom:4px;font-family:var(--font-m);font-size:9px;
+  letter-spacing:.1em;color:#1b1407;background:#ffd166;border-radius:3px;padding:0 4px}
+.uc.标定角标{border-left-color:#7fd6ff}
+.uc .标定经济卡行{color:#ffd166}
+.uc .标定经济卡行 b{color:#ffd166}
+.uc.标定闪框{animation:标定闪 .5s ease-out 2;
+  box-shadow:0 0 0 2px #ffd166,0 0 16px color-mix(in srgb,#ffd166 60%,transparent)}
+@keyframes 标定闪{0%{filter:brightness(1.6)}100%{filter:brightness(1)}}
+
+/* ---------- 9) ③「看见特色」：我方单位卡的状态角标区（唯一槽位） ---------- */
+.uc .特色角标行{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}
+.uc .特色角标{display:inline-flex;align-items:center;font-family:var(--font-m);font-size:9.5px;line-height:1.5;
+  color:#0b1016;background:var(--ally);border:1px solid color-mix(in srgb,#fff 45%,transparent);
+  border-radius:999px;padding:0 6px;white-space:nowrap;
+  box-shadow:0 0 0 1px color-mix(in srgb,#000 35%,transparent),0 1px 4px rgba(0,0,0,.35)}
+.side.enemy .uc .特色角标{background:var(--enemy);color:#0b1016}
+/* 第二条起换个底色，一排角标之间也分得开（深底亮字，仍然是高对比度胶囊） */
+.uc .特色角标 + .特色角标{background:color-mix(in srgb,var(--accent) 75%,#fff 25%)}
+/* ★ 2026-10-13（《兰斯10》四路战线 · 正交 4×2）：战线效果角标各给一个底色，
+   一眼分得清「前卫近战 / 同路掩护 / 铁壁护卫 / 侧翼游击 / 中枢固守」。
+   类名挂在同一个 `.特色角标` 元素上（`.特色角标.侧翼游击`），所以这里只覆盖底色 —— 别的屏一个字都不动。 */
+.uc .特色角标.前卫近战{background:#ffb37a}
+.uc .特色角标.同路掩护,.uc .特色角标.铁壁护卫{background:#8ce0a8}
+.uc .特色角标.侧翼游击{background:#ffd166}
+.uc .特色角标.中枢固守{background:#7fd6ff}
+
+/* ---------- 10) ③「看见特色」：即时飘字的两类短签 ---------- */
+.签-职业,.签-势力{display:inline-block;font-family:var(--font-m);font-size:10px;line-height:1.6;
+  border-radius:999px;padding:0 6px;margin-left:4px;border:1px solid transparent;white-space:nowrap}
+.签-职业{color:#ffd9c2;background:color-mix(in srgb,#ff8a5c 28%,#0d131a);border-color:#ff8a5c}
+.签-势力{color:#d7c2ff;background:color-mix(in srgb,#9b7cff 28%,#0d131a);border-color:#9b7cff}
+.logbox .logline .签-职业,.logbox .logline .签-势力{margin-left:4px}
+
+/* ---------- 11) ③「看见特色」：入战前那一行「职业 + 势力」摘要（编队 / 招募卡） ---------- */
+.特色摘要{width:100%;margin-top:3px;font-size:10px;line-height:1.45;text-align:left;
+  color:#cfe6ff;background:color-mix(in srgb,var(--ally) 14%,transparent);
+  border-left:2px solid var(--ally);border-radius:3px;padding:1px 5px;overflow-wrap:anywhere}
+.pick .特色摘要,.slot .特色摘要{font-family:var(--font-m)}
+.pick.used .特色摘要{opacity:.6}

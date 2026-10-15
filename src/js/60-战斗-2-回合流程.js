@@ -43,10 +43,24 @@ function 回合开始(ctx) {
     for (const c of livingOf(方, ctx)) {
       if (!职业是(c, '指挥')) continue;
       const 同排 = livingOf(方, ctx).filter(t => t !== c && unitRow(t) === unitRow(c));
-      if (!同排.length) continue;
-      for (const t of 同排) 换同源增益(t, '指挥', { hit: 10 });
-      pushLog(ctx, `〔指挥〕${c.name} 让同一排的队友命中 +10（本回合）：${同排.map(t => t.name).join('、')}`,
-        Object.assign({ 类型: '指挥', 单位: c.key, 目标: 同排.map(t => t.key), 目标位们: 同排.map(t => t.slot), 目标方们: 同排.map(t => t.side) }, 谁(c)));
+      if (同排.length) {
+        for (const t of 同排) 换同源增益(t, '指挥', { hit: 10 });
+        pushLog(ctx, `〔指挥〕${c.name} 让同一排的队友命中 +10（本回合）：${同排.map(t => t.name).join('、')}`,
+          Object.assign({ 类型: '指挥', 单位: c.key, 目标: 同排.map(t => t.key), 目标位们: 同排.map(t => t.slot), 目标方们: 同排.map(t => t.side) }, 谁(c)));
+      }
+      /* ★ 2026-10-13 职业排位（正交 4×2 · 预告层）：指挥站**后排**本阵 → 给正前方那台队友
+         「后方本阵」增益（命中 / 防御），**与上面「同排 +10」并存**（那一条一个字没改）。
+         ★ 总闸 `职业排位开()` 关掉 / 不在后排 / 正前方没人 → 一行都不执行（与改前逐字相同）。 */
+      if (typeof 职业排位开 === 'function' && 职业排位开() && Number.isInteger(c.slot) && rowOfSlot(c.slot) === ROW_BACK) {
+        const frontAlly = livingOf(方, ctx).find(t => t !== c && t.slot === c.slot - 4);
+        if (frontAlly) {
+          换同源增益(frontAlly, '后方本阵', {
+            hit: typeof 职业排位数 === 'function' ? 职业排位数('指挥后排护前排命中', 10) : 10,
+            def: typeof 职业排位数 === 'function' ? 职业排位数('指挥后排护前排防御', 15) : 15,
+            turns: 1,
+          });
+        }
+      }
     }
   }
 
@@ -137,15 +151,30 @@ function 单位动作(u, ctx) {
 function actOnce(u, ctx) {
   if (u.hp <= 0) return;
   u.actedTurn = ctx.turn;              // 「再动」要知道谁这一回合已经行动过
+  /* ★ 2026-10-13 近卫连斩追击（职业排位 · 即时层）：上一次行动留下「本回合要追第二次」的记号，
+     这一次行动把它转成 `近卫连斩追击Turn`（`20-战斗计算.js` 的 `resolveAttack()` 读到它才挂
+     `连斩追击` 字段）；没有记号 → 一个字都不写（默认路径逐字相同）。 */
+  if (u.近卫连斩待追击Turn === ctx.turn) {
+    u.近卫连斩追击Turn = ctx.turn;
+    delete u.近卫连斩待追击Turn;
+  }
   const action = 单位动作(u, ctx);
   let r = null;
   if (action) r = resolveAction(u, action, ctx);
   else pushLog(ctx, `${u.name} 没有能打到人的武器，跳过`, Object.assign({ 类型: '跳过', 单位: u.key }, 谁(u)));
+  if (u.近卫连斩追击Turn != null) delete u.近卫连斩追击Turn;
   runAutoCast(u, ctx);                 // 被动自动释放（2026-10-11 起空转：残月的余响改成走新钩子，见下面）
 
-  /* 近卫（方案 6.3）：击破目标后立刻再行动一次，每回合最多 1 次 */
-  if (r && r.击破 > 0 && 职业是(u, '近卫') && u.近卫再动Turn !== ctx.turn) {
+  /* 近卫（方案 6.3）：击破目标后立刻再行动一次，每回合最多 1 次
+     ★ 2026-10-13 职业排位：**近卫站后排受限** —— 后排近卫若正前方有存活队友（隔排），不触发连斩
+       （`职业排位参数().近卫后排禁连斩 !== false`；总闸关掉 / 前排 / 正前方没人 → 判据恒 false）。 */
+  const 近卫后排受限 = (typeof 职业排位开 === 'function' && 职业排位开()
+    && (typeof 职业排位参数 !== 'function' || 职业排位参数().近卫后排禁连斩 !== false)
+    && Number.isInteger(u.slot) && rowOfSlot(u.slot) === ROW_BACK
+    && livingOf(u.side, ctx).some(t => t !== u && t.slot === u.slot - 4));
+  if (r && r.击破 > 0 && 职业是(u, '近卫') && u.近卫再动Turn !== ctx.turn && !近卫后排受限) {
     u.近卫再动Turn = ctx.turn;
+    u.近卫连斩待追击Turn = ctx.turn;
     ctx.again.push(u);
     pushLog(ctx, `〔连斩〕${u.name} 击破了目标，立刻再行动一次（近卫，每回合 1 次）`, Object.assign({ 类型: '连斩' }, 谁(u)));
   }

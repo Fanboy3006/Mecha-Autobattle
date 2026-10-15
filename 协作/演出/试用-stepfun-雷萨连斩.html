@@ -1,0 +1,914 @@
+<title>雷萨连斩演出</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+SC:wght@400;700&display=swap">
+<style>
+/* Layout: GBA-ratio stage on top, controls + beat timeline below, single column. */
+:root{
+  --bg:#0c0d16; --panel:#151827; --line:#2a2f48; --fg:#e8eaf2; --muted:#8f96ad;
+  --gold:#f2c45a; --gold-dim:#8a6e30; --vio:#b9a6ff;
+  --f-px:"Press Start 2P","Courier New",monospace;
+  --f-body:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--f-body);padding-block:20px 40px;padding-inline:16px}
+.wrap{max-width:960px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-direction:column;gap:6px}
+h1{margin:0;font-family:var(--f-px);font-weight:400;font-size:clamp(13px,2.2vw,18px);color:var(--gold);letter-spacing:.06em;line-height:1.6}
+h1 span{font-family:var(--f-body);font-weight:700;font-size:1.25em;letter-spacing:.02em}
+header p{margin:0;color:var(--muted);font-size:13px;line-height:1.7;max-width:66ch}
+.stage{width:100%;aspect-ratio:3/2;max-width:100%;background:#000;border:2px solid var(--line);border-radius:4px;overflow:hidden}
+canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+.controls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:12px 14px}
+.grp{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lbl{color:var(--muted);font-size:12px;letter-spacing:.08em}
+button{font:inherit;font-size:13px;color:var(--fg);background:#1e2236;border:1px solid var(--line);border-radius:3px;padding:6px 12px;cursor:pointer}
+button:hover{border-color:var(--gold-dim)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+button.primary{background:var(--gold);color:#1a1406;border-color:var(--gold);font-weight:700}
+button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
+input[type=range]{width:110px;accent-color:var(--gold)}
+.val{font-family:var(--f-px);font-size:10px;color:var(--gold);min-width:6ch}
+.tl{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.tl-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:12px}
+.tl-head b{font-family:var(--f-px);font-size:10px;color:var(--fg);font-weight:400}
+.track{position:relative;display:flex;height:40px;overflow:hidden;cursor:pointer;user-select:none;touch-action:none}
+.seg{border-right:2px solid var(--bg);background:#1f2438;display:flex;align-items:center;justify-content:center;min-width:0;font-size:11px;color:var(--muted);overflow:hidden;white-space:nowrap}
+.seg.on{background:#33301e;color:var(--gold)}
+.seg.key{background:#2e1c1c}
+.seg.key.on{background:#55291f;color:#ffd2b8}
+.head{position:absolute;top:0;bottom:0;width:2px;background:var(--gold);pointer-events:none}
+.beats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 16px;font-size:12px;color:var(--muted)}
+.beats div{display:flex;gap:8px;min-width:0}
+.beats .t{font-family:var(--f-px);font-size:9px;line-height:18px;color:var(--fg);min-width:7ch}
+.note{font-size:12px;color:var(--muted);line-height:1.7}
+@media (max-width:520px){ .seg{font-size:0} }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>RAZER B1 <span>影界·万刃归一 · 近战突进连斩</span></h1>
+    <p>GBA 原生分辨率 240×160、整数倍放大的像素演出；机体 SD 比例。雷萨（影世界·近卫）拔刀突进，穿过画面直取量产型小兵，四段连斩后一剑「万刃归一」。点或拖时间轴跳到任意一拍，命中停顿和震动可以现场调。</p>
+  </header>
+
+  <div class="stage"><canvas id="cv" width="240" height="160" aria-label="像素横版战斗演出"></canvas></div>
+
+  <div class="controls">
+    <div class="grp"><button class="primary" id="play">▶ 播放（带音效）</button><button id="pause">暂停</button></div>
+    <div class="grp"><span class="lbl">结果</span><button id="rKill" aria-pressed="true">击破</button><button id="rLive" aria-pressed="false">未击破</button></div>
+    <div class="grp"><span class="lbl">速度</span>
+      <button data-sp="0.25" aria-pressed="false">¼</button><button data-sp="0.5" aria-pressed="false">½</button>
+      <button data-sp="1" aria-pressed="true">1×</button><button data-sp="2" aria-pressed="false">2×</button></div>
+    <div class="grp"><span class="lbl">命中停顿</span><input type="range" id="stop" min="0" max="250" step="10" value="100"><span class="val" id="stopV">100ms</span></div>
+    <div class="grp"><span class="lbl">震动</span><input type="range" id="shake" min="0" max="200" step="10" value="100"><span class="val" id="shakeV">100%</span></div>
+    <div class="grp"><span class="lbl">音效</span><button id="snd" aria-pressed="true">开</button></div>
+  </div>
+
+  <div class="tl">
+    <div class="tl-head"><span>时间轴（1× 下的真实时长，点或拖动跳到那一拍）</span><span><b id="now">0</b> / <b id="total">0</b> ms</span></div>
+    <div class="track" id="track"><div class="head" id="head"></div></div>
+    <div class="beats" id="beats"></div>
+    <div class="note">红色四拍是连斩的小停顿，紧接一掌大斩大停顿；命中停顿滑条同时管小的（半档）和大的（整档）。觉得哪一拍不对，直接说「冲刺再快一点」「大停顿 150」就行。</div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const cv = document.getElementById('cv');
+let g = cv.getContext('2d');
+g.imageSmoothingEnabled = false;
+const W = 240, H = 160;
+
+/* ================= settings & timeline ================= */
+const S = { stop: 100, shake: 1, speed: 1, kill: true, sound: true };
+const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+/* 命中时刻（内容时间，未含停顿）：4 段连斩 + 1 段大斩 */
+const HITS = [2600, 2750, 2900, 3050];      // 连斩①~④
+const T_FIN = 3200;                          // 大斩
+/* 停顿插在命中时刻：连斩每段半档、大斩整档 */
+function stops() {
+  const s = S.stop, h = s * .5;
+  return HITS.map(at => ({ at, d: h })).concat([{ at: T_FIN, d: s }]);
+}
+let STOPS = stops();
+/* 内容时间 b → 显示时间（含它之前所有停顿） */
+const dispOf = b => { let d = 0; for (const st of STOPS) if (st.at < b) d += st.d; return b + d; };
+/* 显示时间 t → 内容时间（停顿期间冻结在命中时刻） */
+function baseOf(t) {
+  for (const st of STOPS) { const w0 = dispOf(st.at); if (t >= w0 && t < w0 + st.d) return st.at; }
+  let d = 0; for (const st of STOPS) if (dispOf(st.at) + st.d <= t) d += st.d;
+  return t - d;
+}
+const freezeAt = t => { for (const st of STOPS) { const w0 = dispOf(st.at); if (t >= w0 && t < w0 + st.d) return st; } return null; };
+function beats() {
+  const L = [
+    { k: 'enter', n: '入场', a: 0, b: 400 },
+    { k: 'cutin', n: '头像切入·台词', a: 400, b: 1750 },
+    { k: 'draw', n: '拔刀蓄势', a: 1750, b: 2250 },
+    { k: 'dash', n: '冲刺穿过', a: 2250, b: 2600 },
+    { k: 'c1', n: '连斩①', a: 2600, b: 2750, key: true },
+    { k: 'c2', n: '连斩②', a: 2750, b: 2900, key: true },
+    { k: 'c3', n: '连斩③', a: 2900, b: 3050, key: true },
+    { k: 'c4', n: '连斩④', a: 3050, b: 3200, key: true },
+    { k: 'fin', n: '大斩·万刃归一', a: 3200, b: 3400, key: true },
+    { k: 'drain', n: '扣血', a: 3400, b: 4000 },
+  ];
+  if (S.kill) L.push({ k: 'kill', n: '击破', a: 4000, b: 5450 }, { k: 'exit', n: '退场', a: 5450, b: 5850 });
+  else L.push({ k: 'recoil', n: '后仰', a: 4000, b: 4700 }, { k: 'exit', n: '退场', a: 4700, b: 5100 });
+  return L;
+}
+let BEATS = beats();
+const total = () => dispOf(BEATS[BEATS.length - 1].b);
+const beatAt = t => BEATS.find(b => t >= dispOf(b.a) && t < dispOf(b.b));
+
+/* ================= helpers ================= */
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const prog = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+const easeIn = t => t * t * t, easeOut = t => 1 - Math.pow(1 - t, 3);
+const easeInOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const r = Math.round;
+const step = (t, ms) => Math.floor(t / ms) * ms;      // GBA-style choppy motion
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const px = (x, y, c) => { g.fillStyle = c; g.fillRect(r(x), r(y), 1, 1); };
+const rect = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(r(x), r(y), r(w), r(h)); };
+function disc(cx, cy, rad, c, dither) {       // pixel circle, optional checker dither
+  g.fillStyle = c; const R2 = rad * rad;
+  for (let y = -rad; y <= rad; y++) for (let x = -rad; x <= rad; x++) {
+    if (x * x + y * y > R2) continue;
+    if (dither && ((x + y + r(cx) + r(cy)) & 1)) continue;
+    g.fillRect(r(cx) + x, r(cy) + y, 1, 1);
+  }
+}
+function ring(cx, cy, rx, ry, c) {             // pixel ellipse outline
+  g.fillStyle = c; const n = Math.max(12, r((rx + ry) * 3));
+  for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; g.fillRect(r(cx + Math.cos(a) * rx), r(cy + Math.sin(a) * ry), 1, 1); }
+}
+/* 斩击光弧：一段带粗细变化的像素圆弧（月牙），prog 控制已画出的比例 */
+function slashArc(cx, cy, a0, a1, rad, prog_, cOut, cMid, cIn) {
+  const n = Math.max(10, r(rad * Math.abs(a1 - a0)));
+  const end = a0 + (a1 - a0) * clamp(prog_, 0, 1);
+  for (let i = 0; i <= n; i++) {
+    const a = a0 + (a1 - a0) * i / n;
+    if (a > end) break;
+    const k = (a - a0) / (a1 - a0);
+    const th = Math.max(1, r(Math.sin(Math.PI * k) * rad * .32));   // 中间粗两头尖
+    for (let o = -th; o <= th; o++) {
+      const rr = rad + o;
+      const x = r(cx + Math.cos(a) * rr), y = r(cy + Math.sin(a) * rr);
+      const c = o === 0 ? cIn : Math.abs(o) >= th ? cOut : cMid;
+      px(x, y, c);
+    }
+  }
+}
+
+/* ================= sprites ================= */
+const PAL = {
+  K: '#161125', v: '#2b2044', V: '#4a3573', P: '#7b5cb2', p: '#a98ade',
+  E: '#a99cff', G: '#e45ad0', W: '#ccd8ee', w: '#ffffff', L: '#3d2f63',
+  k: '#1c1f16', o: '#39432a', O: '#56683a', Q: '#7d9150', R: '#a3ad6c',
+  r: '#e0523a', g: '#7f8698', C: '#c3cde3',
+};
+/* ---- 雷萨 · 头（21×20，鬼角+额甲+能量芯+一字光目） ---- */
+const HEAD = [
+  '......K......K......',
+  '......KK....KK......',
+  '.....KvvK..KvvK.....',
+  '....KvvvvKKvvvvK....',
+  '...KvvvvvvvvvvvvK...',
+  '..KvvvvvvvvvvvvvvK..',
+  '..KvvvvPPPPPPvvvvK..',
+  '..KvvvvPPPGGGPPPvvK.',
+  '..KvvvvPPPGGGPPPvvK.',
+  '..KvvvvPPPPPPvvvvK..',
+  '..KvvvvvvvvvvvvvvvvK',
+  '..KvvKKKKKKKKKKKKvvK',
+  '..KvvKEEEEEEEEEEvvK.',
+  '..KvvKKKKKKKKKKKKvvK',
+  '...KvvvvvvvvvvvvK...',
+  '..KvvvvKKKKKKKKvvvvK',
+  '...KvvvvvvvvvvvvK...',
+  '....KvvvvvvvvvvK....',
+  '.....KvvvvvvvvK.....',
+  '......KKvvvvKK......',
+  '........KvvK........',
+];
+/* ---- 头像（头+肩胸，切入用） ---- */
+const BUST = [...HEAD,
+  '....KVVVVVVVVVVK....',
+  '..KKVVVPPPPPPPVVVKK.',
+  '.KVVVPPPPGGPPPPPVVSK',
+  '.KVVVPPPPGGPPPPPVSLK',
+  'KVVVVPPPPPPPPPPPVVLK',
+  'KVVVVVVVVVVVVVVVVVLK',
+  '.KKVVVVVVVVVVVVVVLK.',
+  '...KKKKKKKKKKKKKKK..',
+];
+/* ---- 躯干 / 腿 ---- */
+const TORSO_C = [
+  '.......KKVVVVVVVVKK.........',
+  '.....KKVVVVVVVVVVVVVKKpp....',
+  '...KKVVVPPPPPPPPPPPVVVVKLL..',
+  '..KVVVPPPPGGGGPPPPPVVVLLL...',
+  '..KVVVPPPPGGGGPPPPPVVVLL....',
+  '..KVVVPPPPPPPPPPPPPLLL......',
+  '...KVVVVPPPPPPPPPPLL........',
+  '....KVVVVVVVVVVVVVLL........',
+  '.....KVVVVVVVVVVVL..........',
+  '......KVVVVVVVVVVK..........',
+  '......KvvvvvvvvvvK..........',
+  '.......KvvvvvvvvK...........',
+  '.......KvvvKKKvvvK..........',
+  '........KvvKKvvK............',
+  '........KvK..KvK............',
+];
+const LEGS_C = [
+  '........KvVK..KvVK..........',
+  '.......KvVVK..KvVVK.........',
+  '.......KvVVK..KvVVK.........',
+  '......KvVVVK.KvVVVK.........',
+  '......KvVVVK.KvVVVK.........',
+  '......KvVVVK.KvVVVK.........',
+  '......KvvvVK.KvvvVK.........',
+  '......KvvvK..KvvvK..........',
+  '......KvvvK..KvvvK..........',
+  '......KvvvK..KvvvK..........',
+  '......KvvvK..KvvvK..........',
+  '.....KKvvvK..KvvvKK.........',
+  '....KvVVvK..KvVVvK..........',
+  '....KvVVvK..KvVVvK..........',
+  '...KvvvvvK.KvvvvvK..........',
+  '..KKKKKKK..KKKKKKKK.........',
+];
+const LEGS_DRAW = [
+  '.......KvVKK..KKvVK.........',
+  '......KvVVVKKvVVVK..........',
+  '......KvVVVvKKvVVVK.........',
+  '.....KvVVVvK..KvVVVK........',
+  '.....KvVVVvK..KvVVVK........',
+  '.....KvvvvvK..KvvvvvK.......',
+  '.....KvvvvK....KvvvvK.......',
+  '....KvvvK......KvvvK........',
+  '....KvvvK......KvvvK........',
+  '....KvvvK......KvvvK........',
+  '...KvvvK........KvvvK.......',
+  '...KvvvK........KvvvK.......',
+  '..KvvvK..........KvvvK......',
+  '..KvvvK..........KvvvK......',
+  '.KvvvK............KvvvK.....',
+  'KKKKK..............KKKKKK...',
+];
+const TORSO_DASH = [
+  '......KKVVVVVVVVVK..........',
+  '....KKVVVVVVVVVVVVVKKL......',
+  '..KKVVVPPPPPPPPPPPVVVVKKLL..',
+  '.KVVVPPPPGGGGPPPPPVVVLLL....',
+  '.KVVVPPPPGGGGPPPPPVVVLLL....',
+  '.KVVVPPPPPPPPPPPPLVLLL......',
+  '..KVVVVPPPPPPPPPPLLL........',
+  '...KVVVVVVVVVVVVVLL.........',
+  '....KVVVVVVVVVVVK...........',
+  '.....KVVVVVVVVVVK...........',
+  '.....KvvvvvvvvvvK...........',
+  '......KvvvvvvvvK............',
+  '......KvvvKKKvvvK...........',
+  '.......KvvKKvvK.............',
+  '.......KvK..KvK.............',
+];
+const LEGS_DASH = [
+  '.......KvVKK..KKvVK.........',
+  '......KvVVVK...KvVVK........',
+  '......KvVVVK...KvVVK........',
+  '.....KvVVVK....KvVVVK.......',
+  '.....KvVVVK....KvVVVK.......',
+  '....KvVVVK......KvVVVK......',
+  '....KvVVVK......KvVVVK......',
+  '....KvvvK.......KvvvvK......',
+  '...KvvvK........KvvvvK......',
+  '...KvvvK........KvvvvK......',
+  '..KvvvK.........KvvvvK......',
+  '..KvvvK.........KvvvvK......',
+  '.KvvvK..........KvvvvK......',
+  '.KvvvK..........KvvvvK......',
+  'KKvvvK...........KvvvvK.....',
+  'KKKKK............KKKKKKK....',
+];
+/* ---- 敌方量产型小兵（橄榄绿、盒身、红目、步枪） ---- */
+const GRUNT = [
+  '.....KKKKKKKKKKK..........',
+  '....KoooooooooooK.........',
+  '....KoQQQQQQQQQoK.........',
+  '....KoQooooooooQoK........',
+  '....KoooooooooooK.........',
+  '....KoKKKKKKKKKKoK........',
+  '....KoKrrrrrrrrrKoK.......',
+  '....KoKKKKKKKKKKKoK.......',
+  '....KoooooooooooK.........',
+  '.....KKKKKKKKKKK..........',
+  '......KoooooooK...........',
+  '...KKKKoooooooKKKK........',
+  '..KoOoooooooooooOoK.......',
+  '.KoOQoooooooooooQOoK......',
+  '.KoOQoooooooooooQOoK......',
+  '.KoOoooooooooooooOoK......',
+  '.KoOoooooooooooooOoK..gg...',
+  '..KooooooooooooooK..ggg...',
+  '...KKoooooooooKKK.ggggg...',
+  '.....KoooooooK...ggCggggg.',
+  '.....KoooooooK...gggggggg.',
+  '.....KoooooooK....ggggg...',
+  '.....KoooooKooK.....gg....',
+  '.....KoooooKooK...........',
+  '.....KoooooKooK...........',
+  '....KooooooooooK..........',
+  '....KooooooooooK..........',
+  '....KoooooKooooK..........',
+  '....KoooooKooooK..........',
+  '...KKoooooKoooKK..........',
+  '..KoooooooKooooK..........',
+  '..KoooooooKooooK..........',
+  '..KoooooooKooooK..........',
+  '..KoooooooKooooK..........',
+  '..KoooooooKooooK..........',
+  '..KoooooooKooooK..........',
+  '..KoooooooKooooK..........',
+  '.KKoooooooooooKK..........',
+  'KoooooooooooooooK.........',
+  'KoooooooooooooooK.........',
+  'KKKKKKKKKKKKKKKKKK.........',
+  '..KKKKK.....KKKKK..........',
+];
+/* ---- 字符点阵 → canvas（自动 1px 深色描边） ---- */
+function buildSprite(layers, w, h, outline = PAL.K) {
+  const grid = Array.from({ length: h }, () => Array(w).fill(null));
+  for (const L of layers) L.grid.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (ch !== '.' && PAL[ch]) { const yy = y + L.y, xx = x + L.x; if (yy >= 0 && yy < h && xx >= 0 && xx < w) grid[yy][xx] = PAL[ch]; }
+  }));
+  const c = document.createElement('canvas'); c.width = w + 2; c.height = h + 2;
+  const q = c.getContext('2d');
+  const at = (x, y) => (y >= 0 && y < h && x >= 0 && x < w) ? grid[y][x] : null;
+  for (let y = -1; y <= h; y++) for (let x = -1; x <= w; x++) {
+    const v = at(x, y);
+    if (v) { q.fillStyle = v; q.fillRect(x + 1, y + 1, 1, 1); }
+    else if (at(x - 1, y) || at(x + 1, y) || at(x, y - 1) || at(x, y + 1)) { q.fillStyle = outline; q.fillRect(x + 1, y + 1, 1, 1); }
+  }
+  return c;
+}
+function whiteOf(sp) {
+  const c = document.createElement('canvas'); c.width = sp.width; c.height = sp.height;
+  const q = c.getContext('2d'); q.drawImage(sp, 0, 0);
+  q.globalCompositeOperation = 'source-in'; q.fillStyle = '#fff'; q.fillRect(0, 0, c.width, c.height);
+  return c;
+}
+/* 残影：单色剪影（抖动用） */
+function tintOf(sp, color) {
+  const c = document.createElement('canvas'); c.width = sp.width; c.height = sp.height;
+  const q = c.getContext('2d'); q.drawImage(sp, 0, 0);
+  q.globalCompositeOperation = 'source-in'; q.fillStyle = color; q.fillRect(0, 0, c.width, c.height);
+  return c;
+}
+/* 排程剪切：整排横移，做「后仰」 */
+function leanSprite(sp, k) {
+  const c = document.createElement('canvas'); c.width = sp.width + 8; c.height = sp.height;
+  const q = c.getContext('2d');
+  for (let y = 0; y < sp.height; y++) {
+    const dx = Math.round((sp.height - 1 - y) * k);
+    q.drawImage(sp, 0, y, sp.width, 1, dx, y, sp.width, 1);
+  }
+  return c;
+}
+/* 抖动版：抠掉一半像素（棋盘），残影用 */
+function ditherOf(sp) {
+  const c = document.createElement('canvas'); c.width = sp.width; c.height = sp.height;
+  const q = c.getContext('2d'); q.drawImage(sp, 0, 0);
+  q.globalCompositeOperation = 'destination-out';
+  for (let y = 0; y < sp.height; y++) for (let x = (y & 1); x < sp.width; x += 2) q.fillRect(x, y, 1, 1);
+  return c;
+}
+/* ---- 画线（斩击手臂的刀身） ---- */
+function lineGrid(g, x0, y0, x1, y1, c, t = 1) {
+  const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+  for (let i = 0; i <= n; i++) {
+    const x = Math.round(x0 + (x1 - x0) * i / n), y = Math.round(y0 + (y1 - y0) * i / n);
+    for (let a = 0; a < t; a++) for (let b = 0; b < t; b++) if (g[y + a] && g[y + a][x + b] !== undefined) g[y + a][x + b] = c;
+  }
+}
+const N = (w, h) => Array.from({ length: h }, () => Array(w).fill('.'));
+const armGrid = (w, h, fn) => { const g = N(w, h); fn(g); return g.map(rw => rw.join('')); };
+/* ---- 手臂+刀层（整画布坐标） ---- */
+const ARM_IDLE = armGrid(34, 56, g => {           // 待机：垂臂握刀
+  for (let y = 25; y <= 37; y++) { g[y][3] = 'K'; g[y][4] = 'V'; g[y][5] = 'K'; }
+  for (let y = 35; y <= 38; y++) { g[y][2] = 'K'; g[y][6] = 'K'; }
+  for (let x = 3; x <= 5; x++) g[38][x] = 'K';
+  for (let y = 39; y <= 52; y++) { g[y][3] = 'W'; g[y][4] = 'w'; }
+  g[53][3] = 'K'; g[53][4] = 'w'; g[54][4] = 'w';
+});
+const ARM_DRAW = armGrid(34, 56, g => {           // 拔刀：右手握柄、鞘在左腰、刀身半出
+  for (let y = 25; y <= 29; y++) { g[y][3] = 'K'; g[y][5] = 'K'; g[y][4] = 'V'; }
+  lineGrid(g, 5, 30, 8, 34, 'K', 1); lineGrid(g, 5, 30, 8, 34, 'v', 1);
+  lineGrid(g, 9, 34, 15, 28, 'K', 1); lineGrid(g, 9, 34, 15, 28, 'W', 1);
+  lineGrid(g, 10, 34, 16, 28, 'w', 1);
+  lineGrid(g, 10, 33, 13, 30, 'G', 1); lineGrid(g, 11, 34, 14, 31, 'G', 1);
+  for (let i = 0; i < 9; i++) { const x = 6 - Math.round(i * .6), y = 36 + i; g[y][x] = 'K'; g[y][x + 1] = 'v'; g[y][x + 2] = 'v'; g[y][x + 3] = 'K'; }
+});
+const ARM_DASH = armGrid(34, 56, g => {           // 冲刺：手臂后摆、刀拖在身后
+  for (let y = 25; y <= 28; y++) { g[y][3] = 'K'; g[y][5] = 'K'; g[y][4] = 'V'; }
+  lineGrid(g, 5, 29, 11, 36, 'K', 1); lineGrid(g, 5, 29, 11, 36, 'v', 1);
+  lineGrid(g, 12, 37, 23, 43, 'K', 1); lineGrid(g, 12, 37, 23, 43, 'W', 1);
+  lineGrid(g, 13, 37, 24, 43, 'w', 1);
+});
+/* ---- 斩击姿势（50 宽画布，身体在 x16） ---- */
+const SL = 50;
+const ARM_H = armGrid(SL, 56, g => {              // 横斩
+  lineGrid(g, 21, 25, 12, 28, 'K', 1); lineGrid(g, 21, 25, 12, 28, 'V', 1);
+  lineGrid(g, 12, 28, 1, 28, 'K', 1); lineGrid(g, 12, 28, 1, 28, 'W', 1);
+  lineGrid(g, 12, 29, 1, 29, 'w', 1);
+  g[27][13] = 'K'; g[30][13] = 'K';
+});
+const ARM_D = armGrid(SL, 56, g => {              // 下斩
+  lineGrid(g, 21, 25, 17, 21, 'K', 1); lineGrid(g, 21, 25, 17, 21, 'V', 1);
+  lineGrid(g, 17, 21, 5, 37, 'K', 1); lineGrid(g, 17, 21, 5, 37, 'W', 1);
+  lineGrid(g, 18, 21, 6, 37, 'w', 1);
+  g[20][18] = 'K'; g[22][18] = 'K';
+});
+const ARM_U = armGrid(SL, 56, g => {              // 上挑
+  lineGrid(g, 21, 25, 15, 31, 'K', 1); lineGrid(g, 21, 25, 15, 31, 'V', 1);
+  lineGrid(g, 15, 31, 4, 16, 'K', 1); lineGrid(g, 15, 31, 4, 16, 'W', 1);
+  lineGrid(g, 16, 31, 5, 16, 'w', 1);
+  g[30][16] = 'K'; g[32][16] = 'K';
+});
+const ARM_FIN = armGrid(SL, 56, g => {            // 大斩：双手举刀斜落
+  lineGrid(g, 21, 25, 19, 23, 'K', 1); lineGrid(g, 21, 25, 19, 23, 'V', 1);
+  lineGrid(g, 27, 25, 22, 23, 'K', 1); lineGrid(g, 27, 25, 22, 23, 'V', 1);
+  lineGrid(g, 20, 24, 6, 42, 'K', 2); lineGrid(g, 20, 24, 6, 42, 'W', 2);
+  lineGrid(g, 21, 24, 7, 42, 'w', 2);
+  lineGrid(g, 21, 24, 7, 42, 'G', 1);
+  g[23][19] = 'K'; g[25][19] = 'K'; g[23][23] = 'K'; g[25][23] = 'K';
+});
+/* ---- 组装 ---- */
+const LY = (grid, x, y) => ({ grid, x, y });
+const BODY_C = [LY(HEAD, 7, 0), LY(TORSO_C, 0, 21), LY(LEGS_C, 0, 36)];
+const BODY_DRAW = [LY(HEAD, 7, 0), LY(TORSO_C, 0, 21), LY(LEGS_DRAW, 0, 36)];
+const BODY_DASH = [LY(HEAD, 5, 0), LY(TORSO_DASH, 0, 21), LY(LEGS_DASH, 0, 36)];
+const BODY_C16 = BODY_C.map(l => LY(l.grid, l.x + 16, l.y));
+const SP = {
+  raIdle: buildSprite([...BODY_C, LY(ARM_IDLE, 0, 0)], 34, 56),
+  raDraw: buildSprite([...BODY_DRAW, LY(ARM_DRAW, 0, 0)], 34, 56),
+  raDash: buildSprite([...BODY_DASH, LY(ARM_DASH, 0, 0)], 34, 56),
+  raH: buildSprite([...BODY_C16, LY(ARM_H, 0, 0)], SL, 56),
+  raD: buildSprite([...BODY_C16, LY(ARM_D, 0, 0)], SL, 56),
+  raU: buildSprite([...BODY_C16, LY(ARM_U, 0, 0)], SL, 56),
+  raFin: buildSprite([...BODY_C16, LY(ARM_FIN, 0, 0)], SL, 56),
+  grunt: buildSprite([LY(GRUNT, 0, 0)], 26, 42),
+  head: buildSprite([LY(BUST, 0, 0)], 20, 29),
+};
+SP.gruntWhite = whiteOf(SP.grunt);
+SP.gruntLean = leanSprite(SP.grunt, .12);
+/* 残影：单色 + 抖动版（整图一次 drawImage，不逐像素） */
+SP.ghostV = tintOf(SP.raDash, '#8f6adf');
+SP.ghostVd = ditherOf(SP.ghostV);
+SP.ghostWd = ditherOf(tintOf(SP.raDash, '#ffffff'));
+
+/* ================= 1-bit text ================= */
+const TXT = new Map();
+function text(str, font, color, outline) {
+  const key = str + '|' + font + '|' + color + '|' + outline;
+  let c = TXT.get(key);
+  if (!c) {
+    const m = document.createElement('canvas').getContext('2d'); m.font = font;
+    const w = Math.ceil(m.measureText(str).width) + 4, size = parseInt(font.match(/(\d+)px/)[1], 10), h = size + 6;
+    const raw = document.createElement('canvas'); raw.width = w; raw.height = h;
+    const q = raw.getContext('2d'); q.font = font; q.textBaseline = 'top'; q.fillStyle = '#fff'; q.fillText(str, 2, 2);
+    const d = q.getImageData(0, 0, w, h), on = new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) on[i] = d.data[i * 4 + 3] > 120 ? 1 : 0;
+    c = document.createElement('canvas'); c.width = w + 2; c.height = h + 2;
+    const o = c.getContext('2d');
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (on[y * w + x]) { o.fillStyle = color; o.fillRect(x + 1, y + 1, 1, 1); }
+      else if (outline && ((x > 0 && on[y * w + x - 1]) || (x < w - 1 && on[y * w + x + 1]) || (y > 0 && on[(y - 1) * w + x]) || (y < h - 1 && on[(y + 1) * w + x]))) { o.fillStyle = outline; o.fillRect(x + 1, y + 1, 1, 1); }
+    }
+    TXT.set(key, c);
+  }
+  return c;
+}
+function drawText(str, x, y, font, color, outline, align = 'left', scale = 1) {
+  const c = text(str, font, color, outline);
+  const w = c.width * scale, h = c.height * scale;
+  const dx = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
+  g.drawImage(c, r(dx), r(y), r(w), r(h));
+  return c.width;
+}
+const FONT_CN = n => `${n}px "Noto Sans SC","Microsoft YaHei","PingFang SC",sans-serif`;
+const FONT_CNB = n => `700 ${n}px "Noto Sans SC","Microsoft YaHei","PingFang SC",sans-serif`;
+const FONT_PX = n => `${n}px "Press Start 2P","Courier New",monospace`;
+
+/* ================= world ================= */
+const GROUND = 118;
+const ENEMY_W = 70, ALLY_W = 330;         // 世界坐标（地面线 y=118）
+const CAM_START = 280, CAM_FIGHT = 90;
+const ENEMY = { name: '量产型·小兵', lv: 14, max: 6200 };
+const ALLY = { name: '雷萨·B1', lv: 30, max: 5000 };
+const HIT_DMG = [420, 460, 520, 480];     // 连斩四段
+const DMG = 5680;                          // 总伤害
+const hpStart = () => S.kill ? 4900 : 6200;
+const R = rng(20261013);
+const STARS = Array.from({ length: 90 }, () => ({ x: R() * 520, y: R() * 92, b: R() < .15, tw: R() * 8 }));
+const CRATERS = Array.from({ length: 16 }, () => ({ x: R() * 560 - 60, y: GROUND + 4 + R() * 30, rx: 4 + r(R() * 9), ry: 1 + r(R() * 2) }));
+const MOTES = Array.from({ length: 22 }, () => ({ x: R() * 300, y: 20 + R() * 90, sp: 6 + R() * 14, ph: R() * 8 }));
+const SPARK = Array.from({ length: 16 }, () => ({ a: R() * Math.PI * 2, sp: 30 + R() * 50, life: 220 + R() * 200 }));
+const DEBRIS = Array.from({ length: 34 }, () => { const a = -Math.PI * (0.1 + R() * 0.8); const sp = 40 + R() * 120; return { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, s: R() < .3 ? 2 : 1, life: 450 + R() * 600, hot: R() < .5 }; });
+const FIRE = ['#fffbe0', '#ffe066', '#ffa23a', '#e8502c', '#8a2420'];
+
+/* ================= background ================= */
+function background(cam, tb) {
+  rect(0, 0, W, H, '#0a0817');
+  rect(0, 60, W, 40, '#0e0b22');
+  for (let y = 56; y < 60; y++) for (let x = (y & 1); x < W; x += 2) px(x, y, '#0e0b22');   // 抖动分层
+  for (const s of STARS) {
+    const x = ((s.x - cam * 0.08) % 520 + 520) % 520 - 140;
+    if (x < 0 || x >= W) continue;
+    const on = s.b || (Math.floor(tb / 260 + s.tw) % 5) !== 0;
+    if (on) px(x, s.y, s.b ? '#ffffff' : '#7d86b8');
+  }
+  // 影界冷月
+  const mx = 186 - cam * 0.12, my = 26;
+  disc(mx, my, 13, '#cdd0ea'); disc(mx, my, 13, '#a9aed4', true);
+  disc(mx - 4, my - 3, 3, '#8f96bd'); disc(mx + 4, my + 4, 2, '#8f96bd'); disc(mx + 1, my - 6, 1, '#8f96bd');
+  // 漂浮影尘
+  for (const m of MOTES) {
+    const x = ((m.x - cam * .3 + tb / 1000 * m.sp) % 300 + 300) % 300 - 30;
+    if (x < 0 || x >= W) continue;
+    const y = m.y + Math.sin(tb / 700 + m.ph) * 3;
+    if ((Math.floor(tb / 120 + m.ph) % 4) !== 0) px(x, y, '#6a5aa8');
+  }
+  // 远景尖峰（影世界）
+  for (let x = 0; x < W; x++) {
+    const wx = x + cam * 0.4;
+    const h = r(10 + 9 * Math.abs(Math.sin(wx / 19)) + 4 * Math.sin(wx / 7 + 1.3));
+    rect(x, 100 - h, 1, h, '#221d3d');
+    px(x, 100 - h, '#3a3358');
+  }
+  // 地面
+  rect(0, 100, W, H - 100, '#3a3f5e');
+  for (let y = 100; y < 104; y++) for (let x = (y & 1); x < W; x += 2) px(x, y, '#2b3049');
+  rect(0, 100, W, 1, '#6a7194');
+  for (const c of CRATERS) {
+    const x = c.x - cam + W / 2; if (x < -20 || x > W + 20) continue;
+    for (let i = -c.rx; i <= c.rx; i++) { const hh = Math.max(0, r(c.ry * Math.sqrt(1 - (i * i) / (c.rx * c.rx)))); rect(x + i, c.y - hh, 1, hh * 2 + 1, '#2b3049'); }
+    rect(x - c.rx + 1, c.y + c.ry + 1, c.rx * 2 - 1, 1, '#565d7d');
+  }
+}
+
+/* ================= HUD ================= */
+function frame9(x, y, w, h) {
+  rect(x, y, w, h, '#101428'); rect(x, y, w, 1, '#c3cde3'); rect(x, y + h - 1, w, 1, '#4d5878'); rect(x, y, 1, h, '#c3cde3'); rect(x + w - 1, y, 1, h, '#4d5878');
+}
+function hpBar(x, y, w, frac, lag) {
+  rect(x - 1, y - 1, w + 2, 5, '#141623');
+  rect(x, y, r(w * clamp(lag, 0, 1)), 3, '#ffffff');
+  const col = frac > .5 ? '#5fd35a' : frac > .25 ? '#ffd23a' : '#ff5a3a';
+  rect(x, y, r(w * clamp(frac, 0, 1)), 3, col);
+  rect(x, y, r(w * clamp(frac, 0, 1)), 1, '#ffffffaa');
+}
+function hud(hp, lag, show) {
+  if (!show) return;
+  frame9(0, 127, 119, 33); frame9(121, 127, 119, 33);
+  drawText(ENEMY.name, 4, 128, FONT_CN(11), '#ff9a86', null);
+  drawText('LV' + ENEMY.lv, 115, 131, FONT_PX(8), '#8f96ad', null, 'right');
+  hpBar(5, 145, 109, hp / ENEMY.max, lag / ENEMY.max);
+  drawText(`${Math.max(0, r(hp))}/${ENEMY.max}`, 115, 150, FONT_PX(8), '#e8eaf2', null, 'right');
+  drawText(ALLY.name, 125, 128, FONT_CN(11), '#b9a6ff', null);
+  drawText('LV' + ALLY.lv, 236, 131, FONT_PX(8), '#8f96ad', null, 'right');
+  hpBar(126, 145, 109, 1, 1);
+  drawText(`${ALLY.max}/${ALLY.max}`, 236, 150, FONT_PX(8), '#e8eaf2', null, 'right');
+}
+
+/* ================= cut-in ================= */
+const LINE1 = '刃影已至，皆听我令——', LINE2 = '万刃归一！';
+const MOVE = '影界·万刃归一';
+function cutin(p, tb) {
+  const inP = prog(p, 0, .12), outP = prog(p, .9, 1);
+  const off = r((1 - easeOut(inP)) * W - easeIn(outP) * W);
+  for (let y = 0; y < H; y++) for (let x = (y & 1); x < W; x += 2) px(x, y, '#000000');   // 抖动压暗
+  g.save(); g.translate(off, 0);
+  const y0 = 24, h = 84;
+  rect(0, y0, W, h, '#171233');
+  for (let i = 0; i < 14; i++) { const yy = y0 + 4 + ((i * 23) % (h - 8)); const xx = ((i * 71 - step(tb, 33) * (0.25 + (i % 4) * .08)) % (W + 80) + W + 80) % (W + 80) - 40; rect(xx, yy, 18 + (i % 5) * 8, 1, i % 3 ? '#241a52' : '#432f8c'); }
+  rect(0, y0, W, 2, '#f2c45a'); rect(0, y0 + h - 2, W, 2, '#f2c45a');
+  // 头像窗
+  frame9(8, y0 + 6, 62, 66);
+  g.save(); g.beginPath(); g.rect(9, y0 + 7, 60, 64); g.clip();
+  rect(9, y0 + 7, 60, 64, '#221a4e');
+  for (let i = 0; i < 6; i++) rect(9, y0 + 9 + i * 11, 60, 1, '#2e2266');
+  const bob = (Math.floor(tb / 200) % 2);
+  g.drawImage(SP.head, 0, 0, SP.head.width, SP.head.height, 17, y0 + 8 + bob, SP.head.width * 2, SP.head.height * 2);
+  g.restore();
+  // 台词（打字机）
+  const n1 = Math.floor(prog(p, .12, .42) * LINE1.length), n2 = Math.floor(prog(p, .42, .6) * LINE2.length);
+  drawText('雷萨', 78, y0 + 6, FONT_PX(8), '#8f96ad', null);
+  if (n1) drawText(LINE1.slice(0, n1), 78, y0 + 20, FONT_CN(12), '#ffffff', null);
+  if (n2) drawText(LINE2.slice(0, n2), 78, y0 + 38, FONT_CN(12), '#ffffff', null);
+  const nm = prog(p, .55, .66);
+  if (nm > 0) { const sc = nm < 1 ? 2 : 1; drawText(MOVE, 78 + (sc === 2 ? -6 : 0), y0 + 56 - (sc === 2 ? 6 : 0), FONT_CNB(14), '#f2c45a', '#3a2408', 'left', sc); }
+  g.restore();
+}
+
+/* ================= sound ================= */
+let AC = null;
+const ac = () => { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } } return AC; };
+function sfx(kind) {
+  if (!S.sound) return; const a = ac(); if (!a || a.state === 'suspended') return;
+  const now = a.currentTime, out = a.createGain(); out.gain.value = .35; out.connect(a.destination);
+  const tone = (type, f0, f1, dur, vol, at = 0) => { const o = a.createOscillator(), gn = a.createGain(); o.type = type; o.frequency.setValueAtTime(f0, now + at); o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), now + at + dur); gn.gain.setValueAtTime(vol, now + at); gn.gain.exponentialRampToValueAtTime(.0001, now + at + dur); o.connect(gn); gn.connect(out); o.start(now + at); o.stop(now + at + dur + .05); };
+  const noise = (dur, f, vol, at = 0, f1) => { const b = a.createBuffer(1, a.sampleRate * (dur + .1), a.sampleRate), d = b.getChannelData(0); let v = 0; for (let i = 0; i < d.length; i++) { if (i % 6 === 0) v = Math.random() * 2 - 1; d[i] = v; } const s = a.createBufferSource(); s.buffer = b; const fl = a.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.setValueAtTime(f, now + at); if (f1) fl.frequency.exponentialRampToValueAtTime(f1, now + at + dur); const gn = a.createGain(); gn.gain.setValueAtTime(vol, now + at); gn.gain.exponentialRampToValueAtTime(.0001, now + at + dur); s.connect(fl); fl.connect(gn); gn.connect(out); s.start(now + at); s.stop(now + at + dur + .05); };
+  switch (kind) {
+    case 'cutin': tone('square', 880, 1760, .08, .3); tone('square', 1320, 2640, .1, .25, .08); break;
+    case 'blip': tone('square', 1200, 1200, .03, .12); break;
+    case 'charge': tone('square', 110, 880, .5, .14); tone('triangle', 220, 1760, .5, .2); break;
+    case 'dash': noise(.3, 5200, .8, 0, 400); tone('square', 300, 90, .28, .3); break;
+    case 'slash': noise(.12, 3400, .8, 0, 900); tone('square', 1500, 700, .08, .22); break;
+    case 'slash2': noise(.16, 2600, .9, 0, 700); tone('square', 1100, 420, .12, .3); break;
+    case 'bigslash': noise(.34, 4200, 1, 0, 500); tone('square', 900, 140, .3, .5); tone('triangle', 140, 40, .34, .8); break;
+    case 'pop': noise(.2, 2000, .6, 0, 300); break;
+    case 'boom': noise(1.2, 1800, 1, 0, 70); tone('triangle', 90, 25, 1, 1); break;
+    case 'clang': tone('square', 700, 200, .18, .3); noise(.15, 5000, .3); break;
+    case 'stamp': tone('square', 220, 60, .22, .5); noise(.12, 1200, .5, 0, 200); break;
+  }
+}
+function soundEvents() {
+  const ev = [[dispOf(400), 'cutin'], [dispOf(1750), 'charge'], [dispOf(2250), 'dash']];
+  const L1 = LINE1.length, L2 = LINE2.length;
+  for (let i = 1; i <= L1; i += 2) ev.push([dispOf(400) + 1350 * (.12 + .30 * i / L1), 'blip']);
+  for (let i = 1; i <= L2; i += 2) ev.push([dispOf(400) + 1350 * (.42 + .18 * i / L2), 'blip']);
+  HITS.forEach((at, i) => ev.push([dispOf(at), i === 3 ? 'slash2' : 'slash']));
+  ev.push([dispOf(T_FIN), 'bigslash']);
+  if (S.kill) ev.push([dispOf(4250), 'pop'], [dispOf(4400), 'pop'], [dispOf(4550), 'pop'], [dispOf(4650), 'boom'], [dispOf(4900), 'stamp']);
+  else ev.push([dispOf(4000), 'clang']);
+  return ev;
+}
+
+/* ================= one frame (pure function of t) ================= */
+/* 连斩四段的机体位置（身体中心 x / 脚底 y）与姿势 */
+const COMBO = [
+  { sp: 'raH', x: 150, y: GROUND }, { sp: 'raD', x: 156, y: GROUND - 20 },
+  { sp: 'raU', x: 146, y: GROUND - 4 }, { sp: 'raH', x: 158, y: GROUND - 12 },
+];
+const ANCH = { raIdle: 18, raDraw: 18, raDash: 18, raH: 33, raD: 33, raU: 33, raFin: 33 };
+function drawAlly(sp, cx, feetY) { g.drawImage(SP[sp], r(cx - ANCH[sp]), r(feetY - (SP[sp].height - 2))); }
+function ghost(sp, cx, feetY, img) { g.drawImage(img, r(cx - ANCH[sp]), r(feetY - (SP[sp].height - 2))); }
+/* 第 k 段连斩在这一刻的姿势：停顿内定格在命中架势，停顿后向下一个架势瞬移 */
+function comboPose(k, tb) {
+  const at = HITS[k], ai = tb - at, half = S.stop * .5;
+  const cur = COMBO[k], nxt = COMBO[k + 1];
+  if (ai < half) return { sp: cur.sp, cx: cur.x, feetY: cur.y };
+  const q = easeInOut(prog(ai, half, 150));
+  return { sp: q < .5 ? cur.sp : (nxt ? nxt.sp : 'raFin'), cx: lerp(cur.x, nxt ? nxt.x : 162, q), feetY: lerp(cur.y, nxt ? nxt.y : GROUND, q) };
+}
+function render(t) {
+  const tb = baseOf(t), ts = step(tb, 33);
+  const fr = freezeAt(t);
+
+  /* ---- 相机 ---- */
+  let cam;
+  if (tb < 2250) cam = CAM_START;
+  else if (tb < 2600) {
+    const p = prog(tb, 2250, 2600);
+    cam = p < .55 ? lerp(CAM_START, 228, p / .55) : lerp(228, CAM_FIGHT, (p - .55) / .45);
+  } else cam = CAM_FIGHT;
+
+  /* ---- 震动（整数像素、跳帧） ---- */
+  let sx = 0, sy = 0;
+  HITS.forEach((at, i) => { const ai = tb - at; if (ai >= 0) { const q = step(ai, 33), amp = (i === 3 ? 2.6 : 2) * S.shake * Math.exp(-q / 70); sx += r(amp * Math.sin(q * 1.7 + i)); sy += r(amp * Math.cos(q * 1.3 + i)); } });
+  { const ai = tb - T_FIN; if (ai >= 0) { const q = step(ai, 33), amp = 5 * S.shake * Math.exp(-q / 160); sx += r(amp * Math.sin(q * .3)); sy += r(amp * Math.cos(q * .41)); } }
+  { const kt = tb - 4650; if (S.kill && kt >= 0) { const q = step(kt, 33), amp = 3.5 * S.shake * Math.exp(-q / 220); sx += r(amp * Math.sin(q * .37)); sy += r(amp * Math.cos(q * .29)); } }
+  if (tb > 2140 && tb < 2260) { const q = step(tb - 2140, 33), amp = 1.2 * S.shake * Math.exp(-q / 60); sx += r(amp * Math.sin(q * 2.1)); }
+
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  rect(0, 0, W, H, '#000');
+  g.save(); g.translate(sx, sy);
+  background(cam, tb);
+
+  const exs = ENEMY_W - cam + W / 2;                       // 小兵屏幕 x
+  const axs = ALLY_W - cam + W / 2;                        // 雷萨起段屏幕 x
+
+  /* ---- 冲刺速度线 ---- */
+  if (tb > 2250 && tb < 2620) for (let i = 0; i < 12; i++) {
+    const y = 10 + i * 9, len = 26 + (i % 3) * 16;
+    const x = ((i * 79 - ts * 2.4) % (W + 90) + W + 90) % (W + 90) - 45;
+    rect(x, y, len, 1, i % 3 ? '#8f86c488' : '#d8d2ffcc');
+  }
+
+  /* ---- 雷萨（先定姿势，退场会覆盖） ---- */
+  const dashP = prog(tb, 2250, 2600);
+  let axw = ALLY_W;                                        // 世界坐标
+  if (tb >= 2250 && tb < 2600) axw = dashP < .55 ? lerp(ALLY_W, 160, easeIn(dashP / .55)) : lerp(160, 118, easeOut((dashP - .55) / .45));
+  else if (tb >= 2600) axw = 118;
+  let pose = null;                                         // {sp, cx, feetY}
+  if (tb < 400) {                                          // 入场：从右侧滑入 + 落地尘
+    const q = easeOut(prog(tb, 0, 320));
+    pose = { sp: 'raIdle', cx: lerp(axs + 60, axs, q), feetY: GROUND };
+    if (q < 1) for (let i = 0; i < 5; i++) disc(axs + (i - 2) * 5, GROUND + 2, 3, '#565d7d', true);
+  } else if (tb < 1750) {                                  // 切入期间不画机体
+  } else if (tb < 2250) {                                  // 拔刀蓄势
+    pose = { sp: 'raDraw', cx: axs, feetY: GROUND };
+    const glow = prog(tb, 1780, 2200);
+    for (let i = 0; i < 14; i++) {                          // 影尘向刀锋汇聚
+      const a = i / 14 * Math.PI * 2, d = 24 - 16 * glow + (i % 3) * 3;
+      const lt = (ts - 1750 - i * 37) % 420; if (lt < 0) continue;
+      const q = lt / 420, dd = d * (1 - easeIn(q));
+      px(axs - 4 + Math.cos(a) * dd, GROUND - 25 + Math.sin(a) * dd * .7, q > .7 ? '#e8dcff' : '#8f6adf');
+    }
+    if (glow > .15) ring(axs - 4, GROUND - 25, r(5 + glow * 5), r(2 + glow * 2), glow > .7 ? '#e45ad0' : '#7b5cb2');
+    if (glow > .5) for (let x = -12; x <= 12; x += 2) px(axs + x + (Math.floor(ts / 66) % 2), GROUND + 2, '#8f6adf');
+    if (tb > 2100 && (Math.floor(ts / 33) % 2) === 0) {     // 出刀前一瞬的刀光
+      line(axs - 8, GROUND - 20, axs + 16, GROUND - 38, '#ffffff');
+      line(axs - 8, GROUND - 18, axs + 16, GROUND - 36, '#b9a6ff');
+    }
+  } else if (tb < 2600) {                                  // 冲刺穿过画面
+    for (let i = 1; i <= 3; i++) {                          // 残影
+      const q = clamp(dashP - i * .12, 0, 1);
+      const gx = q < .55 ? lerp(ALLY_W, 160, easeIn(q / .55)) : lerp(160, 118, easeOut((q - .55) / .45));
+      ghost('raDash', gx - cam + W / 2, GROUND, SP.ghostVd);
+    }
+    pose = { sp: 'raDash', cx: axw - cam + W / 2, feetY: GROUND };
+    for (let i = 0; i < 6; i++) rect(axw - cam + W / 2 - 14 - i * 6, GROUND - 2 - (i % 2), 8, 1, '#565d7d');   // 脚下尘
+  } else if (tb < 3200) {                                  // 连斩①~④
+    const k = tb < 2750 ? 0 : tb < 2900 ? 1 : tb < 3050 ? 2 : 3;
+    pose = comboPose(k, tb);
+  } else if (tb < 3400) {                                  // 大斩定格
+    pose = { sp: 'raFin', cx: 162 + r(4 * prog(tb, 3200, 3400)), feetY: GROUND - 6 };
+  } else {                                                 // 收势
+    pose = { sp: 'raIdle', cx: 162, feetY: GROUND };
+  }
+  const exitP = prog(tb, S.kill ? 5450 : 4700, S.kill ? 5850 : 5100);
+  if (exitP > 0 && exitP < .8) {                           // 退场：向右疾走 + 残影
+    const q = exitP / .8;
+    for (let i = 1; i <= 2; i++) ghost('raDash', lerp(162, 162 + 210 * easeIn(clamp(q - i * .16, 0, 1)), 1), GROUND, SP.ghostVd);
+    pose = { sp: 'raDash', cx: lerp(162, 162 + 210 * easeIn(q), 1), feetY: GROUND };
+  }
+  if (pose) drawAlly(pose.sp, pose.cx, pose.feetY);
+
+  /* ---- 小兵 ---- */
+  let ewhite = false, eoff = 0, edead = false, eanim = 'stand';
+  HITS.forEach((at, i) => { const ai = tb - at; if (ai >= 0 && ai < (i === 3 ? 90 : 60)) { ewhite = true; eoff = -2; } });
+  { const ai = tb - T_FIN; if (ai >= 0 && ai < 120) { ewhite = true; eoff = -3; } }
+  if (S.kill) {
+    const kt = tb - 4000;
+    if (kt >= 0 && kt < 300) ewhite = Math.floor(kt / 50) % 2 === 0;
+    if (kt >= 4650) edead = true;
+  } else {
+    const rt = tb - 4000;
+    if (rt >= 0) { eanim = 'lean'; eoff = -r(6 * Math.sin(Math.PI * prog(rt, 0, 500))); if (rt < 66 && Math.floor(rt / 33) % 2 === 0) ewhite = true; }
+  }
+  if (!edead && exs > -40 && exs < W + 40) {
+    rect(exs - 11, GROUND + 1, 22, 2, '#2b3049');
+    const bob = (Math.floor(tb / 380) % 2) && tb < 2600;
+    if (eanim === 'lean') g.drawImage(SP.gruntLean, r(exs - 14 + eoff), r(GROUND - 42 + bob));
+    else g.drawImage(ewhite ? SP.gruntWhite : SP.grunt, r(exs - 14 + eoff), r(GROUND - 42 + bob));
+  }
+
+  /* ---- 斩击光弧 + 火花 ---- */
+  const hitY = GROUND - 26;
+  HITS.forEach((at, i) => {
+    const ai = tb - at; if (ai < 0) return;
+    const q = step(ai, 33), fade = prog(ai, 0, 260);
+    const [a0, a1, rad] = i === 0 ? [Math.PI - .95, Math.PI + .95, 15] : i === 1 ? [.55, 2.35, 16] : i === 2 ? [-2.35, -.55, 16] : [Math.PI - .8, Math.PI + .8, 14];
+    const grow = ai < 99 ? .45 : ai < 165 ? .8 : 1;
+    if (ai < 300) {
+      slashArc(exs + 2, hitY, a0, a1, rad, grow * (1 - fade * .35), i === 1 ? '#e45ad0' : '#8f6adf', '#ccd8ee', '#ffffff');
+      if (ai < 130) for (let k = 0; k < 7; k++) { const a = i * 1.1 + k * .9, d = 4 + q * .09; px(exs + 2 + Math.cos(a) * d, hitY + Math.sin(a) * d, k % 2 ? '#ffffff' : '#ffe066'); }
+    }
+  });
+  { const ai = tb - T_FIN; if (ai >= 0 && ai < 420) {
+      const grow = ai < 132 ? .5 : ai < 231 ? .85 : 1;
+      slashArc(exs + 2, hitY, 1.05, 4.55, 30, grow, '#e45ad0', '#e8dcff', '#ffffff');
+      if (ai < 260) { line(exs - 26, hitY + 22, exs + 30, hitY - 22, '#ffffff'); line(exs - 26, hitY + 24, exs + 30, hitY - 20, '#b9a6ff'); }
+      if (ai < 200) for (let k = 0; k < 12; k++) { const a = k * .52 + ai * .01, d = 6 + step(ai, 33) * .12; px(exs + 2 + Math.cos(a) * d, hitY + Math.sin(a) * d, k % 3 ? '#ffffff' : '#e45ad0'); }
+  } }
+
+  /* ---- 击破序列 ---- */
+  if (S.kill) {
+    const kt = tb - 4000, ex = exs, ey = GROUND;
+    const POPS = [[-8, -18, 250], [9, -10, 400], [-3, -34, 550]];
+    for (const [dx, dy, at] of POPS) { const lt = kt - at; if (lt < 0 || lt > 330) continue; const e = lt / 330; const rr = r(2 + 8 * easeOut(e)); disc(ex + dx, ey + dy, rr, FIRE[e < .4 ? 1 : 3], e > .6); disc(ex + dx, ey + dy, Math.max(1, rr - 3), FIRE[0]); }
+    const bt = kt - 650;                                        // 大爆炸
+    if (bt >= 0 && bt < 900) {
+      const e = bt / 900, rr = r(8 + 30 * easeOut(Math.min(1, bt / 300)));
+      [4, 3, 2, 1, 0].forEach((b, k) => { if (e > .5 && b < 2) return; disc(ex, ey - 16, Math.max(1, rr - k * 6), FIRE[b], k === 0 && e > .4); });
+      for (const sp of SPARK) { if (bt > sp.life) continue; const d = sp.sp * bt / 1000 * 2; px(ex + Math.cos(sp.a) * d, ey - 16 + Math.sin(sp.a) * d, '#ffe066'); }
+      for (let k = 0; k < 2; k++) { const lt = bt - k * 99; if (lt < 0 || lt > 500) continue; const e2 = easeOut(lt / 500); ring(ex, GROUND + 1, 8 + 70 * e2, 2 + 9 * e2, k ? '#ffa23a' : '#fffbe0'); }
+    }
+    if (bt > 250) { const e = prog(bt, 250, 1400); for (let k = 0; k < 4; k++) disc(ex - 6 + k * 4, ey - 10 - e * 18 - k * 4, r(4 + e * 5), '#4a4658', true); }
+    for (const d of DEBRIS) { if (bt < 0 || bt > d.life) continue; const s2 = bt / 1000; const x = ex + d.vx * s2, y = ey - 16 + d.vy * s2 + 0.5 * 260 * s2 * s2; if (y > GROUND + 10) continue; rect(x, y, d.s, d.s, d.hot ? FIRE[1 + (bt > d.life * .5 ? 2 : 0)] : '#a3a9bd'); }
+  }
+
+  /* ---- 伤害数字 ---- */
+  HITS.forEach((at, i) => {
+    const ai = tb - at; if (ai < 0 || ai > 620) return;
+    const q = step(ai, 33), hop = q < 66 ? -3 : q < 132 ? -1 : 0;
+    const vis = ai < 520 || (Math.floor(ai / 66) % 2 === 0);
+    if (vis) drawText(String(HIT_DMG[i]), exs + 2, GROUND - 60 + hop, FONT_PX(10), '#ffffff', '#5a2a6e', 'center');
+  });
+  { const ai = tb - T_FIN; if (ai > 0 && ai < 1500) {
+      const q = step(ai, 33), hop = q < 100 ? -5 : q < 200 ? -2 : 0;
+      const vis = ai < 1200 || (Math.floor(ai / 66) % 2 === 0);
+      if (vis) drawText(DMG.toLocaleString('en-US'), exs + 2, GROUND - 72 + hop, FONT_PX(16), '#ffffff', '#c2361e', 'center');
+  } }
+  /* ---- 击破印章 ---- */
+  if (S.kill && tb > 4900) {
+    const q = tb - 4900, big = q < 66;
+    const vis = tb < 5350 || Math.floor(tb / 66) % 2;
+    if (vis) drawText('击破', exs + 2, 24, FONT_CNB(big ? 26 : 20), '#ff5a3a', '#2a0805', 'center');
+  }
+
+  g.restore();   // end shake
+
+  /* ---- 武器名牌 ---- */
+  if (tb > 1750 && tb < (S.kill ? 5450 : 4700)) { frame9(60, 2, 120, 15); drawText(MOVE, 66, 3, FONT_CN(11), '#ffffff', null); drawText('2900', 176, 7, FONT_PX(8), '#f2c45a', null, 'right'); }
+
+  /* ---- HUD ---- */
+  const hp0 = hpStart();
+  const drained = prog(tb, 3400, 3950), lagged = prog(tb, 3520, 4020);
+  const hpNow = tb <= T_FIN ? hp0 : lerp(hp0, hp0 - DMG, Math.max(easeOut(drained), tb > T_FIN ? .12 : 0));
+  const hpLag = tb < 3520 ? hp0 : lerp(hp0, hp0 - DMG, easeInOut(lagged));
+  const lastB = BEATS[BEATS.length - 1];
+  hud(Math.max(0, hpNow), Math.max(0, Math.max(hpNow, hpLag)), tb > 200 && !(tb > 400 && tb < 1750) && t < dispOf(lastB.a) + 250);
+
+  /* ---- 切入 ---- */
+  if (tb >= 400 && tb < 1750) cutin(prog(tb, 400, 1750), tb);
+
+  /* ---- 闪白 ---- */
+  if (fr && fr.at === T_FIN) { if (t - dispOf(T_FIN) < 34) rect(0, 0, W, H, '#ffffff'); else for (let y = 0; y < H; y++) for (let x = (y & 1); x < W; x += 2) px(x, y, '#ffffff'); }
+  else if (fr) for (let y = 0; y < H; y += 2) rect(0, y, W, 1, '#ffe06644');
+  if (S.kill && tb >= 4650 && tb < 4683) rect(0, 0, W, H, '#ffffff');
+
+  /* ---- 转场 ---- */
+  const en = prog(t, 0, 400);
+  if (en < 1) { const hh = r((H / 2) * (1 - easeOut(en)) / 4) * 4; rect(0, 0, W, hh, '#000'); rect(0, H - hh, W, hh, '#000'); }
+  const ex2 = prog(t, dispOf(lastB.a), dispOf(lastB.b));
+  if (ex2 > 0) { const lvl = Math.floor(ex2 * 4); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (lvl >= 4 || ((x + y * 2) % 4) < lvl) px(x, y, '#000'); } }
+}
+function line(x0, y0, x1, y1, c) {
+  const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+  g.fillStyle = c;
+  for (let i = 0; i <= n; i++) g.fillRect(r(lerp(x0, x1, i / n)), r(lerp(y0, y1, i / n)), 1, 1);
+}
+
+/* ================= timeline UI ================= */
+const track = document.getElementById('track'), head = document.getElementById('head');
+const beatsEl = document.getElementById('beats'), nowEl = document.getElementById('now'), totEl = document.getElementById('total');
+function buildTimeline() {
+  STOPS = stops(); BEATS = beats();
+  track.querySelectorAll('.seg').forEach(n => n.remove());
+  for (const b of BEATS) { const d = document.createElement('div'); d.className = 'seg' + (b.key ? ' key' : ''); d.style.flex = `${Math.max(1, dispOf(b.b) - dispOf(b.a))} 0 0`; d.textContent = b.n; d.dataset.k = b.k; track.insertBefore(d, head); }
+  beatsEl.innerHTML = BEATS.map(b => `<div><span class="t">${dispOf(b.b) - dispOf(b.a)}ms</span><span>${b.n}</span></div>`).join('');
+  totEl.textContent = total();
+}
+function updateTimeline(t) {
+  head.style.left = `calc(${(t / total()) * 100}% - 1px)`;
+  nowEl.textContent = Math.round(t);
+  for (const n of track.querySelectorAll('.seg')) { const b = BEATS.find(x => x.k === n.dataset.k); n.classList.toggle('on', t >= dispOf(b.a) && t < dispOf(b.b)); }
+}
+
+/* ================= playback ================= */
+let t = 0, playing = false, last = 0;
+function tick(now) {
+  if (!playing) return;
+  const dt = Math.min(50, now - last); last = now;
+  const prev = t; t += dt * S.speed;
+  for (const [at, kind] of soundEvents()) if (prev <= at && t > at) sfx(kind);
+  if (t >= total()) { t = total(); playing = false; }
+  render(t); updateTimeline(t);
+  if (playing) requestAnimationFrame(tick);
+}
+function play(fromStart) { if (fromStart || t >= total()) t = 0; playing = true; last = performance.now(); requestAnimationFrame(tick); }
+function seek(nt) { playing = false; t = clamp(nt, 0, total()); render(t); updateTimeline(t); }
+document.getElementById('play').addEventListener('click', () => { const a = ac(); if (a && a.state === 'suspended') a.resume(); document.getElementById('pause').textContent = '暂停'; play(true); });
+document.getElementById('pause').addEventListener('click', e => { if (playing) { playing = false; e.target.textContent = '继续'; } else { e.target.textContent = '暂停'; play(false); } });
+const rKill = document.getElementById('rKill'), rLive = document.getElementById('rLive');
+function setKill(v) { S.kill = v; rKill.setAttribute('aria-pressed', String(v)); rLive.setAttribute('aria-pressed', String(!v)); buildTimeline(); seek(Math.min(t, total())); }
+rKill.addEventListener('click', () => setKill(true)); rLive.addEventListener('click', () => setKill(false));
+document.querySelectorAll('[data-sp]').forEach(b => b.addEventListener('click', () => { S.speed = +b.dataset.sp; document.querySelectorAll('[data-sp]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); }));
+const stopI = document.getElementById('stop'), stopV = document.getElementById('stopV');
+stopI.addEventListener('input', () => { S.stop = +stopI.value; stopV.textContent = S.stop + 'ms'; buildTimeline(); if (!playing) seek(Math.min(t, total())); });
+const shakeI = document.getElementById('shake'), shakeV = document.getElementById('shakeV');
+shakeI.addEventListener('input', () => { S.shake = +shakeI.value / 100; shakeV.textContent = shakeI.value + '%'; if (!playing) render(t); });
+const snd = document.getElementById('snd');
+snd.addEventListener('click', () => { S.sound = !S.sound; snd.setAttribute('aria-pressed', String(S.sound)); snd.textContent = S.sound ? '开' : '关'; });
+let dragging = false;
+const trackSeek = e => { const b = track.getBoundingClientRect(); seek(((e.clientX - b.left) / b.width) * total()); };
+track.addEventListener('pointerdown', e => { dragging = true; track.setPointerCapture(e.pointerId); trackSeek(e); });
+track.addEventListener('pointermove', e => { if (dragging) trackSeek(e); });
+track.addEventListener('pointerup', () => { dragging = false; });
+
+/* ================= boot ================= */
+buildTimeline();
+if (reduce) { S.shake = 0; shakeI.value = 0; shakeV.textContent = '0%'; }
+const q = new URLSearchParams(location.search);
+const t0 = q.has('t') ? clamp(+q.get('t') || 0, 0, total()) : -1;
+const boot = () => { TXT.clear(); if (reduce) { seek(dispOf(T_FIN) + S.stop + 300); return; } if (t0 >= 0) { seek(t0); return; } render(0); updateTimeline(0); play(true); };
+(document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(boot, boot);
+})();
+</script>

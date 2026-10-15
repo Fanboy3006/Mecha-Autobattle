@@ -138,6 +138,23 @@
 
   /* ---------------- 菜单 ---------------- */
   菜单屏() {
+    /* ★ 2026-10-13 职业排位（正交 4×2）：把这套接口挂到 `window.__game`（只在**还没挂过**时挂一次）。
+       ★ 逐个 `typeof` 判 —— 分阶段施工里某个文件缺位时**不抛**（挂上几个算几个）；全在时与
+         「一次性对象字面量」等价。 */
+    if (typeof window !== 'undefined' && window.__game && !window.__game.职业排位角标) {
+      const 排位接口 = {};
+      if (typeof 职业排位参数 === 'function') 排位接口.职业排位参数 = 职业排位参数;
+      if (typeof 职业排位开 === 'function') 排位接口.职业排位开 = 职业排位开;
+      if (typeof 职业排位数 === 'function') 排位接口.职业排位数 = 职业排位数;
+      if (typeof 职业排位命中修正 === 'function') 排位接口.职业排位命中修正 = 职业排位命中修正;
+      if (typeof 职业排位暴击修正 === 'function') 排位接口.职业排位暴击修正 = 职业排位暴击修正;
+      if (typeof 职业排位伤害倍率 === 'function') 排位接口.职业排位伤害倍率 = 职业排位伤害倍率;
+      if (typeof 职业排位修理倍率 === 'function') 排位接口.职业排位修理倍率 = 职业排位修理倍率;
+      if (typeof 尖兵首闪值 === 'function') 排位接口.尖兵首闪值 = 尖兵首闪值;
+      if (typeof 特种产标层数 === 'function') 排位接口.特种产标层数 = 特种产标层数;
+      if (typeof 职业排位角标 === 'function') 排位接口.职业排位角标 = 职业排位角标;
+      Object.assign(window.__game, 排位接口);
+    }
     /* ★ 对局上报（实现在 `src/js/8a-上报.js`；作者 2026-10-12 拍板「网页端任何人玩了以后都留一条记录」）：
        进菜单时（**页面加载时 `boot()` 走的也是同一条路**：`开屏('菜单')` → 刷 → 菜单屏）顺手把
        「还没上报过的肉鸽整局」POST 走。**纯追加**：`上报地址` 为空（默认）时 `顺便传()` 第一句就返回，
@@ -146,7 +163,7 @@
     const 有存档 = !!肉鸽.读存档();
     return `<section class="card menu">
       <h3>机甲指挥 · 晋升 + 零件（大地图上用的那一批）</h3>
-      <p>自动战斗回合制 RPG：把机体摆进<b>前排 4 格 / 后排 5 格</b>的 9 格阵型（一开始只上 3 台，最多 6 台），每回合给全队下一条<b>大方向方针</b>（单位层只管大招开不开），这一回合按速度自动打完。</p>
+      <p>自动战斗回合制 RPG：把机体摆进<b>4×2 正交阵型（前排 4 格 / 后排 4 格，四路上下对齐）</b>的 8 格棋盘（一开始上 4 台，最多 6 台），每回合给全队下一条<b>大方向方针</b>（单位层只管大招开不开），这一回合按速度自动打完。</p>
       <ul>
         <li><b>肉鸽</b>（方案第 7 节）：选分队 → <b>6×4 网格大地图</b>（战棋那套：四邻接 BFS 走格子、
           <b>推进剂</b>每层 7、走一格扣 1、用光触发追击战）→ 作战 / 精英 / 侵蚀源 / 黑市 / 事件 / 瞭望站 /
@@ -219,6 +236,7 @@
       return `<button class="pick${B.选中 === t.mech ? ' on' : ''}${已上 ? ' used' : ''}" data-act="选人:${t.mech}" data-drag="候选:${t.mech}" style="--fc:${势力色(t.mech)}">
         <span class="pk-top">${图标.卡(t.mech, 'ally', 图标.尺寸.列表)}<span class="pk-nm"><b>${t.pilot}</b><small>${t.mech} · ${t.tags.战斗分类} · ${t.tags.势力}${肉鸽模式 ? ` · Lv${t.等级}` : ''}</small></span></span>
         <span class="nums">速 ${p.速度} · HP ${p.hp}${p.大招.length ? ` · 大招 ${p.大招.length}` : ''}</span>
+        ${特色摘要(t).文本 ? `<div class="特色摘要" data-特色摘要="1">${特色摘要(t).文本}</div>` : ''}
       </button>`;
     }).join('');
     const 格 = [];
@@ -232,14 +250,21 @@
       const 占 = B.出击.find(x => x.位 === 位);
       if (占) {
         const p = this.预览(占.键, B.等级);
+        /* ★ 2026-10-13 职业排位（正交 4×2 · 预告层）：卡片上先给一句「这个职业站这儿对不对」。
+           总闸关掉 / 查不到职业 → 空串 → 模板**逐字不变**（不多一个 `<span>`）。 */
+        const 排位标 = typeof 职业排位角标 === 'function' ? 职业排位角标({ 键: 占.键, slot: 位, tags: p && p.tags }, null) : '';
+        const 排位行 = 排位标 ? '<span class="特色角标">' + 排位标 + '</span>' : '';
         行格.get(r).push(`<button class="slot filled" data-act="取回:${位}" data-drag="位:${位}" data-drop="${位}" style="--fc:${势力色(占.键)}">
           <span class="pos">${位名(位)}</span>
           <span class="pk-top">${图标.卡(占.键, 'ally', 图标.尺寸.格)}<span class="pk-nm"><b>${this.单位名(占.键, 'ally')}</b><small>${占.键} · 速 ${p.速度}</small></span></span>
-          <span class="nums">HP ${p.hp}</span></button>`);
+          <span class="nums">HP ${p.hp}</span>
+          ${排位行}
+          ${特色摘要(占.键).文本 ? `<div class="特色摘要" data-特色摘要="1">${特色摘要(占.键).文本}</div>` : ''}</button>`);
       } else {
         行格.get(r).push(`<button class="slot" data-act="放位:${位}" data-drop="${位}"><span class="pos">${位名(位)}</span><b>空位</b><small>${行名(r)}</small></button>`);
       }
     }
+    /* ★ 2026-10-13（正交 4×2）：两排都固定四列，上下**严格对齐**（`.编队屏 .grid .row` 也是 `repeat(4,1fr)`） */
     for (const [r, 列表] of 行格) 格.push(`<div class="row" style="--cols:${最大列数}">${列表.join('')}</div>`);
     const 上限 = this.当前出击上限();
     const 编成选项 = 编成表.map((e, i) => {
@@ -261,7 +286,7 @@
         <div class="picks" data-center="1">${列表}</div>
       </div>
       <div class="col 站位">
-        <h3>出击编队（${B.出击.length} / ${上限}）<span class="small">9 格阵型：上排 = 后排 5 格，下排 = 前排 4 格；${this.出击上限说明()}</span></h3>
+        <h3>出击编队（${B.出击.length} / ${上限}）<span class="small">4×2 正交阵型：上排 = 后排 4 格，下排 = 前排 4 格（四路上下对齐）；${this.出击上限说明()}</span></h3>
         <!-- ★ 2026-10-13：界面上那句提示（this.提示）原来在**编队屏上根本没画** —— 「点空位没反应」「拖不进去（超过出击上限）」
              那两句提示设了也没人看得到。这里补一行（空的时候不画，别的屏一个字都不改）。 -->
         ${this.提示 ? `<p class="warn small" data-form-hint="1">${this.提示}</p>` : ''}

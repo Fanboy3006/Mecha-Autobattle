@@ -11,6 +11,7 @@
     const 预告 = 指令阶段 ? 预告快照(this.ctx) : null;
     const 排 = (列表, 方, 从后往前) => {
       const 行序 = 从后往前 ? [ROW_BACK, ROW_FRONT] : [ROW_FRONT, ROW_BACK];
+      /* ★ 2026-10-13（正交 4×2）：四列固定 —— 两排上下**严格对齐**（`.战斗屏 .row` 也是 `repeat(4,1fr)`）。 */
       return 行序.map(r => `<div class="row" style="--cols:${行列数(r)}">${Array.from({ length: 行列数(r) }, (_, c) => {
         const 位 = slotOf(r, c);
         const u = 列表.find(x => x.slot === 位);
@@ -214,12 +215,25 @@
        配置在 `71-改动.js`）；播放阶段看的是这一回合开始时的快照，所以这回合里一直是红的。
        没有这个键的敌人 → `''`（class 字符串与改前**逐字相同**）。 */
     const 濒死 = 方 === 'enemy' && 濒死自爆吗(u);
+    /* ★ 2026-10-13 ③「看见特色」· **战斗内状态角标区**（P1 预告层，本章**唯一的角标槽位**）：
+       `<span class="特色角标">…</span>` —— `[重装护卫]` / `[首击闪+20]` / `[狙击免挡]` / `🎰好运暴×3`。
+       · 判据全在 `84-反馈.js` 的 `特色角标们()`（**纯读**：只看单位自己 + 敌方阵容，不改状态、
+         不消耗随机数、不给 `ctx.log` 加字段）；
+       · **绝不占用 `class="faction"`（`.势力行`）** → 各 `tests/faction-*` 的
+         `(html.match(/class="faction"/g) || []).length` 断言**一个都不动**（ATX 仍是 2）；
+       · 播放阶段的快照没有 `buffs` → `特色角标们()` 返回空数组 → **一个角标都不多画**
+         （别的战斗 / 别的阶段逐字不变）。 */
+    const 角标们 = (typeof 特色角标们 === 'function') ? 特色角标们(u, 方, this.ctx) : [];
+    const 角标行 = 角标们.length
+      ? `<div class="特色角标行" data-特色角标="1">${角标们.map(x => `<span class="特色角标">${x}</span>`).join('')}</div>`
+      : '';
     return `<div class="uc${u.hp <= 0 ? ' down' : ''}${濒死 ? ' dying' : ''}${选中}${被点名 ? ' marked' : ''}${点目标中 ? ' pickable' : ''}${标定类}" id="u-${方}-${u.slot}" data-side="${方}" data-slot="${u.slot}" style="--fc:${色}"${动}>
       <span class="pos">${位名(u.slot)}</span>
       <div class="head">${图标.卡(u.key, 方, 图标.尺寸.卡)}<div class="nm"><b>${u.name}</b><small>${u.key} · 速 ${speedOf(u)}</small></div></div>
       <div class="bar hp"><i style="width:${hp}%"></i></div>
       <div class="nums">HP ${Math.max(0, u.hp)} / ${u.maxHp}${u.shieldHp ? ` · 盾 ${u.shieldHp}` : ''}</div>
       <div class="tags">${(u.tags && u.tags.战斗分类) || ''}${u.weapons && u.weapons.filter(e => isUltimate(e.t)).length ? ' · 大招' : ''}</div>
+      ${角标行}
       ${势力行 ? `<div class="faction">${势力行}</div>` : ''}
       ${标定行 ? `<div class="faction">${标定行}</div>` : ''}
       ${标定经济行 ? `<div class="faction 标定经济卡行" data-标定卡行="1">${标定经济行}</div>` : ''}
@@ -259,7 +273,11 @@
       /* ★ 三层反馈的**即时**（作者 2026-10-12 拍板的第 2 件，§2.2 的「即时」列）：
          「伤害数字旁」那一个小标签（`集中` / `被挡 −20` / `防御 少挨 N`）——
          字段来自记录，`反馈标签()` 把记录翻成人话；没有那三个字段时**一个字都不多**（默认路径的显示也不变）。 */
-      const 签 = 飘.标签 ? `<span class="float-tag${飘.暴击 ? ' crit' : ''}">${飘.标签}</span>` : '';
+      /* ★ 2026-10-13 ③「看见特色」（Guardian 审查补齐）：即时飘字按短签的**类名**挂上
+         `.签-职业` / `.签-势力` / `.签-即时`（样式在 `src/css/main.css`）——
+         **文本一个字不改**（还是 `反馈标签()` 拼出来的那一串），只在 `class` 上追加 token。 */
+      const 签类 = Array.from(new Set(((飘.签们 || []).map(x => x && x.类).filter(Boolean)))).join(' ');
+      const 签 = 飘.标签 ? `<span class="float-tag${飘.暴击 ? ' crit' : ''}${签类 ? ' ' + 签类 : ''}">${飘.标签}</span>` : '';
       if (飘.伤害 || 签) el.innerHTML += `<span class="float${飘.暴击 ? ' crit' : ''}">${飘.伤害 || ''}</span>${签}`;
     }
   },
@@ -372,8 +390,11 @@
     音乐.看记录(ev);                 // M5：我方放大招就切这台机体的主题曲（保持到本回合结束）
     /* ★ 三层反馈的**即时**（§2.2 的「即时」列）：这张卡上那一下要不要挂个小标签 ——
        `集中` / `被挡 −20` / `防御 少挨 N`（字段由引擎写在记录上；没有就一个标签都不画）。 */
+    /* ★ 结构化短签（`反馈签们()`，`{ 文, 类 }`）：文本仍由 `反馈标签(ev)` 拼（**老断言逐字不变**），
+       类名（`签-职业` / `签-势力` / `签-即时`）交给日志尾巴与飘字挂到 DOM 上（`§21.4` 登记的那三个类）。 */
+    const 签们 = (ev && typeof 反馈签们 === 'function') ? 反馈签们(ev) : [];
     const 签 = 反馈标签(ev);
-    if (ev && ev.目标方 != null) this.刷卡(ev.目标方, ev.目标位, { 伤害: ev.伤害, 暴击: ev.暴击 > 0, 标签: 签 });
+    if (ev && ev.目标方 != null) this.刷卡(ev.目标方, ev.目标位, { 伤害: ev.伤害, 暴击: ev.暴击 > 0, 标签: 签, 签们 });
     /* ★ 2026-10-13 **标定经济 · 即时（屏上给两张卡加「可见标记」）**：引爆那一下的记录
        （`类型:'标定'` 的 `引爆连锁` / `狙击连锁`）→ **引爆者**与**目标**两张卡都挂 `标定闪框`。
        ★ 作者 2026-10-13 的边界：**样式先不写死在这条线**（K3 那条线正在搬 `src/css/main.css`）——
@@ -395,7 +416,10 @@
     const 日志 = $('#log');
     if (日志) {
       const 类 = ev ? (ev.类型 === '攻击' || ev.类型 === '残月余响' ? (ev.单位方 || '') : ev.类型 === '回合' ? 'sys' : 'sys2') : 'sys';
-      日志.innerHTML += ev ? `<li class="${类}"><span class="t">${ev.回合}</span>${ev.文本}${签 ? ` <span class="tagx">〔${签}〕</span>` : ''}</li>` : '<li class="sys">（本回合播放结束）</li>';
+      /* ★ 即时短签的**类名**（`签-职业` / `签-势力` / `签-即时`，`§21.4`）挂到日志尾巴那一个 span 上：
+         文本仍是 `反馈标签()` 拼出来的同一串（一个字不改），只在 `class` 上追加 token。 */
+      const 签类们 = Array.from(new Set(签们.map(x => x && x.类).filter(Boolean))).join(' ');
+      日志.innerHTML += ev ? `<li class="${类}"><span class="t">${ev.回合}</span>${ev.文本}${签 ? ` <span class="tagx${签类们 ? ' ' + 签类们 : ''}">〔${签}〕</span>` : ''}</li>` : '<li class="sys">（本回合播放结束）</li>';
       if (日志.scrollTop != null) 日志.scrollTop = 99999;
     }
     if (p) this.刷顶栏();

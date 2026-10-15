@@ -89,7 +89,7 @@ for (const { 键, 机师, 名字 } of 新武器) {
   const ctx = G.开局([{ 键, 位: 4, 等级: 10 }, { 键: 'B1', 位: 0, 等级: 10 }], 敌重, 222);
   const 奶妈 = ctx.allies.find(u => u.key === 键);
   const 伤 = ctx.allies.find(u => u.key === 'B1');
-  伤.hp = Math.round(伤.maxHp * 0.4);          // 40% < 60% → 该修
+  伤.hp = Math.round(伤.maxHp * 0.2);          // 20% < 60% → 该修；缺血 5440 > 后排特种奶量 4795 → 回复量不被 maxHp 截断
   const 选 = G.chooseHeal(奶妈, ctx);
   if (选 && 选.weapon.name === 名字 && 选.target.key === 'B1') ok(`${机师} 在 40% 时选了【${选.weapon.name}】→ ${选.target.name}（目标 = HP 比例最低的队友）`);
   else bad(`${机师} 40% 时没选对：${JSON.stringify(选 && [选.weapon.name, 选.kind, 选.target.key])}`);

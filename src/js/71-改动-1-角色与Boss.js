@@ -65,6 +65,86 @@ const 再动 = {
    ★ Lv30 的「满月·月蚀」在数据里写着「冷却好时代替残月的余响自动释放」（10-数据.js:291-292），
    换机制后这条**仍然成立**：追加的那一发优先用它（`unlock` 更高、冷却好时），见 `72-势力.js` 的 `残月武器()`。 */
 const 残月余响标记 = 'echoFollow';
+/* ★ 2026-10-13（`[特色与角色] Feena 主动攻击补强`）：这一段做三件事 ——
+ *   ① 登记初稿参数 `残月余响运行期`（**= `战斗结构.Feena主动攻击` 的初稿副本**：
+ *      本文件在 `71-改动-4-战斗结构.js` **之前**加载，那时 `战斗结构` 还在 TDZ、读不到 →
+ *      先按初稿改一遍；等 `71-改动-5-参数入口.js` 加载完（`同步残月武器属性()`）再按真表校一遍）；
+ *   ② 把「残月的余响」**就地**改成主动曲射武器 —— `unlock = 残月解锁等级`（初稿 10）、
+ *      `fire = 主动射程类型`（初稿 `'indirect'`）、`lv10Power = 残月Lv10威力`（初稿 2200），
+ *      并把 `PROMO_WEAPONS.M1`（满月·月蚀，同一个武器对象）设 `fire = 'indirect'`
+ *      （保留 `友军攻击后追加 = true`）→ **`30-射程.js` / `50-AI.js` 一个字节都不用改**；
+ *   ③ 原始值抄进 `残月原始unlock` / `残月原始fire`（**只读登记**）：`战斗结构.Feena主动攻击.开 === false` 时
+ *      `20-战斗计算.js` 的 `weaponPlayable()` 与 `72-势力-3-月球王国.js` 的 `残月武器()` 按这两个原始值判定
+ *      → **逐字节退回改前**。
+ *   ★ **硬规矩**：`开 === false` 时这两把的 `unlock` / `fire` / 威力 / AI 行为 / `simulate()` 输出
+ *     与改前逐字节相同（47 场默认路径记录数严格 `2925`；证据在 `tests/commands-1` [1] 段的「P0 双证据①」）。 */
+const 残月余响运行期 = {
+  开: true,                  // 与 `战斗结构.Feena主动攻击.开` **同义**（真源是那里；这里只登记初稿）
+  残月解锁等级: 10,           // 开 = 残月的余响下放到 Lv10（关 = 数据里的 20）
+  残月Lv10威力: 2200,         // 开 + Lv<20 时的威力（Lv20 = 3200、Lv30 = 5400 照数据表）
+  主动射程类型: 'indirect',   // 开时的 `fire`（曲射、无视阻挡）→ `weaponPlayable()` 放行
+};
+/** 残月两把武器的**运行期底座**（`w` → `{原始unlock, 原始fire, 开时unlock, 开时fire, 装好}`）。
+ *  `unlock` / `fire` 被 `装残月运行期属性()` 换成**取值器** → 全仓库任何一处读 `w.unlock` / `w.fire`
+ *  拿到的都是「当前开关下该有的那个数」（`30-射程.js` / `50-AI.js` / `60-战斗-1` 的 `isUltimate()` 都不改）。 */
+const 残月底座 = new Map();
+/** ★ 把一把残月武器的 `unlock` / `fire` 装成**运行期取值器**（幂等）：
+ *  · `战斗结构.Feena主动攻击.开 !== false` → 返回「开时」那两个数（残月的余响 = `残月解锁等级` / `主动射程类型`）；
+ *  · `开 === false` → 返回**数据原样**（残月的余响 = `20` / `'passive'`）→ 与改前逐字节相同
+ *    （连 `50-AI.js` 的 `isUltimate()`、`60-战斗-1` 的「冷却延长」词条、`30-射程.js` 的 `rangeKindOf()` 都跟着走对）；
+ *  · **赋值照常写得进**（`w.unlock = 10` 存进「开时」那一格）→ 本函数上面的字面写法仍然成立。 */
+function 装残月运行期属性(w) {
+  let st = 残月底座.get(w);
+  if (!st) { st = { 原始unlock: w.unlock, 原始fire: w.fire, 开时unlock: w.unlock, 开时fire: w.fire, 装好: false }; 残月底座.set(w, st); }
+  if (!st.装好) {
+    st.装好 = true;
+    Object.defineProperty(w, 'unlock', {
+      configurable: true, enumerable: true,
+      get() { const s = 残月底座.get(w); return Feena主动攻击开() ? s.开时unlock : s.原始unlock; },
+      set(v) { 残月底座.get(w).开时unlock = v; },
+    });
+    Object.defineProperty(w, 'fire', {
+      configurable: true, enumerable: true,
+      get() { const s = 残月底座.get(w); return Feena主动攻击开() ? s.开时fire : s.原始fire; },
+      set(v) { 残月底座.get(w).开时fire = v; },
+    });
+  }
+  return st;
+}
+/** ★ 2026-10-13：按参数把「残月的余响 / 满月·月蚀」**就地**写成主动曲射武器（派单 §2.2 第 1 条）。
+ *  · `参` 传 `战斗结构.Feena主动攻击`（不传 = 初稿 `残月余响运行期`）；
+ *  · 残月的余响：`unlock` → `残月解锁等级`（初稿 10）、`fire` → `主动射程类型`（初稿 `'indirect'`）、
+ *    `lv10Power` → `残月Lv10威力`（初稿 2200，供 `20-战斗计算.js` 的 `威力取档()` 读）；
+ *    满月·月蚀：`fire` 同上（保留 `友军攻击后追加 = true`），`unlock` **照数据的 30**；
+ *  · **幂等**；`参.开 === false` → 取值器把两个数还原成**数据原样**（新开的页面逐字退回改前）；
+ *  · 返回 `{ 残月, 满月 }`（两把武器对象，供测试直接看 / 供 `71-改动-5` 校表）。 */
+function 应用残月主动攻击(参) {
+  const p = (参 && typeof 参 === 'object') ? 参 : 残月余响运行期;
+  const 开 = p.开 !== false;
+  const 火 = (typeof p.主动射程类型 === 'string' && p.主动射程类型) ? p.主动射程类型 : 'indirect';
+  const 解锁 = Number(p.残月解锁等级) || 10;
+  const 威力 = Number(p.残月Lv10威力) || 2200;
+  const 满月表 = (typeof PROMO_WEAPONS !== 'undefined' && PROMO_WEAPONS && PROMO_WEAPONS.M1) || [];
+  const 满月 = 满月表.find(w => w && w.special === 残月余响标记) || null;
+  const feena = ALLY_T.find(t => t.mech === 'M1');
+  /* 「残月的余响」= M1 面板上那把 `echoFollow`、**且不是** `PROMO_WEAPONS.M1` 的武器
+     （数据里 M1 的 Lv30 晋升武装在 `10-数据.js` 里已经 push 进同一份 `t.weapons`）。 */
+  const 残月 = feena ? (feena.weapons.find(w => w && w.special === 残月余响标记 && !满月表.includes(w)) || null) : null;
+  if (残月) {
+    残月.残月下放 = true;                                   // 只有这一把吃「下放到 Lv10」
+    const st = 装残月运行期属性(残月);
+    残月.unlock = 开 ? 解锁 : st.原始unlock;
+    残月.fire = 开 ? 火 : st.原始fire;
+    残月.lv10Power = 威力;                                  // Lv10 那一档的威力（20-战斗计算 的 威力取档() 读它）
+  }
+  if (满月) {
+    满月.残月下放 = false;                                  // 满月·月蚀仍是 Lv30 大招（照数据 30）
+    const st = 装残月运行期属性(满月);
+    满月.fire = 开 ? 火 : st.原始fire;
+    满月.unlock = st.原始unlock;                            // 它的 `unlock` 两种状态下都是 30
+  }
+  return { 残月, 满月 };
+}
 {
   const feena = ALLY_T.find(t => t.mech === 'M1');
   if (feena) {
@@ -77,9 +157,22 @@ const 残月余响标记 = 'echoFollow';
         + '（设定：她操作质量加速器丢陨石）。用这把武器的威力走现成公式、必中、不暴击；'
         + '目标 = 队友这一击打的那一台（它已经倒下就不追）。'
         + '每回合上限 = `71-改动.js` 的 `势力特色.月球王国.残月余响每回合上限`（初稿 1 次）。'
-        + '旧范围（自身 4 格 + 队友射程延伸 / 上一版的「敌方前排」）**全部作废**。';
+        + '旧范围（自身 4 格 + 队友射程延伸 / 上一版的「敌方前排」）**全部作废**。'
+        + '（2026-10-13：`战斗结构.Feena主动攻击.开 !== false` 时她**自己回合也能主动开这一发**'
+        + '（曲射、无视阻挡），Lv10 即可解锁；关掉开关则逐字节退回「只能被动追加」。）';
     }
   }
+  /* ★ 2026-10-13：`PROMO_WEAPONS.M1`（满月·月蚀，和上面 M1 面板上的是**同一个对象**）
+     也登记成「友军攻击后追加」的那一族。 */
+  const 满月表 = (typeof PROMO_WEAPONS !== 'undefined' && PROMO_WEAPONS && PROMO_WEAPONS.M1) || [];
+  for (const w of 满月表) {
+    if (w.special !== 'echo') continue;
+    w.special = 残月余响标记;
+    w.友军攻击后追加 = true;
+  }
+  /* ★ 就地把两把改成主动曲射武器（此时 `战斗结构` 还没定义 → 先用初稿；
+     `71-改动-5-参数入口.js` 加载完会用真表再校一次）。 */
+  应用残月主动攻击(残月余响运行期);
 }
 
 /* ============================================================================

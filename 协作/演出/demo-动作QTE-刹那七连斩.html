@@ -1,0 +1,1177 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>动作QTE原型 · 刹那「七剑·TRANS-AM 乱舞」7连斩</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0b0d15;
+    --panel: #141826;
+    --panel-hi: #1b2135;
+    --line: #28304c;
+    --fg: #e8ecf5;
+    --muted: #8c95b0;
+    --gold: #f5c85b;
+    --gold-dim: #8a6e2f;
+    --cyan: #5ce1e6;
+    --crimson: #ff3864;
+    --green: #4ade80;
+    --f-px: "Press Start 2P", "Courier New", monospace;
+    --f-body: "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 18px 14px 36px;
+    background: radial-gradient(circle at 50% 0%, #1a1228 0%, var(--bg) 65%);
+    color: var(--fg);
+    font-family: var(--f-body);
+  }
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 8px;
+  }
+  header h1 {
+    margin: 0;
+    font-size: clamp(15px, 2.2vw, 20px);
+    color: var(--gold);
+    letter-spacing: 0.04em;
+  }
+  header h1 span {
+    color: var(--crimson);
+    font-weight: 700;
+    margin-left: 6px;
+  }
+  header p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1.35fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 780px) {
+    .main-grid { grid-template-columns: 1fr; }
+  }
+  .stage-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .stage-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 2;
+    background: #05060b;
+    border: 2px solid #333b5c;
+    border-radius: 4px;
+    overflow: hidden;
+    user-select: none;
+    touch-action: none;
+  }
+  canvas#qteCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    cursor: crosshair;
+  }
+  .hud-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--muted);
+    background: #0e111c;
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+  }
+  .hud-bar strong { color: var(--fg); }
+  .pips {
+    display: flex;
+    gap: 5px;
+  }
+  .pip {
+    width: 24px;
+    height: 18px;
+    border-radius: 3px;
+    border: 1px solid #3a4266;
+    background: #141829;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+  }
+  .pip.PERFECT { background: rgba(245, 200, 91, 0.22); border-color: var(--gold); color: var(--gold); }
+  .pip.HIT { background: rgba(92, 225, 230, 0.2); border-color: var(--cyan); color: var(--cyan); }
+  .pip.MISS { background: rgba(255, 56, 100, 0.18); border-color: var(--crimson); color: var(--crimson); }
+  .side-col {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .panel h2 {
+    margin: 0;
+    font-size: 13px;
+    color: var(--gold);
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  button {
+    background: #1c2238;
+    color: var(--fg);
+    border: 1px solid #343d63;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  button:hover { border-color: var(--gold); background: #232b47; }
+  button.primary {
+    background: var(--crimson);
+    border-color: #ff6b8b;
+    color: #fff;
+    font-weight: 700;
+  }
+  button.gold {
+    background: var(--gold);
+    border-color: #ffe08a;
+    color: #12131a;
+    font-weight: 700;
+  }
+  button.active {
+    border-color: var(--cyan);
+    color: var(--cyan);
+    background: rgba(92, 225, 230, 0.12);
+  }
+  .kv-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 5px 10px;
+    font-size: 12px;
+  }
+  .kv-grid div {
+    display: flex;
+    justify-content: space-between;
+    background: #0f121e;
+    padding: 4px 8px;
+    border-radius: 3px;
+    border: 1px solid #20263e;
+  }
+  .kv-grid span.k { color: var(--muted); }
+  .kv-grid span.v { color: var(--cyan); font-weight: 700; font-family: monospace; }
+  pre#jsonOut {
+    margin: 0;
+    background: #090b12;
+    border: 1px solid #222942;
+    border-radius: 4px;
+    padding: 8px;
+    font-size: 11px;
+    color: #b9f27c;
+    max-height: 190px;
+    overflow: auto;
+    line-height: 1.35;
+  }
+  .hint {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>GN-001 能天使 <span>「七剑·TRANS-AM 乱舞」7连斩 动作QTE</span></h1>
+    <p>240×160 原生像素 · 战棋属性实时映射晃动难度 · 支持鼠标滑动 / 空格挥刀 / AI 一键模拟</p>
+  </header>
+
+  <div class="main-grid">
+    <div class="stage-card">
+      <div class="stage-wrap">
+        <canvas id="qteCanvas" width="240" height="160" aria-label="七剑QTE像素舞台"></canvas>
+      </div>
+      <div class="hud-bar">
+        <div>状态：<strong id="stPhase">DRAW_CUTIN</strong> · 当前：<strong id="stStage">1 / 7</strong></div>
+        <div class="pips" id="stagePips"></div>
+      </div>
+      <div class="row">
+        <button id="btnStart" class="primary">▶ 重新拔刀开战 (手操 QTE)</button>
+        <button id="btnSlashKey" title="快捷键 Space / J">⚔ 看准时机挥刀 (Space/J)</button>
+        <button id="btnMute">🔊 音效：开</button>
+      </div>
+      <div class="hint">
+        <strong>操作说明：</strong>第 2 幕开启后，敌机按自身闪避（<code>eva</code>）与当前段命中率（<code>q</code>）高速机动。
+        在画布上<strong>按住鼠标/触屏划过敌机</strong>完成斩击（线段 ≥18px）：划穿红心 = <strong>PERFECT</strong>（必中 + 暴击率 +25%）、划中青圈 = <strong>HIT</strong>、划偏或超时 = <strong>MISS</strong>。
+        命中后下一刀理论命中 <code>-10</code>（敌机受惊加速），未中后下一刀 <code>+10</code>（敌机旧力已竭减速）。
+      </div>
+    </div>
+
+    <div class="side-col">
+      <div class="panel">
+        <h2><span>① 靶机选择与闪避参数</span><span id="enemyTag">fighter (eva:30)</span></h2>
+        <div class="row">
+          <button data-enemy="grunt" class="enemy-btn">量产机 grunt (eva:10)</button>
+          <button data-enemy="fighter" class="enemy-btn active">高机动战机 fighter (eva:30)</button>
+          <button data-enemy="stealth" class="enemy-btn">隐形侦察机 stealth (等效eva:55)</button>
+        </div>
+        <div class="row" style="margin-top:4px">
+          <label for="evaSlider" style="font-size:12px;color:var(--muted)">自定义闪避 (0~90)：</label>
+          <input id="evaSlider" type="range" min="0" max="90" step="5" value="30" />
+          <span id="evaVal" style="font-family:monospace;color:var(--gold);font-weight:700">30</span>
+        </div>
+        <div class="kv-grid" id="paramGrid">
+          <div><span class="k">本段理论命中 q</span><span class="v" id="pHit">95%</span></div>
+          <div><span class="k">目标有效闪避 eva</span><span class="v" id="pEva">30</span></div>
+          <div><span class="k">晃动频率 Hz</span><span class="v" id="pFreq">1.93</span></div>
+          <div><span class="k">晃动幅度 X/Y</span><span class="v" id="pAmp">36 / 13 px</span></div>
+          <div><span class="k">有效圈 / 完美圈</span><span class="v" id="pRad">37 / 15 px</span></div>
+          <div><span class="k">单段反应窗口</span><span class="v" id="pWin">575 ms</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2><span>② AI 手法一键模拟（确定性验证）</span><span>Seed: 20261013</span></h2>
+        <div class="row">
+          <button id="simPerfect" class="gold">★ 模拟：全 PERFECT (7/7)</button>
+          <button id="simMixed">⚡ 模拟：实战混合 (5/7)</button>
+          <button id="simMiss">💨 模拟：全 MISS (0/7)</button>
+        </div>
+        <div class="kv-grid" id="resultGrid">
+          <div><span class="k">QTE 命中 / 完美</span><span class="v" id="rHits">- / -</span></div>
+          <div><span class="k">QTE 暴击段数</span><span class="v" id="rCrits">-</span></div>
+          <div><span class="k">手操实际总伤</span><span class="v" id="rDmg">-</span></div>
+          <div><span class="k">纯随机期望总伤</span><span class="v" id="rExpDmg">-</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2><span>③ 标准 QTEResult JSON 载荷（直通 resolveAttack）</span></h2>
+        <pre id="jsonOut">// 点击上方「模拟」或手操完成 7 连斩后生成标准 QTEResult JSON</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/**
+ * ============================================================================
+ * 动作 QTE 独立可移植模块 · 刹那（CB1）「七剑·TRANS-AM 乱舞」7 连斩
+ * ----------------------------------------------------------------------------
+ * 五层解耦架构目录（供其他 AI 或外部回合制/战棋项目直接审阅与嫁接）：
+ * - [Layer 1] ActionQTE Protocol & Defaults (可移植协议与默认预设：CB1 刹那 vs 三档闪避敌机)
+ * - [Layer 2] Evasion Motion & Slash Geometry (敌机闪避轨迹方程与线段-圆相交判定纯函数)
+ * - [Layer 3] State Machine Director (四幕导演状态机：DRAW_CUTIN -> SLASH_QTE x7 -> FINALE -> RESULT)
+ * - [Layer 4] Pixel Canvas Renderer & WebAudio Synth (240x160 整数倍像素渲染与芯片音效)
+ * - [Layer 5] Interactive Controls & Headless Test API (调试面板与 window.__actionQTE 自动化接口)
+ * ============================================================================
+ */
+(function (global) {
+  'use strict';
+
+  // === [Layer 1] ActionQTE Protocol & Defaults (可移植协议与默认预设：CB1 刹那 vs 三档闪避敌机) ===
+
+  /**
+   * 确定性伪随机数生成器（与主引擎同源 mulberry32，零外部依赖）
+   * @param {number} seed
+   * @returns {() => number} 返回 [0, 1) 浮点数
+   */
+  function mulberry32(seed) {
+    let a = (seed >>> 0) || 20261013;
+    return function () {
+      let t = (a += 0x6D2B79F5);
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /** 默认 QTE 全局配置（与 src/js/71-改动-4-战斗结构.js 的 战斗结构.动作QTE 对齐） */
+  const DEFAULT_QTE_CONFIG = Object.freeze({
+    完美暴击加成: 25,
+    基础窗口毫秒: 650,
+    最小判定半径: 16,
+    最大判定半径: 38,
+    完美核心比例: 0.42,
+    最短挥砍像素: 18,
+  });
+
+  /** 三档预设靶机（量产机 grunt / 高机动战机 fighter / 隐形侦察机 stealth） */
+  const ENEMY_PRESETS = Object.freeze({
+    grunt:   { 键: 'grunt',   名: '量产型铁人',   闪避: 10, 最大HP: 2400, 当前HP: 2400, 主色: '#6b8e5a', 副色: '#a3c48c' },
+    fighter: { 键: 'fighter', 名: '高机动战机',   闪避: 30, 最大HP: 2400, 当前HP: 2400, 主色: '#3d7ea6', 副色: '#7ec8f2' },
+    stealth: { 键: 'stealth', 名: '隐形侦察机',   闪避: 55, 最大HP: 2400, 当前HP: 2400, 主色: '#6c4ba6', 副色: '#c299ff' },
+  });
+
+  /** 默认七剑 QTE 请求构造器 */
+  function normalizeRequest(req = {}) {
+    const enemyKey = req.目标?.键 || req.enemyKey || 'fighter';
+    const preset = ENEMY_PRESETS[enemyKey] || ENEMY_PRESETS.fighter;
+    const eva = Number.isFinite(req.目标?.闪避) ? req.目标.闪避 : (Number.isFinite(req.eva) ? req.eva : preset.闪避);
+    return {
+      模式: req.模式 || 'melee_slash',
+      种子: Number.isFinite(req.种子) ? (req.种子 >>> 0) : 20261013,
+      攻击者: Object.assign({
+        键: 'CB1',
+        名: '刹那·F·清英',
+        机体: 'GN-001 能天使·七剑',
+        transAm: true,
+        基础暴击率: 20,
+        台词: 'TRANS-AM 启动——目标，驱逐！',
+      }, req.攻击者 || {}),
+      武器: Object.assign({
+        名: '七剑·TRANS-AM 乱舞',
+        威力: 2800,
+        基础命中: 95,
+        段数: 7,
+        步进: 10,
+        单段基准伤: 380,
+      }, req.武器 || {}),
+      目标: Object.assign({}, preset, req.目标 || {}, { 闪避: eva }),
+      配置: Object.assign({}, DEFAULT_QTE_CONFIG, req.配置 || {}),
+    };
+  }
+
+  // === [Layer 2] Evasion Motion & Slash Geometry (敌机闪避轨迹方程与线段-圆相交判定纯函数) ===
+
+  /**
+   * 纯函数：根据敌机闪避 eva 与当前段理论命中率 hitRate 计算 QTE 晃动参数（0 rng）
+   * 与引擎 src/js/71-改动-5-参数入口.js 的 计算QTE晃动参数 公式逐字一致
+   */
+  function getStageParams(eva = 30, hitRate = 95, stageIdx = 0, cfg = DEFAULT_QTE_CONFIG) {
+    const q = Math.max(0, Math.min(100, Number.isFinite(hitRate) ? hitRate : 80));
+    const e = Number.isFinite(eva) ? eva : 10;
+    const minR = Number.isFinite(cfg?.最小判定半径) ? cfg.最小判定半径 : 16;
+    const maxR = Number.isFinite(cfg?.最大判定半径) ? cfg.最大判定半径 : 38;
+    const pRatio = Number.isFinite(cfg?.完美核心比例) ? cfg.完美核心比例 : 0.42;
+    const baseWin = Number.isFinite(cfg?.基础窗口毫秒) ? cfg.基础窗口毫秒 : 650;
+    const rawR = minR + (maxR - minR) * (q / 100);
+    return {
+      段号: stageIdx + 1,
+      理论命中率: q,
+      目标闪避: e,
+      晃动频率Hz: +(0.8 + e * 0.035 + (100 - q) * 0.015).toFixed(2),
+      晃动幅度X: Math.round(Math.min(68, 12 + e * 0.75 + (100 - q) * 0.35)),
+      晃动幅度Y: Math.round(Math.min(28, 4 + e * 0.28 + (100 - q) * 0.12)),
+      有效半径Px: Math.round(rawR),
+      完美半径Px: Math.round(rawR * pRatio),
+      窗口毫秒: Math.round(Math.max(380, baseWin - e * 2.5)),
+    };
+  }
+
+  /**
+   * 纯函数：计算 240×160 画布下敌机在 tMs 时刻的实时机动坐标
+   * 复合正弦/李萨如轨迹：x = cx + Ax * sin(2πft + φ1) * cos(πf*0.5t), y = cy + Ay * sin(2πf*1.3t + φ2)
+   */
+  function getTargetPos(tMs = 0, stageParams = {}, seed = 20261013) {
+    const cx = 128;
+    const cy = 78;
+    const f = Number.isFinite(stageParams.晃动频率Hz) ? stageParams.晃动频率Hz : 1.5;
+    const Ax = Number.isFinite(stageParams.晃动幅度X) ? stageParams.晃动幅度X : 24;
+    const Ay = Number.isFinite(stageParams.晃动幅度Y) ? stageParams.晃动幅度Y : 10;
+    const stg = Number.isFinite(stageParams.段号) ? stageParams.段号 : 1;
+    const s = ((seed >>> 0) + stg * 7919) % 628318;
+    const phi1 = (s % 6283) / 1000;
+    const phi2 = ((s * 3) % 6283) / 1000;
+    const t = Math.max(0, Number(tMs) || 0) / 1000;
+    const w = 2 * Math.PI * f;
+    const x = cx + Ax * Math.sin(w * t + phi1) * Math.cos(Math.PI * f * 0.5 * t);
+    const y = cy + Ay * Math.sin(w * 1.3 * t + phi2);
+    const vx = Ax * w * Math.cos(w * t + phi1) * Math.cos(Math.PI * f * 0.5 * t);
+    const vy = Ay * w * 1.3 * Math.cos(w * 1.3 * t + phi2);
+    return {
+      x: +x.toFixed(2),
+      y: +y.toFixed(2),
+      vx: +vx.toFixed(2),
+      vy: +vy.toFixed(2),
+      cx,
+      cy,
+    };
+  }
+
+  /**
+   * 纯函数：计算玩家划出的线段 p1 -> p2 到敌机当前中心 targetPos 的最短几何距离并分级判定
+   * @param {{x:number, y:number}} p1 起点
+   * @param {{x:number, y:number}} p2 终点
+   * @param {{x:number, y:number}} targetPos 敌机实时中心
+   * @param {number|object} effectiveRadiusOrParams 有效半径或晃动参数对象
+   * @param {number} [perfectRadiusArg] 完美半径
+   */
+  function judgeSlashSegment(p1, p2, targetPos, effectiveRadiusOrParams, perfectRadiusArg) {
+    const effR = typeof effectiveRadiusOrParams === 'object' && effectiveRadiusOrParams !== null
+      ? (effectiveRadiusOrParams.有效半径Px ?? 30)
+      : (Number.isFinite(effectiveRadiusOrParams) ? effectiveRadiusOrParams : 30);
+    const perfR = typeof effectiveRadiusOrParams === 'object' && effectiveRadiusOrParams !== null
+      ? (effectiveRadiusOrParams.完美半径Px ?? Math.round(effR * 0.42))
+      : (Number.isFinite(perfectRadiusArg) ? perfectRadiusArg : Math.round(effR * 0.42));
+
+    if (!p1 || !p2 || !targetPos || !Number.isFinite(p1.x) || !Number.isFinite(p2.x)) {
+      return { 命中: false, 评价: 'MISS', 精度: 0, 距离: 999, 原因: 'TIMEOUT' };
+    }
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const segLen = Math.hypot(dx, dy);
+    const tx = targetPos.x;
+    const ty = targetPos.y;
+
+    if (segLen < DEFAULT_QTE_CONFIG.最短挥砍像素) {
+      const distPoint = Math.hypot(tx - p1.x, ty - p1.y);
+      return { 命中: false, 评价: 'MISS', 精度: 0, 距离: +distPoint.toFixed(1), 原因: 'SHORT_SLASH' };
+    }
+
+    const lenSq = dx * dx + dy * dy;
+    const t = Math.max(0, Math.min(1, ((tx - p1.x) * dx + (ty - p1.y) * dy) / lenSq));
+    const projX = p1.x + t * dx;
+    const projY = p1.y + t * dy;
+    const d = Math.hypot(tx - projX, ty - projY);
+    const distFixed = +d.toFixed(1);
+
+    if (d <= perfR) {
+      return {
+        命中: true,
+        评价: 'PERFECT',
+        精度: +Math.max(0, Math.min(1, 1 - d / effR)).toFixed(2),
+        距离: distFixed,
+      };
+    }
+    if (d <= effR) {
+      return {
+        命中: true,
+        评价: 'HIT',
+        精度: +Math.max(0, Math.min(1, 1 - d / effR)).toFixed(2),
+        距离: distFixed,
+      };
+    }
+    return {
+      命中: false,
+      评价: 'MISS',
+      精度: 0,
+      距离: distFixed,
+    };
+  }
+
+  // === [Layer 3] State Machine Director (四幕导演状态机：DRAW_CUTIN -> SLASH_QTE x7 -> FINALE -> RESULT) ===
+
+  /**
+   * 计算同一请求在纯随机数下的理论期望伤害（不干扰 QTE 会话自身的 rng）
+   */
+  function calcExpectedAutoDamage(req) {
+    const hits = req.武器.段数 || 7;
+    const step = req.武器.步进 || 10;
+    const baseDmg = req.武器.单段基准伤 || 380;
+    const baseCrit = (req.攻击者.基础暴击率 || 20) / 100;
+    let q = req.武器.基础命中 || 95;
+    let totalExp = 0;
+    for (let i = 0; i < hits; i++) {
+      const pHit = Math.max(0.05, Math.min(1, (q - (req.目标.闪避 || 0) * 0.6) / 100));
+      const segExp = pHit * baseDmg * (1 + baseCrit * 0.35);
+      totalExp += segExp;
+      q = Math.max(5, Math.min(100, q - pHit * step + (1 - pHit) * step));
+    }
+    return Math.round(totalExp);
+  }
+
+  /**
+   * 创建 7 连斩 QTE 会话实例（管理四幕状态机与七剑 -10/+10 动态步进）
+   */
+  function createSession(rawReq = {}) {
+    const req = normalizeRequest(rawReq);
+    const rng = mulberry32(req.种子);
+    const totalStages = req.武器.段数 || 7;
+    const step = req.武器.步进 || 10;
+
+    const state = {
+      请求: req,
+      阶段: 'DRAW_CUTIN', // DRAW_CUTIN -> SLASH_QTE -> FINALE -> RESULT
+      当前段索引: 0,      // 0 .. 6
+      当前理论命中率: req.武器.基础命中 || 95,
+      敌机剩余HP: req.目标.当前HP,
+      各段结果: [],
+      斩痕列表: [],
+      最终结果: null,
+    };
+
+    function getCurrentStageParams() {
+      return getStageParams(req.目标.闪避, state.当前理论命中率, state.当前段索引, req.配置);
+    }
+
+    function enterSlashPhase() {
+      if (state.阶段 === 'DRAW_CUTIN') {
+        state.阶段 = 'SLASH_QTE';
+      }
+      return getCurrentStageParams();
+    }
+
+    /**
+     * 提交当前段斩击（支持传线段 p1,p2,tMs 或直接传预设评价 'PERFECT'|'HIT'|'MISS'）
+     */
+    function submitSlash(p1, p2, tMs = 220) {
+      if (state.阶段 === 'DRAW_CUTIN') state.阶段 = 'SLASH_QTE';
+      if (state.阶段 !== 'SLASH_QTE' || state.当前段索引 >= totalStages) {
+        return state.最终结果;
+      }
+
+      const stgParams = getCurrentStageParams();
+      const targetPos = getTargetPos(tMs, stgParams, req.种子);
+      let judged;
+
+      if (typeof p1 === 'string') {
+        // 快捷语义注入：'PERFECT' | 'HIT' | 'MISS'
+        const tag = p1.toUpperCase();
+        if (tag === 'PERFECT') {
+          judged = judgeSlashSegment(
+            { x: targetPos.x - 28, y: targetPos.y - 18 },
+            { x: targetPos.x + 28, y: targetPos.y + 18 },
+            targetPos,
+            stgParams
+          );
+        } else if (tag === 'HIT') {
+          const offset = Math.round((stgParams.完美半径Px + stgParams.有效半径Px) * 0.5);
+          judged = judgeSlashSegment(
+            { x: targetPos.x - 28, y: targetPos.y + offset },
+            { x: targetPos.x + 28, y: targetPos.y + offset },
+            targetPos,
+            stgParams
+          );
+        } else {
+          judged = judgeSlashSegment(
+            { x: targetPos.x - 30, y: targetPos.y + stgParams.有效半径Px + 24 },
+            { x: targetPos.x + 30, y: targetPos.y + stgParams.有效半径Px + 24 },
+            targetPos,
+            stgParams
+          );
+        }
+      } else {
+        judged = judgeSlashSegment(p1, p2, targetPos, stgParams);
+      }
+
+      // 结算本刀暴击与伤害（2B 规则：PERFECT 额外暴击率加成）
+      let isCrit = false;
+      let dmg = 0;
+      if (judged.命中) {
+        const bonusCrit = judged.评价 === 'PERFECT' ? (req.配置.完美暴击加成 ?? 25) : 0;
+        const critChance = (req.攻击者.基础暴击率 || 20) + bonusCrit;
+        isCrit = critChance >= 100 ? true : (rng() * 100 < critChance);
+        const base = req.武器.单段基准伤 || 380;
+        const mul = (isCrit ? 1.35 : 1.0) * (judged.评价 === 'PERFECT' ? 1.08 : 1.0);
+        dmg = Math.round(base * mul);
+      }
+
+      const segRecord = {
+        段号: state.当前段索引 + 1,
+        理论命中率: state.当前理论命中率,
+        目标闪避: req.目标.闪避,
+        命中: judged.命中,
+        评价: judged.评价,
+        暴击: isCrit,
+        精度: judged.精度,
+        距离: judged.距离,
+        伤害: dmg,
+        窗口毫秒: stgParams.窗口毫秒,
+        有效半径Px: stgParams.有效半径Px,
+        完美半径Px: stgParams.完美半径Px,
+      };
+      state.各段结果.push(segRecord);
+
+      if (judged.命中) {
+        state.敌机剩余HP = Math.max(0, state.敌机剩余HP - dmg);
+        state.斩痕列表.push({
+          段号: segRecord.段号,
+          评价: judged.评价,
+          x: targetPos.x,
+          y: targetPos.y,
+          angle: ((segRecord.段号 * 47) % 160) - 80,
+        });
+        // 七剑原生规则：命中后下一刀理论命中率 -step
+        state.当前理论命中率 = Math.max(5, state.当前理论命中率 - step);
+      } else {
+        // 七剑原生规则：未中后下一刀理论命中率 +step
+        state.当前理论命中率 = Math.min(100, state.当前理论命中率 + step);
+      }
+
+      state.当前段索引++;
+      if (state.当前段索引 >= totalStages) {
+        state.阶段 = 'FINALE';
+        state.最终结果 = buildFinalResult();
+      }
+      return segRecord;
+    }
+
+    function buildFinalResult() {
+      const landed = state.各段结果.filter(s => s.命中).length;
+      const perfects = state.各段结果.filter(s => s.命中 && s.评价 === 'PERFECT').length;
+      const crits = state.各段结果.filter(s => s.暴击).length;
+      const totalDmg = state.各段结果.reduce((acc, s) => acc + s.伤害, 0);
+      const expDmg = calcExpectedAutoDamage(req);
+      return {
+        模式: req.模式,
+        种子: req.种子,
+        攻击者: req.攻击者.键,
+        武器: req.武器.名,
+        目标: req.目标.键,
+        目标闪避: req.目标.闪避,
+        总段数: totalStages,
+        命中段数: landed,
+        完美段数: perfects,
+        暴击段数: crits,
+        总伤害: totalDmg,
+        理论期望伤害: expDmg,
+        目标剩余HP: state.敌机剩余HP,
+        击破: state.敌机剩余HP <= 0,
+        详情: state.各段结果.map(s => s.评价),
+        各段: state.各段结果,
+      };
+    }
+
+    function finishFinale() {
+      if (state.阶段 === 'FINALE') state.阶段 = 'RESULT';
+      if (!state.最终结果) state.最终结果 = buildFinalResult();
+      return state.最终结果;
+    }
+
+    return {
+      状态: state,
+      取当前晃动参数: getCurrentStageParams,
+      进入斩击幕: enterSlashPhase,
+      提交斩击: submitSlash,
+      完成收刀: finishFinale,
+    };
+  }
+
+  /**
+   * 确定性模拟整套七连斩（供无头测试 tests/qte_demo.js 与页面一键预设按钮调用）
+   * @param {string|Array} presetOrList 'PERFECT' | 'MIXED' | 'MISS' | 'HIT' 或长度为 7 的段输入数组
+   * @param {object} rawReq 请求参数
+   */
+  function simulateSevenSwords(presetOrList = 'PERFECT', rawReq = {}) {
+    const sess = createSession(rawReq);
+    sess.进入斩击幕();
+    const total = sess.状态.请求.武器.段数 || 7;
+    let plan;
+    if (Array.isArray(presetOrList)) {
+      plan = presetOrList;
+    } else {
+      const key = String(presetOrList || 'PERFECT').toUpperCase();
+      if (key.includes('MISS') || key === '0/7') {
+        plan = Array(total).fill('MISS');
+      } else if (key.includes('MIX') || key.includes('混合') || key === '5/7') {
+        plan = ['PERFECT', 'HIT', 'MISS', 'PERFECT', 'HIT', 'MISS', 'PERFECT'];
+      } else if (key === 'HIT' || key === '全HIT') {
+        plan = Array(total).fill('HIT');
+      } else {
+        plan = Array(total).fill('PERFECT');
+      }
+    }
+
+    for (let i = 0; i < total; i++) {
+      const item = plan[i] ?? 'MISS';
+      const tMs = 180 + i * 55;
+      if (typeof item === 'string') {
+        sess.提交斩击(item, null, tMs);
+      } else if (item && typeof item === 'object') {
+        sess.提交斩击(item.p1, item.p2, item.tMs ?? tMs);
+      }
+    }
+    return sess.完成收刀();
+  }
+
+  // === [Layer 4] Pixel Canvas Renderer & WebAudio Synth (240x160 整数倍像素渲染与芯片音效) ===
+
+  const Sound = (function () {
+    let ctx = null;
+    let muted = false;
+    function ensure() {
+      if (muted) return null;
+      const AC = global.AudioContext || global.webkitAudioContext;
+      if (!AC) return null;
+      if (!ctx) ctx = new AC();
+      if (ctx.state === 'suspended' && ctx.resume) ctx.resume();
+      return ctx;
+    }
+    function tone(freqStart, freqEnd, durSec, type = 'sawtooth', gainVal = 0.08) {
+      const ac = ensure();
+      if (!ac) return;
+      try {
+        const osc = ac.createOscillator();
+        const g = ac.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freqStart, ac.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(Math.max(20, freqEnd), ac.currentTime + durSec);
+        g.gain.setValueAtTime(gainVal, ac.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + durSec);
+        osc.connect(g);
+        g.connect(ac.destination);
+        osc.start();
+        osc.stop(ac.currentTime + durSec);
+      } catch (_) {}
+    }
+    return {
+      isMuted: () => muted,
+      toggleMute: () => { muted = !muted; return muted; },
+      playDraw: () => { tone(320, 960, 0.22, 'sawtooth', 0.09); },
+      playSlash: (grade) => {
+        if (grade === 'PERFECT') {
+          tone(880, 1760, 0.14, 'square', 0.11);
+          tone(440, 220, 0.18, 'sawtooth', 0.09);
+        } else if (grade === 'HIT') {
+          tone(620, 1120, 0.11, 'triangle', 0.09);
+        } else {
+          tone(240, 110, 0.12, 'sine', 0.06);
+        }
+      },
+      playFinale: () => {
+        tone(180, 55, 0.45, 'sawtooth', 0.13);
+        tone(520, 1040, 0.25, 'square', 0.08);
+      },
+    };
+  })();
+
+  /**
+   * 240×160 GBA 比例像素舞台渲染器（兼容 Node dom-stub 无头运行）
+   */
+  function renderFrame(ctx2d, runtime) {
+    if (!ctx2d || typeof ctx2d.fillRect !== 'function') return;
+    const W = 240, H = 160;
+    const sess = runtime.session;
+    const st = sess.状态;
+
+    // 1. TRANS-AM 深红星空背景
+    ctx2d.fillStyle = st.阶段 === 'DRAW_CUTIN' ? '#1c0814' : '#090b14';
+    ctx2d.fillRect(0, 0, W, H);
+
+    // 速度线与 GN 红霞粒子
+    ctx2d.fillStyle = 'rgba(255, 56, 100, 0.18)';
+    for (let i = 0; i < 12; i++) {
+      const ly = (i * 13 + Math.floor(runtime.clockMs * 0.08)) % H;
+      ctx2d.fillRect(0, ly, W, 1);
+    }
+
+    if (st.阶段 === 'DRAW_CUTIN') {
+      // 第 1 幕：刹那拔刀切入特写
+      ctx2d.fillStyle = '#2d0b1e';
+      ctx2d.fillRect(0, 32, W, 76);
+      ctx2d.fillStyle = '#ff3864';
+      ctx2d.fillRect(0, 32, W, 2);
+      ctx2d.fillRect(0, 106, W, 2);
+
+      // 能天使 SD 像素剪影（高达双眼 + GN 电容 + 实体大剑）
+      const mx = 42, my = 46;
+      ctx2d.fillStyle = '#e8ecf5';
+      ctx2d.fillRect(mx, my, 28, 30);
+      ctx2d.fillStyle = '#3d7ea6';
+      ctx2d.fillRect(mx + 3, my + 12, 22, 18);
+      ctx2d.fillStyle = '#5ce1e6'; // GN 太阳炉绿光
+      ctx2d.fillRect(mx + 10, my + 16, 8, 8);
+      ctx2d.fillStyle = '#f5c85b'; // 双眼金光
+      ctx2d.fillRect(mx + 6, my + 6, 6, 3);
+      ctx2d.fillRect(mx + 16, my + 6, 6, 3);
+      // 拔出的 GN 实体剑刃
+      ctx2d.fillStyle = '#ff6b8b';
+      ctx2d.fillRect(mx + 26, my + 10, 88, 5);
+
+      ctx2d.fillStyle = '#f5c85b';
+      ctx2d.font = 'bold 10px sans-serif';
+      ctx2d.fillText('CB1 刹那·F·清英 [TRANS-AM]', 82, 54);
+      ctx2d.fillStyle = '#ffffff';
+      ctx2d.font = '9px sans-serif';
+      ctx2d.fillText(st.请求.攻击者.台词, 82, 74);
+      ctx2d.fillStyle = '#5ce1e6';
+      ctx2d.fillText('▶ 准备滑动斩击 (7 连斩)', 82, 94);
+      return;
+    }
+
+    // 第 2/3/4 幕：敌机机动舞台
+    const stgParams = sess.取当前晃动参数();
+    const pos = getTargetPos(runtime.stageElapsedMs, stgParams, st.请求.种子);
+
+    // 敌机推进残影（高闪避时残影更明显）
+    for (let g = 3; g >= 1; g--) {
+      const ghostPos = getTargetPos(Math.max(0, runtime.stageElapsedMs - g * 38), stgParams, st.请求.种子);
+      ctx2d.fillStyle = `rgba(126, 200, 242, ${0.08 * (4 - g)})`;
+      ctx2d.fillRect(Math.round(ghostPos.x) - 10, Math.round(ghostPos.y) - 10, 20, 20);
+    }
+
+    // 绘制判定圈（外圈：机身有效圈 R_eff；内圈：PERFECT 核心圈 R_perf）
+    if (st.阶段 === 'SLASH_QTE' && typeof ctx2d.beginPath === 'function') {
+      ctx2d.strokeStyle = 'rgba(92, 225, 230, 0.65)';
+      ctx2d.lineWidth = 1;
+      ctx2d.beginPath();
+      ctx2d.arc(pos.x, pos.y, stgParams.有效半径Px, 0, Math.PI * 2);
+      ctx2d.stroke();
+
+      ctx2d.strokeStyle = 'rgba(245, 200, 91, 0.9)';
+      ctx2d.beginPath();
+      ctx2d.arc(pos.x, pos.y, stgParams.完美半径Px, 0, Math.PI * 2);
+      ctx2d.stroke();
+    }
+
+    // 敌机像素精灵
+    const ex = Math.round(pos.x), ey = Math.round(pos.y);
+    ctx2d.fillStyle = st.请求.目标.主色 || '#3d7ea6';
+    ctx2d.fillRect(ex - 11, ey - 9, 22, 18);
+    ctx2d.fillStyle = st.请求.目标.副色 || '#7ec8f2';
+    ctx2d.fillRect(ex - 15, ey - 3, 30, 6);
+    ctx2d.fillStyle = '#ff3864'; // 核心红心
+    ctx2d.fillRect(ex - 3, ey - 3, 6, 6);
+
+    // 已留下的斩痕与引爆闪光
+    for (let i = 0; i < st.斩痕列表.length; i++) {
+      const sc = st.斩痕列表[i];
+      ctx2d.strokeStyle = sc.评价 === 'PERFECT' ? '#f5c85b' : '#5ce1e6';
+      ctx2d.lineWidth = sc.评价 === 'PERFECT' ? 2 : 1;
+      if (typeof ctx2d.beginPath === 'function') {
+        const rad = (sc.angle * Math.PI) / 180;
+        const r = st.阶段 === 'FINALE' ? 32 : 20;
+        ctx2d.beginPath();
+        ctx2d.moveTo(sc.x - Math.cos(rad) * r, sc.y - Math.sin(rad) * r);
+        ctx2d.lineTo(sc.x + Math.cos(rad) * r, sc.y + Math.sin(rad) * r);
+        ctx2d.stroke();
+      }
+    }
+
+    // 玩家当前拖拽中的刀光轨迹
+    if (runtime.dragStart && runtime.dragCurr && typeof ctx2d.beginPath === 'function') {
+      ctx2d.strokeStyle = '#ffffff';
+      ctx2d.lineWidth = 2;
+      ctx2d.beginPath();
+      ctx2d.moveTo(runtime.dragStart.x, runtime.dragStart.y);
+      ctx2d.lineTo(runtime.dragCurr.x, runtime.dragCurr.y);
+      ctx2d.stroke();
+    }
+
+    // 顶部 HUD：敌机 HP 条与单段倒计时条
+    ctx2d.fillStyle = '#141828';
+    ctx2d.fillRect(8, 6, 130, 8);
+    const hpRatio = Math.max(0, Math.min(1, st.敌机剩余HP / Math.max(1, st.请求.目标.最大HP)));
+    ctx2d.fillStyle = hpRatio > 0.35 ? '#4ade80' : '#ff3864';
+    ctx2d.fillRect(9, 7, Math.round(128 * hpRatio), 6);
+
+    if (st.阶段 === 'SLASH_QTE') {
+      const winRatio = Math.max(0, Math.min(1, 1 - runtime.stageElapsedMs / stgParams.窗口毫秒));
+      ctx2d.fillStyle = '#141828';
+      ctx2d.fillRect(8, 17, 130, 4);
+      ctx2d.fillStyle = '#f5c85b';
+      ctx2d.fillRect(8, 17, Math.round(130 * winRatio), 4);
+    }
+
+    // 最近一刀的飘字反馈
+    if (runtime.lastBanner) {
+      ctx2d.fillStyle = runtime.lastBanner.color;
+      ctx2d.font = 'bold 11px monospace';
+      ctx2d.fillText(runtime.lastBanner.text, 148, 18);
+    }
+
+    // 第 3/4 幕：收刀总伤定格与击破印章
+    if (st.阶段 === 'FINALE' || st.阶段 === 'RESULT') {
+      const res = st.最终结果;
+      ctx2d.fillStyle = 'rgba(8, 10, 18, 0.76)';
+      ctx2d.fillRect(0, 114, W, 46);
+      ctx2d.fillStyle = '#f5c85b';
+      ctx2d.font = 'bold 11px sans-serif';
+      ctx2d.fillText(`七剑收刀！总伤害 ${res.总伤害} (${res.命中段数}/${res.总段数} 命中)`, 12, 132);
+      ctx2d.fillStyle = res.击破 ? '#ff3864' : '#5ce1e6';
+      ctx2d.font = '10px sans-serif';
+      ctx2d.fillText(
+        res.击破 ? '【击破 DESTROYED】连环爆散！' : `敌机残余 HP: ${res.目标剩余HP} · 完美 ${res.完美段数} 刀`,
+        12,
+        148
+      );
+    }
+  }
+
+  // === [Layer 5] Interactive Controls & Headless Test API (调试面板与 window.__actionQTE 自动化接口) ===
+
+  const ActionQTE = {
+    版本: '1.0.0',
+    默认配置: DEFAULT_QTE_CONFIG,
+    预设敌机: ENEMY_PRESETS,
+    取晃动参数: getStageParams,
+    取敌机坐标: getTargetPos,
+    判定斩击: judgeSlashSegment,
+    创建会话: createSession,
+    模拟整套七连斩: simulateSevenSwords,
+    运行或模拟: async function (req, preset = 'PERFECT') {
+      return simulateSevenSwords(preset, req);
+    },
+  };
+
+  global.__actionQTE = ActionQTE;
+
+  // 浏览器端交互绑定（兼容无头 dom-stub）
+  function initBrowserUI() {
+    const doc = global.document;
+    if (!doc || typeof doc.getElementById !== 'function') return;
+    const canvas = doc.getElementById('qteCanvas');
+    if (!canvas) return;
+    const ctx2d = canvas.getContext ? canvas.getContext('2d') : null;
+
+    const runtime = {
+      enemyKey: 'fighter',
+      customEva: 30,
+      session: createSession({ enemyKey: 'fighter', eva: 30 }),
+      clockMs: 0,
+      stageElapsedMs: 0,
+      freezeMs: 0,
+      dragStart: null,
+      dragCurr: null,
+      lastBanner: null,
+    };
+
+    const elPhase = doc.getElementById('stPhase');
+    const elStage = doc.getElementById('stStage');
+    const elPips = doc.getElementById('stagePips');
+    const elEnemyTag = doc.getElementById('enemyTag');
+    const elEvaSlider = doc.getElementById('evaSlider');
+    const elEvaVal = doc.getElementById('evaVal');
+    const elJsonOut = doc.getElementById('jsonOut');
+
+    function setText(id, txt) {
+      const el = doc.getElementById(id);
+      if (el) el.textContent = String(txt);
+    }
+
+    function syncHUD() {
+      const st = runtime.session.状态;
+      const p = runtime.session.取当前晃动参数();
+      if (elPhase) elPhase.textContent = st.阶段;
+      if (elStage) elStage.textContent = `${Math.min(7, st.当前段索引 + 1)} / 7`;
+      if (elEnemyTag) elEnemyTag.textContent = `${runtime.enemyKey} (eva:${st.请求.目标.闪避})`;
+
+      setText('pHit', `${p.理论命中率}%`);
+      setText('pEva', p.目标闪避);
+      setText('pFreq', p.晃动频率Hz);
+      setText('pAmp', `${p.晃动幅度X} / ${p.晃动幅度Y} px`);
+      setText('pRad', `${p.有效半径Px} / ${p.完美半径Px} px`);
+      setText('pWin', `${p.窗口毫秒} ms`);
+
+      if (elPips) {
+        let html = '';
+        for (let i = 0; i < 7; i++) {
+          const r = st.各段结果[i];
+          const cls = r ? r.评价 : '';
+          const label = r ? (r.评价 === 'PERFECT' ? 'P' : (r.评价 === 'HIT' ? 'H' : 'M')) : (i + 1);
+          html += `<div class="pip ${cls}">${label}</div>`;
+        }
+        elPips.innerHTML = html;
+      }
+
+      if (st.最终结果) {
+        const res = st.最终结果;
+        setText('rHits', `${res.命中段数}/7 (P:${res.完美段数})`);
+        setText('rCrits', `${res.暴击段数} 次`);
+        setText('rDmg', res.总伤害);
+        setText('rExpDmg', res.理论期望伤害);
+        if (elJsonOut) elJsonOut.textContent = JSON.stringify(res, null, 2);
+      }
+      renderFrame(ctx2d, runtime);
+    }
+
+    function startInteractiveRun() {
+      runtime.session = createSession({ enemyKey: runtime.enemyKey, eva: runtime.customEva });
+      runtime.stageElapsedMs = 0;
+      runtime.freezeMs = 450; // DRAW_CUTIN 展示时长
+      runtime.lastBanner = { text: 'TRANS-AM!', color: '#ff3864' };
+      Sound.playDraw();
+      syncHUD();
+    }
+
+    function handleSegmentJudge(p1, p2) {
+      const st = runtime.session.状态;
+      if (st.阶段 === 'DRAW_CUTIN') runtime.session.进入斩击幕();
+      if (st.阶段 !== 'SLASH_QTE') return;
+      const seg = runtime.session.提交斩击(p1, p2, runtime.stageElapsedMs);
+      if (!seg) return;
+      Sound.playSlash(seg.评价);
+      runtime.lastBanner = {
+        text: `${seg.评价}${seg.暴击 ? ' CRIT!' : ''} ${seg.伤害 > 0 ? '-' + seg.伤害 : ''}`,
+        color: seg.评价 === 'PERFECT' ? '#f5c85b' : (seg.评价 === 'HIT' ? '#5ce1e6' : '#ff3864'),
+      };
+      runtime.stageElapsedMs = 0;
+      runtime.freezeMs = seg.评价 === 'PERFECT' ? 120 : (seg.评价 === 'HIT' ? 60 : 90);
+      if (runtime.session.状态.阶段 === 'FINALE') {
+        Sound.playFinale();
+        runtime.session.完成收刀();
+      }
+      syncHUD();
+    }
+
+    function toCanvasPt(ev) {
+      const rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: 240, height: 160 };
+      const clientX = ev.touches && ev.touches[0] ? ev.touches[0].clientX : ev.clientX;
+      const clientY = ev.touches && ev.touches[0] ? ev.touches[0].clientY : ev.clientY;
+      const w = rect.width || 240;
+      const h = rect.height || 160;
+      return {
+        x: ((clientX - rect.left) / w) * 240,
+        y: ((clientY - rect.top) / h) * 160,
+      };
+    }
+
+    if (canvas.addEventListener) {
+      canvas.addEventListener('pointerdown', function (ev) {
+        if (runtime.session.状态.阶段 === 'DRAW_CUTIN') runtime.session.进入斩击幕();
+        runtime.dragStart = toCanvasPt(ev);
+        runtime.dragCurr = runtime.dragStart;
+      });
+      canvas.addEventListener('pointermove', function (ev) {
+        if (!runtime.dragStart) return;
+        runtime.dragCurr = toCanvasPt(ev);
+      });
+      const endDrag = function () {
+        if (!runtime.dragStart || !runtime.dragCurr) return;
+        const p1 = runtime.dragStart;
+        const p2 = runtime.dragCurr;
+        runtime.dragStart = null;
+        runtime.dragCurr = null;
+        handleSegmentJudge(p1, p2);
+      };
+      canvas.addEventListener('pointerup', endDrag);
+      canvas.addEventListener('pointercancel', endDrag);
+    }
+
+    const bindClick = (id, fn) => {
+      const el = doc.getElementById(id);
+      if (el && el.addEventListener) el.addEventListener('click', fn);
+    };
+
+    bindClick('btnStart', startInteractiveRun);
+    bindClick('btnSlashKey', function () {
+      // 键盘/按钮挥刀：以画布准星 (128, 78) 挥出一条斜向重斩线段
+      handleSegmentJudge({ x: 96, y: 54 }, { x: 160, y: 102 });
+    });
+    bindClick('btnMute', function () {
+      const m = Sound.toggleMute();
+      setText('btnMute', m ? '🔇 音效：关' : '🔊 音效：开');
+    });
+
+    const runPresetUI = (presetName) => {
+      const res = simulateSevenSwords(presetName, { enemyKey: runtime.enemyKey, eva: runtime.customEva });
+      runtime.session = createSession({ enemyKey: runtime.enemyKey, eva: runtime.customEva });
+      runtime.session.进入斩击幕();
+      for (const seg of res.各段) {
+        runtime.session.提交斩击(seg.评价, null, 200);
+      }
+      runtime.session.完成收刀();
+      Sound.playFinale();
+      syncHUD();
+    };
+
+    bindClick('simPerfect', () => runPresetUI('PERFECT'));
+    bindClick('simMixed', () => runPresetUI('MIXED'));
+    bindClick('simMiss', () => runPresetUI('MISS'));
+
+    if (elEvaSlider && elEvaSlider.addEventListener) {
+      elEvaSlider.addEventListener('input', function () {
+        runtime.customEva = Number(elEvaSlider.value) || 0;
+        if (elEvaVal) elEvaVal.textContent = String(runtime.customEva);
+        startInteractiveRun();
+      });
+    }
+
+    const enemyBtns = doc.querySelectorAll ? doc.querySelectorAll('.enemy-btn') : [];
+    for (let i = 0; i < enemyBtns.length; i++) {
+      const btn = enemyBtns[i];
+      if (btn && btn.addEventListener) {
+        btn.addEventListener('click', function () {
+          const k = btn.getAttribute('data-enemy') || 'fighter';
+          runtime.enemyKey = k;
+          runtime.customEva = (ENEMY_PRESETS[k] || ENEMY_PRESETS.fighter).闪避;
+          if (elEvaSlider) elEvaSlider.value = String(runtime.customEva);
+          if (elEvaVal) elEvaVal.textContent = String(runtime.customEva);
+          for (let j = 0; j < enemyBtns.length; j++) {
+            enemyBtns[j].classList?.remove('active');
+          }
+          btn.classList?.add('active');
+          startInteractiveRun();
+        });
+      }
+    }
+
+    if (global.addEventListener) {
+      global.addEventListener('keydown', function (ev) {
+        if (ev.code === 'Space' || ev.key === 'j' || ev.key === 'J') {
+          ev.preventDefault?.();
+          handleSegmentJudge({ x: 96, y: 54 }, { x: 160, y: 102 });
+        }
+      });
+    }
+
+    // 浏览器动画帧循环（无头环境不启动）
+    if (typeof global.requestAnimationFrame === 'function') {
+      let lastTs = 0;
+      const tick = function (ts) {
+        const dt = lastTs ? Math.min(50, ts - lastTs) : 16;
+        lastTs = ts;
+        runtime.clockMs += dt;
+        const st = runtime.session.状态;
+        if (runtime.freezeMs > 0) {
+          runtime.freezeMs = Math.max(0, runtime.freezeMs - dt);
+          if (runtime.freezeMs === 0 && st.阶段 === 'DRAW_CUTIN') {
+            runtime.session.进入斩击幕();
+            syncHUD();
+          }
+        } else if (st.阶段 === 'SLASH_QTE') {
+          runtime.stageElapsedMs += dt;
+          const p = runtime.session.取当前晃动参数();
+          if (runtime.stageElapsedMs >= p.窗口毫秒) {
+            // 超时未挥刀自动判 MISS
+            handleSegmentJudge(null, null);
+          }
+        }
+        renderFrame(ctx2d, runtime);
+        global.requestAnimationFrame(tick);
+      };
+      global.requestAnimationFrame(tick);
+    }
+
+    syncHUD();
+  }
+
+  initBrowserUI();
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+</body>
+</html>
