@@ -504,8 +504,10 @@ console.log('\n[10] 异常输入不崩 + 看一场（正常战斗界面）+ 界�
   let n = 0; while (G.播放.在放() && n++ < 100000) G.播放.tick();
   const 界面第1回合 = JSON.stringify(界面ctx.log);
   const 条目0 = G.编成表[0];
+  /* ★ P1.2 §1.1 / §1.2：战斗界面这条路径**开着战术卡牌**（开局气势 25、条件牌当场写 `类型:'发牌'` 记录），
+     所以对照的 `simulate()` 也要显式传 `{ 战术卡牌: true }` —— 两边口径一致才谈得上「逐字相同」。 */
   const sim = G.simulate(界面ctx.allies.map(u => ({ 键: u.key, 位: u.slot, 等级: u.lv })), G.敌方规格组(G.编成到单位(条目0, 0)), {}, 7,
-    { 波次: G.编成波次到单位(条目0, 0), 调参: { 敌人: { HP倍率: 2 } } });
+    { 波次: G.编成波次到单位(条目0, 0), 调参: { 敌人: { HP倍率: 2 } }, 战术卡牌: true });
   const 只第一回合 = JSON.stringify(sim.记录.filter(x => x.回合 === 1));
   if (界面第1回合 === 只第一回合) ok(`界面上播的第 1 回合与 \`simulate\` 的第 1 回合**逐字相同**（${JSON.parse(界面第1回合).length} 条）`);
   else bad(`界面第 1 回合与 simulate 不一致（${JSON.parse(界面第1回合).length} vs ${JSON.parse(只第一回合).length}）`);

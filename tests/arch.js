@@ -25,6 +25,10 @@
  *   [6] **架构债务账本对齐 + Owner 定义自洽**：`协作/架构债务.md` 存在，且快照里每个
  *       `knownDebtIds` 都有登记条目；`stateOwners` 的 `ctx.log` ⊆ `ctx`、
  *       `readOnlyPresentationModules` 与 `readOnlyScope`（`ctx` / `ctx.log` / `RUN`）**完全不相交**。
+ *   [7] ★ 2026-10-15 CC **迁移边界**：内核（快照 `migration.kernelModules`）不读禁读全局、
+ *       不新增对上层模块的调用（放行清单 = 棘轮，每项挂债务 ID）；规则层 0 处把 `ctx.log` 当输入查询。
+ *   [8] ★ 2026-10-15 CC **开牌路径确定性基线**：固定脚本连跑两遍逐字节相同，
+ *       且记录条数 = 快照 `simulation.cardPathBattleLogCount`（与 `2788` 对称的第二条真值）。
  *
  * 用法：node tests/arch.js
  * ========================================================================== */
@@ -493,6 +497,139 @@ console.log('\n[6] 架构债务账本对齐（协作/架构债务.md）+ stateOw
 }
 
 /* ============================================================================
+ * [7] 迁移边界（CC · 2026-10-15）：MBR-1 内核只认显式输入 + MBR-2 规则不读日志
+ * ----------------------------------------------------------------------------
+ * 判据全部写在 `协作/架构快照.json` 的 `migration` 里（内核模块清单 / 禁读的全局名 /
+ * 允许的「内核 → 上层」调用 + 对应债务 ID），这里只做机械扫描（去注释、去字符串内容）。
+ * 允许清单是**棘轮**：清单外的新调用 / 新全局读取一律红；清单里的某项已经消失，只提示、不红
+ * （留给 CC 下一次清账时从快照和债务账本里一起删）。
+ * ========================================================================== */
+console.log('\n[7] 迁移边界：MBR-1 内核只认显式输入 · MBR-2 规则不读 ctx.log');
+{
+  let 快照 = null;
+  try { 快照 = JSON.parse(readFileSync(快照路径, 'utf8')); } catch (e) { /* [1] 已报 */ }
+  const 迁 = (快照 && 快照.migration) || null;
+  if (!迁 || !Array.isArray(迁.kernelModules) || !迁.kernelModules.length) {
+    bad('协作/架构快照.json 缺 migration.kernelModules（迁移边界的判据）');
+  } else {
+    /** 去注释后再把字符串 / 模板的**内容**抹成空格（引号保留），避免文案里的词被当成标识符。 */
+    const 去字符串 = 码 => {
+      let out = '', 态 = null;
+      for (let i = 0; i < 码.length; i++) {
+        const c = 码[i];
+        if (态) {
+          if (c === '\\') { out += '  '; i++; continue; }
+          if (c === 态) { 态 = null; out += c; continue; }
+          out += c === '\n' ? '\n' : ' ';
+          continue;
+        }
+        if (c === "'" || c === '"' || c === '`') { 态 = c; out += c; continue; }
+        out += c;
+      }
+      return out;
+    };
+    const 纯码 = f => 去字符串(去注释(读js(f)));
+    /* 全仓顶层声明：行首的 function / const / let / class（片段共享一个作用域，顶层声明都在行首） */
+    const 声明处 = {};
+    for (const f of 片段们) {
+      const 码 = 纯码(f);
+      for (const m of 码.matchAll(/^(?:async\s+)?(?:function\s*\*?\s*|const\s+|let\s+|var\s+|class\s+)([\p{L}_$][\p{L}\p{N}_$]*)/gmu)) {
+        if (!(m[1] in 声明处)) 声明处[m[1]] = f;
+      }
+    }
+    const 内核 = 迁.kernelModules;
+    const 缺模块 = 内核.filter(f => !片段们.includes(f));
+    if (缺模块.length) bad(`migration.kernelModules 点名的片段不存在：${缺模块.join('、')}`);
+    const 内核集 = new Set(内核);
+    const 下层 = new Set(Array.isArray(迁.kernelMayDependOn) ? 迁.kernelMayDependOn : []);
+    const 禁读 = Array.isArray(迁.kernelForbiddenGlobals) ? 迁.kernelForbiddenGlobals : [];
+    const 放行 = 迁.kernelUpwardCallAllowlist || {};     // { 符号: 'DEBT-xx' 或 '说明' }
+    const 越界 = [], 禁读命中 = [], 用到的放行 = new Set();
+    /** 本片段里作为局部变量 / 函数参数出现过的名字（简易作用域：同名的跨模块引用不算，
+     *  例如参数 `选项` 与 `8b` 的全局 `选项` 对象同名）。禁读全局的检查**不受**这条豁免影响。 */
+    const 局部名 = 码 => {
+      const 名们 = new Set();
+      const 标 = /[\p{L}_$][\p{L}\p{N}_$]*/gu;
+      for (const m of 码.matchAll(/\b(?:const|let|var)\s+([\p{L}_$][\p{L}\p{N}_$]*)/gu)) 名们.add(m[1]);
+      for (const m of 码.matchAll(/\bfunction\b[^(]*\(([^)]*)\)/gu)) for (const n of m[1].matchAll(标)) 名们.add(n[0]);
+      for (const m of 码.matchAll(/\(([^()]*)\)\s*=>/gu)) for (const n of m[1].matchAll(标)) 名们.add(n[0]);
+      for (const m of 码.matchAll(/([\p{L}_$][\p{L}\p{N}_$]*)\s*=>/gu)) 名们.add(m[1]);
+      for (const m of 码.matchAll(/\bcatch\s*\(\s*([\p{L}_$][\p{L}\p{N}_$]*)/gu)) 名们.add(m[1]);
+      return 名们;
+    };
+    for (const f of 内核) {
+      if (!片段们.includes(f)) continue;
+      const 本地 = 局部名(纯码(f));
+      const 行们 = 纯码(f).split('\n');
+      行们.forEach((行, i) => {
+        for (const m of 行.matchAll(/(^|[^.\p{L}\p{N}_$])([\p{L}_$][\p{L}\p{N}_$]*)/gu)) {
+          const 名 = m[2];
+          /* 对象字面量的键（`{ 名: …` / `, 名: …` / 行首 `名: …`）不是引用 */
+          const 起 = m.index + m[1].length;
+          if (/^\s*:(?!:)/.test(行.slice(起 + 名.length)) && /(^|[{,])\s*$/.test(行.slice(0, 起))) continue;
+          if (禁读.includes(名)) 禁读命中.push(`${f}:${i + 1} ${名}`);
+          const 在 = 声明处[名];
+          if (!在 || 在 === f || 内核集.has(在) || 下层.has(在) || 本地.has(名)) continue;
+          if (名 in 放行) { 用到的放行.add(名); continue; }
+          越界.push(`${f}:${i + 1} ${名}（定义在 ${在}）`);
+        }
+      });
+    }
+    const 去重 = a => [...new Set(a)];
+    if (!禁读命中.length) ok(`内核 ${内核.length} 个片段 0 处读取禁读全局（${禁读.join(' / ')}）`);
+    else bad(`内核读了禁读全局（MBR-1）：${去重(禁读命中).slice(0, 8).join('；')}${禁读命中.length > 8 ? ' …' : ''}`);
+    if (!越界.length) ok(`内核 → 上层的调用全部在放行清单内（${用到的放行.size} 项：${[...用到的放行].map(s => `${s}[${放行[s]}]`).join('、') || '无'}）`);
+    else bad(`内核新增了对上层模块的依赖（MBR-1；要放行请先给 CC 提架构需求）：${去重(越界).slice(0, 8).join('；')}${越界.length > 8 ? ' …' : ''}`);
+    const 过期 = Object.keys(放行).filter(s => !用到的放行.has(s));
+    if (过期.length) info(`放行清单里这些项已不再使用（CC 清账时删）：${过期.join('、')}`);
+
+    /* MBR-2：规则层（内核 + 规则参数 + 局外）不准把 ctx.log 当输入查询 */
+    const 规则层 = 去重(内核.concat(Array.isArray(迁.ruleModulesNoLogRead) ? 迁.ruleModulesNoLogRead : []));
+    const 查日志 = [];
+    const 查日志正则 = /\(?\s*\bctx\s*\.\s*log\s*(?:\|\|\s*\[\s*\]\s*)?\)?\s*\.\s*(some|filter|find|findIndex|findLast|findLastIndex|reduce|every|includes|indexOf|lastIndexOf|map|forEach)\s*\(/g;
+    for (const f of 规则层) {
+      if (!片段们.includes(f)) continue;
+      纯码(f).split('\n').forEach((行, i) => { if (查日志正则.test(行)) 查日志.push(`${f}:${i + 1}`); 查日志正则.lastIndex = 0; });
+    }
+    if (!查日志.length) ok(`规则层 ${规则层.length} 个片段 0 处查询 ctx.log（日志只追加、只做输出）`);
+    else bad(`规则层把 ctx.log 当输入查询（MBR-2；改读 ctx 上的显式状态，比如 ctx.战况计数）：${查日志.join('、')}`);
+  }
+}
+
+/* ============================================================================
+ * [8] 开牌路径确定性基线（CC · 2026-10-15）：与 2788 对称的第二条回归真值
+ * ----------------------------------------------------------------------------
+ * 脚本写死在快照 `simulation.cardPathBattleLogSpec` 的说明里；这里按同一脚本重跑，
+ * 记录条数必须等于 `simulation.cardPathBattleLogCount`（卡牌规则 / 数值 / 发牌时机改了，
+ * 这里会红 —— 那是 Gameplay 侧的有意改动，就由交付人同步快照并在交付里报数）。
+ * ========================================================================== */
+console.log('\n[8] 开牌路径确定性基线（种子 20261015 · 默认五人队 vs 编成表[0] · 激励 + 热血）');
+{
+  let 快照 = null;
+  try { 快照 = JSON.parse(readFileSync(快照路径, 'utf8')); } catch (e) { /* [1] 已报 */ }
+  const 期望 = 快照 && 快照.simulation ? 快照.simulation.cardPathBattleLogCount : undefined;
+  if (!Number.isFinite(期望)) bad('协作/架构快照.json 缺 simulation.cardPathBattleLogCount');
+  else {
+    const 跑 = () => {
+      const 敌方 = G.敌方规格组(G.编成到单位(G.编成表[0], 0));
+      const ctx = G.开局(G.默认五人队, 敌方, 20261015, null, { 战术卡牌: true });
+      G.打战术牌(ctx, 'C_CMD_1');
+      G.打战术牌(ctx, 'C_GUARD_1');
+      let 护栏 = 0;
+      while (!ctx.result && 护栏++ < 20) G.打一回合(ctx);
+      return ctx;
+    };
+    const a = 跑(), b = 跑();
+    const 同 = JSON.stringify(a.log) === JSON.stringify(b.log);
+    if (同) ok(`同一脚本连跑两遍 ctx.log 逐字节相同（${a.log.length} 条）`);
+    else bad('同一脚本连跑两遍 ctx.log 不一致 —— 开牌路径不确定');
+    if (a.log.length === 期望) ok(`开牌路径记录条数 = ${期望}（= 快照 simulation.cardPathBattleLogCount）`);
+    else bad(`开牌路径记录条数 ${a.log.length} ≠ 快照的 ${期望} —— 卡牌规则有改动就同步快照并在交付里报数`);
+    P('末状态', { 结果: a.result && a.result.结果, 回合: a.turn, 战况计数: a.战况计数 });
+  }
+}
+
+/* ============================================================================
  * 总结
  * ========================================================================== */
 console.log('');
@@ -501,5 +638,5 @@ if (fails) {
   console.log(`ERRS [${errs.join(' | ')}]`);
   process.exit(1);
 }
-console.log('✓ 架构门禁：六段全部通过（快照同步 / 随机数纪律 / 状态 Owner 边界 / 默认路径零污染 / Replay 协议 / 债务账本 + Owner 自洽）');
+console.log('✓ 架构门禁：八段全部通过（快照同步 / 随机数纪律 / 状态 Owner 边界 / 默认路径零污染 / Replay 协议 / 债务账本 + Owner 自洽 / 迁移边界 / 开牌路径基线）');
 process.exit(0);

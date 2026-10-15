@@ -415,12 +415,27 @@ function resolveAction(actor, action, ctx) {
        ③ 没有镜甲敌人的战斗：`镜甲反弹()` 第一行就返回 0，**一个字段都不多**。
       ★ 2026-10-13：第 5 个参数把**这一发的武器**传下去 —— 词条键 `反弹` 的 `仅近战`（`2-EE`）要判射程。 */
     if (rec.字段.伤害 > 0) 镜甲反弹(ctx, actor, 实际, rec.字段, w);
-    if (typeof 战术卡牌开 === 'function' && 战术卡牌开(ctx) && typeof 检查条件发牌 === 'function') {
+    /* ★ 2026-10-13 P1.2 §1.3：**战况计数**（`ctx.战况计数`）—— 战术卡牌的条件触发判据
+       从「扫 `ctx.log` 文本」改成「读显式计数器」。就在这一条攻击记录产生的**同一个源码位置**当场累加
+       （这一处覆盖了每一个目标的每一发，含逐段未命中段数）。
+       ★ 关牌（`ctx.战况计数` 不存在）时整段空转 → 记录与数值逐字不变（`2788` 基线不受影响）。 */
+    if (ctx.战况计数 && typeof 检查条件发牌 === 'function') {
       const 段数 = Number(rec.字段.段数) || 1;
       const 命中段 = rec.字段.命中 === false ? 0 : (rec.字段.命中段数 != null ? Number(rec.字段.命中段数) : 1);
       const 未中段 = Math.max(0, 段数 - 命中段);
-      if (未中段 > 0) ctx.累计未命中段数 = (Number(ctx.累计未命中段数) || 0) + 未中段;
-      if (rec.字段.伤害 > 0) actor.已造成伤害 = true;
+      const 有伤 = Number(rec.字段.伤害) > 0;
+      /* ① `MOON_ECHO_OR_HIT`：月球王国单位造成伤害 */
+      if (有伤 && actor.side === 'ally' && typeof 提取单位三层信息 === 'function'
+        && 提取单位三层信息(actor).势力 === '月球王国') ctx.战况计数.残月或月国命中++;
+      /* ② `ATX_MISS_2` / ⑤ `A1_HIT_OR_MISS`：逐段未命中 / 场上打空 */
+      if (未中段 > 0) {
+        ctx.战况计数.未命中段 = (Number(ctx.战况计数.未命中段) || 0) + 未中段;
+        ctx.战况计数.响介受击或打空++;
+      }
+      /* ④ `CB1_HIT_OR_TA`：CB1（刹那）造成伤害 */
+      if (有伤 && actor.side === 'ally' && (actor.key === 'CB1' || actor.tplKey === 'CB1')) ctx.战况计数.刹那命中或TA++;
+      /* ⑤ `A1_HIT_OR_MISS`：A1（响介）受击 */
+      if (有伤 && 实际 && 实际.side === 'ally' && (实际.key === 'A1' || 实际.tplKey === 'A1')) ctx.战况计数.响介受击或打空++;
       检查条件发牌(ctx, '攻击后', {
         攻击者: actor,
         目标: 实际,

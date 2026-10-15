@@ -174,6 +174,9 @@ function 加气势(ctx, 值) {
   const 后 = Math.max(0, Math.min(上限, 前 + 增));
   ctx.气势 = 后;
   if (后 >= 上限 && ctx.曾满气势回合 == null) ctx.曾满气势回合 = ctx.turn || 1;
+  /* ★ P1.2 §1.5：气势一变就复查条件发牌 —— 统帅牌（`MORALE_75`：气势 ≥ 75）靠这一下当场入牌，
+     不管是【激励】回气、自然加气势、击破加气势还是受重击加气势走到的 75。 */
+  if (后 > 前) 气势变动后发牌(ctx);
   return 后;
 }
 
@@ -570,12 +573,12 @@ function 生成队伍牌池(allies, 选项) {
     if (info.键) 角色集.add(info.键);
   }
   const 全表 = Array.isArray(战术卡牌表) ? 战术卡牌表 : [];
-  const 已选原始 = (选项 && Array.isArray(选项.已选战术牌) && 选项.已选战术牌.length)
-    ? 选项.已选战术牌
-    : ((选项 && Array.isArray(选项.战术牌库) && 选项.战术牌库.length)
-      ? 选项.战术牌库
-      : (( (!选项 || 选项.使用肉鸽牌库 !== false) && typeof 肉鸽 !== 'undefined' && 肉鸽.RUN && Array.isArray(肉鸽.RUN.战术牌库) && 肉鸽.RUN.战术牌库.length)
-        ? 肉鸽.RUN.战术牌库 : []));
+  /* ★ P1.2 §1.4（内核解耦 `RUN`）：**只读参数传进来的 `选项.已选战术牌`** ——
+     删掉了 P1.1 那条「回退读全局 `肉鸽.RUN.战术牌库` / `选项.战术牌库`」的隐式逻辑。
+     于是练习战与肉鸽牌库**严格隔离**：
+       · 肉鸽入口（`80-界面-5` 开战 / `80-界面-2` 肉鸽态编队预览）显式传 `{ 已选战术牌: RUN.战术牌库 }`；
+       · 练习战入口（`80-界面-3` 开战 / `80-界面-2` 练习态编队预览）**不传** → 只用参战编队自己派生的三层牌池。 */
+  const 已选原始 = (选项 && Array.isArray(选项.已选战术牌)) ? 选项.已选战术牌 : [];
   const 已选Ids = 已选原始.map(x => typeof x === 'string' ? x : (x && x.id)).filter(Boolean);
 
   const 已收 = new Set();
@@ -592,7 +595,7 @@ function 生成队伍牌池(allies, 选项) {
     const 匹配 = (c.层级 === '职业' && 职业集.has(c.归属))
       || (c.层级 === '势力' && 势力集.has(c.归属))
       || (c.层级 === '角色' && 角色集.has(c.归属))
-      || (c.层级 === '统帅' && 选项 && 选项.含统帅牌);
+      || (c.层级 === '统帅' && (!选项 || 选项.含统帅牌 !== false));
     if (匹配) {
       已收.add(c.id);
       全部牌池.push(克隆战术牌(c));
@@ -638,6 +641,10 @@ function 是否满足卡牌触发条件(card, ctx, 事件类型, 载荷) {
   if (!card || !ctx) return false;
   const code = card.触发条件码;
   if (事件类型 && 事件类型 === code) return true;
+  /* ★ P1.2 §1.3：**触发条件 100% 纯状态驱动，零 `ctx.log` 反向依赖** ——
+     只读 `ctx.战况计数`（由真实事件源码位置当场更新的显式计数器）+ 单位当前属性 + 这一下的载荷。
+     绝不再扫日志文本 / 正则匹配 `ctx.log`。 */
+  const 计 = (ctx.战况计数 && typeof ctx.战况计数 === 'object') ? ctx.战况计数 : {};
   const allies = (ctx.allies || []).filter(u => u && u.hp > 0);
   const enemies = (ctx.enemies || []).filter(e => e && e.hp > 0);
   const p = 载荷 || {};
@@ -648,15 +655,12 @@ function 是否满足卡牌触发条件(card, ctx, 事件类型, 载荷) {
       return (ctx.allies || []).some(u => u && u.maxHp > 0 && 职业是(u, '重装') && u.hp > 0 && (u.hp / u.maxHp) < 0.65);
     }
     case 'GUARD_KILL_OR_CRIT': {
-      if (p.攻击者 && p.攻击者.side === 'ally' && 职业是(p.攻击者, '近卫') && (p.击破 || (Number(p.暴击) || 0) > 0)) return true;
-      return (ctx.log || []).some(r => r && r.单位方 === 'ally' && (
-        r.类型 === '连斩' || (r.类型 === '攻击' && (Number(r.暴击) || 0) > 0 && 单位匹配职业或势力(ctx, r.单位, '近卫', '职业'))
-      ));
+      /* 近卫击破敌机 / 造成暴击 —— 只认这一发的载荷（当场判定，不再回头翻日志）。 */
+      return !!(p.攻击者 && p.攻击者.side === 'ally' && 职业是(p.攻击者, '近卫')
+        && (p.击破 || (Number(p.暴击) || 0) > 0));
     }
     case 'ANY_MISS': {
-      if ((Number(ctx.累计未命中段数) || 0) >= 1 || (Number(p.未命中段数) || 0) >= 1 || p.未命中) return true;
-      if (事件类型 === '未命中' || 事件类型 === '闪避') return true;
-      return (ctx.log || []).some(r => r && r.类型 === '攻击' && (r.命中 === false || (Number(r.段数) || 1) > (Number(r.命中段数) || (r.命中 ? 1 : 0))));
+      return (Number(计.未命中段) || 0) >= 1 || (Number(p.未命中段数) || 0) >= 1;
     }
     case 'ENEMY_MARK_2': {
       if ((Number(p.层数) || 0) >= 2) return true;
@@ -670,8 +674,8 @@ function 是否满足卡牌触发条件(card, ctx, 事件类型, 载荷) {
       return (Number(ctx.turn) || 1) >= 2 || enemies.length >= 3;
     }
     case 'SPEC_HIT': {
-      if (p.攻击者 && p.攻击者.side === 'ally' && 职业是(p.攻击者, '特种') && p.命中) return true;
-      return (ctx.log || []).some(r => r && r.类型 === '攻击' && r.单位方 === 'ally' && r.命中 && 单位匹配职业或势力(ctx, r.单位, '特种', '职业'));
+      /* 特种命中敌机 —— 只认这一发的载荷。 */
+      return !!(p.攻击者 && p.攻击者.side === 'ally' && 职业是(p.攻击者, '特种') && p.命中);
     }
     case 'SEED_30': {
       if ((Number(p.SEED累计) || 0) >= 30) return true;
@@ -694,14 +698,14 @@ function 是否满足卡牌触发条件(card, ctx, 事件类型, 载荷) {
       });
     }
     case 'MOON_ECHO_OR_HIT': {
-      if (p.攻击者 && p.攻击者.side === 'ally' && 提取单位三层信息(p.攻击者).势力 === '月球王国' && (Number(p.伤害) || 0) > 0) return true;
-      return (ctx.log || []).some(r => r && (
-        r.类型 === '残月余响'
-        || (r.类型 === '势力' && r.势力 === '月球王国' && r.特色 === '残月的余响')
-        || (r.类型 === '攻击' && r.单位方 === 'ally' && (Number(r.伤害) || 0) > 0 && 单位匹配职业或势力(ctx, r.单位, '月球王国', '势力'))
-      ));
+      /* `ctx.战况计数.残月或月国命中` 由真实事件位置当场 +1：
+         `60-战斗-2` 的月球王国友军造伤、`72-势力-3` 的「残月的余响」追加一发。 */
+      if ((Number(计.残月或月国命中) || 0) >= 1) return true;
+      return !!(p.攻击者 && p.攻击者.side === 'ally'
+        && 提取单位三层信息(p.攻击者).势力 === '月球王国' && (Number(p.伤害) || 0) > 0);
     }
     case 'CB_TRANSAM_OR_HIT': {
+      /* 天人机体「处于 TRANS-AM 或受击后」—— 单位当前状态（激活 / 掉血）+ 这一发的载荷。 */
       if (p.目标 && p.目标.side === 'ally' && 提取单位三层信息(p.目标).势力 === '天人' && (Number(p.伤害) || 0) > 0) return true;
       return (ctx.allies || []).some(u => u && 提取单位三层信息(u).势力 === '天人' && (
         (typeof 天人激活 === 'function' && 天人激活(u))
@@ -710,76 +714,119 @@ function 是否满足卡牌触发条件(card, ctx, 事件类型, 载荷) {
       ));
     }
     case 'ATX_MISS_2': {
-      const 累计 = Number(ctx.累计未命中段数) || 0;
-      if (累计 >= 2) return true;
-      const 日志未中 = (ctx.log || []).filter(r => r && r.类型 === '攻击').reduce((s, r) => {
-        const hits = Number(r.段数) || 1;
-        const landed = r.命中 === false ? 0 : (r.命中段数 != null ? Number(r.命中段数) : 1);
-        return s + Math.max(0, hits - landed);
-      }, 0);
-      return 日志未中 >= 2;
+      /* `ctx.战况计数.未命中段` = 本场累计的逐段未命中段数（`60-战斗-2` 当场累加）。 */
+      return (Number(计.未命中段) || 0) >= 2 || (Number(p.未命中段数) || 0) >= 2;
     }
     case 'MITH_MARK': {
-      if (p.攻击者 && p.攻击者.side === 'ally' && 提取单位三层信息(p.攻击者).势力 === '秘银' && p.命中) return true;
-      return (ctx.log || []).some(r => r && (
-        (r.类型 === '势力' && r.势力 === '秘银')
-        || (r.类型 === '标定' && 单位匹配职业或势力(ctx, r.单位 || r.引爆键, '秘银', '势力'))
-      ));
+      /* `ctx.战况计数.秘银标定` 由 `72-势力-5` 的挂标定 / 兑现当场 +1。 */
+      if ((Number(计.秘银标定) || 0) >= 1) return true;
+      return !!(p.攻击者 && p.攻击者.side === 'ally'
+        && 提取单位三层信息(p.攻击者).势力 === '秘银' && p.命中);
     }
     case 'CB1_HIT_OR_TA': {
-      if (p.攻击者 && (p.攻击者.key === 'CB1' || p.攻击者.tplKey === 'CB1') && (Number(p.伤害) || 0) > 0) return true;
-      return (ctx.allies || []).some(u => u && (u.key === 'CB1' || u.tplKey === 'CB1') && (
-        u.已造成伤害 || (typeof 天人激活 === 'function' && 天人激活(u)) || (u.势力状态 && u.势力状态.天人 && u.势力状态.天人.激活)
-      )) || (ctx.log || []).some(r => r && r.单位 === 'CB1' && ((r.类型 === '攻击' && r.伤害 > 0) || (r.类型 === '势力' && r.特色 === 'TRANS-AM')));
+      /* `ctx.战况计数.刹那命中或TA` 由 `60-战斗-2`（CB1 造成伤害）、
+         `72-势力-4`（CB1 开启 TRANS-AM）、`打战术牌`（【TRANS-AM 解放】）当场 +1；
+         再叠一条**单位当前属性**兜底（§1.3 明许读「TRANS-AM」）：CB1 现在正开着 TRANS-AM。 */
+      if ((Number(计.刹那命中或TA) || 0) >= 1) return true;
+      if (!!(p.攻击者 && (p.攻击者.key === 'CB1' || p.攻击者.tplKey === 'CB1') && (Number(p.伤害) || 0) > 0)) return true;
+      return (ctx.allies || []).some(u => u && u.hp > 0 && (u.key === 'CB1' || u.tplKey === 'CB1')
+        && (typeof 天人激活 === 'function' ? 天人激活(u) : !!(u.势力状态 && u.势力状态.天人 && u.势力状态.天人.激活)));
     }
     case 'A1_HIT_OR_MISS': {
-      if ((Number(ctx.累计未命中段数) || 0) >= 1 || (Number(p.未命中段数) || 0) >= 1) return true;
-      return (ctx.allies || []).some(u => u && (u.key === 'A1' || u.tplKey === 'A1') && u.maxHp > 0 && u.hp < u.maxHp)
-        || (ctx.log || []).some(r => r && r.类型 === '攻击' && (r.命中 === false || (Number(r.段数) || 1) > (Number(r.命中段数) || 1)));
+      /* `ctx.战况计数.响介受击或打空` 由 `60-战斗-2` 当场 +1（A1 受击 / 场上打空段）；
+         再叠一条**单位当前属性**兜底（§1.3 明许读「HP」）：A1 现在不在满血。 */
+      if ((Number(计.响介受击或打空) || 0) >= 1) return true;
+      if (!!(p.目标 && p.目标.side === 'ally' && (p.目标.key === 'A1' || p.目标.tplKey === 'A1') && (Number(p.伤害) || 0) > 0)) return true;
+      return (ctx.allies || []).some(u => u && u.hp > 0 && u.maxHp > 0 && (u.key === 'A1' || u.tplKey === 'A1') && u.hp < u.maxHp);
+    }
+    case 'MORALE_75': {
+      /* ★ P1.2 §1.5：两张统帅牌（⚡全军总攻 / 🛡紧急掩护）改成**标准条件触发牌** ——
+         我方气势达到 75 或以上（含 `加气势` / 【激励】回气等任意途径）自动入牌。 */
+      return (Number(ctx.气势) || 0) >= 75;
     }
     default:
       return false;
   }
 }
 
+/** ★ P1.2 §1.5：气势一变就复查一次条件发牌（统帅牌的 `MORALE_75` 靠这一下当场入牌）。
+ *  关牌 / 拿不到 `检查条件发牌` 时直接返回 —— 0 副作用、0 `rng`、不限次。 */
+function 气势变动后发牌(ctx) {
+  if (!ctx || typeof 检查条件发牌 !== 'function' || !战术卡牌开(ctx)) return [];
+  return 检查条件发牌(ctx, '气势变动', { 回合: ctx.turn || 1 });
+}
+
 function 检查条件发牌(ctx, 事件类型, 载荷) {
   if (!ctx || !战术卡牌开(ctx)) return [];
   if (!Array.isArray(ctx.待触发战术牌) || !ctx.待触发战术牌.length) return [];
   if (!Array.isArray(ctx.战术手牌)) ctx.战术手牌 = [];
-  const 手牌总上限 = Number(战术卡牌参数().手牌总上限) || 8;
+  const 手牌总上限 = Number(战术卡牌参数().手牌总上限) || 10;
   const 新发牌们 = [];
   const 剩余待触发 = [];
   for (const card of ctx.待触发战术牌) {
     if (!card) continue;
-    if (ctx.战术手牌.length < 手牌总上限 && 是否满足卡牌触发条件(card, ctx, 事件类型, 载荷)) {
+    /* ★★ P1.3 §FIX-3（条件发牌被手牌上限挡下时的记录）：
+       **先判条件**，再判手牌有没有空位 —— 两件事分开看：
+         · 条件不满足 → 照旧留在待触发队列（与改前逐字同路）；
+         · 条件满足 + 手牌有空位 → 照常进手牌 + 照常写 `ctx.log`（与改前逐字同路）；
+         · **条件满足 + 手牌已满** → 这一张**推迟发**：照旧留在待触发队列（之后腾出空位还会发），
+           但**不往 `ctx.log` 插行**（零污染 `2788` 与开牌基线 `31` 条），
+           改记进 `ctx.战况计数.满手牌推迟数` / `ctx.满手牌推迟记录`（同一回合同一张牌只记一次）。
+       为什么把 `是否满足卡牌触发条件()` 提到前面：它**纯读**（P1.2 §1.3：只读 `ctx.战况计数` +
+       单位当前属性 + 这一发的载荷，零 `ctx.log` 依赖、零 `rng`），提前调用不改任何状态，
+       只是让「条件到底满没满足」这件事在满手牌时也看得见 —— 不提前判，我们就分不清
+       「没触发」和「触发了但被手牌上限挡下」。 */
+    if (!是否满足卡牌触发条件(card, ctx, 事件类型, 载荷)) { 剩余待触发.push(card); continue; }
+    if (ctx.战术手牌.length >= 手牌总上限) {
+      记满手牌推迟(ctx, card);
+      剩余待触发.push(card);
+      continue;
+    }
+    {
       card.新触发 = true;
       card.触发回合 = ctx.turn || 1;
       ctx.战术手牌.push(card);
       新发牌们.push(card);
-      const 日志文本 = `〔发牌〕满足「${card.触发说明}」→ 获得战术牌【${card.名}】`;
-      const 日志载荷 = {
-        类型: '发牌',
-        卡牌ID: card.id,
-        牌名: card.名,
-        层级: card.层级,
-        归属: card.归属,
-        触发条件码: card.触发条件码,
-        触发说明: card.触发说明,
-        精神标签: card.精神标签,
-        回合: ctx.turn || 1,
-      };
-      if (Array.isArray(ctx.log) && (ctx.战术卡牌写日志 || !(载荷 && 载荷._内部自动))) {
-        pushLog(ctx, 日志文本, 日志载荷);
-      } else {
-        if (!Array.isArray(ctx.待写发牌日志)) ctx.待写发牌日志 = [];
-        ctx.待写发牌日志.push({ 文本: 日志文本, 载荷: 日志载荷 });
+      /* ★ P1.2 §1.2（发牌记录当场写入）：删掉了 P1.1 的 `ctx.待写发牌日志` / `ctx.战术卡牌写日志`
+         延后补写机制 —— 一旦这张条件牌真的进了手牌，**当场**就写 `类型:'发牌'` 那一条记录。 */
+      if (Array.isArray(ctx.log)) {
+        pushLog(ctx, `〔发牌〕满足「${card.触发说明}」→ 获得战术牌【${card.名}】`, {
+          类型: '发牌',
+          卡牌ID: card.id,
+          牌名: card.名,
+          层级: card.层级,
+          归属: card.归属,
+          触发条件码: card.触发条件码,
+          触发说明: card.触发说明,
+          精神标签: card.精神标签,
+          回合: ctx.turn || 1,
+        });
       }
-    } else {
-      剩余待触发.push(card);
     }
   }
   ctx.待触发战术牌 = 剩余待触发;
   return 新发牌们;
+}
+
+/** ★ P1.3 §FIX-3：**「条件满足、但被手牌总上限挡下」记一笔**（不写 `ctx.log`）。
+ *  · 同一回合、同一张 `card.id` 只记一次 —— `检查条件发牌()` 一回合里会被调用好几次
+ *    （每次攻击后 / 打牌后 / 气势变动后 / 手动 TRANS-AM 后），不判重就会把同一次推迟记成好几笔。
+ *  · 记账三件套：`ctx.战况计数.满手牌推迟数`（计数器）+ `ctx.满手牌推迟记录`（明细，供战后战报用）
+ *    —— 两者都由 `84-反馈.js` 的 `战报统计` / `战报行们` **纯读**出来。
+ *  · 关牌（`ctx.战况计数` 不存在）/ 手搭的 ctx（没有这两个字段）一律空转，**绝不抛**。 */
+function 记满手牌推迟(ctx, card) {
+  if (!ctx || !card) return false;
+  const 计 = ctx.战况计数;
+  if (!计 || typeof 计 !== 'object') return false;
+  if (!Array.isArray(ctx.满手牌推迟记录)) ctx.满手牌推迟记录 = [];
+  const 回合 = Number(ctx.turn) || 1;
+  for (const x of ctx.满手牌推迟记录) {
+    if (x && Number(x.回合) === 回合 && x.id === card.id) return false;   // 这一回合已经记过这张
+  }
+  if (!Number.isFinite(Number(计.满手牌推迟数))) 计.满手牌推迟数 = 0;
+  计.满手牌推迟数 = Number(计.满手牌推迟数) + 1;
+  ctx.满手牌推迟记录.push({ 回合, id: card.id, 名: card.名, 触发说明: card.触发说明 || '' });
+  return true;
 }
 
 function 加卡牌护盾(u, 盾值) {
@@ -825,14 +872,9 @@ function 卡牌加标定(目标, 层数, 来源名 = '战术牌', 补满 = false
 function 打战术牌(ctx, cardId) {
   if (!ctx) return { 成功: false, 原因: '无战斗上下文' };
   if (!Array.isArray(ctx.战术手牌)) ctx.战术手牌 = [];
-  let card = ctx.战术手牌.find(c => c && (c.id === cardId || c.名 === cardId));
-  if (!card && (cardId === 'CMD_ALL_OUT' || cardId === 'CMD_COVER')) {
-    const found = (战术卡牌表 || []).find(c => c && c.id === cardId);
-    if (found) {
-      card = 克隆战术牌(found);
-      ctx.战术手牌.push(card);
-    }
-  }
+  /* ★ P1.2 §1.5：**所有卡牌一视同仁** —— 必须在 `ctx.战术手牌` 里才能打出。
+     删掉了 P1.1 给 `CMD_ALL_OUT` / `CMD_COVER` 的「不在手牌就自动塞进去」特例分支。 */
+  const card = ctx.战术手牌.find(c => c && (c.id === cardId || c.名 === cardId));
   if (!card) return { 成功: false, 原因: '手牌中不存在该战术牌' };
   if (card.剩余次数 != null && card.剩余次数 <= 0) return { 成功: false, 原因: '使用次数已用尽' };
   if ((Number(card.当前冷却) || 0) > 0) return { 成功: false, 原因: '冷却中' };
@@ -843,13 +885,9 @@ function 打战术牌(ctx, cardId) {
 
   const 上限 = Number(气势总攻参数().上限) || 100;
   ctx.气势 = Math.max(0, Math.min(上限, 气势前 - 耗 + 回));
-  ctx.战术卡牌写日志 = true;
-  if (Array.isArray(ctx.待写发牌日志) && ctx.待写发牌日志.length && Array.isArray(ctx.log)) {
-    for (const 待 of ctx.待写发牌日志) {
-      if (待 && 待.文本) pushLog(ctx, 待.文本, 待.载荷);
-    }
-    ctx.待写发牌日志 = [];
-  }
+  /* ★ P1.2 §1.5：气势这一步只改数值 —— 条件发牌的复查**放到整张牌结算完**（见函数末尾那一次
+     `检查条件发牌(ctx, '打战术牌', {cardId})`）—— 这样卡牌效果里当场累加的 `ctx.战况计数`
+     （例如【TRANS-AM 解放】给 `刹那命中或TA` +1）也一起看得见，不用查两遍。 */
 
   const allies = livingOf('ally', ctx);
   const enemies = livingOf('enemy', ctx);
@@ -1000,6 +1038,8 @@ function 打战术牌(ctx, cardId) {
             状.启动回合 = ctx.turn || 1;
             状.结束回合 = (ctx.turn || 1) + 2;
           }
+          /* ★ P1.2 §1.3：CB1 靠这张牌开启 TRANS-AM → 当场给 `ctx.战况计数.刹那命中或TA` +1。 */
+          if (ctx.战况计数 && (u.key === 'CB1' || u.tplKey === 'CB1')) ctx.战况计数.刹那命中或TA++;
           换同源增益(u, src, { eva: 15, dmgMul: 0.30, 剩余: 2 });
         }
       }
@@ -1148,6 +1188,12 @@ function 打战术牌(ctx, cardId) {
       回合: ctx.turn || 1,
     });
   }
+  /* ★ P1.2 §1.5（ARGON 玩法时机裁定）：**结算完气势增减与卡牌效果后**立即复查一次条件发牌 ——
+     ① 【激励】/【月光祈愿】这类回气牌把 `ctx.气势` 推到 75 → 统帅牌（`MORALE_75`）当回合当场入牌；
+     ② 【TRANS-AM 解放】这类效果牌把 `ctx.战况计数.刹那命中或TA` +1 → 天人 / 刹那衍生条件牌当场入牌。
+     它们当回合当场进 `ctx.战术手牌`、**可以继续连打**（不在手牌里一律打不出，见函数开头那条一视同仁的校验）。
+     关牌（`战术卡牌开(ctx) === false`）时 `检查条件发牌()` 第一句就返回 → 默认路径零污染、零 `rng`。 */
+  检查条件发牌(ctx, '打战术牌', { cardId: card.id });
   return { 成功: true, 牌: card, 气势: ctx.气势 };
 }
 

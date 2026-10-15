@@ -85,18 +85,18 @@ console.log('\n[12] ATX · 「打空」按段 → 减大招冷却（作者 2026-
     if (!缺.length) ok(`与战棋源码逐字对账：${逐字.length} 条片段全在（只读旧仓库，一个字节都没改）`);
     else bad(`战棋源码里找不到这些片段：${缺.join('；')}`);
     /* 数据也对一遍：左轮打桩机的四个键（startCd / cd / evadeCd / unlock）逐字 */
-    const 数据源 = 源码('src\\js\\10-数据.js');
+    const 数据源 = 源码(join('src', 'js', '10-数据.js'));
     const 桩数据 = ['左轮打桩机', 'hits:12', 'step:10', 'cd:3', 'unlock:20', 'startCd:10', 'evadeCd:true'].filter(s => 数据源.includes(s));
     if (桩数据.length === 7) ok(`数据逐字对账：\`10-数据.js\` 里左轮打桩机带着 ${桩数据.slice(1).join(' / ')}（照抄战棋 04-武器与机体.js:188，一个字没改）`);
     else bad(`数据里左轮打桩机的字段不全：${JSON.stringify(桩数据)}`);
   } else info('（本机没有旧仓库 `F:\\DSH-mecha\\mecha-tactics` → 跳过与战棋源码的逐字核对，只按上面的出处行号对账）');
   /* 我们自己这一侧：新钩子确实发在「逐段判定」的循环里（不是整次攻击之后） */
-  const 计算源 = 源码('src\\js\\20-战斗计算.js');
+  const 计算源 = 源码(join('src', 'js', '20-战斗计算.js'));
   const 未中段 = 计算源.split('第 ${i + 1} 段（${q}%）未中')[1] || '';
   if (未中段.includes('势力逐段未命中(ctx, att, def, w, { 段号: i + 1, 段数: hits')) {
     ok('`20-战斗计算.js` 的**逐段未命中分支**里发了 `势力逐段未命中(…, {段号: i + 1, 段数: hits…})` —— 这就是作者要的「按段」（战棋旧口径是整次攻击只发一次）');
   } else bad('没有在逐段循环里发新钩子（那就退化成战棋的「整次全空才算一次」了）');
-  for (const 文件 of ['src\\js\\72-势力.js', 'src\\js\\71-改动.js', 'src\\js\\20-战斗计算.js', 'src\\js\\60-战斗.js']) {
+  for (const 文件 of [join('src', 'js', '72-势力.js'), join('src', 'js', '71-改动.js'), join('src', 'js', '20-战斗计算.js'), join('src', 'js', '60-战斗.js')]) {
     if (!/Math\.random/.test(源码(文件))) ok(`${文件} 里一处 \`Math.random\` 都没有`);
     else bad(`${文件} 里出现了 Math.random`);
   }
@@ -104,7 +104,7 @@ console.log('\n[12] ATX · 「打空」按段 → 减大招冷却（作者 2026-
   /* 成员：按 `tags.势力` 查，并与 `协作/势力特色.md` 第 1.2 节的成员表逐行对 */
   const 去括号 = s => String(s).replace(/（.*$/, '').trim();
   const 数据名册 = G.ALLY_T.filter(t => t.tags.势力 === 'ATX').map(t => ({ 键: t.mech, 机师: t.pilot, 分类: t.tags.战斗分类 }));
-  const 文档段 = 源码('协作\\势力特色.md').split('### 1.2 这个势力有哪些角色')[1].split('### 1.3')[0];
+  const 文档段 = 源码(join('协作', '势力特色.md')).split('### 1.2 这个势力有哪些角色')[1].split('### 1.3')[0];
   const 文档名册 = 文档段.split('\n')
     .map(l => l.match(/^\|\s*(A\d)\s*\|\s*([^|]+?)\s*\|[^|]*\|\s*([^|]+?)\s*\|/))
     .filter(Boolean)

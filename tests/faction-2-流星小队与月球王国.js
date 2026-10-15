@@ -18,7 +18,7 @@ console.log('\n[9] 流星小队 · 单独行动：相邻 / 前方没有队友 �
   if (p && p.特技 === 'loneWolf' && p.初稿 === true) ok(`按数据里的 \`abilities: ['${p.特技}']\` 查（不手写名单）、整条标了「初稿」（触发条件是作者换的义，数值照战棋）`);
   else bad(`特技 / 初稿标记不对：${JSON.stringify(p && { 特技: p.特技, 初稿: p.初稿 })}`);
   const 数据名册 = G.ALLY_T.filter(t => t.tags.势力 === '流星小队').map(t => ({ 键: t.mech, 机师: t.pilot, 分类: t.tags.战斗分类 }));
-  const 文档段 = 源码('协作\\势力特色.md').split('### 3.2 这个势力有哪些角色')[1].split('### 3.3')[0];
+  const 文档段 = 源码(join('协作', '势力特色.md')).split('### 3.2 这个势力有哪些角色')[1].split('### 3.3')[0];
   const 文档名册 = 文档段.split('\n')
     .map(l => l.match(/^\|\s*(W\d)\s*\|\s*([^|]+?)\s*\|[^|]*\|\s*([^|]+?)\s*\|/))
     .filter(Boolean)
@@ -317,7 +317,7 @@ console.log('\n[10] 月球王国：Feena 光环（相邻位队友大 buff）+ �
     if (祝 && JSON.stringify(G.wv(u, 祝, 'buff')) === JSON.stringify(期望)) info(`（同一条数值也确实是数据里「月光祝福」那一档：\`wv(u, 月光祝福, 'buff')\` = ${JSON.stringify(实)}）`);
   }
   const 数据名册 = G.ALLY_T.filter(t => t.tags.势力 === '月球王国').map(t => ({ 键: t.mech, 机师: t.pilot, 分类: t.tags.战斗分类 }));
-  const 文档段 = 源码('协作\\势力特色.md').split('### 5.2 这个势力有哪些角色')[1].split('### 5.3')[0];
+  const 文档段 = 源码(join('协作', '势力特色.md')).split('### 5.2 这个势力有哪些角色')[1].split('### 5.3')[0];
   const 文档名册 = 文档段.split('\n')
     .map(l => l.match(/^\|\s*(M\d)\s*\|\s*([^|]+?)\s*\|[^|]*\|\s*([^|]+?)\s*\|/))
     .filter(Boolean)
@@ -569,7 +569,7 @@ console.log('\n[10] 月球王国：Feena 光环（相邻位队友大 buff）+ �
   else bad('(g) 同种子两次结果不一致');
   const 势力录 = 甲.log.filter(x => x.类型 === '势力' || x.类型 === '残月余响');
   info(`这一场写了 ${势力录.length} 条月球王国记录，例如「${(势力录[0] || {}).文本}」`);
-  for (const 文件 of ['src\\js\\72-势力.js', 'src\\js\\71-改动.js']) {
+  for (const 文件 of [join('src', 'js', '72-势力.js'), join('src', 'js', '71-改动.js')]) {
     if (!/Math\.random/.test(源码(文件))) ok(`${文件} 里一处 \`Math.random\` 都没有`);
     else bad(`${文件} 里出现了 Math.random`);
   }

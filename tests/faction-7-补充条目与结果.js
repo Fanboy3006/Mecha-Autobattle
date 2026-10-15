@@ -402,7 +402,7 @@ console.log('\n[15] 最后两条补充条目：月球王国三条（不动如山
   } else bad(`B 卡行没写好运加护：「${祝卡行}」`);
   if (!/undefined|NaN/.test(html15)) ok('B 战斗屏 HTML 里没有 undefined / NaN');
   else bad('B 战斗屏 HTML 里出现了 undefined / NaN');
-  for (const 文件 of ['src\\js\\10-数据.js', 'src\\js\\20-战斗计算.js', 'src\\js\\60-战斗.js', 'src\\js\\71-改动.js', 'src\\js\\72-势力.js', 'src\\js\\99-boot.js']) {
+  for (const 文件 of [join('src', 'js', '10-数据.js'), join('src', 'js', '20-战斗计算.js'), join('src', 'js', '60-战斗.js'), join('src', 'js', '71-改动.js'), join('src', 'js', '72-势力.js'), join('src', 'js', '99-boot.js')]) {
     if (!/Math\.random/.test(源码(文件))) ok(`${文件} 里一处 \`Math.random\` 都没有`);
     else bad(`${文件} 里出现了 Math.random`);
   }
@@ -414,7 +414,7 @@ console.log('\n[15] 最后两条补充条目：月球王国三条（不动如山
   if (迷 && 迷.换义建议.length > 10) ok(`C 念动迷彩的换义登记（作者同意先不做）：「${迷.换义建议}」`);
   else bad('C 念动迷彩的换义建议没登记');
   /* 换义建议里「相邻位没有队友 → 被命中 −X」这一条（任务书点名的例子）在两份文档里都写了 */
-  const 板 = 源码('协作\\任务板.md');
+  const 板 = 源码(join('协作', '任务板.md'));
   if (板.includes('相邻位') && (板.includes('烟雾') || 板.includes('迷彩'))) {
     ok('C `协作/任务板.md` 里也记着这两条的换义建议（本轮追加的那一段）');
   } else info('C 任务板里换义登记的位置见本轮追加段（这一段只在参数表里钉一遍）');

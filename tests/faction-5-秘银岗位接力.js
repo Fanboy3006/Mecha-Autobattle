@@ -79,7 +79,7 @@ console.log('\n[13] 秘银 · SRT 交叉训练 · 岗位接力（作者 2026-10-
     ok('`秘银岗位名单()` 从 `ALLY_T` 查出来的和参数表里的**一模一样**（`71-改动.js` 顶层就调它算这两个字段）');
   } else bad('`秘银岗位名单()` 与参数表对不上');
   /* ★ 与**作者文档**里那四行逐字对（正则从文档里把两张名单抠出来） */
-  const 决定文 = 源码('协作\\势力特色落地决定.md');
+  const 决定文 = 源码(join('协作', '势力特色落地决定.md'));
   const 抠名单 = 名 => {
     const m = 决定文.match(new RegExp(名 + ":\\s*\\[([^\\]]*)\\]"));
     return m ? (m[1].match(/['"]([A-Za-z]+\d)['"]/g) || []).map(s => s.replace(/['"]/g, '')) : null;
@@ -93,7 +93,7 @@ console.log('\n[13] 秘银 · SRT 交叉训练 · 岗位接力（作者 2026-10-
   /* 与 `协作/势力特色.md` 第 6.2 节的成员表逐行对（键 / 机师 / 机体 / 战斗分类） */
   const 数据名册13 = G.ALLY_T.filter(t => t.tags.势力 === '秘银')
     .map(t => ({ 键: t.mech, 机师: t.pilot, 机体: t.mechName, 分类: t.tags.战斗分类 }));
-  const 文档段13 = 源码('协作\\势力特色.md').split('### 6.2 这个势力有哪些角色')[1].split('### 6.3')[0];
+  const 文档段13 = 源码(join('协作', '势力特色.md')).split('### 6.2 这个势力有哪些角色')[1].split('### 6.3')[0];
   const 文档名册13 = 文档段13.split('\n')
     .map(l => l.match(/^\|\s*([SWACBU]\d)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|/))
     .filter(Boolean)
@@ -125,7 +125,7 @@ console.log('\n[13] 秘银 · SRT 交叉训练 · 岗位接力（作者 2026-10-
     ok('岗位判据只有 `tags.战斗分类` 一条路（`abilities` 现场验过：一个都分不开）');
   } else bad(`居然有 abilities 能分岗位（那岗位判据要重写）：${JSON.stringify(能分岗)}`);
   /* 我们自己这一侧：新钩子确实发在 `resolveAttack()` **之前**（兑现必须先挂上破防） */
-  const 战斗源13 = 源码('src\\js\\60-战斗.js');
+  const 战斗源13 = 源码(join('src', 'js', '60-战斗.js'));
   const 攻击段13 = 战斗源13.split('势力攻击前(ctx, actor, 实际, w);')[1] || '';
   if (攻击段13.indexOf('resolveAttack(actor, 实际, w, ctx') > -1 && 攻击段13.indexOf('resolveAttack') < 攻击段13.indexOf('spendWeapon')) {
     ok('`60-战斗.js` 里 `势力攻击前(…)` 发在 `resolveAttack()` **之前**、`spendWeapon()` 之前 —— 破防这一发自己就吃得到');
@@ -136,7 +136,7 @@ console.log('\n[13] 秘银 · SRT 交叉训练 · 岗位接力（作者 2026-10-
     ok('`60-战斗.js` 的 `endTurn()` 补上了 **debuff 衰减**（和 buffs 同一条规则：`剩余` −1、到 0 摘掉）——'
       + '全仓库的生产者只有秘银的标定，没有标定的战斗这一行空转');
   } else bad('`endTurn()` 里没有 debuff 衰减');
-  for (const 文件 of ['src\\js\\72-势力.js', 'src\\js\\71-改动.js', 'src\\js\\60-战斗.js', 'src\\js\\80-界面.js']) {
+  for (const 文件 of [join('src', 'js', '72-势力.js'), join('src', 'js', '71-改动.js'), join('src', 'js', '60-战斗.js'), join('src', 'js', '80-界面.js')]) {
     if (!/Math\.random/.test(源码(文件))) ok(`${文件} 里一处 \`Math.random\` 都没有`);
     else bad(`${文件} 里出现了 Math.random`);
   }
@@ -158,7 +158,7 @@ console.log('\n[13] 秘银 · SRT 交叉训练 · 岗位接力（作者 2026-10-
     if (!缺13.length) ok(`与战棋源码 / 一览逐字对账 ${逐字13.length} 条全中（只读旧仓库，一个字节都没改）`);
     else bad(`战棋源码里找不到：${缺13.join('；')}`);
   } else info('（本机没有旧仓库 `F:\\DSH-mecha\\mecha-tactics` → 跳过与战棋源码的逐字核对，只按上面的出处行号对账）');
-  const 数据源13 = 源码('src\\js\\10-数据.js');
+  const 数据源13 = 源码(join('src', 'js', '10-数据.js'));
   if (数据源13.includes("special:'markBreak'") && 数据源13.includes('命中后挂一层 −20% 破防')) {
     ok('本仓库复制件 `10-数据.js:262-263` 也是逐字那句（兑现的 20%/层就是从它来的，**没有自己发明数值**）');
   } else bad('`10-数据.js` 里找不到标定射击那句逐字 desc');
@@ -178,10 +178,13 @@ console.log('\n[13] 秘银 · SRT 交叉训练 · 岗位接力（作者 2026-10-
   const 敌 = cM.enemies[0];
   /** 一把**必中**（`fire:'map'` → `isSure`）的枪：不消耗 `ctx.rng`，同一发伤害是定值，方便贴「破防前后」。 */
   const 必中炮 = { name: '测试·必中炮', fire: 'map', hit: 0, dmgType: '物理', power: 2000, stat: '射击', range: [0, 9], hits: 1, upgrades: [] };
-  /** 走**真战斗路径**打一发（`resolveAction` → `势力攻击前` → `resolveAttack`），返回记录里的伤害。 */
+  /** 走**真战斗路径**打一发（`resolveAction` → `势力攻击前` → `resolveAttack`），返回记录里的伤害。
+   *  ★ P1.2 §1.2：条件发牌现在**当场**写 `类型:'发牌'` 记录（可能紧跟在这一条攻击记录之后），
+   *  所以这里取的是**最后一条攻击记录**，不是「最后一条记录」。 */
   const 打一发 = (att, 目标) => {
     G.resolveAction(att, { kind: 'attack', weapon: 必中炮, hit: [目标], entry: { t: 必中炮, cd: 0, uses: null, readyTurn: 1 } }, cM);
-    return cM.log[cM.log.length - 1].伤害;
+    const 攻 = cM.log.filter(r => r && r.类型 === '攻击');
+    return 攻.length ? 攻[攻.length - 1].伤害 : undefined;
   };
   info(`摆位（作者站位）：${cM.allies.map(u => `${位名(u.slot)} ${u.name}(${G.秘银岗位(u, p)})`).join('、')}`);
   const 无标定伤 = 打一发(宗介, 敌);                                    // 先打一发**没有标定**的（对照）

@@ -39,14 +39,14 @@ console.log('\n[14] 天人 TRANS-AM：改成「单个单位开关」（自动 / 
      `设单位开关()` 里 —— ★ 2026-10-12「全队方针」之后，逐台指令表被拆成
      `设方针()`（全队层）+ `设单位开关()`（单位层），TRANS-AM 这两个字段的**落点没变**
      （还是逐单位、还是存在单位层那张表里、还是用 `u.TRANSAM手动` / `u.本回合开TRANSAM` 递给引擎）。 */
-  const 战斗源 = 源码('src\\js\\60-战斗.js');
+  const 战斗源 = 源码(join('src', 'js', '60-战斗.js'));
   if (/function 设单位开关\([\s\S]*?c\.TRANSAM != null[\s\S]*?u\.TRANSAM手动 = \(c\.TRANSAM === '手动'\)/.test(战斗源)
     && /if \(c\.本回合开TRANSAM != null\) u\.本回合开TRANSAM = !!c\.本回合开TRANSAM/.test(战斗源)
     && /c\.保留大招 != null/.test(战斗源)) {
     ok('(a) 开关存在**单位开关表**里（跟「保留大招」同一层，**不塞进 RUN**）：`设单位开关()` 读 `TRANSAM` → `u.TRANSAM手动`、'
       + '`本回合开TRANSAM` → `u.本回合开TRANSAM`、`保留大招` → `u.holdUlt`');
   } else bad('(a) 单位开关表里没有 TRANSAM / 本回合开TRANSAM / 保留大招 三个字段（或者 `设单位开关()` 没读它们）');
-  if (!/TRANSAM/.test(源码('src\\js\\90-肉鸽.js')) && !/TRANSAM/.test(源码('src\\js\\91-地图.js'))) {
+  if (!/TRANSAM/.test(源码(join('src', 'js', '90-肉鸽.js'))) && !/TRANSAM/.test(源码(join('src', 'js', '91-地图.js')))) {
     ok('(a) `RUN` 那一层（90-肉鸽.js / 91-地图.js）里**一处 TRANSAM 都没有** —— 开关没有塞进存档');
   } else bad('(a) 开关被塞进了 RUN 那一层');
 

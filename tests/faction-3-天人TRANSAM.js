@@ -43,7 +43,7 @@ console.log('\n[11] 天人 · TRANS-AM（作者 2026-10-11 拍板：持续 2 回
 
   /* 成员：**按 10-数据.js 的 tags.势力 查**，并与 `协作/势力特色.md` 第 4.2 节的成员表逐行对 */
   const 数据名册 = G.ALLY_T.filter(t => t.tags.势力 === '天人').map(t => ({ 键: t.mech, 机师: t.pilot, 分类: t.tags.战斗分类 }));
-  const 文档段 = 源码('协作\\势力特色.md').split('### 4.2 这个势力有哪些角色')[1].split('### 4.3')[0];
+  const 文档段 = 源码(join('协作', '势力特色.md')).split('### 4.2 这个势力有哪些角色')[1].split('### 4.3')[0];
   const 文档名册 = 文档段.split('\n')
     .map(l => l.match(/^\|\s*(CB\d)\s*\|\s*([^|]+?)\s*\|[^|]*\|\s*([^|]+?)\s*\|/))
     .filter(Boolean)
@@ -249,7 +249,7 @@ console.log('\n[11] 天人 · TRANS-AM（作者 2026-10-11 拍板：持续 2 回
   else info('⑥ 换种子记录一样（这一场太碾压时可能如此，不算错）');
   const 势力录 = 甲.log.filter(x => x.特色 === 'TRANS-AM');
   info(`这一场写了 ${势力录.length} 条 TRANS-AM 记录，例如「${(势力录[0] || {}).文本}」`);
-  for (const 文件 of ['src\\js\\72-势力.js', 'src\\js\\71-改动.js', 'src\\js\\60-战斗.js']) {
+  for (const 文件 of [join('src', 'js', '72-势力.js'), join('src', 'js', '71-改动.js'), join('src', 'js', '60-战斗.js')]) {
     if (!/Math\.random/.test(源码(文件))) ok(`${文件} 里一处 \`Math.random\` 都没有`);
     else bad(`${文件} 里出现了 Math.random`);
   }

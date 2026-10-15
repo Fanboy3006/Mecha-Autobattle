@@ -270,10 +270,12 @@ console.log('\n[17] ★ 气势栏与战术按钮（总攻 / 紧急掩护）+ 全
   界面.开屏('编队'); 界面.清空(); 界面.设等级(10); 界面.默认五人队(); 界面.设编成(0); 界面.开战(20261013);
   界面.选单位(0);
   const 初HTML = 屏文字();
-  if (/data-morale="0"/.test(初HTML) && /data-tactic-forecast="1"/.test(初HTML) &&
+  /* ★ P1.2 §1.1：练习战开牌 → 开局气势**一律 25**（改动前是 0），气势条那一格随之变成 `data-morale="25"`；
+     25 < 100，所以两颗战术按钮照旧 `disabled`、憋大招照旧「自动」。 */
+  if (/data-morale="25"/.test(初HTML) && /data-tactic-forecast="1"/.test(初HTML) &&
       /data-act="战术:总攻" disabled/.test(初HTML) && /data-act="战术:掩护" disabled/.test(初HTML) &&
       /data-act="全队大招">全队大招：自动<\/button>/.test(初HTML)) {
-    ok('方针栏渲染了气势条（0 / 100）、战术预告行（`data-tactic-forecast`）、两颗未满气势时 disabled 的战术按钮与「全队大招：自动」按钮');
+    ok('方针栏渲染了气势条（25 / 100）、战术预告行（`data-tactic-forecast`）、两颗未满气势时 disabled 的战术按钮与「全队大招：自动」按钮');
   } else bad('方针栏的气势条或战术按钮结构不对');
 
   const 锁数 = (初HTML.match(/data-ult-locked="1">大招：Lv20 解锁<\/span>/g) || []).length;
