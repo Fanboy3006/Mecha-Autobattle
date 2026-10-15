@@ -30,6 +30,22 @@ const 记录屏条数上限 = 200;
 /* 大地图上那张「最近 5 条」小卡片画几条（作者要求的「可选」那一条，做了）。 */
 const 最近记录条数 = 5;
 
+/** ★ 2026-10-13 任务书 §1 模块 4：大地图底部那一栏藏品的**标题旁**再挂一个「查看全部 / 图鉴」按钮
+ *  （和顶栏那颗 `📦 藏品 N` 是同一个动作 `去藏品`）。
+ *  ⚠ 为什么在**调用点**插、而不去改 `藏品卡片Html()` 本体：那一段在 `93-藏品.js` 里，
+ *    **不在本次施工白名单内**。这里只对它的第一行 `<h3>藏品（N）` 做一次**定点插入**
+ *    —— 卡片自己的 HTML（每一行的结构、`title`、文字）**一个字都没动**，
+ *     既有断言（`tests/relic-*` 对藏品卡片那几段文本的逐字匹配）照旧成立。
+ *  两处都要有（作者要的「大地图底部藏品栏标题旁」）：0 件时那一种分支也是同一个 `<h3>藏品（0）`，
+ *  所以这一条正则两种都能命中。 */
+function 藏品栏Html() {
+  const 原 = (typeof 藏品卡片Html === 'function') ? 藏品卡片Html() : '';
+  const 钮 = '<button type="button" class="btn sm mech-relic-entry" data-act="去藏品"' +
+    ' title="查看已持有藏品与全图鉴（58 件）">查看全部 / 图鉴</button>';
+  const 换过 = String(原).replace(/^(<div class="rv-card"><h3>藏品（\d+）)/, '$1' + 钮);
+  return 换过 === String(原) ? String(原) + 钮 : 换过;
+}
+
 const 肉鸽界面 = {
   分队ID: null,
   /* ★ 结果条：`null` = 没有结果；否则 `{类型: 成功|警告|失败|信息, 文本}`。
@@ -168,6 +184,11 @@ const 肉鸽界面 = {
 
   大地图屏() {
     const R = 肉鸽.RUN;
+    /* ★ 2026-10-13（任务书 §1 模块 2 · 第 3 条）：`取消用零件` 这个动作名**在这里补进动作表** ——
+       `94-零件.js`（零件的本体，含 `取消用零件()`）排在本文件**前面**，那时 `const 界面` 还在
+       TDZ 里读不到；第一次画大地图时它一定已经绑好了。幂等（只补一次），
+       本阶段白名单不含 `80-界面-1`，所以照 `95-调参室-3` 的同一写法从外面补一个键。 */
+    注册取消用零件();
     if (!R) return '<section class="card"><p>还没有进行中的局。</p><a href="#" data-act="回菜单">回菜单</a></section>';
     const 当前格 = 肉鸽.当前格();
     const 距离 = 全距离(R);                                  // 不算推进剂上限，用来提示「走过去要几步」
@@ -194,13 +215,21 @@ const 肉鸽界面 = {
     };
     const 格按钮 = k => {
       const n = R.地图.格[k];
-      if (!n) return '<button class="gcell none" disabled><i>·</i><small>不存在</small></button>';
+      /* ★ 2026-10-13（任务书 §1 模块 1 · 第 2 条）：被存在率挖掉的格（`!n`）**仍然是图论上的障碍**
+         （不可点击 / 不可通行 / `disabled` 一个字没改），但显示从 `· 不存在` 换成 **`⛰ 断层`** +
+         `title="地形断层：不可通行"`，并在 `main.css` 里给 `.gcell.none` 配了**暗岩斜纹**背景 ——
+         旧 → 新 → 为什么：旧文案让玩家以为「地图缺了一块（Bug）」，实际它是**设计好的地形**。 */
+      if (!n) return '<button class="gcell none" disabled title="地形断层：不可通行" aria-label="地形断层：不可通行">' +
+        '<i>⛰</i><b>断层</b><small>地形断层</small></button>';
       const 型 = 节点类型表[n.类型] || { 名: n.类型, 图标: '?', 色: '#8a99ab' };
       const 步 = 距离.get(k);
       const 是当前 = k === R.当前;
       const 可 = 能去.has(k);
       const 件可 = 零件可去.has(k);
-      const 态 = 是当前 ? ' here' : (n.已过 ? ' done' : (件可 ? ' can' : (可 ? ' can' : (已走过.has(k) ? ' walked' : ''))));
+      /* ★ 2026-10-13（任务书 §1 模块 2 · 第 3 条）：**正在用零件**时，这件零件的目标格多挂一个
+         `part-target`（青金脉冲边框，样式在 `main.css`）—— 它比「能去的」更醒目，
+         玩家一眼看得出「点这几格 = 把这件零件用掉」。 */
+      const 态 = 是当前 ? ' here' : (n.已过 ? ' done' : ((件可 || 可) ? ' can' : (已走过.has(k) ? ' walked' : '')));
       const 动 = (件可 || 可) ? ` data-act="去节点:${k}"` : '';
       let 小字 = '';
       /* ★ 2026-10-12 地图大改（三层反馈的「预告」那一层）：能去 / 零件能落的格子上，
@@ -213,7 +242,7 @@ const 肉鸽界面 = {
       else if (n.已过) 小字 = '已通过';
       else if (步 != null) 小字 = `太远（${步} 步 > ${R.推进剂}）`;
       else if (!n.已过 && (已揭开.has(k) || 已走过.has(k))) 小字 = '到不了';
-      return `<button class="gcell${态}" style="--fc:${型.色}"${动} data-k="${k}" data-node-kind="${n.类型}"
+      return `<button class="gcell${态}${件可 ? ' part-target' : ''}" style="--fc:${型.色}"${动} data-k="${k}" data-node-kind="${n.类型}"
         title="${坐标文字(n)} · ${型.名}${小字 ? '｜' + 小字 : ''}${出口注(n)}${n.关卡 ? `｜${n.关卡}` : ''}">
         <i>${型.图标}</i><b>${型.名}</b><small>${小字 || 坐标文字(n)}</small></button>`;
     };
@@ -262,7 +291,11 @@ const 肉鸽界面 = {
         <span class="rv-chip">希望 <b>${R.希望}</b></span>
         <span class="rv-chip">源碳结晶 <b>${R.源碳}</b></span>
         <span class="rv-chip${R.耐久 <= 3 ? ' warn' : ''}">作战耐久 <b>${R.耐久}</b></span>
-        <span class="rv-chip">藏品 <b>${(R.藏品 || []).length}</b></span>
+        <!-- ★ 2026-10-13 任务书 §1 模块 4：顶栏那一格藏品从**纯展示**改成**可点击入口** ——
+             点它弹「藏品一览」（上半区 = 当前已持有；下半区 = 全图鉴，可折叠）。
+             动作名 = 去藏品（在 89-录像-1 的「录像不记动作」里：不进录像、不进决策日志）。
+             rv-chip-btn 是新增的「看起来像 chip、能点」那一条样式（main.css）。 -->
+        <button class="rv-chip rv-chip-btn" data-act="去藏品" title="点击查看已持有藏品与全图鉴">📦 藏品 <b>${(R.藏品 || []).length}</b></button>
         <span class="rv-chip${(R.券 || []).length ? '' : ' warn'}" data-tickets="1">招募券 <b>${(R.券 || []).length}</b>${(R.券 || []).length ? `<small>${券汇总文字(R)}</small>` : '<small>（招募 / 晋升都要用券 —— 打一场或进招募站拿）</small>'}</span>
         <span class="rv-chip">本层第 <b>${R.场次 + 1}</b> 场</span>
         ${HP行 ? `<span class="rv-chip warn" data-hp-carry="1">${HP行}</span>` : ''}
@@ -286,8 +319,9 @@ const 肉鸽界面 = {
         升级按原作分级表 <b>+4…+8</b>（Lv2 +4 / Lv3 +4 / Lv4 +5 / Lv5 +6 / Lv6 +6 / Lv7 +6 / Lv8 +7 / Lv9 +8 / Lv10 +8；
         等级 &gt; 10 沿用 +8）—— 作者 2026-10-11 拍板「照原作 4–8」，逐级给，出处见 CLAUDE.md 第 6 节；
         藏品里的 <b>t1–t6 教范</b>是「免费晋升 1 名该职业」= 省下本来要花的 1–4 希望（战棋 23b:39-44）。</p>
-      ${用中 ? `<p class="warn small">正在使用零件【${零件表[用中.k].名}】：点地图上<b>高亮的格子</b>落下去（不花推进剂）。
-        再点一次「使用」可以取消。</p>` : ''}
+      ${用中 ? `<button type="button" class="part-bar" data-act="取消用零件" data-part-bar="1"
+        title="点这里取消：什么都不用，回大地图继续走"><b>正在使用零件【${零件表[用中.k].名}】</b>
+        <span>请点击高亮目标格（<b>${零件可去.size}</b> 个，不花推进剂）—— 或点此取消</span></button>` : ''}
       <div class="gmap" data-gmap="1" data-cols="${R.地图.列数}" data-rows="${R.地图.行数}" style="--格数:${R.地图.列数}">${行们.join('')}</div>
       <p class="small">当前格：<b>${当前格 ? (节点类型表[当前格.类型] || {}).名 : '—'}</b>${当前格 ? `（${坐标文字(当前格)}）` : ''}${守军已清 ? '' : '　·　出口守军还没打掉：<b>出口尽头</b>要打赢它才放行；<b>出口小径</b>免打守军，但拿不到关口奖励（额外源碳 + 必给 1 件零件）'}　·　出口：${出口们.map(k => `${(节点类型表[R.地图.格[k].类型] || {}).名} ${坐标文字(R.地图.格[k])}${出口注(R.地图.格[k])}`).join('、')}（<b>二选一</b>：尽头 = 剩余推进剂 ${R.推进剂} → 希望 +${R.推进剂 * 肉鸽数值.出口换希望}；小径 = 免打守军、第 ${R.层 + 1} 层推进剂上限 +${肉鸽数值.出口小径加成}，但放弃守军的关口奖励）　·　图例：${图例Html()}</p>
       <div class="acts" data-center="1">${按钮 || '<span class="small">这一格没有可做的事，往别的格子走吧。</span>'}
@@ -311,7 +345,7 @@ const 肉鸽界面 = {
       <p class="small">队伍（${R.队伍.length} / ${肉鸽数值.队伍上限}）：${队伍}</p>
       ${队伍卡片Html()}
       ${零件卡片Html()}
-      ${藏品卡片Html()}
+      ${藏品栏Html()}
       ${最近记录Html()}
       ${界面.弹窗控件Html()}
       <p class="small">日志：${R.日志.slice(-4).map(x => `第${x.层}层 ${x.文本}`).join('　|　')}　·　
@@ -460,6 +494,10 @@ const 肉鸽界面 = {
              这里只把原因摆出来。 -->
         ${x.到 ? `<button class="rv-btn"${动}${x.能升 ? '' : ' disabled'}${x.理由 ? ` title="${x.理由}"` : ''}>晋升（${x.价} 希望 ＋ 1 张同类券）</button>`
                : '<button class="rv-btn" disabled title="已经 Lv30（到顶了）">已到顶</button>'}
+        <!-- ★ 2026-10-13 任务书 §1 模块 5：**晋升屏名册行**的「ⓘ 详情」（5 屏入口之一）。
+             独立一颗按钮（晋升按钮一个字没改）：data-act="看机体:键" → 弹「机体特性与武器详情」，
+             晋升前就能把「Lv10/20/30 对照 + 武器解锁等级」看全。 -->
+        <button type="button" class="mech-info-btn" data-act="看机体:${x.键}" title="查看 ${x.名} 的机体特性与武器详情">ⓘ 详情</button>
         ${x.理由 && x.到 ? `<small style="color:var(--enemy)">${x.理由}</small>` : ''}</div>`;
     }).join('') || '<p class="small">名册是空的。</p>';
     const 次序 = 清单.filter(x => x.到).sort((a, b) => a.价 - b.价);
@@ -492,18 +530,18 @@ const 肉鸽界面 = {
     const 行 = 们.map((p, i) => {
       const P = 零件表[p.k] || { 名: p.k, 类: '—', 效果: '' };
       const 目标数 = 零件目标(p).length;
+      const 用中 = 肉鸽界面 && 肉鸽界面.用零件中 === i;
+      /* ★ 2026-10-13（任务书 §1 模块 2 · 第 3 条）：**一行说明**（`零件一行说明()`，只写一处）——
+         删掉了原来「说明 + 效果」两行互相打架的写法与「【这一版用不了】」。 */
       return `<div class="rv-row"><span class="nm"><b>${P.名}</b>
-        <small> · ${P.类}${p.uses != null ? ` · 剩 ${p.uses} 次` : (p.value != null ? ` · 估价 ${p.value}` : '')}</small>
-        <br><small style="margin-left:0">${P.说明}</small>
-        <br><small style="margin-left:0">→ ${P.效果}${P.用 ? `（现在能去 ${目标数} 格）` : '【这一版用不了】'}</small></span>
-        <button class="rv-btn" data-act="使用零件:${i}"${P.用 ? '' : ' disabled'}>使用 →</button></div>`;
+        <small> · ${P.类}${p.uses != null ? ` · 剩 ${p.uses} 次` : ''}</small>
+        <br><small style="margin-left:0">${零件一行说明(p)}${P.用 ? `（现在能去 ${目标数} 格）` : ''}</small></span>
+        <button class="rv-btn${用中 ? ' on' : ''}" data-act="使用零件:${i}"${P.用 ? '' : ' disabled'}>${用中 ? '正在用…' : '使用 →'}</button></div>`;
     }).join('') || '<p class="small">还没有零件。</p>';
     const 全 = Object.keys(零件表).map(k => {
       const P = 零件表[k];
-      return `<div class="rv-row"><span class="nm"><b>${P.名}</b><small> · ${P.类} · ${P.价} 源碳</small>
-        <br><small style="margin-left:0">${P.说明}</small>
-        <br><small style="margin-left:0">${P.用 ? '✓ ' + P.效果 : (P.可卖 ? '¥ ' + P.效果 : '✗ ' + (P.用不了 || '这一版不做'))}</small>
-        ${P.换义 ? `<br><small style="margin-left:0">换义：${P.换义}</small>` : ''}</span></div>`;
+      return `<div class="rv-row"><span class="nm"><b>${P.名}</b><small> · ${P.类} · ${P.价} 源碳${P.用 ? ' · 可在大地图上使用' : ' · 不可主动使用（只能去黑市卖）'}</small>
+        <br><small style="margin-left:0">${P.用 ? (P.效果 || P.说明) : 零件一行说明({ k, value: P.估价 })}</small></span></div>`;
     }).join('');
     return `<section class="card">
       <h3>零件<span class="small">零件箱 ${们.length} / ${上限} · 照战棋 <code>23-零件.js:4-18</code></span></h3>
@@ -541,7 +579,10 @@ const 肉鸽界面 = {
         <b>${件.名}</b><small>${件.稀有}${件.分类 ? ' · ' + 件.分类 : ''}${件.实装 && 件.实装 !== '已接' ? ` · ${件.实装}` : ''}</small>
         <small>${件.说明}</small><span class="cost">${价} 源碳结晶${理由 ? `（源碳只有 ${R.源碳}）` : ''}${价 !== (肉鸽数值.黑市价格[件.稀有] || 0) ? '（会员卡 −30%）' : ''}</span></button>`;
     }).join('') || '<p class="small">这一层的黑市卖完了。刷新一次或者下层的黑市会换新货。</p>';
-    /* 卖零件：手上的零件一件一行（自然物按估价、其他一律 2 源碳 —— 战棋 30:101,119） */
+    /* 卖零件：手上的零件一件一行
+       ★ 2026-10-13（任务书 §1 模块 2 · ④）：**自然物按当前估价卖**；
+         其余（加工品 / 概念体）从固定 2 源碳改成**按参考价折算 `max(2, ⌊价 × 0.6⌋)`**
+         （8 源碳的喷气背包卖 4、9 源碳的小八界卖 5）—— 真值只在 `94-零件.js` 的 `零件卖价()` 里算。 */
     const 零件们 = R.零件 || [];
     const 卖行 = 零件们.map((p, i) => {
       const P = 零件表[p.k] || { 名: p.k, 类: '—' };
@@ -566,7 +607,8 @@ const 肉鸽界面 = {
       <div class="picks" data-center="1">${卡}</div>
       <div class="acts" data-center="1">${刷行}<button class="primary" data-act="黑市离开">离开黑市</button><button data-act="回大地图">回大地图</button></div>
       <div class="rv-card"><h3>卖零件（${零件们.length} / ${R.零件箱 || 零件箱初值}）</h3>
-        <p class="small">战棋 <code>30:105,119</code>：<b>自然物按估价</b>卖出，<b>其他零件一律 2 源碳结晶</b>。
+        <p class="small"><b>自然物按当前估价</b>卖出（血蕈战后 +2 / 浪花移动后波动，见零件屏那一行）；
+          <b>加工品 / 概念体按参考价折算</b>：<code>max(2, ⌊价 × 0.6⌋)</code> —— 8 源碳的喷气背包卖 4、9 源碳的小八界卖 5。
           零件箱满了的时候，这是腾位置的地方。</p>
         <div class="acts" data-center="1">${卖行 || '<span class="small">手上没有零件。</span>'}</div></div>
       ${this.结果条Html()}

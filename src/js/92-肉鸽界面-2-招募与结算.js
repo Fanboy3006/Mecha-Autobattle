@@ -47,11 +47,20 @@
       const p核 = 空名册 ? 界面.预览(t.mech, 带队核心等级) : null;
       const 费 = 肉鸽数值.招募费[tierOf(t.mech)] || 0;
       const 理由 = 不能招的理由(费);
-      /* `disabled` + `title` = 鼠标悬停也看得到理由；`data-drag` 照旧保留（能招时才生效） */
-      return `<button class="pick" data-act="招募:${t.mech}" data-drag="候选:${t.mech}" style="--fc:${势力色(t.mech)}"${理由 ? ` disabled title="${理由}"` : ` title="用掉一张 ${券名(用中)}${费 > 0 ? `，花 ${费} 希望` : '（普通档，0 希望）'}${空名册 ? `｜${带队核心预告}` : ''}"`}>
+      /* `disabled` + `title` = 鼠标悬停也看得到理由；`data-drag` 照旧保留（能招时才生效）
+         ★ 2026-10-13 任务书 §1 模块 5：候选卡上再挂一个**独立的**「ⓘ 详情」入口
+           （`data-act="看机体:<键>"` → `机体详情Html`，5 屏入口之一）。
+         ⚠ 为什么用 `<span role="button">` 放在卡片按钮**之外**、外面套一层 `.pick-wrap`：
+           ① HTML 规范里 `<button>` 不能嵌 `<button>`（会把 `querySelectorAll('button')` 的计数与结构搞坏）；
+           ② 这一屏的候选卡在「还没选券」时**整张 `disabled`** —— 而 disabled 的按钮**不会把点击
+              派发给子元素**，详情入口塞在里面就恰好「最需要看的时候点不动」。
+         `.pick-wrap{display:flex;flex-direction:column}`（`main.css`）让这层壳**只负责把两颗按钮摞在一起**：
+         它是 `.picks` 网格的**同一个格子**（不加壳的话「卡片 + 详情」会被当成两个格子、详情按钮飘到别的列），
+         壳自己不画背景 / 边框，卡片本体一个字节都没改。 */
+      return `<span class="pick-wrap"><button class="pick" data-act="招募:${t.mech}" data-drag="候选:${t.mech}" style="--fc:${势力色(t.mech)}"${理由 ? ` disabled title="${理由}"` : ` title="用掉一张 ${券名(用中)}${费 > 0 ? `，花 ${费} 希望` : '（普通档，0 希望）'}${空名册 ? `｜${带队核心预告}` : ''}"`}>
         <span class="pk-top">${图标.卡(t.mech, 'ally', 图标.尺寸.列表)}<span class="pk-nm"><b>${t.pilot}</b><small>${t.mech} · ${t.tags.战斗分类} · ${t.tags.势力}</small></span></span>
         <span class="nums">速 ${p.速度} · HP ${p.hp}${p核 ? `　·　Lv${带队核心等级}：HP ${p核.hp}` : ''}</span><span class="cost">${空名册 ? `<b data-lead-core-hint="1">${带队核心预告}</b><br>` : ''}招募 ${费} 希望${用中 ? `（用掉 ${券名(用中)}）` : '（要先选一张券）'}</span>
-        ${特色摘要(t).文本 ? `<div class="特色摘要" data-特色摘要="1">${特色摘要(t).文本}</div>` : ''}</button>`;
+        ${特色摘要(t).文本 ? `<div class="特色摘要" data-特色摘要="1">${特色摘要(t).文本}</div>` : ''}</button><span class="mech-info-btn" role="button" tabindex="0" data-act="看机体:${t.mech}" title="查看 ${t.pilot} 的机体特性与武器详情">ⓘ 详情</span></span>`;
     }).join('');
     /* ★ 2026-10-13 带队核心（结算那一层）：名册第一台挂 `带队核心标记`。 */
     const 队 = R.队伍.map((m, i) => `<div class="rv-row"><span class="pk-top">${图标.卡(m.键, 'ally', 图标.尺寸.列表)}<span class="pk-nm"><b>${allyName(m.键)}</b><small>${m.键} · Lv${m.等级}${带队核心吗(R.队伍, i) ? ` · <b data-lead-core="1">${带队核心标记}</b>` : ''}</small></span></span></div>`).join('');
@@ -108,6 +117,9 @@
         </div>
       </div>
       ${this.结果条Html()}
+      <!-- ★ 2026-10-13 任务书 §1 模块 4 / 5：招募屏上点「ⓘ 详情」也要弹得出正文 —— 弹窗控件原来只在
+           大地图 / 记录 / 晋升三屏画（界面.弹窗控件Html()），这里补一份，全屏通用才算数。 -->
+      ${界面.弹窗控件Html()}
     </section>`;
   },
 
@@ -240,7 +252,11 @@ function 队伍卡片Html() {
     return `<div class="rv-row"><span class="rv-tier ${tierOf(x.键)}">${TIER_NAME[tierOf(x.键)] || '普通'}</span>
       <span class="nm"><b>${t.pilot || x.键}</b>${是核 ? `<b style="color:var(--accent,#ffd166)" data-lead-core="1"> ${带队核心标记}</b>` : ''}<small>${x.键} · ${(t.tags || {}).战斗分类 || '—'} · ${出击 ? '出击名单' : '待命'}</small>
         <br><small style="margin-left:0">Lv${x.等级}　HP ${x.后.maxHp}　装甲 ${x.后.armor}　防御 ${x.后.defense}　机动 ${x.后.mov}　速度 ${x.后.速度}</small></span>
-      ${到 ? `<button class="rv-btn" data-act="晋升:${x.键}" title="${为什么}"${能升 ? '' : ' disabled'}>→Lv${到}（${价} 希望＋1 券）</button>` : '<small>Lv30</small>'}</div>`;
+      ${到 ? `<button class="rv-btn" data-act="晋升:${x.键}" title="${为什么}"${能升 ? '' : ' disabled'}>→Lv${到}（${价} 希望＋1 券）</button>` : '<small>Lv30</small>'}
+      <!-- ★ 2026-10-13 任务书 §1 模块 5：**大地图队伍栏**的「ⓘ 详情」（5 屏入口之一）。
+           独立一颗按钮（不改卡片本身的晋升按钮）：data-act="看机体:键" → 弹「机体特性与武器详情」。
+           .rv-row 是 flex，多这一颗不挤掉原来那些；**原来那些按钮的文字与 data-act 一个字没改**。 -->
+      <button type="button" class="mech-info-btn" data-act="看机体:${x.键}" title="查看 ${t.pilot || x.键} 的机体特性与武器详情">ⓘ 详情</button></div>`;
   }).join('') || '<p class="small">名册是空的。</p>';
   const 券们 = (R.券 || []);
   return `<div class="rv-card"><h3>队伍（${R.队伍.length} / ${肉鸽数值.队伍上限}）<span class="small">点右边的按钮直接晋升（**希望 ＋ 1 张同类券**）${核 ? `　·　${带队核心标记} = 本局第一台，招募时直接 Lv${带队核心等级}（分队特权）` : ''}</span></h3>${行}

@@ -39,8 +39,14 @@
   弹窗控件Html() {
     const d = this.弹窗;
     if (!d) return '';
-    return `<div class="rv-card dlg"><h3>${d.标题}</h3><p class="small">${d.文本 || ''}</p>
-      <div class="acts" data-center="1">${(d.选项 || []).map(o => `<button data-act="弹窗:${o.值}">${o.名}</button>`).join('')}</div></div>`;
+    /* ★ 2026-10-13 任务书 §1 模块 4 / 5：详情弹窗的正文里有 `<div>` / `<details>` / `<h4>` 这类**块级**内容 ——
+       原来那一层是 `<p class="small">`，块级元素嵌在 `<p>` 里是**非法嵌套**（浏览器会把 `</p>` 提前收掉、
+       正文的 DOM 结构就散了）。改成 `<div class="small dlg-body">`：**样式与文字一个字没变**
+       （`.small` 是全局类，见 `main.css:40`），块级正文照旧放得下。`<h3>` 标题与那一排按钮都没动。
+       ⚠ 按钮文字取 `o.名 || o.文`：旧调用点（`肉鸽弹窗`）给的是 `{值, 名}`，新调用点（藏品 / 机体详情）
+         给的是 `{名, 文, 值}` —— 两种都能写对按钮文字。 */
+    return `<div class="rv-card dlg"><h3>${d.标题}</h3><div class="small dlg-body">${d.文本 || ''}</div>
+      <div class="acts" data-center="1">${(d.选项 || []).map(o => `<button data-act="弹窗:${o.值}">${o.名 || o.文 || o.值}</button>`).join('')}</div></div>`;
   },
 
   /* ---------------- 顶栏 ---------------- */
@@ -155,6 +161,15 @@
       if (typeof 职业排位角标 === 'function') 排位接口.职业排位角标 = 职业排位角标;
       Object.assign(window.__game, 排位接口);
     }
+    /* ★ 2026-10-13 任务书 §1 模块 5：把纯读的 `机体详情Html(键或单位, 选项)` 挂到 `window.__game`。
+       为什么挂在这里、不挂在 `80-界面-6`（函数本体就在那儿）：`window.__game` 是 `99-boot.js:321` 建的，
+       而 `80-界面-6` 在它**之前**执行 —— 那一刻 `window.__game` 还不存在（写在那儿会挂空）。
+       `菜单屏()` 是**运行期**必然走一次的那一处（`boot()` → `开屏('菜单')` → 刷 → 菜单屏），
+       而且这段判据与上面「职业排位接口」那段**同一个样板**（只在还没挂过时挂一次、`typeof` 逐个判）。
+       `tools/build-route-map.mjs` 的「运行期导出」扫描认下面这一句的直接赋值（归到「直接赋值」那一组）。 */
+    if (typeof window !== 'undefined' && window.__game && !window.__game.机体详情Html) {
+      if (typeof 机体详情Html === 'function') window.__game.机体详情Html = 机体详情Html;
+    }
     /* ★ 对局上报（实现在 `src/js/8a-上报.js`；作者 2026-10-12 拍板「网页端任何人玩了以后都留一条记录」）：
        进菜单时（**页面加载时 `boot()` 走的也是同一条路**：`开屏('菜单')` → 刷 → 菜单屏）顺手把
        「还没上报过的肉鸽整局」POST 走。**纯追加**：`上报地址` 为空（默认）时 `顺便传()` 第一句就返回，
@@ -233,10 +248,16 @@
     const 列表 = 候选.filter(t => t && t.mech).map(t => {
       const p = this.预览(t.mech, t.等级 || B.等级);
       const 已上 = B.出击.some(x => x.键 === t.mech);
+      /* ★ 2026-10-13 任务书 §1 模块 5：**编队屏候选卡**的「ⓘ 详情」（5 屏入口之一）。
+         ⚠ 用 `<span role="button">` 嵌在 `<button class="pick">` 里面 —— 这一屏的候选卡**没有**
+           `disabled`（点一下就选中），所以不必像招募屏那样套一层壳；而 `<button>` 不能嵌 `<button>`，
+           所以内层只能是 `<span>`。事件委托按 `closest('[data-act]')` 取**最里面**那个 → 点详情走
+           `看机体`、点卡片其它地方照旧走 `选人:<键>`（**原来那条一个字节没改**）。 */
       return `<button class="pick${B.选中 === t.mech ? ' on' : ''}${已上 ? ' used' : ''}" data-act="选人:${t.mech}" data-drag="候选:${t.mech}" style="--fc:${势力色(t.mech)}">
         <span class="pk-top">${图标.卡(t.mech, 'ally', 图标.尺寸.列表)}<span class="pk-nm"><b>${t.pilot}</b><small>${t.mech} · ${t.tags.战斗分类} · ${t.tags.势力}${肉鸽模式 ? ` · Lv${t.等级}` : ''}</small></span></span>
         <span class="nums">速 ${p.速度} · HP ${p.hp}${p.大招.length ? ` · 大招 ${p.大招.length}` : ''}</span>
         ${特色摘要(t).文本 ? `<div class="特色摘要" data-特色摘要="1">${特色摘要(t).文本}</div>` : ''}
+        <span class="mech-info-btn" role="button" tabindex="0" data-act="看机体:${t.mech}" title="查看 ${t.pilot} 的机体特性与武器详情">ⓘ 详情</span>
       </button>`;
     }).join('');
     const 格 = [];
@@ -259,7 +280,12 @@
           <span class="pk-top">${图标.卡(占.键, 'ally', 图标.尺寸.格)}<span class="pk-nm"><b>${this.单位名(占.键, 'ally')}</b><small>${占.键} · 速 ${p.速度}</small></span></span>
           <span class="nums">HP ${p.hp}</span>
           ${排位行}
-          ${特色摘要(占.键).文本 ? `<div class="特色摘要" data-特色摘要="1">${特色摘要(占.键).文本}</div>` : ''}</button>`);
+          ${特色摘要(占.键).文本 ? `<div class="特色摘要" data-特色摘要="1">${特色摘要(占.键).文本}</div>` : ''}
+          <!-- ★ 2026-10-13 任务书 §1 模块 5：**阵型格**上的「ⓘ 详情」（5 屏入口之一）。
+               同样只能是 span role=button（外层已经是 button class="slot filled"，
+               而 tests/faction-7 用 /&lt;button class="slot filled"[…]*?&lt;\/button&gt;/g 逐张对账 ——
+               里面**不能出现 &lt;/button&gt;**，用 span 既点得到又不破坏那一条断言）。 -->
+          <span class="mech-info-btn" role="button" tabindex="0" data-act="看机体:${占.键}" title="查看 ${this.单位名(占.键, 'ally')} 的机体特性与武器详情">ⓘ 详情</span></button>`);
       } else {
         行格.get(r).push(`<button class="slot" data-act="放位:${位}" data-drop="${位}"><span class="pos">${位名(位)}</span><b>空位</b><small>${行名(r)}</small></button>`);
       }
@@ -302,6 +328,9 @@
           <div class="acts" data-center="1"><button class="primary" data-act="开战">开战 →</button></div>`}
         ${选中 ? `<p class="small">已选：${this.单位名(B.选中, 'ally')}（${B.选中}，速度 ${选中.速度}${选中.大招.length ? `，大招：${选中.大招.join('、')}，第 ${选中.开场} 回合起` : '，没有大招'}）</p>` : '<p class="small">还没选机师。</p>'}
       </div>
+      <!-- ★ 2026-10-13 任务书 §1 模块 4 / 5：编队屏上点「ⓘ 详情」也要弹得出正文 —— 弹窗控件原来只在
+           大地图 / 记录 / 晋升三屏画（界面.弹窗控件Html()），这里补一份，全屏通用才算数。 -->
+      ${this.弹窗控件Html()}
     </section>`;
   },
 

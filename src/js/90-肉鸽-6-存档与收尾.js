@@ -180,6 +180,10 @@
   存档() {
     if (!this.RUN) return false;
     try {
+      /* ★ 2026-10-13（任务书 §1 模块 2 · ③）：自然物（血蕈 / 浪花）的**动态估价** `p.value`
+         就在 `RUN.零件` 的每一个元素上，所以 `JSON.stringify(存)` **天然把它一起存了** ——
+         这里不需要（也不应该）另做一层序列化：元素的形状仍然是 `{ k, uses, value }`，
+         `R.零件.map(p => p.k + ':' + p.uses)` 那条断言照旧成立（改的只是 `value` 的数字）。 */
       const 存 = { RUN: this.RUN, 进行中: this.进行中 };
       if (typeof localStorage !== 'undefined' && localStorage.setItem) localStorage.setItem(存档键, JSON.stringify(存));
       return true;
@@ -264,9 +268,34 @@
           this.RUN.券 = 归一过;
         }
       }
-      /* ★ 招募站给券（2026-10-11）：旧存档没有 `招募站已领券` → 补空数组（坏值也补空）。 */
+      /* ★ 召回站给券（2026-10-11）：旧存档没有 `招募站已领券` → 补空数组（坏值也补空）。 */
       if (!Array.isArray(this.RUN.招募站已领券)) this.RUN.招募站已领券 = [];
       else this.RUN.招募站已领券 = this.RUN.招募站已领券.filter(x => typeof x === 'string');
+      /* ★ 2026-10-13（任务书 §1 模块 2 · ③）：手上零件的**动态估价**读回来时归一 ——
+         `存档()` 存的是整个 `RUN`，所以 `value` 本来就在 JSON 里；这里只做三件事：
+           ① 坏数据兜底（`零件` 不是数组 → 空数组；元素认不出 `k` → 丢掉）；
+           ② `uses` 归一（缺 / 坏 → 表里的 `次数`；`null` 的照旧 `null`）；
+           ③ **自然物**的 `value` 缺 / 坏 → 回退表里的 `估价`（血蕈 3 / 浪花 4），
+              加工品 / 概念体的 `value` 归 `null`（它们的参考价走表里的 `价`）。
+         ⚠ 元素形状**一个字都没变**（还是 `{ k, uses, value }`），
+           所以 `tests/rank-3` 的 `R.零件.map(p => p.k + ':' + p.uses)` 断言照旧成立。 */
+      if (!Array.isArray(this.RUN.零件)) this.RUN.零件 = [];
+      else this.RUN.零件 = this.RUN.零件
+        .filter(p => p && typeof p === 'object' && 零件表[p.k])
+        .map(p => {
+          const P = 零件表[p.k];
+          const 数 = Number(p.uses);
+          const 估 = Number(p.value);
+          const 默认次数 = P.次数 != null ? P.次数 : null;
+          return {
+            k: p.k,
+            uses: p.uses == null ? 默认次数 : (Number.isFinite(数) ? Math.max(0, Math.floor(数)) : 默认次数),
+            value: P.类 === '自然物'
+              ? (Number.isFinite(估) && 估 > 0 ? Math.floor(估) : (Number(P.估价) || null))
+              : (Number.isFinite(估) && 估 > 0 ? Math.floor(估) : null),
+          };
+        });
+      重算推进剂加成();                     // 坏 / 缺的祭祈被丢掉时，推进剂上限要跟着回退
       /* ★ 节点改造（2026-10-11）新增的**五个**字段：旧存档**一个都没有** —— 全部补默认值，不崩。
          坏值也一并夹回来（照上面 `hp比` / `等级` 的同一套做法）：
            · `黑市刷新次数`：非负整数（缺 / 坏 → 0）；
@@ -296,12 +325,24 @@
   },
 };
 
-/** 这一格走过了吗（战棋 moveTargets 会滤掉走过的格；新项目里「已过」还要看 node.cleared）。 */
+/** 这一格走过了吗（战棋 moveTargets 会滤掉走过的格；新项目里「已过」还要看 node.cleared）。
+ *  ★ 2026-10-13（任务书 §1 模块 1）：**未走过的 `类型 === '空'` 格现在是合法落脚点** ——
+ *    对齐黑流树海【林间空地】（走进去休整片刻、不遭遇敌情）。
+ *    旧 → 新 → 为什么：
+ *      · 旧：`if (n.已过 || n.类型 === '空') return false;` —— 所有「空」格（含**还没走到过的**）
+ *        一起被滤掉，所以地图上大片空地是死的（玩家只能走「有事件的那几格」）；
+ *      · 新：`if (n.已过) return false;` —— 起点在生成时就已标 `已过: true`（`91-地图.js` 的
+ *        `已过: k === 起点`），所以起点仍然点不动；**结算完的空节点**由 `已过` 挡住；
+ *        只有 `!n.已过 && !RUN.已走过.includes(k)` 的空格才会被放进 `肉鸽.能去的()`。
+ *      · 为什么：作者要「空地能落脚」；`已过` 本来就是「这一格的事做完了」的**唯一**判据
+ *        （`清空格()` / 节点结算都写它），拿 `类型` 再判一次是把「空地」和「做完的事」混为一谈。
+ *    ⚠ 边界（**一个字没改**）：`91-地图.js` 的 `移动距离` 仍然是普通徒步 BFS 跨格能力，
+ *      每走 1 格照常扣 1 推进剂；出口类型照旧可以再点（层没换掉的话）。 */
 function 格没走过(RUN, k) {
   if (k === RUN.当前) return false;
   const n = RUN.地图.格[k];
   if (!n) return false;
-  if (n.已过 || n.类型 === '空') return false;      // 空节点 / 结算完的节点不再作为目标
+  if (n.已过) return false;                         // 结算完的节点（含起点）不再作为目标
   if (是出口类型(n.类型)) return true;              // 出口（尽头 / 小径）永远可以再点（层没换掉的话）
   return !RUN.已走过.includes(k);
 }
