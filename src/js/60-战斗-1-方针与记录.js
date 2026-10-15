@@ -598,8 +598,20 @@ function 生成队伍牌池(allies, 选项) {
       全部牌池.push(克隆战术牌(c));
     }
   }
+  if (选项 && 选项.补齐基础激励 && !已收.has('C_CMD_1')) {
+    const 基础激励 = 全表.find(c => c && c.id === 'C_CMD_1');
+    if (基础激励) {
+      已收.add('C_CMD_1');
+      全部牌池.unshift(克隆战术牌(基础激励));
+    }
+  }
   const 初始上限 = Number((选项 && 选项.初始手牌上限) || 战术卡牌参数().初始手牌上限) || 6;
-  const 初始手牌 = 全部牌池.filter(c => c.入牌 === '初始').slice(0, 初始上限).map(克隆战术牌);
+  const 初始候选 = 全部牌池.filter(c => c.入牌 === '初始').slice().sort((a, b) => {
+    const a0 = (Number(a.耗气) === 0 && Number(a.回气) > 0) ? 0 : 1;
+    const b0 = (Number(b.耗气) === 0 && Number(b.回气) > 0) ? 0 : 1;
+    return a0 - b0;
+  });
+  const 初始手牌 = 初始候选.slice(0, 初始上限).map(克隆战术牌);
   const 待触发牌 = 全部牌池.filter(c => c.入牌 === '条件').map(克隆战术牌);
   const 职业牌池 = 全部牌池.filter(c => c.层级 === '职业');
   const 势力牌池 = 全部牌池.filter(c => c.层级 === '势力');
@@ -744,18 +756,23 @@ function 检查条件发牌(ctx, 事件类型, 载荷) {
       card.触发回合 = ctx.turn || 1;
       ctx.战术手牌.push(card);
       新发牌们.push(card);
-      if (Array.isArray(ctx.log)) {
-        pushLog(ctx, `〔发牌〕满足「${card.触发说明}」→ 获得战术牌【${card.名}】`, {
-          类型: '发牌',
-          卡牌ID: card.id,
-          牌名: card.名,
-          层级: card.层级,
-          归属: card.归属,
-          触发条件码: card.触发条件码,
-          触发说明: card.触发说明,
-          精神标签: card.精神标签,
-          回合: ctx.turn || 1,
-        });
+      const 日志文本 = `〔发牌〕满足「${card.触发说明}」→ 获得战术牌【${card.名}】`;
+      const 日志载荷 = {
+        类型: '发牌',
+        卡牌ID: card.id,
+        牌名: card.名,
+        层级: card.层级,
+        归属: card.归属,
+        触发条件码: card.触发条件码,
+        触发说明: card.触发说明,
+        精神标签: card.精神标签,
+        回合: ctx.turn || 1,
+      };
+      if (Array.isArray(ctx.log) && (ctx.战术卡牌写日志 || !(载荷 && 载荷._内部自动))) {
+        pushLog(ctx, 日志文本, 日志载荷);
+      } else {
+        if (!Array.isArray(ctx.待写发牌日志)) ctx.待写发牌日志 = [];
+        ctx.待写发牌日志.push({ 文本: 日志文本, 载荷: 日志载荷 });
       }
     } else {
       剩余待触发.push(card);
@@ -826,6 +843,13 @@ function 打战术牌(ctx, cardId) {
 
   const 上限 = Number(气势总攻参数().上限) || 100;
   ctx.气势 = Math.max(0, Math.min(上限, 气势前 - 耗 + 回));
+  ctx.战术卡牌写日志 = true;
+  if (Array.isArray(ctx.待写发牌日志) && ctx.待写发牌日志.length && Array.isArray(ctx.log)) {
+    for (const 待 of ctx.待写发牌日志) {
+      if (待 && 待.文本) pushLog(ctx, 待.文本, 待.载荷);
+    }
+    ctx.待写发牌日志 = [];
+  }
 
   const allies = livingOf('ally', ctx);
   const enemies = livingOf('enemy', ctx);

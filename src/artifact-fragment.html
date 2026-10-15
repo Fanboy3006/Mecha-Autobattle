@@ -664,30 +664,50 @@ button:disabled{opacity:.4;cursor:not-allowed}
   .dlg-body{max-height:70vh}
 }
 
-/* ---------- 20) 战术卡牌手牌栏（2026-10-13 · P1） ---------- */
-.tactical-hand-bar{margin-top:6px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;
-  background:color-mix(in srgb,var(--panel2) 70%,transparent)}
-.tactical-hand-bar .th-head{display:flex;justify-content:space-between;align-items:center;
-  font-size:11.5px;margin-bottom:5px;color:var(--fg)}
-.tactical-hand-bar .th-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(138px,1fr));gap:6px}
-.tactical-card{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:2px;
-  padding:5px 7px;border:1px solid var(--line);border-radius:5px;
-  background:color-mix(in srgb,var(--panel) 88%,transparent);color:var(--fg);cursor:pointer;
-  transition:border-color .15s,transform .12s}
-.tactical-card.tier-class{border-left:3px solid #6ec1ff}
-.tactical-card.tier-faction{border-left:3px solid #c59bff}
-.tactical-card.tier-char{border-left:3px solid #ffc96b}
-.tactical-card.tier-cmd{border-left:3px solid #ff7d7d}
-.tactical-card.ready:hover{border-color:var(--accent);transform:translateY(-1px)}
-.tactical-card.is-triggered{box-shadow:0 0 0 1px color-mix(in srgb,var(--good) 65%,transparent);
-  background:color-mix(in srgb,var(--good) 12%,var(--panel))}
+/* ---------- 20) 战术卡牌手牌栏与构筑面板（2026-10-13 · P1.1） ---------- */
+.tactical-hand-bar{margin-top:8px;padding:8px 10px;border:1px solid color-mix(in srgb,var(--accent) 42%,var(--line));border-radius:7px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--panel2) 86%,transparent),color-mix(in srgb,var(--panel) 94%,transparent))}
+.tactical-hand-bar .th-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;
+  font-size:12px;margin-bottom:6px;color:var(--fg)}
+.tactical-hand-bar .th-cards,.tactical-pick-box .th-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:7px}
+.tactical-card{display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;text-align:left;gap:3px;
+  padding:6px 8px;border:1px solid var(--line);border-radius:6px;
+  background:color-mix(in srgb,var(--panel) 92%,transparent);color:var(--fg);cursor:pointer;
+  transition:border-color .15s,transform .12s,box-shadow .15s}
+.tactical-card.tier-class{border-left:3.5px solid #6ec1ff}
+.tactical-card.tier-faction{border-left:3.5px solid #c59bff}
+.tactical-card.tier-char{border-left:3.5px solid #ffc96b}
+.tactical-card.tier-cmd{border-left:3.5px solid #ff7d7d}
+.tactical-card.ready{border-color:color-mix(in srgb,var(--accent) 48%,var(--line))}
+.tactical-card.ready:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 3px 10px rgba(0,0,0,.35)}
+.tactical-card.is-triggered{box-shadow:0 0 0 1px color-mix(in srgb,var(--good) 75%,transparent);
+  background:color-mix(in srgb,var(--good) 14%,var(--panel))}
 .tactical-card:disabled{opacity:.48;cursor:not-allowed}
-.tactical-card .tc-top{display:flex;justify-content:space-between;width:100%;font-size:10px;color:var(--muted)}
+.tactical-card .tc-top{display:flex;justify-content:space-between;align-items:center;gap:4px;width:100%;font-size:10px;color:var(--muted)}
 .tactical-card .tc-tag{color:var(--accent);font-weight:700}
-.tactical-card .tc-cost{font-family:var(--font-m);color:#ffd9a8}
-.tactical-card .tc-name{font-size:12px;color:var(--fg)}
-.tactical-card .tc-sub{font-size:10px;color:var(--muted)}
-.tactical-card .tc-desc{font-size:10px;line-height:1.3;color:var(--fg);opacity:.9}
+.tactical-card .tc-sub{font-size:10px;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tactical-card .tc-cost{font-family:var(--font-m);font-weight:700;padding:1px 4px;border-radius:3px;font-size:10px}
+.tactical-card .tc-cost.is-gain{color:#7ef7b8;background:rgba(46,204,113,.16)}
+.tactical-card .tc-cost.is-cost{color:#ffd98a;background:rgba(255,193,7,.15)}
+.tactical-card .tc-name{font-size:12.5px;color:var(--fg);margin-top:1px}
+.tactical-card .tc-entry{font-size:10px;color:#9cd6ff}
+.tactical-card .tc-desc{font-size:10.5px;line-height:1.35;color:var(--fg);opacity:.92}
+.tactical-card .tc-foot{display:flex;justify-content:space-between;align-items:center;width:100%;margin-top:2px;padding-top:3px;
+  border-top:1px dashed color-mix(in srgb,var(--line) 70%,transparent);font-size:10px;color:var(--muted)}
+.tactical-card.ready .tc-state{color:var(--accent);font-weight:700}
+.tactical-pending-row{margin-top:7px;padding-top:6px;border-top:1px dashed var(--line);display:flex;flex-wrap:wrap;align-items:center;gap:5px;font-size:11px}
+.tactical-pending-row .tp-label{color:var(--muted);font-weight:600}
+.tp-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border:1px solid var(--line);border-radius:4px;
+  background:color-mix(in srgb,var(--panel) 80%,transparent);font-size:11px;color:var(--fg)}
+.tp-chip small{color:var(--muted);font-size:10px}
+.tactical-pick-box{margin:8px 0 10px;padding:10px 12px;border:1.5px solid color-mix(in srgb,var(--accent) 68%,var(--line));border-radius:7px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 12%,var(--panel2)),var(--panel))}
+.tactical-deck-preview{margin:8px 0;padding:8px 10px;border:1px solid color-mix(in srgb,var(--accent) 38%,var(--line));border-radius:6px;
+  background:color-mix(in srgb,var(--panel2) 75%,transparent)}
+.tactical-deck-preview h4{margin:0 0 6px;font-size:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
+.tactical-deck-preview .tdp-row{display:flex;align-items: flex-start;gap:6px;margin-top:4px;font-size:11px}
+.tactical-deck-preview .tdp-label{color:var(--muted);white-space:nowrap;padding-top:2px}
+.tactical-deck-preview .tdp-chips{display:flex;flex-wrap:wrap;gap:5px}
 </style>
 
 <div class="app">
@@ -6612,7 +6632,7 @@ const 战斗结构 = {
 
   // 【初稿·待作者调】战术卡牌系统 P1（三层牌池 · 初始与条件触发发牌 · 气力轮转 · 招募晋升3选1）
   战术卡牌: {
-    开: false,                 // 默认 false 保旧测试与默认路径 2788 零污染；开启或显式调用时激活完整三层战术卡牌
+    开: true,                  // 默认 true（练习战 / 肉鸽战 / 编队 / 招募 / 晋升默认全开；simulate 纯后台模拟默认不写发牌日志保 2788 基线）
     初始手牌上限: 6,           // 开战初始装入的手牌上限
     手牌总上限: 8,             // 含战斗中条件触发发牌的同屏手牌上限
     招募选牌数: 3,             // 招募/晋升时 N 选 3 供玩家 3 选 1
@@ -7263,11 +7283,13 @@ function 战术卡牌参数() {
 }
 
 function 战术卡牌开(ctx) {
-  if (typeof 战斗结构 !== 'undefined' && 战斗结构 && 战斗结构.战术卡牌 && 战斗结构.战术卡牌.开) return true;
   if (ctx && typeof ctx === 'object') {
+    if (ctx.战术卡牌开 === false) return false;
+    if (ctx.选项 && ctx.选项.战术卡牌 === false) return false;
     if (ctx.战术卡牌开 === true) return true;
     if (ctx.选项 && ctx.选项.战术卡牌 === true) return true;
   }
+  if (typeof 战斗结构 !== 'undefined' && 战斗结构 && 战斗结构.战术卡牌 && 战斗结构.战术卡牌.开) return true;
   return false;
 }
 
@@ -11738,8 +11760,20 @@ function 生成队伍牌池(allies, 选项) {
       全部牌池.push(克隆战术牌(c));
     }
   }
+  if (选项 && 选项.补齐基础激励 && !已收.has('C_CMD_1')) {
+    const 基础激励 = 全表.find(c => c && c.id === 'C_CMD_1');
+    if (基础激励) {
+      已收.add('C_CMD_1');
+      全部牌池.unshift(克隆战术牌(基础激励));
+    }
+  }
   const 初始上限 = Number((选项 && 选项.初始手牌上限) || 战术卡牌参数().初始手牌上限) || 6;
-  const 初始手牌 = 全部牌池.filter(c => c.入牌 === '初始').slice(0, 初始上限).map(克隆战术牌);
+  const 初始候选 = 全部牌池.filter(c => c.入牌 === '初始').slice().sort((a, b) => {
+    const a0 = (Number(a.耗气) === 0 && Number(a.回气) > 0) ? 0 : 1;
+    const b0 = (Number(b.耗气) === 0 && Number(b.回气) > 0) ? 0 : 1;
+    return a0 - b0;
+  });
+  const 初始手牌 = 初始候选.slice(0, 初始上限).map(克隆战术牌);
   const 待触发牌 = 全部牌池.filter(c => c.入牌 === '条件').map(克隆战术牌);
   const 职业牌池 = 全部牌池.filter(c => c.层级 === '职业');
   const 势力牌池 = 全部牌池.filter(c => c.层级 === '势力');
@@ -11884,18 +11918,23 @@ function 检查条件发牌(ctx, 事件类型, 载荷) {
       card.触发回合 = ctx.turn || 1;
       ctx.战术手牌.push(card);
       新发牌们.push(card);
-      if (Array.isArray(ctx.log)) {
-        pushLog(ctx, `〔发牌〕满足「${card.触发说明}」→ 获得战术牌【${card.名}】`, {
-          类型: '发牌',
-          卡牌ID: card.id,
-          牌名: card.名,
-          层级: card.层级,
-          归属: card.归属,
-          触发条件码: card.触发条件码,
-          触发说明: card.触发说明,
-          精神标签: card.精神标签,
-          回合: ctx.turn || 1,
-        });
+      const 日志文本 = `〔发牌〕满足「${card.触发说明}」→ 获得战术牌【${card.名}】`;
+      const 日志载荷 = {
+        类型: '发牌',
+        卡牌ID: card.id,
+        牌名: card.名,
+        层级: card.层级,
+        归属: card.归属,
+        触发条件码: card.触发条件码,
+        触发说明: card.触发说明,
+        精神标签: card.精神标签,
+        回合: ctx.turn || 1,
+      };
+      if (Array.isArray(ctx.log) && (ctx.战术卡牌写日志 || !(载荷 && 载荷._内部自动))) {
+        pushLog(ctx, 日志文本, 日志载荷);
+      } else {
+        if (!Array.isArray(ctx.待写发牌日志)) ctx.待写发牌日志 = [];
+        ctx.待写发牌日志.push({ 文本: 日志文本, 载荷: 日志载荷 });
       }
     } else {
       剩余待触发.push(card);
@@ -11966,6 +12005,13 @@ function 打战术牌(ctx, cardId) {
 
   const 上限 = Number(气势总攻参数().上限) || 100;
   ctx.气势 = Math.max(0, Math.min(上限, 气势前 - 耗 + 回));
+  ctx.战术卡牌写日志 = true;
+  if (Array.isArray(ctx.待写发牌日志) && ctx.待写发牌日志.length && Array.isArray(ctx.log)) {
+    for (const 待 of ctx.待写发牌日志) {
+      if (待 && 待.文本) pushLog(ctx, 待.文本, 待.载荷);
+    }
+    ctx.待写发牌日志 = [];
+  }
 
   const allies = livingOf('ally', ctx);
   const enemies = livingOf('enemy', ctx);
@@ -12360,7 +12406,7 @@ function 回合开始(ctx) {
   词条冷却延长(ctx);
   词条隐身刷新(ctx);
   if (typeof 战术卡牌开 === 'function' && 战术卡牌开(ctx) && typeof 检查条件发牌 === 'function') {
-    检查条件发牌(ctx, '回合开始', { 回合: ctx.turn });
+    检查条件发牌(ctx, '回合开始', { 回合: ctx.turn, _内部自动: true });
   }
 }
 
@@ -12701,6 +12747,7 @@ function resolveAction(actor, action, ctx) {
         暴击: rec.字段.暴击,
         击破: 打死了,
         未命中段数: 未中段,
+        _内部自动: true,
       });
     }
   }
@@ -12794,7 +12841,7 @@ function endTurn(ctx) {
       if (c && c.当前冷却 > 0) c.当前冷却 = Math.max(0, c.当前冷却 - 1);
     }
     if (typeof 检查条件发牌 === 'function') {
-      检查条件发牌(ctx, '回合结束', { 回合: ctx.turn });
+      检查条件发牌(ctx, '回合结束', { 回合: ctx.turn, _内部自动: true });
     }
   }
 }
@@ -12868,13 +12915,20 @@ function 开局(我方编成, 敌方编成, 种子, 单位开关表, 选项) {
   }
   if (typeof 战术卡牌开 === 'function' && 战术卡牌开(ctx) && typeof 生成队伍牌池 === 'function') {
     ctx.战术卡牌开 = true;
-    const 默气 = Number(战术卡牌参数().初始默认气力);
-    ctx.气势 = (选项 && Number.isFinite(Number(选项.初始气势))) ? Number(选项.初始气势) : (Number.isFinite(默气) ? 默气 : 25);
-    const 池 = 生成队伍牌池(ctx.allies, 选项);
+    if (选项 && Number.isFinite(Number(选项.初始气势))) {
+      ctx.气势 = Number(选项.初始气势);
+      ctx.战术卡牌写日志 = true;
+    } else if (选项 && 选项.战术卡牌 === true) {
+      const 默气 = Number(战术卡牌参数().初始默认气力);
+      ctx.气势 = Number.isFinite(默气) ? 默气 : 25;
+      ctx.战术卡牌写日志 = true;
+    }
+    const 池 = 生成队伍牌池(ctx.allies, Object.assign({ 补齐基础激励: true }, 选项 || {}));
     ctx.战术牌池 = 池.全部牌池;
     ctx.战术手牌 = 池.初始手牌;
     ctx.待触发战术牌 = 池.待触发牌;
     ctx.已打出战术牌 = [];
+    ctx.待写发牌日志 = [];
     ctx.累计未命中段数 = 0;
   }
   return ctx;
@@ -12996,7 +13050,7 @@ function 第几回合的战术(方针, 回合) {
 function simulate(我方, 敌方, 方针, 种子, 选项) {
   const 表 = 是方针对照表(方针) ? 方针 : null;
   const 起手 = 第几回合的方针(方针, 1);
-  const ctx = 开局(我方, 敌方, 种子, null, Object.assign({}, 选项 || {}, { 方针: 起手 }));
+  const ctx = 开局(我方, 敌方, 种子, null, Object.assign({ 战术卡牌: false }, 选项 || {}, { 方针: 起手 }));
   /* 按回合的表：每个回合开始前换一次（**没写的回合沿用上一回合** = 表里 ≤ 本回合的最后一条）——
      写进 `ctx.当局方针`，由 `回合开始()` 里的 `方针回合()` 落地（和玩家在指令阶段改方针同一个位置）。 */
   ctx.当局方针 = 表 ? 起手 : null;
@@ -18458,6 +18512,17 @@ const 肉鸽界面 = {
     const 次序 = 清单.filter(x => x.到).sort((a, b) => a.价 - b.价);
     return `<section class="card">
       <h3>晋升<span class="small">部队 Lv${R.等级}（出击上限 ${肉鸽.出击上限()} 台 = 等级那条 ${出击上限(R.等级)} ＋ 藏品 ${藏品部署位加成(R)}） · 希望 <b>${R.希望}</b> · 10 → 20 → 30，一次一档，不能跳级</span></h3>
+      ${(typeof 战术卡牌开 === 'function' && 战术卡牌开() && Array.isArray(R.待选战术牌) && R.待选战术牌.length)
+        ? `<div class="rv-card tactical-pick-box" data-tactical-pick="1"><h3>🎴 战术卡牌构筑（晋升奖励 · 3 选 1 加入队伍牌库）<span class="small">已收集 ${(R.战术牌库 || []).length} 张 · 选 1 张带入后续全部战斗</span></h3><div class="th-cards">${R.待选战术牌.map(cid => {
+            const c = (战术卡牌表 || []).find(x => x && x.id === cid);
+            if (!c) return '';
+            const 耗 = Number(c.耗气) || 0, 回 = Number(c.回气) || 0;
+            const 气标 = 回 > 0 ? (耗 > 0 ? `-${耗}/+${回}气` : `+${回}气`) : `耗${耗}气`;
+            const 气类 = 回 > 0 && 耗 === 0 ? ' is-gain' : ' is-cost';
+            const 层类 = c.层级 === '职业' ? 'tier-class' : (c.层级 === '势力' ? 'tier-faction' : 'tier-char');
+            const 入牌文 = c.入牌 === '初始' ? '⚡ 开战初始入牌' : `🔒 条件触发：${c.触发说明}`;
+            return `<button class="tactical-card ${层类} ready" data-act="选战术牌:${c.id}" data-card-id="${c.id}"><span class="tc-top"><span class="tc-tag">【${c.精神标签 || c.层级}】</span><span class="tc-sub">${c.层级}·${c.归属}</span><span class="tc-cost${气类}">${气标}</span></span><b class="tc-name">${c.名}</b><span class="tc-entry">${入牌文}</span><span class="tc-desc">${c.效果说明}</span><span class="tc-foot"><span class="tc-uses">限 ${c.限次 || 1} 次/场</span><span class="tc-state">点击选入牌库 →</span></span></button>`;
+          }).join('')}</div></div>` : ''}
       <p class="small" data-tickets="1">手上的招募券（<b>${(R.券 || []).length}</b> 张）：
         ${券按钮组Html() || '<b>一张都没有</b>（战后每场给 1 张、招募站给 1 张 —— 照战棋 31:284,298 / 30:63-67）'}</p>
       <p class="small">价格照战棋（<code>22-输入.js:431</code> 的 <code>PRICE</code>）：
@@ -18652,10 +18717,15 @@ const 肉鸽界面 = {
           ? '<small>（一张都没有 —— 招募 / 晋升都要用券）</small>'
           : `<small>${券汇总文字(R)}</small>`}</span></span></h3>
       ${(typeof 战术卡牌开 === 'function' && 战术卡牌开() && Array.isArray(R.待选战术牌) && R.待选战术牌.length)
-        ? `<div class="rv-card tactical-pick-box" data-tactical-pick="1"><h3>战术牌 3 选 1（招募/晋升奖励）</h3><div class="th-cards">${R.待选战术牌.map(cid => {
+        ? `<div class="rv-card tactical-pick-box" data-tactical-pick="1"><h3>🎴 战术卡牌构筑（3 选 1 加入队伍牌库）<span class="small">已收集 ${(R.战术牌库 || []).length} 张 · 选 1 张带入后续全部战斗</span></h3><div class="th-cards">${R.待选战术牌.map(cid => {
             const c = (战术卡牌表 || []).find(x => x && x.id === cid);
             if (!c) return '';
-            return `<button class="tactical-card ready" data-act="选战术牌:${c.id}" data-card-id="${c.id}"><span class="tc-top"><span class="tc-tag">${c.精神标签 || c.层级}</span><span class="tc-cost">${c.耗气}气</span></span><b class="tc-name">${c.名}</b><span class="tc-sub">${c.层级}·${c.归属}</span><span class="tc-desc">${c.效果说明}</span></button>`;
+            const 耗 = Number(c.耗气) || 0, 回 = Number(c.回气) || 0;
+            const 气标 = 回 > 0 ? (耗 > 0 ? `-${耗}/+${回}气` : `+${回}气`) : `耗${耗}气`;
+            const 气类 = 回 > 0 && 耗 === 0 ? ' is-gain' : ' is-cost';
+            const 层类 = c.层级 === '职业' ? 'tier-class' : (c.层级 === '势力' ? 'tier-faction' : 'tier-char');
+            const 入牌文 = c.入牌 === '初始' ? '⚡ 开战初始入牌' : `🔒 条件触发：${c.触发说明}`;
+            return `<button class="tactical-card ${层类} ready" data-act="选战术牌:${c.id}" data-card-id="${c.id}"><span class="tc-top"><span class="tc-tag">【${c.精神标签 || c.层级}】</span><span class="tc-sub">${c.层级}·${c.归属}</span><span class="tc-cost${气类}">${气标}</span></span><b class="tc-name">${c.名}</b><span class="tc-entry">${入牌文}</span><span class="tc-desc">${c.效果说明}</span><span class="tc-foot"><span class="tc-uses">限 ${c.限次 || 1} 次/场</span><span class="tc-state">点击选入牌库 →</span></span></button>`;
           }).join('')}</div></div>` : ''}
       <div class="rv-card"><h3>手上的招募券（${券们.length}）<span class="small">点「选这张券」→ 下面的候选池只留这张券对得上的人；**「先留着」就是什么都不点**（券随时还能用来晋升）</span></h3>
         ${券卡}</div>
@@ -24344,6 +24414,25 @@ const 界面 = {
     }).join('');
     const 选中 = B.选中 ? this.预览(B.选中, B.等级) : null;
     const 当前节点 = 肉鸽模式 ? 肉鸽.当前节点() : null;
+    const 牌池预览块 = (typeof 战术卡牌开 === 'function' && 战术卡牌开() && typeof 生成队伍牌池 === 'function') ? (() => {
+      const 预览池 = 生成队伍牌池(B.出击.map(x => ({ 键: x.键, 位: x.位 })), {
+        补齐基础激励: true,
+        已选战术牌: (肉鸽模式 && 肉鸽.RUN && Array.isArray(肉鸽.RUN.战术牌库)) ? 肉鸽.RUN.战术牌库 : [],
+      });
+      const 初Html = 预览池.初始手牌.map(c => {
+        const 耗 = Number(c.耗气) || 0, 回 = Number(c.回气) || 0;
+        const 气标 = 回 > 0 ? `+${回}气` : `耗${耗}气`;
+        return `<span class="tp-chip init" title="${c.效果说明}"><b>【${c.精神标签 || c.层级}】${c.名}</b><small>${c.层级}·${c.归属}｜${气标}</small></span>`;
+      }).join('') || '<span class="small">（无）</span>';
+      const 条Html = 预览池.待触发牌.map(c =>
+        `<span class="tp-chip cond" title="${c.效果说明}">🔒<b>【${c.名}】</b><small>${c.触发说明}</small></span>`
+      ).join('') || '<span class="small">（无）</span>';
+      return `<div class="tactical-deck-preview" data-tactical-preview="1">
+        <h4>🎴 本场出击战术牌池预览<span class="small">初始手牌 ${预览池.初始手牌.length} 张 · 条件触发牌 ${预览池.待触发牌.length} 张（随参战职业/势力/角色实时变化）</span></h4>
+        <div class="tdp-row"><span class="tdp-label">⚡ 初始手牌（开战直接入牌）：</span><div class="tdp-chips">${初Html}</div></div>
+        <div class="tdp-row"><span class="tdp-label">🔒 条件触发牌（战中达成条件发牌）：</span><div class="tdp-chips">${条Html}</div></div>
+      </div>`;
+    })() : '';
     return `<section class="编队屏">
       <div class="col 候选" data-drop="候选">
         <h3>${肉鸽模式 ? `名册（${候选.length} 台）` : `机师（${候选.length} 名）`}<span class="small">拖到右边格子里，或者点一名再点格子；格子之间也能拖（互换）</span></h3>
@@ -24364,6 +24453,7 @@ const 界面 = {
           <button data-act="默认五人队">${肉鸽模式 ? `把名册前 ${上限} 台摆上` : `摆上前 ${上限} 台`}</button>
           <button data-act="清空">清空</button>
         </div>
+        ${牌池预览块}
         ${肉鸽模式 ? `<p class="small">这一场：第 ${肉鸽.RUN.层} 层 <b>${节点类型表[当前节点 && 当前节点.类型] ? 节点类型表[当前节点.类型].名 : '作战'}</b>（敌人由编成表随机抽；敌人等级按层数走）</p>
           <div class="acts" data-center="1"><button class="primary" data-act="开战">开战 →</button><button data-act="回大地图">回大地图</button></div>`
         : `<h3>敌方编成<span class="small">（方案第 10 节第 4 条：这 3 条是初稿，等作者配）</span></h3>
@@ -24457,30 +24547,40 @@ const 界面 = {
         </div>
         <p class="small tactic-forecast" data-tactic-forecast="1">${气预.文本}</p>`
       : '';
-    const 手牌开 = !!(this.ctx && typeof 战术卡牌开 === 'function' && 战术卡牌开(this.ctx));
+    const 手牌开 = !!(this.ctx && typeof 战术卡牌开 === 'function' && 战术卡牌开(this.ctx) && Array.isArray(this.ctx.战术手牌));
     const 手牌块 = 手牌开 ? (() => {
       const 手牌们 = Array.isArray(this.ctx.战术手牌) ? this.ctx.战术手牌 : [];
-      const 待触发数 = Array.isArray(this.ctx.待触发战术牌) ? this.ctx.待触发战术牌.length : 0;
+      const 待触发们 = Array.isArray(this.ctx.待触发战术牌) ? this.ctx.待触发战术牌 : [];
+      const 待触发数 = 待触发们.length;
       const 当前气 = Number(this.ctx.气势) || 0;
+      const 气上限 = (气预 && 气预.上限) || 100;
       const 上限 = Number(战术卡牌参数().手牌总上限) || 8;
       const 卡Html = 手牌们.map(c => {
         const 耗 = Number(c.耗气) || 0;
         const 回 = Number(c.回气) || 0;
-        const 够气 = 当前气 >= 耗 && (Number(c.当前冷却) || 0) <= 0 && (c.剩余次数 == null || c.剩余次数 > 0);
+        const 剩 = c.剩余次数 != null ? Number(c.剩余次数) : 1;
+        const 冷却 = Number(c.当前冷却) || 0;
+        const 够气 = 当前气 >= 耗 && 冷却 <= 0 && 剩 > 0;
         const 可打 = 可点 && 够气;
         const 层类 = c.层级 === '职业' ? 'tier-class' : (c.层级 === '势力' ? 'tier-faction' : (c.层级 === '角色' ? 'tier-char' : 'tier-cmd'));
         const 新类 = c.新触发 ? ' is-triggered' : '';
-        const 气标 = 回 > 0 ? (耗 > 0 ? `-${耗}/+${回}气` : `+${回}气`) : `${耗}气`;
+        const 气标 = 回 > 0 ? (耗 > 0 ? `-${耗}/+${回}气` : `+${回}气`) : `耗${耗}气`;
+        const 气类 = 回 > 0 && 耗 === 0 ? ' is-gain' : ' is-cost';
+        const 状态文 = !可点 ? '回合播放中' : (冷却 > 0 ? `冷却 ${冷却} 回合` : (当前气 < 耗 ? `需 ${耗} 气势` : '点击发动'));
         return `<button class="tactical-card ${层类}${新类}${可打 ? ' ready' : ''}" data-act="打战术牌:${c.id}" data-card-id="${c.id}" data-tier="${c.层级}"${可打 ? '' : ' disabled'} title="【${c.名}】（${c.层级}·${c.归属}）${c.效果说明}">
-          <span class="tc-top"><span class="tc-tag">${c.精神标签 || c.层级}</span><span class="tc-cost">${气标}</span></span>
+          <span class="tc-top"><span class="tc-tag">【${c.精神标签 || c.层级}】</span><span class="tc-sub">${c.层级}·${c.归属}${c.新触发 ? ' · ★新触发' : ''}</span><span class="tc-cost${气类}">${气标}</span></span>
           <b class="tc-name">${c.名}</b>
-          <span class="tc-sub">${c.层级}·${c.归属}${c.新触发 ? ' · ★条件触发' : ''}</span>
           <span class="tc-desc">${c.效果说明}</span>
+          <span class="tc-foot"><span class="tc-uses">剩余 ${剩} 次</span><span class="tc-state">${状态文}</span></span>
         </button>`;
       }).join('');
+      const 待触发Html = 待触发数
+        ? 待触发们.map(p => `<span class="tp-chip" title="${p.效果说明}">🔒【${p.名}】<small>${p.触发说明}发牌</small></span>`).join('')
+        : '<span class="small">（本场待触发条件牌已全部入牌）</span>';
       return `<div class="tactical-hand-bar" data-tactical-hand="1" data-hand-count="${手牌们.length}" data-pending-count="${待触发数}">
-        <div class="th-head"><span>战术手牌 <b>${手牌们.length}/${上限}</b></span><span class="small">当前气势 <b>${当前气}</b> · 待触发条件牌 <b>${待触发数}</b> 张</span></div>
-        <div class="th-cards">${卡Html || '<span class="small">（当前无可用手牌）</span>'}</div>
+        <div class="th-head"><span>🎴 战术手牌（气势 <b>${当前气}/${气上限}</b> · 手牌 <b>${手牌们.length}/${上限}</b> · 待触发 <b>${待触发数}</b> 张）</span><span class="small">0费【激励】可回气启动连携 · 战中满足条件自动发牌</span></div>
+        <div class="th-cards">${卡Html || `<span class="small">（当前手牌已打完 · 待触发条件牌: ${待触发数} 张，满足战况条件自动发牌）</span>`}</div>
+        <div class="tactical-pending-row" data-tactical-pending="1"><span class="tp-label">待触发条件牌预览：</span>${待触发Html}</div>
       </div>`;
     })() : '';
     return `<div class="cmdpanel policybar">
@@ -25276,10 +25376,13 @@ const 界面 = {
   选战术牌(cardId) {
     const R = (typeof 肉鸽 !== 'undefined' && 肉鸽.RUN) || null;
     const ok = 选战术牌(R, cardId);
+    const 牌 = (typeof 战术卡牌表 !== 'undefined' && Array.isArray(战术卡牌表)) ? 战术卡牌表.find(x => x && x.id === cardId) : null;
     if (ok && typeof 肉鸽界面 !== 'undefined' && 肉鸽界面) {
-      肉鸽界面.设结果('成功', `已将战术牌【${cardId}】收入本局战术牌库（共 ${(R && R.战术牌库 ? R.战术牌库.length : 0)} 张）。`);
+      肉鸽界面.设结果('成功', `已将战术牌【${牌 ? 牌.名 : cardId}】收入本局战术牌库（共 ${(R && R.战术牌库 ? R.战术牌库.length : 0)} 张）。`);
     }
-    this.刷();
+    if (this.屏 === '晋升') this.开屏('晋升');
+    else if (this.屏 === '招募') this.开屏('招募');
+    else this.刷();
     return ok;
   },
   /* ★ TRANS-AM 的单位级开关（作者 2026-10-11 拍板「TRANS-AM 应该是单个单位开关的」；
@@ -25483,7 +25586,7 @@ const 界面 = {
     this.肉鸽编队模式 = false;
     this.种子 = (R.种子 + R.层 * 131 + R.场次 * 17 + (格 ? 格.k : 0) * 7) >>> 0;
     this.肉鸽战斗 = { 格类型, 类型: 详情.类型, 条目, 兜底: 详情.兜底, 请求类型: 肉鸽.当前战斗类型(格类型), 波次: 肉鸽.增援波次(条目) };
-    this.ctx = 开局(我方, 敌方, this.种子, null, { 波次: this.肉鸽战斗.波次 });
+    this.ctx = 开局(我方, 敌方, this.种子, null, { 波次: this.肉鸽战斗.波次, 已选战术牌: R.战术牌库 });
     /* ★ 2026-10-11 节点改造第 9 条：**侵蚀源「先付代价」**（★ 作者交代：不要改名，只补代价）。
        玩家在 `去节点` 弹出的「硬闯 / 花 8 源碳买净化」里选了硬闯 → 这一场敌方全体攻防 +15%。
        实现落点放在**界面这一层**（不改编成表、不动战斗内核）：开局之后按 `RUN.侵蚀源已净化` 现加。

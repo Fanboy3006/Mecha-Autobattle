@@ -90,7 +90,7 @@ function 回合开始(ctx) {
   词条冷却延长(ctx);
   词条隐身刷新(ctx);
   if (typeof 战术卡牌开 === 'function' && 战术卡牌开(ctx) && typeof 检查条件发牌 === 'function') {
-    检查条件发牌(ctx, '回合开始', { 回合: ctx.turn });
+    检查条件发牌(ctx, '回合开始', { 回合: ctx.turn, _内部自动: true });
   }
 }
 
@@ -431,6 +431,7 @@ function resolveAction(actor, action, ctx) {
         暴击: rec.字段.暴击,
         击破: 打死了,
         未命中段数: 未中段,
+        _内部自动: true,
       });
     }
   }

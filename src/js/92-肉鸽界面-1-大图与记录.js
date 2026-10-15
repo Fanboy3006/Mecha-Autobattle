@@ -503,6 +503,17 @@ const 肉鸽界面 = {
     const 次序 = 清单.filter(x => x.到).sort((a, b) => a.价 - b.价);
     return `<section class="card">
       <h3>晋升<span class="small">部队 Lv${R.等级}（出击上限 ${肉鸽.出击上限()} 台 = 等级那条 ${出击上限(R.等级)} ＋ 藏品 ${藏品部署位加成(R)}） · 希望 <b>${R.希望}</b> · 10 → 20 → 30，一次一档，不能跳级</span></h3>
+      ${(typeof 战术卡牌开 === 'function' && 战术卡牌开() && Array.isArray(R.待选战术牌) && R.待选战术牌.length)
+        ? `<div class="rv-card tactical-pick-box" data-tactical-pick="1"><h3>🎴 战术卡牌构筑（晋升奖励 · 3 选 1 加入队伍牌库）<span class="small">已收集 ${(R.战术牌库 || []).length} 张 · 选 1 张带入后续全部战斗</span></h3><div class="th-cards">${R.待选战术牌.map(cid => {
+            const c = (战术卡牌表 || []).find(x => x && x.id === cid);
+            if (!c) return '';
+            const 耗 = Number(c.耗气) || 0, 回 = Number(c.回气) || 0;
+            const 气标 = 回 > 0 ? (耗 > 0 ? `-${耗}/+${回}气` : `+${回}气`) : `耗${耗}气`;
+            const 气类 = 回 > 0 && 耗 === 0 ? ' is-gain' : ' is-cost';
+            const 层类 = c.层级 === '职业' ? 'tier-class' : (c.层级 === '势力' ? 'tier-faction' : 'tier-char');
+            const 入牌文 = c.入牌 === '初始' ? '⚡ 开战初始入牌' : `🔒 条件触发：${c.触发说明}`;
+            return `<button class="tactical-card ${层类} ready" data-act="选战术牌:${c.id}" data-card-id="${c.id}"><span class="tc-top"><span class="tc-tag">【${c.精神标签 || c.层级}】</span><span class="tc-sub">${c.层级}·${c.归属}</span><span class="tc-cost${气类}">${气标}</span></span><b class="tc-name">${c.名}</b><span class="tc-entry">${入牌文}</span><span class="tc-desc">${c.效果说明}</span><span class="tc-foot"><span class="tc-uses">限 ${c.限次 || 1} 次/场</span><span class="tc-state">点击选入牌库 →</span></span></button>`;
+          }).join('')}</div></div>` : ''}
       <p class="small" data-tickets="1">手上的招募券（<b>${(R.券 || []).length}</b> 张）：
         ${券按钮组Html() || '<b>一张都没有</b>（战后每场给 1 张、招募站给 1 张 —— 照战棋 31:284,298 / 30:63-67）'}</p>
       <p class="small">价格照战棋（<code>22-输入.js:431</code> 的 <code>PRICE</code>）：

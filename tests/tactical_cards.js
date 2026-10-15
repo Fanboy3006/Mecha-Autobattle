@@ -206,7 +206,6 @@ console.log('\n[4] 肉鸽招募/晋升 3 选 1 获牌与带入战斗');
 /* ================= [5] 战斗手牌栏 UI 与三层反馈 ================= */
 console.log('\n[5] 战斗手牌栏 UI 与三层反馈');
 {
-  G.战斗结构.战术卡牌.开 = true;
   try {
     G.界面.设等级(30);
     G.界面.默认五人队();
@@ -214,7 +213,7 @@ console.log('\n[5] 战斗手牌栏 UI 与三层反馈');
     const 屏El = doc.querySelector('#screen');
     const html1 = 屏El ? 屏El.innerHTML : '';
     assert(html1.includes('class="tactical-hand-bar"') && html1.includes('data-act="打战术牌:'),
-      '开启战术卡牌时战斗屏渲染 .tactical-hand-bar 与 data-act="打战术牌:<id>" 按钮');
+      '默认开启战术卡牌时战斗屏渲染 .tactical-hand-bar 与 data-act="打战术牌:<id>" 按钮');
 
     // 令某张高费牌气势不足 → 验证 disabled
     G.界面.ctx.气势 = 10;
@@ -240,23 +239,110 @@ console.log('\n[5] 战斗手牌栏 UI 与三层反馈');
     assert(行们.some(line => line.startsWith('战术卡牌：')),
       '战报行们包含「战术卡牌：…」结算汇总行');
   } finally {
-    G.战斗结构.战术卡牌.开 = false;
     G.界面.设等级(10);
   }
 }
 
-/* ================= [6] 默认关闭零污染红线 ================= */
-console.log('\n[6] 默认关闭零污染红线（战斗结构.战术卡牌.开 === false）');
+/* ================= [6] 后台模拟零污染与总闸可关红线 ================= */
+console.log('\n[6] 后台模拟零污染与总闸可关红线');
 {
-  assert(G.战斗结构.战术卡牌.开 === false, '战斗结构.战术卡牌.开 默认值为 false');
   const 敌方 = G.敌方规格组(G.编成到单位(G.编成表[0], 0));
-  const ctx = G.开局(G.默认五人队, 敌方, 20261013);
-  while (!ctx.result) G.打一回合(ctx);
-  const 卡牌相关日志 = ctx.log.filter(r => r.类型 === '战术牌' || r.类型 === '发牌');
-  assert(卡牌相关日志.length === 0 && ctx.战术手牌 === undefined,
-    '默认关闭时整场战斗 0 发牌日志、0 战术牌日志、不挂战术手牌字段');
-  const 统计 = G.战报统计({ 记录: ctx.log, 我方: ctx.allies, 敌方: ctx.enemies });
-  assert(统计.战术卡牌 === undefined, '默认关闭时 战报统计 不多出 战术卡牌 字段（旧测试战报零污染）');
+  const simRes = G.simulate(G.默认五人队, 敌方, {}, 20261013);
+  const sim卡牌日志 = simRes.记录.filter(r => r.类型 === '战术牌' || r.类型 === '发牌');
+  assert(sim卡牌日志.length === 0, 'simulate() 后台批量模拟默认不写发牌/战术牌日志（保持 2788 基线零污染）');
+  const 统计 = G.战报统计({ 记录: simRes.记录, 我方: simRes.我方, 敌方: simRes.敌方 });
+  assert(统计.战术卡牌 === undefined, '未打牌时 战报统计 不多出 战术卡牌 字段（旧测试战报零污染）');
+
+  G.战斗结构.战术卡牌.开 = false;
+  try {
+    const ctxOff = G.开局(G.默认五人队, 敌方, 20261013);
+    assert(ctxOff.战术手牌 === undefined, '手动关掉 战斗结构.战术卡牌.开 时不挂战术手牌字段');
+  } finally {
+    G.战斗结构.战术卡牌.开 = true;
+  }
+}
+
+/* ================= [7] 真实入口端到端验证（0 手改开关） ================= */
+console.log('\n[7] 真实入口端到端验证（0 手改开关：练习战 / 编队屏 / 肉鸽招募3选1 / 晋升3选1 / 肉鸽首战）');
+{
+  // ① 默认状态断言（严禁手改开关）
+  assert(G.战斗结构.战术卡牌.开 === true && G.战术卡牌开() === true,
+    '默认状态下 G.战斗结构.战术卡牌.开 === true 且 G.战术卡牌开() === true');
+
+  const 屏El = doc.querySelector('#screen');
+
+  // ② 真实玩家从菜单进入编队屏 → 校验 .tactical-deck-preview
+  G.界面.动作('回菜单');
+  G.界面.动作('去编队');
+  const 编队Html = 屏El ? 屏El.innerHTML : '';
+  assert(编队Html.includes('tactical-deck-preview') && 编队Html.includes('初始手牌') && 编队Html.includes('条件触发牌'),
+    '编队屏 DOM 真实包含 .tactical-deck-preview（显示当前出击阵容的初始手牌与条件触发牌预览）');
+
+  // ③ 真实玩家在练习模式点击开战 → 校验 .tactical-hand-bar / .tactical-card / .tactical-pending-row 并直接出牌
+  G.界面.动作('开战');
+  const 练习战Html = 屏El ? 屏El.innerHTML : '';
+  const 练习卡数 = (练习战Html.match(/class="tactical-card /g) || []).length;
+  assert(练习战Html.includes('tactical-hand-bar') && 练习卡数 >= 3 && 练习战Html.includes('tactical-pending-row'),
+    `练习模式战斗屏 DOM 真实包含 .tactical-hand-bar、.tactical-card（${练习卡数} 张 ≥ 3）与 .tactical-pending-row`);
+  const 练习出牌 = G.界面.动作('打战术牌:C_CMD_1');
+  assert(练习出牌 && 练习出牌.成功 && G.界面.ctx.气势 === 25,
+    `练习模式开战第 1 回合直接点击 界面.动作('打战术牌:C_CMD_1') 生效（气势 0 → ${G.界面.ctx.气势}）`);
+
+  // ④ 真实玩家进入肉鸽：开新局 → 招募机师 → 选战术牌 → 晋升机师 → 选战术牌 → 进入肉鸽首场战斗
+  G.界面.动作('回菜单');
+  G.肉鸽.新的一局('天人', 20261013);
+  G.界面.开屏('招募');
+  G.界面.动作('用券:0');
+  const 选券Html = 屏El ? 屏El.innerHTML : '';
+  const 招匹配1 = 选券Html.match(/data-act="招募:([^"]+)"/);
+  const 可招键1 = 招匹配1 && 招匹配1[1];
+  assert(!!可招键1, `肉鸽开局选券后招募屏存在可招募机师按钮（${可招键1}）`);
+  G.界面.动作(`招募:${可招键1}`);
+  const 招募后Html = 屏El ? 屏El.innerHTML : '';
+  const 招募待选 = (G.肉鸽.RUN.待选战术牌 || []).slice();
+  assert(招募后Html.includes('tactical-pick-box') && 招募待选.length === 3,
+    `招募机师后招募屏 DOM 真实出现 .tactical-pick-box（3 张候选牌：${招募待选.join(', ')}）`);
+  const 选招牌 = 招募待选[0];
+  G.界面.动作(`选战术牌:${选招牌}`);
+  assert(G.肉鸽.RUN.战术牌库.includes(选招牌) && !(屏El.innerHTML || '').includes('tactical-pick-box'),
+    `在招募屏点击 选战术牌:${选招牌} 后并入 RUN.战术牌库 且 3 选 1 面板收起`);
+
+  // 再招第 2 台（Lv10）并去晋升屏升到 Lv20 → 验证晋升屏 .tactical-pick-box
+  G.界面.动作('用券:0');
+  const 招匹配2 = (屏El ? 屏El.innerHTML : '').match(/data-act="招募:([^"]+)"/);
+  if (招匹配2 && 招匹配2[1]) G.界面.动作(`招募:${招匹配2[1]}`);
+  if (G.肉鸽.RUN.待选战术牌 && G.肉鸽.RUN.待选战术牌.length) {
+    G.界面.动作(`选战术牌:${G.肉鸽.RUN.待选战术牌[0]}`);
+  }
+  // 补一张同类券与希望供第 2 台机师在晋升屏晋升
+  const 升目标键 = (G.肉鸽.RUN.队伍.find(m => m.等级 === 10) || G.肉鸽.RUN.队伍[0]).键;
+  const 升目标Tpl = G.tplOf(升目标键);
+  G.肉鸽.RUN.希望 = Math.max(G.肉鸽.RUN.希望, 20);
+  G.肉鸽.RUN.券.push({ 类: '职业', 名: 升目标Tpl.tags.战斗分类, 档: null, 来源: '测试补券' });
+  G.界面.动作('去晋升');
+  G.界面.动作(`晋升:${升目标键}`);
+  const 晋升后Html = 屏El ? 屏El.innerHTML : '';
+  const 晋升待选 = (G.肉鸽.RUN.待选战术牌 || []).slice();
+  assert(G.界面.屏 === '晋升' && 晋升后Html.includes('tactical-pick-box') && 晋升待选.length === 3,
+    `晋升机师后晋升屏 DOM 真实出现 .tactical-pick-box（3 张候选牌：${晋升待选.join(', ')}）`);
+  const 选升牌 = 晋升待选[0];
+  G.界面.动作(`选战术牌:${选升牌}`);
+  assert(G.界面.屏 === '晋升' && G.肉鸽.RUN.战术牌库.includes(选升牌) && !(屏El.innerHTML || '').includes('tactical-pick-box'),
+    `在晋升屏点击 选战术牌:${选升牌} 后保持在晋升屏、卡牌并入 RUN.战术牌库 且面板收起`);
+
+  // 进入肉鸽首场战斗 → 验证 .tactical-hand-bar 且包含已选入 RUN.战术牌库 的卡牌
+  G.界面.动作('回大地图');
+  G.肉鸽.RUN.出击阵 = G.肉鸽.RUN.队伍.slice(0, 3).map((m, i) => ({ 键: m.键, 位: i }));
+  G.肉鸽.RUN.出击 = G.肉鸽.RUN.出击阵.map(x => x.键);
+  G.界面.打这一场();
+  const 肉鸽战Html = 屏El ? 屏El.innerHTML : '';
+  const 全场牌Ids = G.界面.ctx.战术手牌.concat(G.界面.ctx.待触发战术牌).map(c => c.id);
+  assert(肉鸽战Html.includes('tactical-hand-bar') && 全场牌Ids.includes(选招牌) && 全场牌Ids.includes(选升牌),
+    `进入肉鸽战斗后 DOM 真实渲染 .tactical-hand-bar 且包含刚选入 RUN.战术牌库 的卡牌（${选招牌}、${选升牌}）`);
+  G.肉鸽.清存档();
+  G.肉鸽.RUN = null;
+  G.肉鸽.进行中 = false;
+  G.界面.动作('回菜单');
 }
 
 console.log(`\n========================================`);

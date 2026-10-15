@@ -659,27 +659,47 @@ button:disabled{opacity:.4;cursor:not-allowed}
   .dlg-body{max-height:70vh}
 }
 
-/* ---------- 20) 战术卡牌手牌栏（2026-10-13 · P1） ---------- */
-.tactical-hand-bar{margin-top:6px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;
-  background:color-mix(in srgb,var(--panel2) 70%,transparent)}
-.tactical-hand-bar .th-head{display:flex;justify-content:space-between;align-items:center;
-  font-size:11.5px;margin-bottom:5px;color:var(--fg)}
-.tactical-hand-bar .th-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(138px,1fr));gap:6px}
-.tactical-card{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:2px;
-  padding:5px 7px;border:1px solid var(--line);border-radius:5px;
-  background:color-mix(in srgb,var(--panel) 88%,transparent);color:var(--fg);cursor:pointer;
-  transition:border-color .15s,transform .12s}
-.tactical-card.tier-class{border-left:3px solid #6ec1ff}
-.tactical-card.tier-faction{border-left:3px solid #c59bff}
-.tactical-card.tier-char{border-left:3px solid #ffc96b}
-.tactical-card.tier-cmd{border-left:3px solid #ff7d7d}
-.tactical-card.ready:hover{border-color:var(--accent);transform:translateY(-1px)}
-.tactical-card.is-triggered{box-shadow:0 0 0 1px color-mix(in srgb,var(--good) 65%,transparent);
-  background:color-mix(in srgb,var(--good) 12%,var(--panel))}
+/* ---------- 20) 战术卡牌手牌栏与构筑面板（2026-10-13 · P1.1） ---------- */
+.tactical-hand-bar{margin-top:8px;padding:8px 10px;border:1px solid color-mix(in srgb,var(--accent) 42%,var(--line));border-radius:7px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--panel2) 86%,transparent),color-mix(in srgb,var(--panel) 94%,transparent))}
+.tactical-hand-bar .th-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;
+  font-size:12px;margin-bottom:6px;color:var(--fg)}
+.tactical-hand-bar .th-cards,.tactical-pick-box .th-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:7px}
+.tactical-card{display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;text-align:left;gap:3px;
+  padding:6px 8px;border:1px solid var(--line);border-radius:6px;
+  background:color-mix(in srgb,var(--panel) 92%,transparent);color:var(--fg);cursor:pointer;
+  transition:border-color .15s,transform .12s,box-shadow .15s}
+.tactical-card.tier-class{border-left:3.5px solid #6ec1ff}
+.tactical-card.tier-faction{border-left:3.5px solid #c59bff}
+.tactical-card.tier-char{border-left:3.5px solid #ffc96b}
+.tactical-card.tier-cmd{border-left:3.5px solid #ff7d7d}
+.tactical-card.ready{border-color:color-mix(in srgb,var(--accent) 48%,var(--line))}
+.tactical-card.ready:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 3px 10px rgba(0,0,0,.35)}
+.tactical-card.is-triggered{box-shadow:0 0 0 1px color-mix(in srgb,var(--good) 75%,transparent);
+  background:color-mix(in srgb,var(--good) 14%,var(--panel))}
 .tactical-card:disabled{opacity:.48;cursor:not-allowed}
-.tactical-card .tc-top{display:flex;justify-content:space-between;width:100%;font-size:10px;color:var(--muted)}
+.tactical-card .tc-top{display:flex;justify-content:space-between;align-items:center;gap:4px;width:100%;font-size:10px;color:var(--muted)}
 .tactical-card .tc-tag{color:var(--accent);font-weight:700}
-.tactical-card .tc-cost{font-family:var(--font-m);color:#ffd9a8}
-.tactical-card .tc-name{font-size:12px;color:var(--fg)}
-.tactical-card .tc-sub{font-size:10px;color:var(--muted)}
-.tactical-card .tc-desc{font-size:10px;line-height:1.3;color:var(--fg);opacity:.9}
+.tactical-card .tc-sub{font-size:10px;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tactical-card .tc-cost{font-family:var(--font-m);font-weight:700;padding:1px 4px;border-radius:3px;font-size:10px}
+.tactical-card .tc-cost.is-gain{color:#7ef7b8;background:rgba(46,204,113,.16)}
+.tactical-card .tc-cost.is-cost{color:#ffd98a;background:rgba(255,193,7,.15)}
+.tactical-card .tc-name{font-size:12.5px;color:var(--fg);margin-top:1px}
+.tactical-card .tc-entry{font-size:10px;color:#9cd6ff}
+.tactical-card .tc-desc{font-size:10.5px;line-height:1.35;color:var(--fg);opacity:.92}
+.tactical-card .tc-foot{display:flex;justify-content:space-between;align-items:center;width:100%;margin-top:2px;padding-top:3px;
+  border-top:1px dashed color-mix(in srgb,var(--line) 70%,transparent);font-size:10px;color:var(--muted)}
+.tactical-card.ready .tc-state{color:var(--accent);font-weight:700}
+.tactical-pending-row{margin-top:7px;padding-top:6px;border-top:1px dashed var(--line);display:flex;flex-wrap:wrap;align-items:center;gap:5px;font-size:11px}
+.tactical-pending-row .tp-label{color:var(--muted);font-weight:600}
+.tp-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border:1px solid var(--line);border-radius:4px;
+  background:color-mix(in srgb,var(--panel) 80%,transparent);font-size:11px;color:var(--fg)}
+.tp-chip small{color:var(--muted);font-size:10px}
+.tactical-pick-box{margin:8px 0 10px;padding:10px 12px;border:1.5px solid color-mix(in srgb,var(--accent) 68%,var(--line));border-radius:7px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 12%,var(--panel2)),var(--panel))}
+.tactical-deck-preview{margin:8px 0;padding:8px 10px;border:1px solid color-mix(in srgb,var(--accent) 38%,var(--line));border-radius:6px;
+  background:color-mix(in srgb,var(--panel2) 75%,transparent)}
+.tactical-deck-preview h4{margin:0 0 6px;font-size:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
+.tactical-deck-preview .tdp-row{display:flex;align-items: flex-start;gap:6px;margin-top:4px;font-size:11px}
+.tactical-deck-preview .tdp-label{color:var(--muted);white-space:nowrap;padding-top:2px}
+.tactical-deck-preview .tdp-chips{display:flex;flex-wrap:wrap;gap:5px}

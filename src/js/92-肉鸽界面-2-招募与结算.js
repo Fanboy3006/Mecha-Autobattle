@@ -80,10 +80,15 @@
           ? '<small>（一张都没有 —— 招募 / 晋升都要用券）</small>'
           : `<small>${券汇总文字(R)}</small>`}</span></span></h3>
       ${(typeof 战术卡牌开 === 'function' && 战术卡牌开() && Array.isArray(R.待选战术牌) && R.待选战术牌.length)
-        ? `<div class="rv-card tactical-pick-box" data-tactical-pick="1"><h3>战术牌 3 选 1（招募/晋升奖励）</h3><div class="th-cards">${R.待选战术牌.map(cid => {
+        ? `<div class="rv-card tactical-pick-box" data-tactical-pick="1"><h3>🎴 战术卡牌构筑（3 选 1 加入队伍牌库）<span class="small">已收集 ${(R.战术牌库 || []).length} 张 · 选 1 张带入后续全部战斗</span></h3><div class="th-cards">${R.待选战术牌.map(cid => {
             const c = (战术卡牌表 || []).find(x => x && x.id === cid);
             if (!c) return '';
-            return `<button class="tactical-card ready" data-act="选战术牌:${c.id}" data-card-id="${c.id}"><span class="tc-top"><span class="tc-tag">${c.精神标签 || c.层级}</span><span class="tc-cost">${c.耗气}气</span></span><b class="tc-name">${c.名}</b><span class="tc-sub">${c.层级}·${c.归属}</span><span class="tc-desc">${c.效果说明}</span></button>`;
+            const 耗 = Number(c.耗气) || 0, 回 = Number(c.回气) || 0;
+            const 气标 = 回 > 0 ? (耗 > 0 ? `-${耗}/+${回}气` : `+${回}气`) : `耗${耗}气`;
+            const 气类 = 回 > 0 && 耗 === 0 ? ' is-gain' : ' is-cost';
+            const 层类 = c.层级 === '职业' ? 'tier-class' : (c.层级 === '势力' ? 'tier-faction' : 'tier-char');
+            const 入牌文 = c.入牌 === '初始' ? '⚡ 开战初始入牌' : `🔒 条件触发：${c.触发说明}`;
+            return `<button class="tactical-card ${层类} ready" data-act="选战术牌:${c.id}" data-card-id="${c.id}"><span class="tc-top"><span class="tc-tag">【${c.精神标签 || c.层级}】</span><span class="tc-sub">${c.层级}·${c.归属}</span><span class="tc-cost${气类}">${气标}</span></span><b class="tc-name">${c.名}</b><span class="tc-entry">${入牌文}</span><span class="tc-desc">${c.效果说明}</span><span class="tc-foot"><span class="tc-uses">限 ${c.限次 || 1} 次/场</span><span class="tc-state">点击选入牌库 →</span></span></button>`;
           }).join('')}</div></div>` : ''}
       <div class="rv-card"><h3>手上的招募券（${券们.length}）<span class="small">点「选这张券」→ 下面的候选池只留这张券对得上的人；**「先留着」就是什么都不点**（券随时还能用来晋升）</span></h3>
         ${券卡}</div>

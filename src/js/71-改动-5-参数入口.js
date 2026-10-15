@@ -640,11 +640,13 @@ function 战术卡牌参数() {
 }
 
 function 战术卡牌开(ctx) {
-  if (typeof 战斗结构 !== 'undefined' && 战斗结构 && 战斗结构.战术卡牌 && 战斗结构.战术卡牌.开) return true;
   if (ctx && typeof ctx === 'object') {
+    if (ctx.战术卡牌开 === false) return false;
+    if (ctx.选项 && ctx.选项.战术卡牌 === false) return false;
     if (ctx.战术卡牌开 === true) return true;
     if (ctx.选项 && ctx.选项.战术卡牌 === true) return true;
   }
+  if (typeof 战斗结构 !== 'undefined' && 战斗结构 && 战斗结构.战术卡牌 && 战斗结构.战术卡牌.开) return true;
   return false;
 }
 

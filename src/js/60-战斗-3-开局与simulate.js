@@ -78,7 +78,7 @@ function endTurn(ctx) {
       if (c && c.当前冷却 > 0) c.当前冷却 = Math.max(0, c.当前冷却 - 1);
     }
     if (typeof 检查条件发牌 === 'function') {
-      检查条件发牌(ctx, '回合结束', { 回合: ctx.turn });
+      检查条件发牌(ctx, '回合结束', { 回合: ctx.turn, _内部自动: true });
     }
   }
 }
@@ -152,13 +152,20 @@ function 开局(我方编成, 敌方编成, 种子, 单位开关表, 选项) {
   }
   if (typeof 战术卡牌开 === 'function' && 战术卡牌开(ctx) && typeof 生成队伍牌池 === 'function') {
     ctx.战术卡牌开 = true;
-    const 默气 = Number(战术卡牌参数().初始默认气力);
-    ctx.气势 = (选项 && Number.isFinite(Number(选项.初始气势))) ? Number(选项.初始气势) : (Number.isFinite(默气) ? 默气 : 25);
-    const 池 = 生成队伍牌池(ctx.allies, 选项);
+    if (选项 && Number.isFinite(Number(选项.初始气势))) {
+      ctx.气势 = Number(选项.初始气势);
+      ctx.战术卡牌写日志 = true;
+    } else if (选项 && 选项.战术卡牌 === true) {
+      const 默气 = Number(战术卡牌参数().初始默认气力);
+      ctx.气势 = Number.isFinite(默气) ? 默气 : 25;
+      ctx.战术卡牌写日志 = true;
+    }
+    const 池 = 生成队伍牌池(ctx.allies, Object.assign({ 补齐基础激励: true }, 选项 || {}));
     ctx.战术牌池 = 池.全部牌池;
     ctx.战术手牌 = 池.初始手牌;
     ctx.待触发战术牌 = 池.待触发牌;
     ctx.已打出战术牌 = [];
+    ctx.待写发牌日志 = [];
     ctx.累计未命中段数 = 0;
   }
   return ctx;
@@ -280,7 +287,7 @@ function 第几回合的战术(方针, 回合) {
 function simulate(我方, 敌方, 方针, 种子, 选项) {
   const 表 = 是方针对照表(方针) ? 方针 : null;
   const 起手 = 第几回合的方针(方针, 1);
-  const ctx = 开局(我方, 敌方, 种子, null, Object.assign({}, 选项 || {}, { 方针: 起手 }));
+  const ctx = 开局(我方, 敌方, 种子, null, Object.assign({ 战术卡牌: false }, 选项 || {}, { 方针: 起手 }));
   /* 按回合的表：每个回合开始前换一次（**没写的回合沿用上一回合** = 表里 ≤ 本回合的最后一条）——
      写进 `ctx.当局方针`，由 `回合开始()` 里的 `方针回合()` 落地（和玩家在指令阶段改方针同一个位置）。 */
   ctx.当局方针 = 表 ? 起手 : null;

@@ -78,30 +78,40 @@
         </div>
         <p class="small tactic-forecast" data-tactic-forecast="1">${气预.文本}</p>`
       : '';
-    const 手牌开 = !!(this.ctx && typeof 战术卡牌开 === 'function' && 战术卡牌开(this.ctx));
+    const 手牌开 = !!(this.ctx && typeof 战术卡牌开 === 'function' && 战术卡牌开(this.ctx) && Array.isArray(this.ctx.战术手牌));
     const 手牌块 = 手牌开 ? (() => {
       const 手牌们 = Array.isArray(this.ctx.战术手牌) ? this.ctx.战术手牌 : [];
-      const 待触发数 = Array.isArray(this.ctx.待触发战术牌) ? this.ctx.待触发战术牌.length : 0;
+      const 待触发们 = Array.isArray(this.ctx.待触发战术牌) ? this.ctx.待触发战术牌 : [];
+      const 待触发数 = 待触发们.length;
       const 当前气 = Number(this.ctx.气势) || 0;
+      const 气上限 = (气预 && 气预.上限) || 100;
       const 上限 = Number(战术卡牌参数().手牌总上限) || 8;
       const 卡Html = 手牌们.map(c => {
         const 耗 = Number(c.耗气) || 0;
         const 回 = Number(c.回气) || 0;
-        const 够气 = 当前气 >= 耗 && (Number(c.当前冷却) || 0) <= 0 && (c.剩余次数 == null || c.剩余次数 > 0);
+        const 剩 = c.剩余次数 != null ? Number(c.剩余次数) : 1;
+        const 冷却 = Number(c.当前冷却) || 0;
+        const 够气 = 当前气 >= 耗 && 冷却 <= 0 && 剩 > 0;
         const 可打 = 可点 && 够气;
         const 层类 = c.层级 === '职业' ? 'tier-class' : (c.层级 === '势力' ? 'tier-faction' : (c.层级 === '角色' ? 'tier-char' : 'tier-cmd'));
         const 新类 = c.新触发 ? ' is-triggered' : '';
-        const 气标 = 回 > 0 ? (耗 > 0 ? `-${耗}/+${回}气` : `+${回}气`) : `${耗}气`;
+        const 气标 = 回 > 0 ? (耗 > 0 ? `-${耗}/+${回}气` : `+${回}气`) : `耗${耗}气`;
+        const 气类 = 回 > 0 && 耗 === 0 ? ' is-gain' : ' is-cost';
+        const 状态文 = !可点 ? '回合播放中' : (冷却 > 0 ? `冷却 ${冷却} 回合` : (当前气 < 耗 ? `需 ${耗} 气势` : '点击发动'));
         return `<button class="tactical-card ${层类}${新类}${可打 ? ' ready' : ''}" data-act="打战术牌:${c.id}" data-card-id="${c.id}" data-tier="${c.层级}"${可打 ? '' : ' disabled'} title="【${c.名}】（${c.层级}·${c.归属}）${c.效果说明}">
-          <span class="tc-top"><span class="tc-tag">${c.精神标签 || c.层级}</span><span class="tc-cost">${气标}</span></span>
+          <span class="tc-top"><span class="tc-tag">【${c.精神标签 || c.层级}】</span><span class="tc-sub">${c.层级}·${c.归属}${c.新触发 ? ' · ★新触发' : ''}</span><span class="tc-cost${气类}">${气标}</span></span>
           <b class="tc-name">${c.名}</b>
-          <span class="tc-sub">${c.层级}·${c.归属}${c.新触发 ? ' · ★条件触发' : ''}</span>
           <span class="tc-desc">${c.效果说明}</span>
+          <span class="tc-foot"><span class="tc-uses">剩余 ${剩} 次</span><span class="tc-state">${状态文}</span></span>
         </button>`;
       }).join('');
+      const 待触发Html = 待触发数
+        ? 待触发们.map(p => `<span class="tp-chip" title="${p.效果说明}">🔒【${p.名}】<small>${p.触发说明}发牌</small></span>`).join('')
+        : '<span class="small">（本场待触发条件牌已全部入牌）</span>';
       return `<div class="tactical-hand-bar" data-tactical-hand="1" data-hand-count="${手牌们.length}" data-pending-count="${待触发数}">
-        <div class="th-head"><span>战术手牌 <b>${手牌们.length}/${上限}</b></span><span class="small">当前气势 <b>${当前气}</b> · 待触发条件牌 <b>${待触发数}</b> 张</span></div>
-        <div class="th-cards">${卡Html || '<span class="small">（当前无可用手牌）</span>'}</div>
+        <div class="th-head"><span>🎴 战术手牌（气势 <b>${当前气}/${气上限}</b> · 手牌 <b>${手牌们.length}/${上限}</b> · 待触发 <b>${待触发数}</b> 张）</span><span class="small">0费【激励】可回气启动连携 · 战中满足条件自动发牌</span></div>
+        <div class="th-cards">${卡Html || `<span class="small">（当前手牌已打完 · 待触发条件牌: ${待触发数} 张，满足战况条件自动发牌）</span>`}</div>
+        <div class="tactical-pending-row" data-tactical-pending="1"><span class="tp-label">待触发条件牌预览：</span>${待触发Html}</div>
       </div>`;
     })() : '';
     return `<div class="cmdpanel policybar">

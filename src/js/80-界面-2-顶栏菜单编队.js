@@ -301,6 +301,25 @@
     }).join('');
     const 选中 = B.选中 ? this.预览(B.选中, B.等级) : null;
     const 当前节点 = 肉鸽模式 ? 肉鸽.当前节点() : null;
+    const 牌池预览块 = (typeof 战术卡牌开 === 'function' && 战术卡牌开() && typeof 生成队伍牌池 === 'function') ? (() => {
+      const 预览池 = 生成队伍牌池(B.出击.map(x => ({ 键: x.键, 位: x.位 })), {
+        补齐基础激励: true,
+        已选战术牌: (肉鸽模式 && 肉鸽.RUN && Array.isArray(肉鸽.RUN.战术牌库)) ? 肉鸽.RUN.战术牌库 : [],
+      });
+      const 初Html = 预览池.初始手牌.map(c => {
+        const 耗 = Number(c.耗气) || 0, 回 = Number(c.回气) || 0;
+        const 气标 = 回 > 0 ? `+${回}气` : `耗${耗}气`;
+        return `<span class="tp-chip init" title="${c.效果说明}"><b>【${c.精神标签 || c.层级}】${c.名}</b><small>${c.层级}·${c.归属}｜${气标}</small></span>`;
+      }).join('') || '<span class="small">（无）</span>';
+      const 条Html = 预览池.待触发牌.map(c =>
+        `<span class="tp-chip cond" title="${c.效果说明}">🔒<b>【${c.名}】</b><small>${c.触发说明}</small></span>`
+      ).join('') || '<span class="small">（无）</span>';
+      return `<div class="tactical-deck-preview" data-tactical-preview="1">
+        <h4>🎴 本场出击战术牌池预览<span class="small">初始手牌 ${预览池.初始手牌.length} 张 · 条件触发牌 ${预览池.待触发牌.length} 张（随参战职业/势力/角色实时变化）</span></h4>
+        <div class="tdp-row"><span class="tdp-label">⚡ 初始手牌（开战直接入牌）：</span><div class="tdp-chips">${初Html}</div></div>
+        <div class="tdp-row"><span class="tdp-label">🔒 条件触发牌（战中达成条件发牌）：</span><div class="tdp-chips">${条Html}</div></div>
+      </div>`;
+    })() : '';
     return `<section class="编队屏">
       <div class="col 候选" data-drop="候选">
         <h3>${肉鸽模式 ? `名册（${候选.length} 台）` : `机师（${候选.length} 名）`}<span class="small">拖到右边格子里，或者点一名再点格子；格子之间也能拖（互换）</span></h3>
@@ -321,6 +340,7 @@
           <button data-act="默认五人队">${肉鸽模式 ? `把名册前 ${上限} 台摆上` : `摆上前 ${上限} 台`}</button>
           <button data-act="清空">清空</button>
         </div>
+        ${牌池预览块}
         ${肉鸽模式 ? `<p class="small">这一场：第 ${肉鸽.RUN.层} 层 <b>${节点类型表[当前节点 && 当前节点.类型] ? 节点类型表[当前节点.类型].名 : '作战'}</b>（敌人由编成表随机抽；敌人等级按层数走）</p>
           <div class="acts" data-center="1"><button class="primary" data-act="开战">开战 →</button><button data-act="回大地图">回大地图</button></div>`
         : `<h3>敌方编成<span class="small">（方案第 10 节第 4 条：这 3 条是初稿，等作者配）</span></h3>
