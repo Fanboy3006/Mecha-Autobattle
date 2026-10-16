@@ -34,6 +34,7 @@ var _节点说明: Label
 var _预告面板: VBoxContainer
 var _按钮组: HBoxContainer
 var _取消瞄准: Button
+var _打追击: Button
 var _结果行: Label
 var _名册提示: Label
 
@@ -84,6 +85,7 @@ func refresh() -> void:
 	_图例.text = "图例：起=起点 战=作战 精=精英 休=休整 市=黑市 事=奇遇 望=瞭望站 遗=遗迹 蚀=侵蚀源 隧=废弃隧道 守=出口守军 尽=出口尽头 径=出口小径 空=林间空地；★=当前所在格 可=现在走得到 必=必经点 过=走过 知=已揭开"
 	_建网格(s, 列数, 行数, 可达, 必经)
 	_取消瞄准.visible = not _瞄准.is_empty()
+	_打追击.disabled = not _够格打追击(s)
 	_刷新预告(s)
 	_刷新节点说明(s)
 	_结果行.text = _结果文字()
@@ -134,6 +136,11 @@ func _build() -> void:
 	_取消瞄准.name = "取消瞄准按钮"
 	_取消瞄准.tooltip_text = "不再用零件瞄准，回到普通移动"
 	_取消瞄准.visible = false
+	# ★ D-08 兜底：推进剂见底、门面又还没开打时，给玩家一条路（不然这一刻既走不动也打不了）。
+	#   判据一律用内核的 `MapNavigator.exit_chase_pending`，**不自己写「推进剂 <= 0」**。
+	_打追击 = UiTheme.建按钮(_按钮组, "打追击战（推进剂用光，甩掉追兵才能继续前进）", _点打追击)
+	_打追击.name = "打追击战按钮"
+	_打追击.tooltip_text = "只在「推进剂见底 + 本层还没被追击过 + 现在不在战斗里」时可点；点它走 GameSession.fight_chase_battle()"
 	_结果行 = UiTheme.建说明(列, "", UiTheme.字号_小, UiTheme.正面)
 	_结果行.name = "结果行"
 
@@ -339,6 +346,26 @@ func _点取消瞄准() -> void:
 	_瞄准 = {}
 	refresh()
 
+## 这一格 / 这一刻够不够格打追击战（**判据全部来自门面与内核**，不自己写「推进剂 <= 0」）：
+## 现在不在战斗里，而且内核的 `MapNavigator.exit_chase_pending` 说是时机。
+func _够格打追击(s: RunState) -> bool:
+	return session.battle_ctx.is_empty() and MapNavigator.exit_chase_pending(s)
+
+## 「打追击战」按钮：走门面公开的 `GameSession.fight_chase_battle()`（D-08）。
+func _点打追击() -> void:
+	if session == null:
+		return
+	var s := session.run_state
+	if s == null:
+		return
+	if not _够格打追击(s):
+		_清空(_预告面板)
+		UiTheme.建说明(_预告面板, "现在用不上「打追击战」：推进剂 %s（要见底）、本层已追击过 = %s、现在在战斗里 = %s。" % [
+			UiTheme.文本(s.propellant), str(s.chased), str(not session.battle_ctx.is_empty())], UiTheme.字号_小, UiTheme.高亮)
+		return
+	session.fight_chase_battle()
+	refresh()
+
 ## 由 boot 接 `TopBar.零件瞄准` 调到这儿：只记状态 + 重画高亮，**不调任何内核函数**。
 func 瞄准零件(下标: int, 零件键: String, 目标格: Array) -> void:
 	var 集: Dictionary = {}
@@ -369,6 +396,14 @@ func _点格(id: int) -> void:
 		return
 	var 走 := session.move_to_cell(id)
 	if not bool(走.get("ok", false)):
+		refresh()
+		return
+	# ★ D-08 守卫：门面可能在**这一步**就开了一场（推进剂见底 → 追击战），它已经把屏幕切成 "battle"。
+	#   这时**绝不能再往下走** `_进入脚下()` —— 那会顺手把脚下这个节点结算掉，把刚开的那一场丢在一边
+	#   （实测：脚下是遗迹/瞭望站/招募站/休整/黑市/事件这类格，屏幕会被切回 "map"，
+	#    而 `battle_ctx` 里那一场追击战就再也没人管 → 推进剂 0、走不动也打不了）。
+	#   交给 boot 按 `screen` 路由到战斗屏就是了。
+	if str(session.screen) == "battle":
 		refresh()
 		return
 	# ★ 林间空地 / 走过的格：只刷一次屏 —— 不弹任何框、不进任何屏（JS `:220-221` 逐字同口径）

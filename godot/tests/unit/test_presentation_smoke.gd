@@ -38,6 +38,8 @@ func run(t) -> void:
 	# ★ M4-2 追加（ARGON 2026-10-16 复核：大地图「点格子」必须是**原子动作** —— 走上去就结算）。
 	#   **M4-3 与 M4-2 已有的断言一条都没动、一条都没删**，这里只是在后面接着补。
 	_段8_走上去就结算(t, 树根)
+	# ★ M4-2 追加（ARGON D-08：门面接了「推进剂见底 → 追击战」，视图不许把刚开的这一场顶掉）。
+	_段9_追击战(t, 树根)
 	_段6_静默(t, session)
 
 # ==========================================================================================
@@ -682,6 +684,160 @@ func _段8c_出口走上去就换层(t, 树根: Node) -> void:
 	mv.free()
 
 # ==========================================================================================
+# 段 9（M4-2 追加 · D-08）：推进剂见底 → 追击战 —— 视图不许把门面刚开的这一场顶掉
+#   背景：门面 `move_to_cell()` 在推进剂见底时会**当场开一场追击战**（屏幕已经切成 "battle"）。
+#   旧版 `_点格` 无论怎样都继续 `_进入脚下(true)` → 顺手结算脚下这个节点 →
+#   （实测）脚下是遗迹 / 瞭望站 / 招募站 / 休整 / 黑市 / 事件这类格时，屏幕被切回 "map"，
+#   那一场追击战就再也没人管 → 推进剂 0、走不动也打不了。这一段就是钉住这个守卫。
+# ==========================================================================================
+
+func _段9_追击战(t, 树根: Node) -> void:
+	_段9a_走上去就开追击战且不被顶掉(t, 树根)
+	_段9b_证据_不设守卫会怎样(t, 树根)
+	_段9c_打追击战按钮(t, 树根)
+
+## ① 这一步走完推进剂刚好见底 → 门面当场开追击战；视图必须**停手**（不再进节点）。
+##   打完这一场不许卡在「0 推进剂 + 没打追击战」。
+func _段9a_走上去就开追击战且不被顶掉(t, 树根: Node) -> void:
+	var s := GameSession.new()
+	s.存档路径 = "res://.godot/tmp_presentation_smoke7.json"
+	if not s.start_new_run(20261013 + 23, "混编"):
+		t.ok(false, "★ 段 9a：开一局失败，剩下的断言跑不了")
+		return
+	if s.run_state == null:
+		return
+	if not _招募并上阵(s, 3):
+		t.ok(false, "★ 段 9a：招募 / 上阵没做成（追击战要求出击名单非空），剩下的断言跑不了")
+		return
+	var 战斗格 := _找战斗格(s)
+	if 战斗格 < 0:
+		t.ok(false, "第 %d 层找不到战斗格 —— 段 9a 剩下的断言跑不了" % s.run_state.floor_num)
+		return
+	var 费 := _摆到一步见底(s, 战斗格)
+	if 费 < 0:
+		t.ok(false, "战斗格 %d 造不出「走一步就刚好见底」的局面" % 战斗格)
+		return
+	var mv := MapView.new()
+	树根.add_child(mv)
+	mv.setup(s)
+	s.screen = "map"
+	mv.refresh()
+	t.ok(str(s.last.get("行动", "")) != "追击战" and s.battle_ctx.is_empty(),
+		"点之前：还没开打（推进剂被夹具设成 %d = 走这一格的花费）" % 费)
+	# ★ 只点这一下 —— 门面会在 move_to_cell 里当场开追击战，视图必须停手
+	mv._点格(战斗格)
+	t.ok(s.run_state.propellant == 0, "★ 这一步走完推进剂见底（propellant = %d）" % s.run_state.propellant)
+	t.ok(s.screen == "battle",
+		"★ 门面已经在 move_to_cell 里开了这一场：screen = %s（脚下这一格的类型 = %s，不是它）"
+		% [s.screen, str(s.run_state.cell_at(战斗格).get("类型", ""))])
+	t.ok(str(s.last.get("行动", "")) == "追击战" and str(s.last.get("格类型", "")) == "追击",
+		"★ 开的是**追击战**、不是脚下的节点战（门面 last 的上一动作 = %s / 格类型 = %s）"
+		% [str(s.last.get("行动", "")), str(s.last.get("格类型", ""))])
+	t.ok(str(s.run_state.map_data.get("当前节点类型", "")) == "追击",
+		"★ 视图没有再往下结算节点（`map_data[\"当前节点类型\"]` 仍是 %s）" % str(s.run_state.map_data.get("当前节点类型", "")))
+	t.ok(not s.battle_ctx.is_empty(), "★ 这场追击战有真 ctx（我方 %d 台 / 敌方 %d 台）"
+		% [(s.battle_ctx.get("allies") as Array).size() if s.battle_ctx.get("allies") is Array else 0,
+			(s.battle_ctx.get("enemies") as Array).size() if s.battle_ctx.get("enemies") is Array else 0])
+	# ★ 打完这一场 → 不许卡在「0 推进剂 + 没打追击战」
+	s.auto_finish_battle()
+	s.finish_battle_and_settle()
+	t.ok(not MapNavigator.exit_chase_pending(s.run_state) or s.run_state.status == "失败",
+		"★ 打完追击战之后不再欠着（exit_chase_pending = %s · 状态 = %s · 第 %d 层 · 推进剂 %d）"
+		% [str(MapNavigator.exit_chase_pending(s.run_state)), s.run_state.status,
+			s.run_state.floor_num, s.run_state.propellant])
+	t.ok(s.run_state.floor_num == 2,
+		"★ 追击战结束就被赶到下一层（第 1 层 → 第 %d 层）" % s.run_state.floor_num)
+	树根.remove_child(mv)
+	mv.free()
+
+## ② 取证：**不设守卫**（复刻旧行为）会怎样 —— 直接调门面 `enter_current_node()` 看屏幕去哪了。
+##   这条断言记的是**今天的门面行为**；哪天门面自己在 `enter_current_node()` 里也加了守卫，
+##   这条会变红 —— 那时把预期翻过来即可（说明「视图不设守卫也没事」）。
+func _段9b_证据_不设守卫会怎样(t, 树根: Node) -> void:
+	var s := GameSession.new()
+	s.存档路径 = "res://.godot/tmp_presentation_smoke8.json"
+	if not s.start_new_run(20261013 + 29, "混编"):
+		t.ok(false, "★ 段 9b：开一局失败，剩下的断言跑不了")
+		return
+	if s.run_state == null:
+		return
+	if not _招募并上阵(s, 3):
+		t.ok(false, "★ 段 9b：招募 / 上阵没做成，剩下的断言跑不了")
+		return
+	var 格 := _找可达的格(s, ["遗迹", "瞭望站", "招募站", "休整", "黑市", "事件"], false)
+	if 格 < 0:
+		t.ok(false, "第 %d 层找不到可达的「非战斗、非出口」格 —— 段 9b 剩下的断言跑不了" % s.run_state.floor_num)
+		return
+	var 类型 := str(s.run_state.cell_at(格).get("类型", ""))
+	if _摆到一步见底(s, 格) < 0:
+		t.ok(false, "%s 格 %d 造不出「走一步就刚好见底」的局面" % [类型, 格])
+		return
+	var mv := MapView.new()
+	树根.add_child(mv)
+	mv.setup(s)
+	s.screen = "map"
+	mv.refresh()
+	mv._点格(格)
+	t.ok(s.screen == "battle" and str(s.last.get("行动", "")) == "追击战",
+		"先确认：走上 %s 格 %d 也当场开了追击战（screen = %s，上一动作 = %s）"
+		% [类型, 格, s.screen, str(s.last.get("行动", ""))])
+	# ★ 复刻旧行为：视图不设守卫、继续进节点
+	s.enter_current_node()
+	t.ok(s.screen != "battle" and MapNavigator.exit_chase_pending(s.run_state),
+		"★ 证据：不设守卫继续 `enter_current_node()` → 屏幕从 battle 被切到 %s、追击战还欠着（exit_chase_pending = true）"
+		% s.screen)
+	t.ok(not s.battle_ctx.is_empty(),
+		"★ 证据：那一场追击战的 ctx 还在（%d 台 / %d 台），但已经没有屏在看它了"
+		% [(s.battle_ctx.get("allies") as Array).size() if s.battle_ctx.get("allies") is Array else 0,
+			(s.battle_ctx.get("enemies") as Array).size() if s.battle_ctx.get("enemies") is Array else 0])
+	树根.remove_child(mv)
+	mv.free()
+
+## ③ 「打追击战」兜底按钮：够格时可点、点了进战斗；不够格时不可点、点了也不打（并给原因）。
+func _段9c_打追击战按钮(t, 树根: Node) -> void:
+	var s := GameSession.new()
+	s.存档路径 = "res://.godot/tmp_presentation_smoke9.json"
+	if not s.start_new_run(20261013 + 31, "混编"):
+		t.ok(false, "★ 段 9c：开一局失败，剩下的断言跑不了")
+		return
+	if s.run_state == null:
+		return
+	if not _招募并上阵(s, 3):
+		t.ok(false, "★ 段 9c：招募 / 上阵没做成（追击战要求出击名单非空），剩下的断言跑不了")
+		return
+	var mv := MapView.new()
+	树根.add_child(mv)
+	mv.setup(s)
+	s.screen = "map"
+	mv.refresh()
+	var 按钮 = mv.find_child("打追击战按钮", true, false)
+	t.ok(按钮 != null, "大地图上有「打追击战按钮」")
+	t.ok(按钮 != null and bool((按钮 as Button).disabled),
+		"★ 推进剂还够（%d）→ 按钮不可点" % s.run_state.propellant)
+	# ★ 不够格时点了也不许开打（并要给出原因）
+	mv._点打追击()
+	t.ok(s.battle_ctx.is_empty() and s.screen == "map",
+		"★ 不够格时点它 → 不开打（screen 仍是 %s，battle_ctx 仍空）" % s.screen)
+	t.ok(_面板里有(mv, "用不上"), "★ 不够格时写清了为什么用不上")
+	# 造出「推进剂见底 + 本层没被追击过 + 不在战斗里」→ 按钮应当可用
+	s.run_state.propellant = 0
+	s.run_state.chased = false
+	s.run_state.node_id = int(s.run_state.map_data.get("起点", 0))
+	s.screen = "map"
+	mv.refresh()
+	var 按钮2 = mv.find_child("打追击战按钮", true, false)
+	t.ok(按钮2 != null and not bool((按钮2 as Button).disabled),
+		"★ 推进剂见底（%d）+ 本层没追击过 → 按钮可点（判据 = 内核 exit_chase_pending）" % s.run_state.propellant)
+	mv._点打追击()
+	t.ok(s.screen == "battle" and str(s.last.get("行动", "")) == "追击战",
+		"★ 点「打追击战」→ 进门面的 `fight_chase_battle()`：screen = %s、上一动作 = %s"
+		% [s.screen, str(s.last.get("行动", ""))])
+	t.ok(not s.battle_ctx.is_empty(), "★ 这一场真的有 ctx（敌方 %d 台）"
+		% [(s.battle_ctx.get("enemies") as Array).size() if s.battle_ctx.get("enemies") is Array else 0])
+	树根.remove_child(mv)
+	mv.free()
+
+# ==========================================================================================
 # 段 6：静默纪律
 # ==========================================================================================
 
@@ -754,6 +910,45 @@ func _找相邻落脚点(s: GameSession, 格: int) -> int:
 		if 行:
 			return k
 	return -1
+
+## ★ 造一个「走一步就刚好见底」的局面（段 9 的夹具）：把 `node_id` 摆回本层起点、`chased` 清掉，
+## 再把推进剂设成「从起点走到 `目标格` 的花费」——走完就是 0。返回收费（<0 = 造不出来）。
+## 注意：这里动 `run_state` 是**测试夹具**（造局面），不是表现层在算数值。
+func _摆到一步见底(s: GameSession, 目标格: int) -> int:
+	if s.run_state == null:
+		return -1
+	s.run_state.node_id = int(s.run_state.map_data.get("起点", 0))
+	s.run_state.chased = false
+	var 走 := MapNavigator.can_move_to(s.run_state, 目标格)
+	if not bool(走.get("ok", false)):
+		return -1
+	var 费 := int(走.get("cost", 0))
+	if 费 < 1:
+		return -1
+	s.run_state.propellant = 费
+	return 费
+
+## 用开局券招几台并把第一台摆上出击位（追击战要求「出击名单非空」）。**不动表现层**。
+func _招募并上阵(s: GameSession, 最多: int) -> bool:
+	for _i in 最多:
+		var 目标们 := s.available_recruit_targets(0)
+		if 目标们.is_empty():
+			break
+		s.recruit_unit(str((目标们[0] as Dictionary).get("键", "")), 0)
+	if s.run_state == null or s.run_state.roster.is_empty():
+		return false
+	var 键 := str(s.run_state.roster.keys()[0])
+	return s.set_lineup_slot(键, str(s.lineup_slots()[0].get("位名", "")))
+
+## 视图的「预告面板」里有没有含 `关键词` 的那一行字（用来证明「写清了为什么」）。
+func _面板里有(v: Node, 关键词: String) -> bool:
+	var 面板 = v.find_child("预告面板内容", true, false)
+	if 面板 == null:
+		return false
+	for c in (面板 as Node).get_children():
+		if c is Label and str((c as Label).text).contains(关键词):
+			return true
+	return false
 
 func _根() -> Node:
 	var 树 := Engine.get_main_loop() as SceneTree
