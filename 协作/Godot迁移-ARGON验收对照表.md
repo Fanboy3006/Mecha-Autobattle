@@ -403,6 +403,35 @@ ARGON 用一次性诊断脚本（跑完即删，不在仓库里）拿门面跑�
 - 战报栏可见 `〔势力〕` 高亮行；
 - **中文全部正常渲染，无方块**。
 
+### 9.4b ★ 红线复核：JS 封存完好 + Web 存档存储层可用（ARGON 补验，此前从未验过）
+
+**① 「JS 参考版仍封存」这条红线 —— 用 `checkSealed()` 的真实判据独立跑过：**
+
+```
+$ git rev-parse --verify js-reference-final     → a745235a84bd17a5410cde2b377989b9dd7c2570 ✅ 与交接卡声明一致
+$ git diff --quiet js-reference-final -- . ':!godot' ':!.github' ':!协作'   → EXIT=0 ✅
+$ git diff --stat  同参数                        → 空 ✅
+```
+→ **JS 侧与 `js-reference-final` 零差异**（`godot/tools/js_ref.mjs:28` 的 `checkSealed()` 就是这条命令）。
+M4 全程**没有碰过 `src/**`、`tests/**`、`index.html`** —— 这条红线守住了。
+
+**② Web 版「存档」的存储层（`SaveService` 写 `user://save.json`；Web 上落 IDBFS/IndexedDB）：**
+
+`godot/build/web` 在浏览器里跑（临时脚本 `.tools/smoke/idbfs_check.mjs`，一次性提权）：
+
+```
+✓ 游戏启动 = true（1057 ms）
+✓ indexedDB.databases() 可用 = true
+  IndexedDB 里的库：["/userfs"]      ← Godot 的 IDBFS 已挂载并落库
+✓ user:// 建目录失败条数 = 0          ← headless 下必然出现的
+                                        「Could not create directory: user:/…」在浏览器里一条都没有
+✓ 脚本错误 = 0
+```
+
+→ **存储层是通的**（我此前担心的失败模式「浏览器里 IDBFS 不可用 → 存档永远存不下」已被排除）。
+★ **诚实的边界**：这只证明**存储层**可用；「点『保存并返回主菜单』→ 点『继续游戏』读回来」这一整趟
+仍要**作者点一次**（浏览器里驱动它要按 canvas 坐标跨好几个屏，自动化成本不划算）—— 这正是试玩清单 §2.8 那一条。
+
 ### 9.5 还没做完的（如实登记，不粉饰）
 
 | # | 项 | 状态 |
