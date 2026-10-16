@@ -8,6 +8,7 @@
 ##   段 7 ★ D-06：待选战术牌只能由招募 / 晋升产生（开局 / 移动 / 用零件 / 事件都不许冒牌）
 ##   段 8 ★ D-07：`finish_battle_and_settle()` 必须幂等（同一场只结算一次，重复调用一个字都不改）
 ##   段 9 ★ D-08：推进剂见底 → 追击战（胜利 / 失败都换层；「出口那一步」才过守军闸）
+##   段 9b ★★ D-10：追击战的**触发时机**对齐 JS「这一格结算完才会触发追击战」（战斗格先打节点战）
 ##   段 10 ★ D-09：招募写进 `lineup` 的位号是**数字**（不是空串）
 extends RefCounted
 
@@ -30,6 +31,7 @@ func run(t) -> void:
 	_待选牌只由招募晋升产生(t)
 	_结算幂等(t)
 	_追击战(t)
+	_追击战D10(t)
 	_招募位号是数字(t)
 
 # ==========================================================================================
@@ -1310,7 +1312,11 @@ func _结算幂等(t) -> void:
 		% [q.run_state.carbon, q.run_state.battles_fought])
 
 # ==========================================================================================
-# 段 9：★ D-08 —— 推进剂见底 → 追击战（此前 Godot 侧完全没接线，会在非战斗格上永久卡死）
+# 段 9：★ D-08（接上追击战）+ ★ D-10（对齐 JS 的**触发时机**）
+#   D-08：推进剂见底 → 追击战（此前 Godot 侧完全没接线，会在非战斗格上永久卡死）。
+#   D-10：封存 JS `92-肉鸽界面-1-大图与记录.js:315`「**这一格结算完**就会触发追击战」——
+#         落脚那一格自己还有东西要结算（战斗格 / 黑市 / 事件 / 休息…）时，必须**先结算这一格**，
+#         否则用最后 1 点推进剂落在作战 / 精英格上会变成「先打追击战、那一格的节点战永远没打」。
 # ==========================================================================================
 
 ## 开一局、招一台、把这一台摆上出击位（追击战要有我方编成才能开）。
@@ -1456,6 +1462,179 @@ func _追击战(t) -> void:
 		% [前层3, s.run_state.floor_num, s.run_state.status])
 	t.ok(s.run_state.pending_floor_change == null or s.run_state.floor_num > 前层3,
 		"小径这一趟没有把换层欠下来（待换层 = %s）" % str(s.run_state.pending_floor_change))
+
+# ==========================================================================================
+# 段 9b：★★ D-10 —— 追击战的**触发时机**（对齐封存 JS `92-肉鸽界面-1-大图与记录.js:315`）
+#   五组：① 战斗格上见底 = **先打节点战**、追击战还欠着；
+#         ② 那一场节点战结算完 → **这时才**开追击战；再打完 → 换层；
+#         ③ 非战斗格（空）上见底 = 当场追击战（防回归）；
+#         ④ 「0 推进剂 + 有东西可结算」的格**不许卡死**（结算完能开出追击战）；
+#         ⑤ 推进剂 > 0 时不会触发（旧行为不砍；见段 9 开头那条）。
+# ==========================================================================================
+
+## 把节点摆到本层起点、把到 `目标格` 的 BFS 最短路上**除目标格以外**的格都标成走过，
+## 再把推进剂设成「走到目标格的花费」——于是 `move_to_cell` 走完**刚好见底**。
+## 返回收费（< 0 = 造不出来：路不通 / 起点就是目标格 / 目标格已经在「已走过」集合里）。
+func _摆到时刚好见底(s: GameSession, 目标格: int) -> int:
+	if s.run_state == null or s.run_state.map_data.is_empty():
+		return -1
+	s.run_state.node_id = int(s.run_state.map_data.get("起点", 0))
+	s.run_state.chased = false
+	s.run_state.exit_chase = false
+	var 走 := MapNavigator.can_move_to(s.run_state, 目标格)
+	if not bool(走.get("ok", false)):
+		return -1
+	var 费 := int(走.get("cost", 0))
+	if 费 < 1:
+		return -1
+	var 路: Array = 走.get("path", [])
+	if 路.size() < 2 or int(路[0]) != s.run_state.node_id or int(路[路.size() - 1]) != 目标格:
+		return -1
+	s.run_state.visited_cells = [int(路[0])]
+	for i in range(1, 路.size() - 1):
+		s.run_state.mark_visited(int(路[i]))
+	if s.run_state.is_visited(目标格):
+		return -1
+	s.run_state.propellant = 费
+	return 费
+
+## 找一个「类型在 `类型们` 里、没被走过、从本层起点**走得到、花费 ≥ 1**」的格；没有 → −1。
+## ★ 找格之前先把节点摆回本层起点（`can_move_to` 是拿**当前所在格**当起点的）。
+func _找可摆的格(s: GameSession, 类型们: Array) -> int:
+	if s.run_state == null or s.run_state.map_data.is_empty():
+		return -1
+	var 起点 := int(s.run_state.map_data.get("起点", 0))
+	s.run_state.node_id = 起点
+	for k in MapNavigator.cell_ids(s.run_state):
+		var 格 := s.run_state.cell_at(k)
+		if not 类型们.has(str(格.get("类型", ""))):
+			continue
+		if bool(格.get("已过", false)) or s.run_state.is_visited(k):
+			continue
+		if k == 起点:
+			continue
+		if int(MapNavigator.can_move_to(s.run_state, k).get("cost", 0)) < 1:
+			continue
+		return k
+	return -1
+
+func _追击战D10(t) -> void:
+	if not _D10_战斗格先打节点战(t):
+		return
+	_D10_非战斗格当场追击战(t)
+	_D10_卡死不回来(t)
+
+## ① 最后 1 点推进剂落在**未走过的战斗格**上 → 先打这一格的**节点战**（格类型 = 该格真实类型），
+##    追击战**还欠着**；② 这一场节点战结算完 → 这时才开追击战；再打完 → 换层到第 2 层。
+func _D10_战斗格先打节点战(t) -> bool:
+	var s := GameSession.new()
+	s.存档路径 = 存档A
+	if not _起一局能打的(s, 肉鸽种子 + 71):
+		t.ok(false, "★ D-10：起局失败（招不到人 / 编成空），战斗格那几条断言跑不了")
+		return false
+	# ★ 挑**精英**格优先：它是「被追击战顶掉就会丢藏品 / 掉落」的那一格，D-10 要防的就是它。
+	var 战格 := _找可摆的格(s, ["精英", "作战", "守军", "侵蚀源"])
+	if 战格 < 0:
+		t.ok(false, "第 %d 层找不到「未走过、从起点走得到、花费 ≥ 1」的战斗格 —— D-10 的战斗格断言跑不了" % s.run_state.floor_num)
+		return false
+	var 真类型 := str(s.run_state.cell_at(战格).get("类型", ""))
+	var 前层 := s.run_state.floor_num
+	var 费 := _摆到时刚好见底(s, 战格)
+	if 费 < 0:
+		t.ok(false, "战斗格 %d（%s）造不出「走一步就刚好见底」的局面" % [战格, 真类型])
+		return false
+	var 走 := s.move_to_cell(战格)
+	t.ok(bool(走.get("ok", false)) and s.run_state.propellant == 0,
+		"★ D-10 前置：最后 1 点推进剂落在**未走过的战斗格**上（格 %d「%s」，费 %d，走完 propellant = %d）"
+		% [战格, 真类型, 费, s.run_state.propellant])
+	t.ok(s.screen == "map" and str(s.last.get("行动", "")) == "移动" and s.battle_ctx.is_empty(),
+		"★ D-10：`move_to_cell` 这一下**没开追击战**（屏幕 %s、上一动作 = %s、battle_ctx 空 = %s）—— 这一格还没结算"
+		% [s.screen, str(s.last.get("行动", "")), str(s.battle_ctx.is_empty())])
+	# ★ 视图在移动成功后就是这一下（`map_view._点格()` → `_进入脚下(true)`）；门面这一层要显式叫它。
+	s.enter_current_node()
+	t.ok(s.screen == "battle" and str(s.last.get("行动", "")) == "开战" and str(s.last.get("格类型", "")) == 真类型,
+		"★ D-10：先打的是**脚下的节点战**（屏幕 = %s、上一动作 = %s、格类型 = %s / 这一格真类型 = %s）"
+		% [s.screen, str(s.last.get("行动", "")), str(s.last.get("格类型", "")), 真类型])
+	t.ok(MapNavigator.exit_chase_pending(s.run_state),
+		"★ D-10：**追击战还欠着**（推进剂 %d、本层已追击过 = %s → `exit_chase_pending` = true）"
+		% [s.run_state.propellant, str(s.run_state.chased)])
+	t.ok(str(s.run_state.map_data.get("当前节点类型", "")) == 真类型,
+		"★ D-10：`map_data[\"当前节点类型\"]` 还是脚下这一格的真实类型（%s，不是「追击」）"
+		% str(s.run_state.map_data.get("当前节点类型", "")))
+	s.auto_finish_battle()
+	s.finish_battle_and_settle()
+	var 结2: Dictionary = s.battle_ctx.get("result", {}) if s.battle_ctx.get("result") is Dictionary else {}
+	t.info("★ D-10 独立报告：节点战打完（结果 = %s）→ 屏幕 = %s、上一动作 = %s、上一场格类型 = %s"
+		% [str(结2.get("结果", "")), s.screen, str(s.last.get("行动", "")), str(s.last.get("格类型", ""))])
+	t.ok(s.screen == "battle" and str(s.last.get("行动", "")) == "追击战" and str(s.last.get("格类型", "")) == "追击",
+		"★ D-10：**这时才**开追击战（节点战结算完；屏幕 = %s、上一动作 = %s、格类型 = %s）"
+		% [s.screen, str(s.last.get("行动", "")), str(s.last.get("格类型", ""))])
+	s.auto_finish_battle()
+	s.finish_battle_and_settle()
+	t.ok(s.run_state.floor_num == 前层 + 1 or s.run_state.status == "胜利" or s.run_state.status == "失败",
+		"★ D-10：追击战打完就换层（第 %d 层 → 第 %d 层；状态 %s）" % [前层, s.run_state.floor_num, s.run_state.status])
+	return true
+
+## ③ 非战斗格（空）上见底 = **当场**追击战（防回归：D-10 不许把这一条砍掉，否则死锁回来）。
+func _D10_非战斗格当场追击战(t) -> void:
+	var s := GameSession.new()
+	s.存档路径 = 存档A
+	if not _起一局能打的(s, 肉鸽种子 + 72):
+		t.ok(false, "★ D-10：起局失败，非战斗格那几条断言跑不了")
+		return
+	var 用 := _找可摆的格(s, ["空"])
+	if 用 < 0:
+		t.ok(false, "第 %d 层找不到「未走过、从起点走得到」的空格 —— D-10 的非战斗格断言跑不了" % s.run_state.floor_num)
+		return
+	var 实 := str(s.run_state.cell_at(用).get("类型", ""))
+	var 费 := _摆到时刚好见底(s, 用)
+	if 费 < 0:
+		t.ok(false, "空格 %d 造不出「走一步就刚好见底」的局面" % 用)
+		return
+	s.move_to_cell(用)
+	t.ok(s.run_state.propellant == 0 and s.screen == "battle" and str(s.last.get("行动", "")) == "追击战" and str(s.last.get("格类型", "")) == "追击",
+		"★ D-10 防回归：落在「%s」格 %d 上见底 → **当场**开追击战（推进剂 %d、屏幕 %s、上一动作 = %s、格类型 = %s）"
+		% [实, 用, s.run_state.propellant, s.screen, str(s.last.get("行动", "")), str(s.last.get("格类型", ""))])
+	t.ok(s.screen != "map",
+		"★ D-10 防回归：这一刻**不在**地图屏（screen = %s）—— 门面已经把追击战接上了，视图不用再兜" % s.screen)
+
+## ④ 「0 推进剂 + 这一格有东西可结算」**不许卡死**：结算完要么**开得出追击战**，
+##    要么这一格的结算**把推进剂补回来**（那也走得动了）。两条都验，一条都不许两条都不成立。
+func _D10_卡死不回来(t) -> void:
+	var 验过: Array = []
+	var 开出追击: Array = []
+	for 类型 in ["遗迹", "瞭望站", "事件", "休整", "黑市", "招募站"]:
+		var s := GameSession.new()
+		s.存档路径 = 存档A
+		if not _起一局能打的(s, 肉鸽种子 + 73):
+			t.ok(false, "★ D-10：起局失败，卡死那组断言跑不了")
+			return
+		var 格 := _找可摆的格(s, [类型])
+		if 格 < 0:
+			continue
+		var 费 := _摆到时刚好见底(s, 格)
+		if 费 < 0:
+			continue
+		s.move_to_cell(格)
+		if s.screen == "battle":
+			# 门面在这一步就开了追击战（D-08 的老路）—— D-10 要求它**先不开**，等这一格结算
+			t.ok(false, "★ D-10：站在「%s」格 %d 上见底 → 门面在 `move_to_cell` 里就开了追击战（应该等这一格结算完）" % [类型, 格])
+			return
+		验过.append(类型)
+		# 走到这儿：屏幕还在 map（这一格的面板已经摆好）→ 让玩家「进这一格」
+		var 打 := s.enter_current_node()
+		var 能走 := MapNavigator.reachable_cells(s.run_state).size() >= 1
+		var 开了 := s.screen == "battle" and str(s.last.get("行动", "")) == "追击战"
+		if 开了:
+			开出追击.append(类型)
+		t.ok(开了 or 能走,
+			"★ D-10 卡死不回来：「%s」格（%d，费 %d）上见底 → 结算完**没有卡死**（追击战 = %s、结算后推进剂 %d、又能走 %d 格；返回 %s）"
+			% [类型, 格, 费, str(开了), s.run_state.propellant, MapNavigator.reachable_cells(s.run_state).size(), str(打)])
+	t.ok(开出追击.size() >= 1,
+		"★ D-10 卡死不回来：其中**%d 种**格的结算**没有**补回推进剂 → 结算完照样开得出追击战（%s）"
+		% [开出追击.size(), "、".join(开出追击)])
+	t.ok(验过.size() >= 1,
+		"★ D-10 卡死不回来：真的在「有东西可结算」的格上验到了**%d 种**（%s）" % [验过.size(), "、".join(验过)])
 
 # ==========================================================================================
 # 段 10：★ D-09 —— 招募写进 `lineup` 的位号必须是**数字**（原来写的是空串 ""）

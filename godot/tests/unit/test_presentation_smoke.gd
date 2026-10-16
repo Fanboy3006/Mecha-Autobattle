@@ -684,8 +684,9 @@ func _段8c_出口走上去就换层(t, 树根: Node) -> void:
 	mv.free()
 
 # ==========================================================================================
-# 段 9（M4-2 追加 · D-08）：推进剂见底 → 追击战 —— 视图不许把门面刚开的这一场顶掉
-#   背景：门面 `move_to_cell()` 在推进剂见底时会**当场开一场追击战**（屏幕已经切成 "battle"）。
+# 段 9（M4-2 追加 · D-08 / D-10）：推进剂见底 → 追击战 —— 视图不许把门面开的那一场顶掉
+#   背景（★ D-10 后的现行口径）：封存 JS `92-肉鸽界面-1-大图与记录.js:315`「**这一格结算完**
+#   就会触发追击战」。所以顺序是：原地结算这一格（战斗格 → 打脚下的节点战）→ 结算完才开追击战。
 #   旧版 `_点格` 无论怎样都继续 `_进入脚下(true)` → 顺手结算脚下这个节点 →
 #   （实测）脚下是遗迹 / 瞭望站 / 招募站 / 休整 / 黑市 / 事件这类格时，屏幕被切回 "map"，
 #   那一场追击战就再也没人管 → 推进剂 0、走不动也打不了。这一段就是钉住这个守卫。
@@ -696,8 +697,9 @@ func _段9_追击战(t, 树根: Node) -> void:
 	_段9b_证据_不设守卫会怎样(t, 树根)
 	_段9c_打追击战按钮(t, 树根)
 
-## ① 这一步走完推进剂刚好见底 → 门面当场开追击战；视图必须**停手**（不再进节点）。
-##   打完这一场不许卡在「0 推进剂 + 没打追击战」。
+## ① 这一步走完推进剂刚好见底，落脚的是**战斗格** → ★ D-10：**这一格先结算**（打脚下的节点战），
+##   结算完**才**开追击战；视图必须停手（不许抢着结算、也不许把刚开的那一场顶掉）。
+##   打完追击战不许卡在「0 推进剂 + 没打追击战」。
 func _段9a_走上去就开追击战且不被顶掉(t, 树根: Node) -> void:
 	var s := GameSession.new()
 	s.存档路径 = "res://.godot/tmp_presentation_smoke7.json"
@@ -713,10 +715,20 @@ func _段9a_走上去就开追击战且不被顶掉(t, 树根: Node) -> void:
 	if 战斗格 < 0:
 		t.ok(false, "第 %d 层找不到战斗格 —— 段 9a 剩下的断言跑不了" % s.run_state.floor_num)
 		return
-	var 费 := _摆到一步见底(s, 战斗格)
-	if 费 < 0:
-		t.ok(false, "战斗格 %d 造不出「走一步就刚好见底」的局面" % 战斗格)
+	var 真类型 := str(s.run_state.cell_at(战斗格).get("类型", ""))
+	var 落脚 := _找相邻落脚点(s, 战斗格)
+	if 落脚 < 0:
+		t.ok(false, "战斗格 %d 找不到相邻落脚点 —— 造不出「走一步就刚好见底」的局面" % 战斗格)
 		return
+	# ★ 夹具：把节点摆到相邻落脚点（**本层起点**，不标任何中间格）+ 推进剂 = 走到战斗格的花费
+	s.run_state.node_id = int(s.run_state.map_data.get("起点", 0))
+	s.run_state.chased = false
+	s.run_state.exit_chase = false
+	var 费 := int(MapNavigator.can_move_to(s.run_state, 战斗格).get("cost", 0))
+	if 费 < 1:
+		t.ok(false, "战斗格 %d 走一步的花费 = %d（要 ≥ 1）—— 段 9a 剩下的断言跑不了" % [战斗格, 费])
+		return
+	s.run_state.propellant = 费
 	var mv := MapView.new()
 	树根.add_child(mv)
 	mv.setup(s)
@@ -724,23 +736,49 @@ func _段9a_走上去就开追击战且不被顶掉(t, 树根: Node) -> void:
 	mv.refresh()
 	t.ok(str(s.last.get("行动", "")) != "追击战" and s.battle_ctx.is_empty(),
 		"点之前：还没开打（推进剂被夹具设成 %d = 走这一格的花费）" % 费)
-	# ★ 只点这一下 —— 门面会在 move_to_cell 里当场开追击战，视图必须停手
+	# ★ 只点这一下 —— ★ D-10：这一格**自己还有没结算的东西**（战斗格 / 黑市 / 事件 / 休息…），
+	#   所以门面**先不开**追击战，而是先结算这一格（战斗格 → `battle` 屏打脚下的节点战）。
+	#   结算完（`finish_battle_and_settle()`）才轮到追击战。封存 JS 口径 =
+	#   `92-肉鸽界面-1-大图与记录.js:315`：「**这一格结算完**就会触发追击战」。
 	mv._点格(战斗格)
 	t.ok(s.run_state.propellant == 0, "★ 这一步走完推进剂见底（propellant = %d）" % s.run_state.propellant)
 	t.ok(s.screen == "battle",
-		"★ 门面已经在 move_to_cell 里开了这一场：screen = %s（脚下这一格的类型 = %s，不是它）"
-		% [s.screen, str(s.run_state.cell_at(战斗格).get("类型", ""))])
-	t.ok(str(s.last.get("行动", "")) == "追击战" and str(s.last.get("格类型", "")) == "追击",
-		"★ 开的是**追击战**、不是脚下的节点战（门面 last 的上一动作 = %s / 格类型 = %s）"
-		% [str(s.last.get("行动", "")), str(s.last.get("格类型", ""))])
-	t.ok(str(s.run_state.map_data.get("当前节点类型", "")) == "追击",
-		"★ 视图没有再往下结算节点（`map_data[\"当前节点类型\"]` 仍是 %s）" % str(s.run_state.map_data.get("当前节点类型", "")))
-	t.ok(not s.battle_ctx.is_empty(), "★ 这场追击战有真 ctx（我方 %d 台 / 敌方 %d 台）"
+		"★ D-10：门面**不在 `move_to_cell` 里开追击战**，而是先结算这一格：screen = %s（脚下这一格类型 = %s）"
+		% [s.screen, 真类型])
+	t.ok(str(s.last.get("行动", "")) == "开战" and str(s.last.get("格类型", "")) == 真类型,
+		"★ D-10：先打的是**脚下的节点战**（上一动作 = %s / 格类型 = %s / 这一格真类型 = %s）"
+		% [str(s.last.get("行动", "")), str(s.last.get("格类型", "")), 真类型])
+	t.ok(MapNavigator.exit_chase_pending(s.run_state),
+		"★ D-10：**追击战还欠着**（推进剂 %d、本层已追击过 = %s → `exit_chase_pending` = true）"
+		% [s.run_state.propellant, str(s.run_state.chased)])
+	t.ok(str(s.run_state.map_data.get("当前节点类型", "")) == 真类型,
+		"★ D-10：视图没有再往下结算别的（`map_data[\"当前节点类型\"]` 仍是 %s，不是「追击」）"
+		% str(s.run_state.map_data.get("当前节点类型", "")))
+	t.ok(not s.battle_ctx.is_empty(), "★ 这场节点战有真 ctx（我方 %d 台 / 敌方 %d 台）"
 		% [(s.battle_ctx.get("allies") as Array).size() if s.battle_ctx.get("allies") is Array else 0,
 			(s.battle_ctx.get("enemies") as Array).size() if s.battle_ctx.get("enemies") is Array else 0])
-	# ★ 打完这一场 → 不许卡在「0 推进剂 + 没打追击战」
+	# ★ D-10 补的第一步：结算这场**节点战**（打完 + 结算）。
+	#   两条分支都要认识（口径 D · 内核那一支一个字没动）：
+	#     · **打赢**了 → `finish_battle_and_settle()` 里 `s.propellant <= 0` 那一支走内核
+	#       `after_chase_win` → **已经换层**（屏幕进结算屏、新一层推进剂回满）；
+	#     · **没打赢** → 那一支不碰推进剂，于是 D-10 补的 `_接追击战(s, true)` 接着把追击战开出来。
 	s.auto_finish_battle()
+	var 节点战胜 := str(s.battle_ctx.get("result", {}).get("结果", "")) == "胜" if s.battle_ctx.get("result") is Dictionary else false
 	s.finish_battle_and_settle()
+	if 节点战胜:
+		t.ok(s.screen == "result" and s.run_state.floor_num == 2,
+			"★ D-10：节点战**打赢** → 内核 `after_chase_win` 那一支当场换层（screen = %s、第 1 层 → 第 %d 层）"
+			% [s.screen, s.run_state.floor_num])
+		t.ok(not MapNavigator.exit_chase_pending(s.run_state) and s.run_state.propellant > 0,
+			"★ D-10：换层之后不再欠着追击战（exit_chase_pending = %s、推进剂 %d > 0 → 又能走了）"
+			% [str(MapNavigator.exit_chase_pending(s.run_state)), s.run_state.propellant])
+	else:
+		t.ok(s.screen == "battle" and str(s.last.get("行动", "")) == "追击战" and str(s.last.get("格类型", "")) == "追击",
+			"★ D-10：节点战**没打赢** → 这一格结算完**这时才**开追击战（screen = %s、上一动作 = %s、格类型 = %s）"
+			% [s.screen, str(s.last.get("行动", "")), str(s.last.get("格类型", ""))])
+		# ★ D-10 补的第二步：结算这场**追击战** → 不许卡在「0 推进剂 + 没打追击战」
+		s.auto_finish_battle()
+		s.finish_battle_and_settle()
 	t.ok(not MapNavigator.exit_chase_pending(s.run_state) or s.run_state.status == "失败",
 		"★ 打完追击战之后不再欠着（exit_chase_pending = %s · 状态 = %s · 第 %d 层 · 推进剂 %d）"
 		% [str(MapNavigator.exit_chase_pending(s.run_state)), s.run_state.status,
@@ -750,9 +788,14 @@ func _段9a_走上去就开追击战且不被顶掉(t, 树根: Node) -> void:
 	树根.remove_child(mv)
 	mv.free()
 
-## ② 取证：**不设守卫**（复刻旧行为）会怎样 —— 直接调门面 `enter_current_node()` 看屏幕去哪了。
-##   这条断言记的是**今天的门面行为**；哪天门面自己在 `enter_current_node()` 里也加了守卫，
-##   这条会变红 —— 那时把预期翻过来即可（说明「视图不设守卫也没事」）。
+## ② 正向断言（★ D-10 改口径）：点完这一格、再把这一格结算掉（= 关掉面板那一下）——
+##   屏幕必须切到 `battle`（那一场追击战真的开出来了），而且**不会**被顶回 `map`。
+##   ★ 为什么这条要改：原来这里是「**不设守卫**（复刻旧行为）会怎样」的取证，前提是「门面在
+##     `move_to_cell` 里当场开追击战、随后 `enter_current_node()` 又顺手把脚下这一格结算掉」——
+##     D-10 之后这个旧行为**已经不存在了**（门面自己就把顺序摆对了：先结算这一格、结算完才追击），
+##     所以那条取证没有前提了。这里改成**正向**断言：门面这一层已经把顺序摆对，
+##     `enter_current_node()` 只会把「这一格结算完该开的那场」开出来，不会把任何一场顶掉。
+##   ★ 函数名保留 `_段9b_证据_不设守卫会怎样`（段 9 的调用点与「这一段在验什么」的对应关系不动）。
 func _段9b_证据_不设守卫会怎样(t, 树根: Node) -> void:
 	var s := GameSession.new()
 	s.存档路径 = "res://.godot/tmp_presentation_smoke8.json"
@@ -772,26 +815,51 @@ func _段9b_证据_不设守卫会怎样(t, 树根: Node) -> void:
 	if _摆到一步见底(s, 格) < 0:
 		t.ok(false, "%s 格 %d 造不出「走一步就刚好见底」的局面" % [类型, 格])
 		return
+	# ★ 弹窗类节点（黑市 / 休整 / 事件）视图**不当场**结算 —— 它只发 `请求弹窗`，
+	#   等玩家**关掉面板**那一下才算「这一格结算完」。所以这里先按视图的真实行为断言。
+	#   （判据照视图自己的常量 `MapView.弹窗节点`，不在这里另抄一份。）
+	var 弹窗类 := bool(MapView.弹窗节点.has(类型))
 	var mv := MapView.new()
 	树根.add_child(mv)
 	mv.setup(s)
 	s.screen = "map"
 	mv.refresh()
 	mv._点格(格)
-	t.ok(s.screen == "battle" and str(s.last.get("行动", "")) == "追击战",
-		"先确认：走上 %s 格 %d 也当场开了追击战（screen = %s，上一动作 = %s）"
-		% [类型, 格, s.screen, str(s.last.get("行动", ""))])
-	# ★ 复刻旧行为：视图不设守卫、继续进节点
+	# ★ 先确认：**只点这一下** —— 门面**不**开追击战，而是先结算这一格。
+	#   （三种格都成立：**弹窗类**节点视图不当场结算、屏幕留在 map；
+	#     **当场结算类**节点视图自己 `_进入脚下(true)` → 结算完 **才**开出追击战。）
+	#   判据读**视图自己手里的会话**（`mv.session`），不是我们自己那个引用 —— 免得测的是别的东西。
+	var vs := mv.session
+	t.ok(s.screen == "map" and vs.battle_ctx.is_empty(),
+		"先确认：★ D-10 门面**不在 `move_to_cell` 里开追击战** —— 点完这一下屏幕还在 %s、`battle_ctx` 空 = %s"
+		% [s.screen, str(vs.battle_ctx.is_empty())])
+	if 弹窗类:
+		t.ok(vs.battle_ctx.is_empty() and _行动(vs) != "追击战",
+			"先确认：走上**弹窗类**「%s」格 %d → 视图留在 map 发弹窗、门面也**没**开追击战（上一动作 = %s、battle_ctx 空 = %s）"
+			% [类型, 格, _行动(vs), str(vs.battle_ctx.is_empty())])
+	else:
+		t.ok(s.screen == "battle" and _行动(vs) == "追击战",
+			"先确认：走上 %s 格 %d → 这一格结算完**才**当场开出追击战（screen = %s、上一动作 = %s）"
+			% [类型, 格, s.screen, _行动(vs)])
+	# ★ 正向（这就是「关掉面板」那一下）：门面这一层已经把顺序摆对了 ——
+	#   直接 `enter_current_node()` 结算这一格（推进剂 0 已经把追击战欠下了）→ 屏幕切到 `battle`；
+	#   那一场**不会被顶掉**（`map_data["当前节点类型"]` 已经是「追击」，`start_node_battle()`
+	#   会照着它再走一次追击战，屏幕仍然停在 `battle`）。
 	s.enter_current_node()
-	t.ok(s.screen != "battle" and MapNavigator.exit_chase_pending(s.run_state),
-		"★ 证据：不设守卫继续 `enter_current_node()` → 屏幕从 battle 被切到 %s、追击战还欠着（exit_chase_pending = true）"
-		% s.screen)
-	t.ok(not s.battle_ctx.is_empty(),
-		"★ 证据：那一场追击战的 ctx 还在（%d 台 / %d 台），但已经没有屏在看它了"
+	t.ok(s.screen == "battle" and _行动(s) == "追击战",
+		"★ 正向：`enter_current_node()`（= 关掉面板那一下）→ 这一格结算完照样开得出追击战（screen = %s、上一动作 = %s）"
+		% [s.screen, _行动(s)])
+	t.ok(not s.battle_ctx.is_empty() and str(s.run_state.map_data.get("当前节点类型", "")) == "追击",
+		"★ 正向：那一场是**真**打起来了（ctx 我方 %d 台 / 敌方 %d 台），而且 `map_data[\"当前节点类型\"]` = %s（视图没有把脚下那一格结算掉、也没把这一场顶掉）"
 		% [(s.battle_ctx.get("allies") as Array).size() if s.battle_ctx.get("allies") is Array else 0,
-			(s.battle_ctx.get("enemies") as Array).size() if s.battle_ctx.get("enemies") is Array else 0])
+			(s.battle_ctx.get("enemies") as Array).size() if s.battle_ctx.get("enemies") is Array else 0,
+			str(s.run_state.map_data.get("当前节点类型", ""))])
 	树根.remove_child(mv)
 	mv.free()
+
+## `last["行动"]` 的短读（段 9b 的断言要打真实值）。
+func _行动(s: GameSession) -> String:
+	return str(s.last.get("行动", ""))
 
 ## ③ 「打追击战」兜底按钮：够格时可点、点了进战斗；不够格时不可点、点了也不打（并给原因）。
 func _段9c_打追击战按钮(t, 树根: Node) -> void:
@@ -867,8 +935,10 @@ func _快照(s: GameSession) -> String:
 	})
 
 ## 在当前层找一个战斗格（照 test_session_flow.gd 的同一口径）。
+## ★ 跳过「出口格」：站在出口格上时追击战那一步归 `try_advance_floor()` 管（先 `begin_exit_chase`），
+##   D-10 段 9a 要的是**普通的**战斗格（作战 / 精英 / 守军 / 侵蚀源）。
 func _找战斗格(s: GameSession) -> int:
-	var 战斗类型 := ["作战", "普通", "精英", "守军", "侵蚀源", "出口守军", "追击"]
+	var 战斗类型 := ["作战", "普通", "精英", "守军", "侵蚀源"]
 	if s.run_state == null:
 		return -1
 	for k in MapNavigator.cell_ids(s.run_state):
@@ -880,10 +950,14 @@ func _找战斗格(s: GameSession) -> int:
 
 ## 找一格「类型在 `类型们` 里、现在走得过去、并且（`要走过` 为真时）已经走过」的格；没有 → −1。
 ## 「走得过去」直接用门面的纯读预告 `preview_cell_move().ok`，不自己算推进剂。
+## ★ 跳过**脚下这一格**（起点）：D-10 段 9a / 9b 的夹具要「走一步就刚好见底」，
+##   而走到自己脚下那一步的内核口径是「已经在那一格」被拒（花费 0、`_摆到一步见底()` 也造不出来）。
 func _找可达的格(s: GameSession, 类型们: Array, 要走过: bool) -> int:
 	if s.run_state == null:
 		return -1
 	for k in MapNavigator.cell_ids(s.run_state):
+		if k == s.run_state.node_id:
+			continue
 		var 格 := s.run_state.cell_at(k)
 		if not 类型们.has(str(格.get("类型", ""))):
 			continue

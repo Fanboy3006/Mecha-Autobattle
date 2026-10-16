@@ -66,7 +66,22 @@
 ##      接点：`move_to_cell` / `use_part` / `resolve_rest` / `leave_shop` / `resolve_event_choice`
 ##      在「这一格的事做完」之后，以及 `try_advance_floor()` 在出口格那一步（先置位再打）。
 ##      判据一律用内核的 `MapNavigator.exit_chase_pending(s)`，**不自写 `推进剂 <= 0`**。
-##   7. 「源碳」在 `RunState` 里叫 `carbon`、to_dict() 里叫 `"源碳"`；本门面统一用 `run_state.carbon`。
+##   8. ★ **纠错记录（D-10）**：D-08 把追击战接在 `move_to_cell()` 里 —— **时机早了**。
+##      封存 JS `92-肉鸽界面-1-大图与记录.js:315` 的原文是「**这一格结算完**就会触发追击战」，
+##      而 `move_to_cell()` 那一刻脚下这一格**还没结算**。后果很实：用**最后 1 点推进剂**落在
+##      **作战 / 精英**这类战斗格上时，玩家打的是追击战，**那一格的节点战永远没打**
+##      （追击战打赢就被赶到下一层，精英的藏品 / 掉落一起没）；`map_data["当前节点类型"]`
+##      也被留成 `"追击"`。现已改成**受条件限定**（`_这一格要先结算吗(s)`）：
+##        · **要先结算**（先不开，等这一格结算完）：`作战` / `精英` / `守军` / `侵蚀源` / `出口守军` /
+##          `休整` / `黑市` / `事件` / `瞭望站` / `遗迹` / `隧道` / `招募站`；
+##        · **当场开**（无可结算的东西）：`空` / 已经过的格 / 认不出来的类型。
+##          ★ 这一条绝不能丢 —— 它正是 D-08 修掉的「0 推进剂 + 没东西可结算 = 走不动也打不了」的死锁。
+##      接点相应变成三处：① `move_to_cell()` 只对「无可结算」的格当场开；
+##      ② `enter_current_node()` 的非战斗分支统一走 `_收尾这一格(s)`；
+##      ③ `finish_battle_and_settle()` 在**节点战**（格类型 ≠ `"追击"`）结算完之后补一次。
+##      出口那一步（`try_advance_floor()` 的 `begin_exit_chase`）、追击战胜败都换层、
+##      出口守军那道闸、`fight_chase_battle()` 公开口子**一个字都没动**。
+##   9. 「源碳」在 `RunState` 里叫 `carbon`、to_dict() 里叫 `"源碳"`；本门面统一用 `run_state.carbon`。
 class_name GameSession
 extends RefCounted
 
@@ -258,8 +273,16 @@ func move_to_cell(cell_id: int) -> Dictionary:
 		"日志": _tail_logs(3),
 	}
 	# ★ D-08：走完这一格 → 推进剂见底就开追击战（站的是出口格时留给 `try_advance_floor()`）。
-	if _接追击战(s):
-		return last
+	# ★ D-10 纠错（对齐封存 JS `92-肉鸽界面-1-大图与记录.js:315`「**这一格结算完**就会触发追击战」）：
+	#   落脚这一格**自己还有东西要结算**（战斗格 / 黑市 / 事件 / 休息…）时，这里**先不开** ——
+	#   否则「用最后 1 点推进剂落在作战 / 精英格上」会变成：先打追击战、那一格的节点战永远没打
+	#   （追击战打赢就被赶到下一层，精英的藏品 / 掉落一起没）。
+	#   那条路改由「结算这一格的那一处」接（`enter_current_node()` / `finish_battle_and_settle()`）。
+	#   ★ 无可结算的格（空 / 已过 / 认不出来的类型）**必须当场开**：不然「0 推进剂 + 没东西可结算」
+	#     就是走不动也打不了的**死锁**（D-08 修的就是它）。
+	if not _这一格要先结算吗(s):
+		if _接追击战(s):
+			return last
 	_set_screen("map")
 	return r
 
@@ -295,15 +318,52 @@ func use_part(part_idx: int, target_cell: int) -> Dictionary:
 #       才过守军闸（判据 = `R.出口追击`，由 `界面.前进()` 在「脚下是出口格 + 推进剂 0」时置位）。
 # ==========================================================================================
 
+## ★ D-10（对齐封存 JS `92-肉鸽界面-1-大图与记录.js:315`）：「**这一格结算完**才会触发追击战」。
+##   所以「推进剂见底」这一下要分两种时机：
+##     · **这一格自己还有东西要结算**（作战 / 精英 / 守军 / 侵蚀源 / 出口守军 / 休整 / 黑市 /
+##       事件 / 瞭望站 / 遗迹 / 隧道 / 招募站）→ **先别开追击战**，等这一格结算完由那一处接
+##       （`enter_current_node()` 的收尾 / `finish_battle_and_settle()` 的节点战之后）；
+##     · **这一格无可结算的东西**（空 / 已经过 / 认不出来的类型）→ **当场开**。
+##       ★ 这一条绝不能丢：它正是 D-08 修掉的「0 推进剂 + 站在没有节点面板的格子上 =
+##         走不动也打不了」的**死锁**。
+func _这一格要先结算吗(s: RunState) -> bool:
+	if s == null or s.map_data.is_empty():
+		return false
+	return _要先结算的类型.has(_脚下类型(s))
+
+## D-10 的判据表（只有「节点类型」这一项输入 —— 不看推进剂、不看 rng）。
+## 出口两型（出口尽头 / 出口小径）**不在表里也不在这里开**：那一步走 `try_advance_floor()` 的
+## `_开追击战(s, true)`（先 `begin_exit_chase` 置位，出口守军那道闸才认得出它）。
+const _要先结算的类型 := [
+	"作战", "精英", "守军", "侵蚀源", "出口守军",
+	"休整", "黑市", "事件", "瞭望站", "遗迹", "隧道", "招募站",
+]
+
 ## 这一格结算完要不要开一场追击战？要 → 开战并返回 true（屏幕已进 `"battle"`）。
 ## 判据只用内核的 `MapNavigator.exit_chase_pending(s)`（= `推进剂 <= 0 and not chased`），**不自造**。
 ## 站的是出口格时**不在这里开** —— 出口那一步走在 `try_advance_floor()` 里（先 `begin_exit_chase` 置位）。
-func _接追击战(s: RunState) -> bool:
+##
+## ★ D-10 的关键参数 `已结算`（**它区分了两个调用时机，缺了它整条线会自锁**）：
+##   · `false`（默认）= 「**走进去的那一下**」（`move_to_cell()`）：这一格自己还有东西要结算时
+##     **不许开**（否则节点战被顶掉、`map_data["当前节点类型"]` 被留成 `"追击"`）；
+##   · `true` = 「**这一格的事已经做完了**」（`enter_current_node()` 的 `_收尾这一格()` /
+##     非战斗节点自己的结算之后 / `finish_battle_and_settle()` 的节点战之后）：这时**必须**开
+##     —— 不再看「要不要先结算」（那件事刚刚做完了），否则就是 D-08 要修的死锁。
+func _接追击战(s: RunState, 已结算: bool = false) -> bool:
 	if not MapNavigator.exit_chase_pending(s):
 		return false
 	if MapGenerator.exit_kinds().has(s.current_type()):
 		return false
+	if not 已结算 and _这一格要先结算吗(s):
+		return false
 	return _开追击战(s, false)
+
+## ★ D-10：非战斗节点的**统一收尾** —— 黑市 / 事件 / 瞭望站 / 遗迹 / 隧道 / 空 / 招募站
+##   这些分支把这一格的事做完之后都走它：它内部接 `_接追击战(s, true)`。
+##   返回 true = 已经在打追击战（屏幕已进 `"battle"`，调用方**别再 `_set_screen("map")`** ——
+##   那样会把刚开的那一场顶掉，D-08 段 9b 取证的那条老路）。
+func _收尾这一格(s: RunState) -> bool:
+	return _接追击战(s, true)
 
 ## 真的开一场追击战：`NodeResolver.开战(state, 条目, "追击")`，并把这一场的格类型记成 `"追击"`
 ## （`finish_battle_and_settle()` 靠它走 `after_chase_win`）。`在出口` = 这一次是不是「出口那一步」的
@@ -369,37 +429,47 @@ func enter_current_node() -> Dictionary:
 		"黑市":
 			_node_result = {"ok": true, "节点": "黑市", "货": NodeResolver.黑市货(s)}
 			last = {"行动": "进黑市", "货": _node_result["货"], "源碳": s.carbon, "日志": _tail_logs(2)}
+			if _收尾这一格(s):
+				return _node_result
 			_set_screen("map")
 			return _node_result
 		"事件":
 			_node_result = {"ok": true, "节点": "事件", "事件": NodeResolver.当前事件(s), "选项": current_event_choices()}
 			last = {"行动": "进事件", "事件": str(_node_result["事件"].get("名", "")), "日志": _tail_logs(2)}
+			if _收尾这一格(s):
+				return _node_result
 			_set_screen("map")
 			return _node_result
 		"瞭望站":
 			_node_result = NodeResolver.结算瞭望站(s, "登高")
 			_node_result["节点"] = "瞭望站"
 			last = {"行动": "瞭望站", "结果": _node_result, "日志": _tail_logs(3)}
+			if _收尾这一格(s):
+				return _node_result
 			_set_screen("map")
 			return _node_result
 		"遗迹":
 			_node_result = NodeResolver.结算遗迹(s, "藤蔓")
 			_node_result["节点"] = "遗迹"
 			last = {"行动": "遗迹", "结果": _node_result, "日志": _tail_logs(3)}
+			if _收尾这一格(s):
+				return _node_result
 			_set_screen("map")
 			return _node_result
 		"隧道":
 			_node_result = NodeResolver.结算隧道(s)
 			_node_result["节点"] = "隧道"
 			last = {"行动": "隧道", "结果": _node_result, "从": s.node_id, "日志": _tail_logs(3)}
+			if _收尾这一格(s):
+				return _node_result
 			_set_screen("map")
 			return _node_result
 		"空":
 			NodeResolver.清空格(s)
 			_node_result = {"ok": true, "节点": "空", "文本": "林间空地：落脚休整片刻，未遭遇敌情。"}
 			last = {"行动": "空格", "结果": _node_result, "日志": _tail_logs(2)}
-			# ★ D-08：这一格的事做完了 → 推进剂见底就追击战（不然玩家在这儿无路可走）。
-			if _接追击战(s):
+			# ★ D-08 / D-10：这一格的事做完了 → 推进剂见底就追击战（不然玩家在这儿无路可走）。
+			if _收尾这一格(s):
 				return _node_result
 			_set_screen("map")
 			return _node_result
@@ -408,15 +478,18 @@ func enter_current_node() -> Dictionary:
 			_node_result = {"ok": bool(领.get("ok", false)), "节点": "招募站", "券": 领.get("券", null),
 				"券名": str(领.get("券名", "")), "重复": bool(领.get("重复", false))}
 			last = {"行动": "招募站", "结果": _node_result, "券数": s.tickets.size(), "日志": _tail_logs(2)}
+			if _收尾这一格(s):
+				return _node_result
 			_set_screen("map")
 			return _node_result
 		"出口尽头", "出口小径":
 			return try_advance_floor()
 	# ★ D-08 兜底：这一格没有「进去就结算」的东西时，也检查一次**追击战** ——
 	#   否则「推进剂 0 + 站在没有节点面板的格子上」会让玩家**无路可走**（走不动、也没东西可点）。
-	#   正常路径上推进剂见底那一下已经在 `move_to_cell()` 里接过一次（那次会置 `chased`），
-	#   走到这里只可能是「直接摆过去 / 从存档回来」这类没有走一步的情况。
-	if _接追击战(s):
+	#   ★ D-10 之后正常路径上「推进剂见底」那一下分两种时机：无可结算的格在 `move_to_cell()` 里就接了，
+	#     有东西可结算的格由上面各分支的 `_收尾这一格()` 接。走到这里 = 这一格**没进任何分支**
+	#     （没有可结算的东西），所以传 `true`（不走 D-10 那道闸）。
+	if _接追击战(s, true):
 		return last
 	return _fail("这一格（%s）没有可以直接进去的东西" % 类型, {"ok": false, "类型": 类型})
 
@@ -1080,6 +1153,15 @@ func finish_battle_and_settle() -> Dictionary:
 	_battle_options_cache = _build_battle_options()
 	_result_cache["结算"] = r
 	_本场已结算 = true
+	# ★ D-10：**节点战**结算完才轮到追击战（JS `92-肉鸽界面-1:315`「这一格结算完就会触发追击战」）。
+	#   判据 = 这一场的格类型**不是** `"追击"`（是追击战那说明追击战刚刚已经打过了，不许自己接自己）。
+	#   上面那个 `elif bool(r.get("胜", false))` 分支里 `s.propellant <= 0` 走的是 `after_chase_win`
+	#   （内核的 D-08 口径，**一个字都没动**）；没打赢那一支不碰推进剂，于是这里补上 JS 那一步
+	#   → 玩家不会卡在「0 推进剂 + 节点战打完了却没路走」。
+	#   注意顺序：必须在 `_set_screen("result")` **之前**接 —— `_开追击战()` 会把屏幕切成 `"battle"`。
+	#   ★ 传 `true`：这一场**节点战已经结算完了**，D-10 那道「要先结算」的闸不该再拦（拦了就死锁）。
+	if 格类型 != "追击" and _接追击战(s, true):
+		return r
 	last = {"行动": "结算", "结果": result_summary(), "内核": r}
 	_set_screen("result")
 	return r
