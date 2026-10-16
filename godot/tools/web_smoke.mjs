@@ -45,6 +45,9 @@ const check = (cond, msg) => { console.log(`${cond ? '✓' : '✗'} ${msg}`); if
   const got = line ? JSON.parse(line.slice('MECHA_SMOKE '.length)) : null;
   check(!!got, `/godot/ 启动（${Date.now() - t0} ms）`);
   check(got && got.checksum === EXPECTED_CHECKSUM, `浏览器内确定性校验和 = ${got && got.checksum}（期望 ${EXPECTED_CHECKSUM}）`);
+  const d = (got && got.data) || {};
+  check(d.ALLY_T === 34 && d['编成表'] === 47 && d['战术卡牌表'] === 32,
+    `Web 包里带上了数据（机师 ${d.ALLY_T} · 编成 ${d['编成表']} · 战术牌 ${d['战术卡牌表']}）`);
   const errors = logs.filter(l => /PAGEERROR|USER ERROR|SCRIPT ERROR/.test(l));
   check(errors.length === 0, `无脚本错误${errors.length ? '：' + errors.slice(0, 3).join(' | ') : ''}`);
   if (SHOTS) await page.screenshot({ path: join(SHOTS, 'smoke-godot.png') });

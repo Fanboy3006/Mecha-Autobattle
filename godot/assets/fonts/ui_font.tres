@@ -1,0 +1,10 @@
+[gd_resource type="FontVariation" load_steps=5 format=3]
+
+[ext_resource type="FontFile" path="res://assets/fonts/NotoSansSC-Subset.otf" id="0"]
+[ext_resource type="FontFile" path="res://assets/fonts/NotoEmoji-Subset.ttf" id="1"]
+[ext_resource type="FontFile" path="res://assets/fonts/NotoSansSymbols2-Subset.ttf" id="2"]
+[ext_resource type="FontFile" path="res://assets/fonts/NotoSansMath-Subset.ttf" id="3"]
+
+[resource]
+base_font = ExtResource("0")
+fallbacks = Array[Font]([ExtResource("1"), ExtResource("2"), ExtResource("3")])

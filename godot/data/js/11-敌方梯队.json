@@ -1,0 +1,90 @@
+{
+ "ENEMY_TIER": {
+  "头目": [
+   "captain",
+   "venom",
+   "regen",
+   "funnel",
+   "berserker"
+  ],
+  "杂兵": [
+   "grunt",
+   "fighter",
+   "drone",
+   "swarm",
+   "raider",
+   "hound",
+   "bomber"
+  ],
+  "精锐": [
+   "shield",
+   "beamcoat",
+   "phase",
+   "stealth",
+   "mirror",
+   "jammer",
+   "sniper",
+   "artillery",
+   "beetle"
+  ]
+ },
+ "BOSS_SPECIAL": [
+  "flagship",
+  "bluefish"
+ ],
+ "TIER_LV": {
+  "Boss": 2,
+  "头目": 2,
+  "杂兵": 0,
+  "精锐": 1
+ },
+ "DEF_BY_CLASS": {
+  "尖兵": 75,
+  "指挥": 80,
+  "特种": 85,
+  "狙击": 75,
+  "近卫": 95,
+  "重装": 110
+ },
+ "DEF_BY_TIER": {
+  "Boss": 95,
+  "头目": 80,
+  "杂兵": 50,
+  "精锐": 65
+ },
+ "NEW_POWER": [
+  "W2",
+  "W3",
+  "W4",
+  "W5",
+  "CB2",
+  "CB3",
+  "CB4",
+  "CB5",
+  "B1",
+  "M1",
+  "M2",
+  "M3",
+  "M4",
+  "M5",
+  "A1",
+  "A2",
+  "A3",
+  "A4",
+  "A5",
+  "U1",
+  "U2",
+  "U6",
+  "U7",
+  "U8",
+  "CB1",
+  "S1",
+  "W1",
+  "S2",
+  "S3",
+  "S4",
+  "S5",
+  "B3",
+  "B4"
+ ]
+}

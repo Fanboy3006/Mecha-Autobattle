@@ -18,7 +18,7 @@ window/stretch/aspect="expand"
 
 [gui]
 
-theme/custom_font="res://assets/fonts/NotoSansSC-Subset.otf"
+theme/custom_font="res://assets/fonts/ui_font.tres"
 
 [rendering]
 

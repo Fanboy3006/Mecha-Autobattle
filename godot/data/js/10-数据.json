@@ -1,0 +1,6230 @@
+{
+ "PROMO_PASSIVE": {
+  "A4": "darkSword",
+  "A5": "psyRes",
+  "CB3": "superSoldier",
+  "CB5": "gnArmsGuard",
+  "M2": "ironField",
+  "M4": "zanshin",
+  "S3": "lunaPower",
+  "U1": "falkeHunt",
+  "U8": "laserGuide"
+ },
+ "ALLY_T": [
+  {
+   "abilities": [
+    "dash",
+    "mook"
+   ],
+   "armor": 1000,
+   "awaken": 140,
+   "defense": 95,
+   "eva": 15,
+   "flying": false,
+   "h": 1,
+   "hp": 5000,
+   "mech": "B1",
+   "melee": 160,
+   "mov": 5,
+   "pilot": "雷萨",
+   "portal": {
+    "cost": 25,
+    "range": 7
+   },
+   "shoot": 100,
+   "short": "B1",
+   "tags": {
+    "势力": "影世界",
+    "战斗分类": "近卫",
+    "远近分类": "近战"
+   },
+   "trait": "portalTrait",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "近战斩击",
+     "power": 2350,
+     "range": [
+      1,
+      4
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": -10,
+     "desc": "命中后 50% 造成 12000 伤害、50% 造成目标当前 HP 90% 的伤害；无视防御。无论是否命中都会传送到目标旁（击破时占据目标位置）。也是门之力：每次使用反噬 +25（和「传送」共用），反噬 ≥100 时不能使用。",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": true,
+     "name": "传送斩",
+     "power": 0,
+     "range": [
+      1,
+      4
+     ],
+     "special": "gamble",
+     "startCd": 2,
+     "stat": "格斗",
+     "unlock": 20,
+     "upgrades": [
+      {
+       "lv": 30,
+       "note": "Lv30 起射程变为全图",
+       "range": [
+        1,
+        null
+       ]
+      }
+     ],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": false,
+     "cd": 4,
+     "critMod": 0,
+     "desc": "以自身为中心 3 格内的所有敌机受到特殊伤害（不伤友军）。门之力：攻击能力值 = 格斗 + 觉醒。配合「传送」先跳进敌阵中心再发动。",
+     "dmgType": "特殊",
+     "fire": "map",
+     "hit": 100,
+     "iff": true,
+     "ignoreDef": false,
+     "name": "影界·万刃归一",
+     "power": 2900,
+     "rad": 3,
+     "range": [
+      1,
+      1
+     ],
+     "shape": "burst",
+     "special": null,
+     "startCd": 4,
+     "stat": "格斗+觉醒",
+     "unlock": 30,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "zocFree",
+    "relay"
+   ],
+   "armor": 0,
+   "awaken": 100,
+   "canFly": true,
+   "defense": 75,
+   "eva": 40,
+   "flying": true,
+   "h": 1,
+   "hp": 4500,
+   "mech": "B2",
+   "melee": 100,
+   "mov": 7,
+   "pilot": "蕾卡",
+   "shoot": 130,
+   "short": "B2",
+   "tags": {
+    "势力": "影世界",
+    "战斗分类": "尖兵",
+    "远近分类": "远程"
+   },
+   "trait": "moveEva",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "直射炮",
+     "power": 2346,
+     "range": [
+      1,
+      5
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "indirect",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "曲射弹",
+     "power": 1877,
+     "range": [
+      2,
+      7
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": false,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "选 8 个方向之一，冲到第 5 格（必须是合法落点），攻击沿途 4 格内所有单位，包括友军。必中，不能被反击。",
+     "dmgType": "特殊",
+     "fire": "map",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "影凤凰",
+     "power": 2400,
+     "range": [
+      1,
+      4
+     ],
+     "special": null,
+     "stat": "射击",
+     "statMul": 1.2,
+     "unlock": 20,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [],
+   "armor": 500,
+   "awaken": 100,
+   "defense": 85,
+   "eva": 25,
+   "flying": false,
+   "h": 1,
+   "hp": 4800,
+   "mech": "B3",
+   "melee": 140,
+   "mov": 6,
+   "pilot": "维诺",
+   "shoot": 130,
+   "short": "B3",
+   "tags": {
+    "势力": "影世界",
+    "战斗分类": "特种",
+    "远近分类": "远程"
+   },
+   "trait": "shadowSeed",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "在 5 格内的空地布置 2 个影之种（HP 1、没有控制区、不能行动，持续 3 回合）。每个我方阶段结束时，影之种对周围 3×3 的敌机造成威力 1000 的特殊伤害（攻击能力值 = 维诺的射击），并让它们装甲 −100（整场有效，无限叠加）。布置算本回合的行动，可以先移动再布置。",
+     "dmgType": "特殊",
+     "fire": "support",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "影之种",
+     "power": 1000,
+     "range": [
+      0,
+      5
+     ],
+     "special": "summon",
+     "stat": "射击",
+     "summonLife": 3,
+     "summonN": 2,
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "cd": 0,
+     "desc": "（新项目新增，作者 2026-10-10 拍板）一台友军回复 2600 × 射击÷100 的 HP。初稿数值，作者试玩后再调。",
+     "dmgType": "—",
+     "fire": "heal",
+     "name": "影之愈",
+     "power": 2600,
+     "range": [
+      1,
+      2
+     ],
+     "unlock": 1,
+     "upgrades": []
+    }
+   ]
+  },
+  {
+   "abilities": [],
+   "armor": 600,
+   "awaken": 100,
+   "defense": 85,
+   "eva": 25,
+   "flying": false,
+   "h": 1,
+   "hp": 5400,
+   "mech": "B4",
+   "melee": 140,
+   "mov": 6,
+   "pilot": "比格特拉克",
+   "shoot": 150,
+   "short": "B4",
+   "tags": {
+    "势力": "影世界",
+    "战斗分类": "特种",
+    "远近分类": "远程"
+   },
+   "trait": "chainThrow",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "indirect",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "抛射弹",
+     "power": 2400,
+     "range": [
+      2,
+      4
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "bounce": 4,
+     "cd": 5,
+     "critMod": 0,
+     "desc": "丢向 5 格内的一台敌机，造成特殊伤害（只会被护盾类效果抵消），目标不能反击。命中后在它 4 格内找下一台没被打过的敌机，造成同样的伤害（必中）；每跳一次搜索范围 −1（4 → 3 → 2 → 1），找不到敌机就停。",
+     "dmgType": "特殊",
+     "fire": "indirect",
+     "hit": 120,
+     "ignoreDef": false,
+     "name": "连锁投掷",
+     "noCounter": true,
+     "power": 1600,
+     "range": [
+      1,
+      5
+     ],
+     "special": null,
+     "stat": "射击",
+     "statMul": 1.2,
+     "unlock": 20,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [],
+   "armor": 500,
+   "awaken": 150,
+   "command": "meteor",
+   "defense": 85,
+   "eva": 30,
+   "flying": false,
+   "h": 1,
+   "hp": 5200,
+   "mech": "M1",
+   "melee": 90,
+   "mov": 5,
+   "pilot": "Feena",
+   "shoot": 140,
+   "short": "M1",
+   "skillPick": true,
+   "tags": {
+    "势力": "月球王国",
+    "战斗分类": "指挥",
+    "远近分类": "远程"
+   },
+   "trait": "autoCast",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "buff": {
+      "eva": 15,
+      "hit": 15
+     },
+     "cd": 0,
+     "critMod": 0,
+     "desc": "以自身为中心菱形 4 格内的友军（不含自己）闪避 +15、命中 +15，持续到下一个我方阶段开始。Lv20 起再加防御和暴击。",
+     "dmgType": "—",
+     "fire": "support",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "月光祝福",
+     "power": 0,
+     "range": [
+      0,
+      4
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [
+      {
+       "buff": {
+        "crit": 10,
+        "def": 20,
+        "eva": 15,
+        "hit": 15
+       },
+       "lv": 20,
+       "note": "Lv20：再加防御 +20、暴击 +10"
+      },
+      {
+       "buff": {
+        "crit": 15,
+        "def": 30,
+        "eva": 20,
+        "hit": 20
+       },
+       "lv": 30,
+       "note": "Lv30：闪避、命中 +20，防御 +30，暴击 +15"
+      }
+     ],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "（新项目：作者 2026-10-11 换机制）被动。我方队友攻击、**造成伤害之后**，Feena 追加一次攻击（设定：她操作质量加速器丢陨石）。用这把武器的威力走现成公式、必中、不暴击；目标 = 队友这一击打的那一台（它已经倒下就不追）。每回合上限 = `71-改动.js` 的 `势力特色.月球王国.残月余响每回合上限`（初稿 1 次）。旧范围（自身 4 格 + 队友射程延伸 / 上一版的「敌方前排」）**全部作废**。（2026-10-13：`战斗结构.Feena主动攻击.开 !== false` 时她**自己回合也能主动开这一发**（曲射、无视阻挡），Lv10 即可解锁；关掉开关则逐字节退回「只能被动追加」。）",
+     "dmgType": "物理",
+     "fire": "indirect",
+     "hit": 100,
+     "ignoreDef": false,
+     "lv10Power": 2200,
+     "name": "残月的余响",
+     "power": 3200,
+     "range": [
+      0,
+      4
+     ],
+     "special": "echoFollow",
+     "startCd": 0,
+     "stat": "射击",
+     "unlock": 10,
+     "upgrades": [
+      {
+       "lv": 30,
+       "note": "Lv30：威力 5400；所有非精锐友军都能延伸范围",
+       "power": 5400
+      }
+     ],
+     "uses": null,
+     "v37": true,
+     "友军攻击后追加": true,
+     "残月下放": true
+    },
+    {
+     "afterMove": true,
+     "cd": 3,
+     "critMod": 0,
+     "desc": "（新项目：作者 2026-10-11 换机制）被动。我方队友攻击、**造成伤害之后**，Feena 追加一次攻击（设定：她操作质量加速器丢陨石）。用这把武器的威力走现成公式、必中、不暴击；目标 = 队友这一击打的那一台（它已经倒下就不追）。每回合上限 = `71-改动.js` 的 `势力特色.月球王国.残月余响每回合上限`（初稿 1 次）。旧范围（自身 4 格 + 队友射程延伸 / 上一版的「敌方前排」）**全部作废**。（2026-10-13：`战斗结构.Feena主动攻击.开 !== false` 时她**自己回合也能主动开这一发**（曲射、无视阻挡），Lv10 即可解锁；关掉开关则逐字节退回「只能被动追加」。）",
+     "dmgType": "特殊",
+     "fire": "indirect",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "满月·月蚀",
+     "power": 2700,
+     "range": [
+      0,
+      4
+     ],
+     "special": "echoFollow",
+     "startCd": 4,
+     "stat": "射击+觉醒",
+     "unlock": 30,
+     "upgrades": [],
+     "uses": null,
+     "v37": true,
+     "友军攻击后追加": true,
+     "残月下放": false
+    },
+    {
+     "cd": 0,
+     "desc": "（新项目新增，作者 2026-10-10 定）让本回合已经行动过的一名队友立刻再行动一次。",
+     "dmgType": "—",
+     "fire": "support",
+     "grant": true,
+     "name": "再动",
+     "unlock": 20
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "guard",
+    "ironField"
+   ],
+   "armor": 1500,
+   "awaken": 100,
+   "defense": 120,
+   "eva": 0,
+   "flying": false,
+   "h": 2,
+   "hp": 12000,
+   "mech": "M2",
+   "melee": 140,
+   "mov": 4,
+   "pilot": "阿布拉德",
+   "shoot": 110,
+   "short": "M2",
+   "tags": {
+    "势力": "月球王国",
+    "战斗分类": "重装",
+    "远近分类": "近战"
+   },
+   "trait": "steadfast",
+   "w": 2,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "打桩臂",
+     "power": 2300,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "反击用的中距离武器。",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "肩部机炮",
+     "power": 1400,
+     "range": [
+      1,
+      3
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "连续判定 10 段。首段命中 85，每段命中后 −10、未中后 +10。每段无视装甲、防御和一切减免（大招：格斗 ×1.2）。",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 85,
+     "hits": 10,
+     "ignoreDef": true,
+     "name": "螺旋式打桩机",
+     "power": 440,
+     "range": [
+      1,
+      1
+     ],
+     "special": "multi",
+     "stat": "格斗",
+     "statMul": 1.2,
+     "step": 10,
+     "unlock": 20,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [],
+   "armor": 500,
+   "awaken": 100,
+   "defense": 85,
+   "eva": 25,
+   "flying": true,
+   "h": 1,
+   "hp": 4800,
+   "mech": "M3",
+   "melee": 80,
+   "mov": 5,
+   "pilot": "Iris",
+   "shoot": 130,
+   "short": "M3",
+   "tags": {
+    "势力": "月球王国",
+    "战斗分类": "指挥",
+    "远近分类": "远程"
+   },
+   "trait": "fieldAid",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "一台友军回复 3600 × 射击÷100 的 HP，不能对自己使用。Lv20 起射程 1–2。",
+     "dmgType": "—",
+     "fire": "heal",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "修理装置",
+     "power": 3600,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [
+      {
+       "lv": 20,
+       "note": "Lv20：射程 1–2",
+       "range": [
+        1,
+        2
+       ]
+      }
+     ],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "防身机枪",
+     "power": 1200,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "被动。我方阶段 Iris 每次行动结束后，自身 5 格内的全部友军（包括自己）回复最大 HP 的 10%（Lv30 起 15%）。",
+     "dmgType": "—",
+     "fire": "passive",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "月华再生",
+     "power": 0,
+     "range": [
+      0,
+      5
+     ],
+     "special": "regen",
+     "startCd": 0,
+     "stat": "射击",
+     "unlock": 20,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "zanshin",
+    "supportAtk",
+    "overwatch"
+   ],
+   "armor": 300,
+   "awaken": 100,
+   "defense": 75,
+   "eva": 20,
+   "flying": false,
+   "h": 1,
+   "hp": 4000,
+   "mech": "M4",
+   "mechName": "朔夜",
+   "melee": 150,
+   "mov": 5,
+   "pilot": "小太刀 Nagi",
+   "shoot": 165,
+   "short": "M4",
+   "tags": {
+    "势力": "月球王国",
+    "战斗分类": "狙击",
+    "远近分类": "远程"
+   },
+   "trait": "iaiSnipe",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": false,
+     "cd": 0,
+     "chainStep": 70,
+     "critMod": 0,
+     "desc": "连射：命中后对同一目标再开一枪，每命中一次下一枪命中修正再 −70，直到被闪避为止（Lv20 被动「残心」减轻惩罚）。",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 125,
+     "hits": 8,
+     "ignoreDef": false,
+     "name": "月光狙击枪",
+     "power": 2100,
+     "range": [
+      3,
+      8
+     ],
+     "special": "chain",
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": false,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "远距离曲射，不需要视线。",
+     "dmgType": "物理",
+     "fire": "indirect",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "月影迫击炮",
+     "power": 2000,
+     "range": [
+      3,
+      9
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "移动后也能用的曲射。",
+     "dmgType": "物理",
+     "fire": "indirect",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "掷弹筒",
+     "power": 1300,
+     "range": [
+      2,
+      5
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 15,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "小太刀",
+     "power": 1800,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [],
+   "armor": 500,
+   "awaken": 100,
+   "defense": 85,
+   "eva": 25,
+   "flying": false,
+   "h": 1,
+   "hp": 4800,
+   "mech": "M5",
+   "melee": 140,
+   "mov": 6,
+   "pilot": "苏菲",
+   "shoot": 130,
+   "short": "M5",
+   "tags": {
+    "势力": "月球王国",
+    "战斗分类": "特种",
+    "远近分类": "远程"
+   },
+   "trait": "bind",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "命中后把目标向自己拉近最多 4 格（被挡住就停下）。",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "牵引锚",
+     "power": 1100,
+     "pull": 4,
+     "range": [
+      2,
+      5
+     ],
+     "special": "pull",
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "机枪",
+     "power": 1300,
+     "range": [
+      1,
+      3
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 2,
+     "critMod": 0,
+     "desc": "在 2–6 格内选一块 2×2 区域（点哪格，那格就是左上角），区域内的敌机受到攻击，并且到下一个我方阶段开始前移动力 −2。",
+     "dmgType": "物理",
+     "fire": "map",
+     "hit": 100,
+     "iff": true,
+     "ignoreDef": false,
+     "name": "重力网",
+     "power": 900,
+     "range": [
+      2,
+      6
+     ],
+     "shape": "box",
+     "size": 2,
+     "slow": 2,
+     "special": null,
+     "stat": "射击",
+     "unlock": 20,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "cd": 0,
+     "desc": "（新项目新增，作者 2026-10-10 拍板）一台友军回复 2700 × 射击÷100 的 HP。初稿数值，作者试玩后再调。",
+     "dmgType": "—",
+     "fire": "heal",
+     "name": "牵引维修臂",
+     "power": 2700,
+     "range": [
+      1,
+      2
+     ],
+     "unlock": 1,
+     "upgrades": []
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "followUp",
+    "transAm",
+    "dash",
+    "mook"
+   ],
+   "armor": 700,
+   "awaken": 130,
+   "canFly": true,
+   "critBase": 15,
+   "defense": 95,
+   "eva": 30,
+   "flying": false,
+   "h": 1,
+   "hp": 4800,
+   "mech": "CB1",
+   "melee": 170,
+   "mov": 6,
+   "pilot": "刹那",
+   "shoot": 120,
+   "short": "CB1",
+   "tags": {
+    "势力": "天人",
+    "战斗分类": "近卫",
+    "远近分类": "近战"
+   },
+   "trait": "gundam",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "GN 剑（剑模式）",
+     "power": 2300,
+     "range": [
+      1,
+      3
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 20,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "GN 长短刃",
+     "power": 2000,
+     "range": [
+      1,
+      3
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "GN 剑（步枪模式）",
+     "power": 1600,
+     "range": [
+      1,
+      3
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 2,
+     "critMod": 0,
+     "desc": "连续 7 段判定，首段命中 95，命中后 −10、未中后 +10；每段都扣装甲（装甲对多段很有效）；大招：格斗 ×1.2。",
+     "dmgType": "光束",
+     "fire": "melee",
+     "hit": 95,
+     "hits": 7,
+     "ignoreDef": false,
+     "name": "七剑·TRANS-AM 乱舞",
+     "power": 1400,
+     "range": [
+      1,
+      3
+     ],
+     "special": "multi",
+     "stat": "格斗",
+     "statMul": 1.2,
+     "step": 10,
+     "taOnly": true,
+     "unlock": 20,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "again": true,
+     "cd": 3,
+     "critMod": 0,
+     "desc": "量子化跃迁到 5 格内的目标面前斩击，目标不能反击；击破后可以原地再攻击一次。量子化：攻击能力值 = 格斗 + 觉醒。",
+     "dmgType": "光束",
+     "fire": "melee",
+     "hit": 110,
+     "ignoreDef": false,
+     "name": "GN 剑 III·量子跃迁斩",
+     "noCounter": true,
+     "power": 5000,
+     "range": [
+      1,
+      5
+     ],
+     "special": null,
+     "startCd": 4,
+     "stat": "格斗+觉醒",
+     "unlock": 30,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "gnShield",
+    "transAm",
+    "supportAtk",
+    "overwatch"
+   ],
+   "armor": 300,
+   "awaken": 110,
+   "canFly": true,
+   "defense": 75,
+   "eva": 10,
+   "flying": false,
+   "h": 1,
+   "hp": 4000,
+   "mech": "CB2",
+   "melee": 80,
+   "mov": 4,
+   "pilot": "洛克昂",
+   "shoot": 160,
+   "short": "CB2",
+   "tags": {
+    "势力": "天人",
+    "战斗分类": "狙击",
+    "远近分类": "远程"
+   },
+   "trait": "overflowCrit",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": false,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "TRANS-AM 中可以移动后使用。",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 130,
+     "ignoreDef": false,
+     "name": "GN 狙击步枪",
+     "power": 2650,
+     "range": [
+      3,
+      7
+     ],
+     "special": null,
+     "stat": "射击",
+     "taMove": true,
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 130,
+     "ignoreDef": false,
+     "name": "GN 光束手枪",
+     "power": 1100,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": false,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "indirect",
+     "hit": 130,
+     "ignoreDef": false,
+     "name": "GN 导弹",
+     "power": 1700,
+     "range": [
+      2,
+      5
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": 2,
+     "v37": true
+    },
+    {
+     "afterMove": false,
+     "cd": 2,
+     "critMod": 0,
+     "desc": "只有 TRANS-AM 中能用。多重锁定：射程内选最多 3 台敌机，每台连续判定 3 段（首段命中 130，命中后 −10、未中后 +10，每段都扣装甲），目标不能反击、防御或回避；打中过的目标挂一层 −40% 破防。攻击能力值 = 射击 + 觉醒。",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 130,
+     "ignoreDef": false,
+     "lockHits": 3,
+     "lockN": 3,
+     "lockStep": 10,
+     "markOnHit": true,
+     "name": "TRANS-AM 狙击",
+     "power": 550,
+     "range": [
+      4,
+      9
+     ],
+     "special": "lock",
+     "stat": "射击+觉醒",
+     "taOnly": true,
+     "unlock": 20,
+     "upgrades": [
+      {
+       "lockN": 4,
+       "lv": 30,
+       "note": "Lv30：最多锁定 4 台"
+      }
+     ],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "transAm",
+    "superSoldier"
+   ],
+   "armor": 500,
+   "awaken": 100,
+   "canFly": true,
+   "defense": 85,
+   "eva": 25,
+   "flying": false,
+   "h": 1,
+   "hp": 4500,
+   "mech": "CB3",
+   "melee": 140,
+   "mov": 6,
+   "pilot": "阿雷路亚",
+   "shoot": 130,
+   "short": "CB3",
+   "tags": {
+    "势力": "天人",
+    "战斗分类": "特种",
+    "远近分类": "近战"
+   },
+   "trait": "hallelujah",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "命中后把目标沿攻击方向推开 2 格（TRANS-AM 中 4 格）。撞到单位、障碍或地图边缘时停下，双方各受 800 碰撞伤害（TRANS-AM 中 1600）；地面单位被推进裂谷直接坠毁。",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "GN 冲撞",
+     "power": 1150,
+     "push": 2,
+     "range": [
+      1,
+      1
+     ],
+     "special": "push",
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "GN 冲锋枪",
+     "power": 1300,
+     "range": [
+      1,
+      3
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "transAm",
+    "guard"
+   ],
+   "armor": 1200,
+   "awaken": 100,
+   "canFly": true,
+   "defense": 110,
+   "eva": 0,
+   "flying": false,
+   "h": 1,
+   "hp": 6000,
+   "mech": "CB4",
+   "melee": 120,
+   "mov": 4,
+   "pilot": "提耶利亚",
+   "shoot": 150,
+   "short": "CB4",
+   "tags": {
+    "势力": "天人",
+    "战斗分类": "重装",
+    "远近分类": "远程"
+   },
+   "trait": "veda",
+   "transform": "nadleeh",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "GN 火箭筒",
+     "power": 2200,
+     "range": [
+      2,
+      6
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "GN 加农炮",
+     "power": 1600,
+     "range": [
+      1,
+      3
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": false,
+     "cd": 3,
+     "critMod": 0,
+     "desc": "把 GN 加农炮和火箭筒的输出全部集中，选 8 个方向之一，直线 8 格内的所有单位（包括友军）受到攻击。",
+     "dmgType": "光束",
+     "fire": "map",
+     "hit": 100,
+     "ignoreDef": false,
+     "len": 8,
+     "name": "GN 加农炮·高压全弹",
+     "power": 3600,
+     "range": [
+      1,
+      1
+     ],
+     "shape": "line",
+     "special": null,
+     "stat": "射击",
+     "statMul": 1.2,
+     "unlock": 20,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "gnArmsGuard",
+    "guard"
+   ],
+   "armor": 1400,
+   "awaken": 100,
+   "canFly": true,
+   "defense": 110,
+   "eva": 5,
+   "flying": true,
+   "h": 2,
+   "hp": 11000,
+   "mech": "CB5",
+   "mechName": "GN ARMOR TYPE-E",
+   "melee": 130,
+   "mov": 5,
+   "pilot": "拉塞",
+   "shoot": 150,
+   "short": "CB5",
+   "tags": {
+    "势力": "天人",
+    "战斗分类": "重装",
+    "远近分类": "远程"
+   },
+   "trait": "gnField",
+   "w": 2,
+   "weapons": [
+    {
+     "afterMove": false,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "GN 大型光束炮",
+     "power": 2200,
+     "range": [
+      2,
+      7
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "indirect",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "GN 导弹",
+     "power": 1500,
+     "range": [
+      2,
+      6
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": 4,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "GN 大型光束剑",
+     "power": 2000,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "seed"
+   ],
+   "armor": 700,
+   "awaken": 90,
+   "canFly": true,
+   "defense": 85,
+   "eva": 35,
+   "flying": true,
+   "h": 1,
+   "hp": 5200,
+   "mech": "S1",
+   "mechName": "自由",
+   "melee": 150,
+   "mov": 6,
+   "pilot": "拉克丝",
+   "shoot": 170,
+   "short": "S1",
+   "tags": {
+    "势力": "卫星国防军",
+    "战斗分类": "特种",
+    "远近分类": "远程"
+   },
+   "trait": "endlessSeed",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "光束军刀",
+     "power": 3100,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "高能光束步枪",
+     "power": 2700,
+     "range": [
+      1,
+      5
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "电磁炮",
+     "power": 2550,
+     "range": [
+      2,
+      6
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 2,
+     "critMod": 0,
+     "desc": "多重锁定：在射程内选择最多 5 台敌机（直射，需要视线），逐一攻击。目标不能反击，也不能选择防御或回避。SEED：攻击能力值 = 射击 + 觉醒（拉克丝的觉醒没有上限，越打越痛）。",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "lockN": 5,
+     "name": "METEOR 全弹发射",
+     "power": 2100,
+     "range": [
+      2,
+      6
+     ],
+     "special": "lock",
+     "stat": "射击+觉醒",
+     "unlock": 20,
+     "upgrades": [
+      {
+       "disarm": true,
+       "lockN": 8,
+       "lv": 30,
+       "note": "Lv30：最多锁定 8 台；被命中的目标「武装损坏」，下一个敌方阶段不能攻击"
+      }
+     ],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 2,
+     "critMod": 0,
+     "desc": "浮游炮：发射后从 8 个随机方向攻击 8 次，目标闪避减半。不需要视线。SEED：攻击能力值 = 射击 + 觉醒。Lv30 解锁。",
+     "dmgType": "光束",
+     "fire": "indirect",
+     "hit": 100,
+     "hits": 8,
+     "ignoreDef": false,
+     "name": "超级 DRAGOON",
+     "power": 1250,
+     "range": [
+      2,
+      8
+     ],
+     "special": "funnel",
+     "startCd": 4,
+     "stat": "射击+觉醒",
+     "unlock": 30,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "seed",
+    "beamReflect"
+   ],
+   "armor": 700,
+   "awaken": 70,
+   "canFly": true,
+   "defense": 85,
+   "eva": 20,
+   "flying": false,
+   "h": 1,
+   "hp": 5000,
+   "mech": "S2",
+   "mechName": "晓",
+   "melee": 120,
+   "mov": 5,
+   "pilot": "卡嘉莉",
+   "shoot": 145,
+   "short": "S2",
+   "tags": {
+    "势力": "卫星国防军",
+    "战斗分类": "指挥",
+    "远近分类": "远程"
+   },
+   "trait": "orbLion",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "光束步枪",
+     "power": 1500,
+     "range": [
+      1,
+      4
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "光束军刀",
+     "power": 1600,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 2,
+     "critMod": 0,
+     "desc": "浮游炮：发射后从 8 个随机方向攻击 8 次，目标闪避减半；每段按随机方向算正面 / 侧面 / 背面加成。不需要视线。",
+     "dmgType": "光束",
+     "fire": "indirect",
+     "hit": 100,
+     "hits": 8,
+     "ignoreDef": false,
+     "name": "DRAGOON",
+     "power": 500,
+     "range": [
+      2,
+      6
+     ],
+     "special": "funnel",
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "awakenAdd": 5,
+     "awakenSeed": 8,
+     "cd": 3,
+     "critMod": 0,
+     "desc": "全图我方（含自己）觉醒 +5；卡嘉莉 SEED 后改成 +8。卫星国防军涨的觉醒算进 SEED 进度；别的势力只加觉醒值（加强「属性 + 觉醒」的大招）。",
+     "dmgType": "—",
+     "fire": "support",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "奥布之狮的号令",
+     "power": 0,
+     "range": [
+      0,
+      99
+     ],
+     "self": true,
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "buff": {
+      "beamRed": 40
+     },
+     "cd": 2,
+     "critMod": 0,
+     "desc": "3 格内的其他友军光束减伤 40%，持续到下一个我方阶段开始。",
+     "dmgType": "—",
+     "fire": "support",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "八咫之守",
+     "power": 0,
+     "range": [
+      0,
+      3
+     ],
+     "special": null,
+     "startCd": 2,
+     "stat": "射击",
+     "unlock": 20,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "seed",
+    "lunaPower",
+    "supportAtk",
+    "overwatch"
+   ],
+   "armor": 300,
+   "awaken": 70,
+   "canFly": true,
+   "defense": 75,
+   "eva": 15,
+   "flying": false,
+   "h": 1,
+   "hp": 4000,
+   "mech": "S3",
+   "mechName": "脉冲",
+   "melee": 90,
+   "mov": 5,
+   "pilot": "露娜玛丽亚",
+   "shoot": 165,
+   "short": "S3",
+   "tags": {
+    "势力": "卫星国防军",
+    "战斗分类": "狙击",
+    "远近分类": "远程"
+   },
+   "trait": "focusFire",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": false,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 120,
+     "ignoreDef": false,
+     "name": "炮装·高能光束炮",
+     "power": 2350,
+     "range": [
+      3,
+      8
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "光束步枪",
+     "power": 1150,
+     "range": [
+      1,
+      3
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "剑装·对舰刀",
+     "power": 1300,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "seed",
+    "dash",
+    "mook"
+   ],
+   "armor": 700,
+   "awaken": 70,
+   "defense": 95,
+   "eva": 25,
+   "flying": false,
+   "h": 1,
+   "hp": 5000,
+   "mech": "S4",
+   "mechName": "决斗",
+   "melee": 160,
+   "mov": 6,
+   "pilot": "伊萨克",
+   "shoot": 110,
+   "short": "S4",
+   "tags": {
+    "势力": "卫星国防军",
+    "战斗分类": "近卫",
+    "远近分类": "近战"
+   },
+   "trait": "duelPride",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "光束军刀",
+     "power": 2100,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "光束步枪",
+     "power": 1300,
+     "range": [
+      1,
+      3
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "seed",
+    "beastMode",
+    "guard"
+   ],
+   "armor": 1300,
+   "awaken": 70,
+   "defense": 110,
+   "eva": 10,
+   "flying": false,
+   "h": 1,
+   "hp": 8500,
+   "mech": "S5",
+   "mechName": "盖亚",
+   "melee": 150,
+   "mov": 5,
+   "pilot": "史黛拉",
+   "shoot": 140,
+   "short": "S5",
+   "tags": {
+    "势力": "卫星国防军",
+    "战斗分类": "重装",
+    "远近分类": "近战"
+   },
+   "trait": "extended",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 10,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "光束翼刃",
+     "power": 2400,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "光束突击炮",
+     "power": 1500,
+     "range": [
+      1,
+      3
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": false,
+     "cd": 3,
+     "critMod": 0,
+     "desc": "以自身为中心，3 格内的所有单位（包括友军）受到攻击。SEED 暴走后只打敌机。攻击能力值 = 射击 + 觉醒。",
+     "dmgType": "光束",
+     "fire": "map",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "毁灭·全方位炮击",
+     "power": 2750,
+     "rad": 3,
+     "range": [
+      1,
+      1
+     ],
+     "seedIff": true,
+     "shape": "burst",
+     "special": null,
+     "stat": "射击+觉醒",
+     "unlock": 20,
+     "upgrades": [
+      {
+       "lv": 30,
+       "note": "Lv30：半径 4",
+       "rad": 4
+      }
+     ],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "loneWolf",
+    "supportAtk",
+    "overwatch"
+   ],
+   "armor": 600,
+   "awaken": 100,
+   "canFly": true,
+   "defense": 75,
+   "eva": 30,
+   "flying": true,
+   "h": 1,
+   "hp": 5000,
+   "mech": "W1",
+   "mechName": "飞翼零式",
+   "melee": 140,
+   "mov": 7,
+   "pilot": "希罗",
+   "shoot": 170,
+   "short": "W1",
+   "tags": {
+    "势力": "流星小队",
+    "战斗分类": "狙击",
+    "远近分类": "远程"
+   },
+   "trait": "zero",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "光束军刀",
+     "power": 2550,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 1,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "破坏步枪（单发）",
+     "power": 3100,
+     "range": [
+      2,
+      6
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "机枪",
+     "power": 1200,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": false,
+     "cd": 3,
+     "critMod": 0,
+     "desc": "选 8 个方向之一，宽 3 格、长 6 格（共 18 格，斜着放也连成一片）内的所有单位（包括友军）受到攻击。自己不移动。",
+     "dmgType": "光束",
+     "fire": "map",
+     "hit": 100,
+     "ignoreDef": false,
+     "len": 6,
+     "name": "双联破坏步枪",
+     "power": 3700,
+     "range": [
+      1,
+      1
+     ],
+     "shape": "line",
+     "special": null,
+     "stat": "射击",
+     "statMul": 1.2,
+     "unlock": 20,
+     "upgrades": [],
+     "uses": null,
+     "v37": true,
+     "width": 3
+    },
+    {
+     "afterMove": false,
+     "cd": 4,
+     "critMod": 0,
+     "desc": "展开双联破坏步枪原地旋转扫射：以自身为中心 4 格内的所有敌机受到攻击（不伤友军）。",
+     "dmgType": "光束",
+     "fire": "map",
+     "hit": 100,
+     "iff": true,
+     "ignoreDef": false,
+     "name": "零式·旋转破坏步枪",
+     "power": 4100,
+     "rad": 4,
+     "range": [
+      1,
+      1
+     ],
+     "shape": "burst",
+     "special": null,
+     "startCd": 4,
+     "stat": "射击",
+     "statMul": 1.5,
+     "unlock": 30,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "loneWolf",
+    "dash",
+    "mook"
+   ],
+   "armor": 500,
+   "awaken": 100,
+   "defense": 95,
+   "eva": 35,
+   "flying": false,
+   "h": 1,
+   "hp": 4600,
+   "mech": "W2",
+   "mechName": "死神",
+   "melee": 165,
+   "mov": 6,
+   "pilot": "迪奥",
+   "shoot": 110,
+   "short": "W2",
+   "tags": {
+    "势力": "流星小队",
+    "战斗分类": "近卫",
+    "远近分类": "近战"
+   },
+   "trait": "hyperJammer",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 15,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "光束镰刀",
+     "power": 2300,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "头部火神炮",
+     "power": 1100,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 2,
+     "critMod": 0,
+     "desc": "斩首：命中后如果目标剩余 HP 不超过最大 HP 的 25%，直接击破。",
+     "dmgType": "光束",
+     "exec": 25,
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "死神镰刀·斩首",
+     "power": 3400,
+     "range": [
+      1,
+      1
+     ],
+     "special": "execute",
+     "stat": "格斗",
+     "statMul": 1.2,
+     "unlock": 20,
+     "upgrades": [
+      {
+       "exec": 35,
+       "lv": 30,
+       "note": "Lv30：斩首线 35%"
+      }
+     ],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "loneWolf",
+    "guard"
+   ],
+   "armor": 800,
+   "awaken": 100,
+   "defense": 110,
+   "eva": 25,
+   "flying": false,
+   "h": 1,
+   "hp": 5600,
+   "mech": "W3",
+   "mechName": "重武装",
+   "melee": 110,
+   "mov": 5,
+   "pilot": "特洛瓦",
+   "shoot": 165,
+   "short": "W3",
+   "tags": {
+    "势力": "流星小队",
+    "战斗分类": "重装",
+    "远近分类": "远程"
+   },
+   "trait": "silentBlade",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "连续 8 段判定，首段命中 100，命中后 −5、未中后 +5；每段都扣装甲。",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "hits": 8,
+     "ignoreDef": false,
+     "name": "双联加特林",
+     "power": 600,
+     "range": [
+      1,
+      4
+     ],
+     "special": "multi",
+     "stat": "射击",
+     "step": 5,
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "胸部加特林",
+     "power": 1200,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "indirect",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "微型导弹",
+     "power": 1600,
+     "range": [
+      2,
+      5
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": 3,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "军刀",
+     "power": 1200,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": false,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "以自身为中心，3 格内的所有敌机受到攻击（敌我识别）。每场 1 次。",
+     "dmgType": "物理",
+     "fire": "map",
+     "hit": 100,
+     "iff": true,
+     "ignoreDef": false,
+     "name": "全弹发射",
+     "power": 3400,
+     "rad": 3,
+     "range": [
+      1,
+      1
+     ],
+     "shape": "burst",
+     "special": null,
+     "stat": "射击",
+     "statMul": 1.2,
+     "unlock": 20,
+     "upgrades": [
+      {
+       "lv": 30,
+       "note": "Lv30：半径 4",
+       "rad": 4
+      }
+     ],
+     "uses": 1,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "loneWolf",
+    "dash",
+    "mook"
+   ],
+   "armor": 900,
+   "awaken": 100,
+   "defense": 95,
+   "eva": 20,
+   "flying": false,
+   "h": 1,
+   "hp": 6000,
+   "mech": "W4",
+   "mechName": "沙漠",
+   "melee": 150,
+   "mov": 5,
+   "pilot": "卡托尔",
+   "shoot": 120,
+   "short": "W4",
+   "tags": {
+    "势力": "流星小队",
+    "战斗分类": "近卫",
+    "远近分类": "近战"
+   },
+   "trait": "spaceHeart",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "热能双刀",
+     "power": 2300,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "光束机枪",
+     "power": 1300,
+     "range": [
+      1,
+      3
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 2,
+     "critMod": 10,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "十字粉碎",
+     "power": 2800,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 2,
+     "critMod": 15,
+     "desc": "热能双刀交叉斩落的全力一击。",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "沙漠之心·十字连斩",
+     "power": 4500,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "格斗",
+     "statMul": 1.2,
+     "unlock": 20,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "loneWolf",
+    "dash",
+    "mook"
+   ],
+   "armor": 800,
+   "awaken": 100,
+   "defense": 95,
+   "eva": 25,
+   "flying": false,
+   "h": 1,
+   "hp": 5200,
+   "mech": "W5",
+   "mechName": "双头龙",
+   "melee": 170,
+   "mov": 6,
+   "pilot": "五飞",
+   "shoot": 110,
+   "short": "W5",
+   "tags": {
+    "势力": "流星小队",
+    "战斗分类": "近卫",
+    "远近分类": "近战"
+   },
+   "trait": "justice",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "伸长的龙头把 4 格内的目标抓过来：命中后拉近最多 3 格（被挡住就停下）。把敌人从人堆里拖出来，再用「正义」一对一。",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "龙爪",
+     "power": 1800,
+     "pull": 3,
+     "range": [
+      1,
+      4
+     ],
+     "special": "pull",
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [
+      {
+       "lv": 20,
+       "note": "Lv20：射程 1–5",
+       "range": [
+        1,
+        5
+       ]
+      }
+     ],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "光束偃月刀",
+     "power": 2200,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "火焰喷射器",
+     "power": 1400,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 2,
+     "critMod": 0,
+     "desc": "连续 6 段判定，首段命中 95，命中后 −10、未中后 +10；每段都扣装甲；大招：格斗 ×1.2。",
+     "dmgType": "光束",
+     "fire": "melee",
+     "hit": 95,
+     "hits": 6,
+     "ignoreDef": false,
+     "name": "双头龙·龙卷",
+     "power": 1450,
+     "range": [
+      1,
+      1
+     ],
+     "special": "multi",
+     "stat": "格斗",
+     "statMul": 1.2,
+     "step": 10,
+     "unlock": 20,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "gamblerSense",
+    "dash",
+    "mook"
+   ],
+   "armor": 1300,
+   "awaken": 100,
+   "defense": 100,
+   "eva": 5,
+   "flying": false,
+   "h": 1,
+   "hp": 6500,
+   "mech": "A1",
+   "mechName": "古铁",
+   "melee": 170,
+   "mov": 5,
+   "pilot": "响介",
+   "shoot": 120,
+   "short": "A1",
+   "tags": {
+    "势力": "ATX",
+    "战斗分类": "近卫",
+    "远近分类": "近战"
+   },
+   "trait": "gambler",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "三连机炮",
+     "power": 1500,
+     "range": [
+      1,
+      3
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 85,
+     "ignoreDef": false,
+     "name": "方形钢弹",
+     "power": 2300,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 3,
+     "critMod": 20,
+     "desc": "大招。左轮弹仓连续击发 12–16 段（每次随机），每段威力 500：首段命中 85，命中后 −10、未中后 +10。每段都扣装甲，碰到高装甲只剩保底伤害——要靠暴击（×2）和「赌神」（打空的那段一半几率改成 ×4 暴击）打穿。开场冷却 10 回合；场上每有一次攻击打空（敌我都算，反击也算），冷却永久 −1，先减开场冷却，再减本身的冷却，减到 0 后每次行动都能用。",
+     "dmgType": "物理",
+     "evadeCd": true,
+     "fire": "melee",
+     "hit": 85,
+     "hits": 12,
+     "hitsMax": 16,
+     "ignoreDef": false,
+     "name": "左轮打桩机",
+     "power": 500,
+     "range": [
+      1,
+      2
+     ],
+     "special": "multi",
+     "startCd": 10,
+     "stat": "格斗",
+     "statMul": 1.2,
+     "step": 10,
+     "unlock": 20,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "supportAtk",
+    "overwatch"
+   ],
+   "armor": 200,
+   "awaken": 100,
+   "canFly": true,
+   "defense": 75,
+   "eva": 35,
+   "flying": true,
+   "h": 1,
+   "hp": 4200,
+   "mech": "A2",
+   "mechName": "白骑士",
+   "melee": 90,
+   "mov": 6,
+   "pilot": "艾克赛琳",
+   "shoot": 160,
+   "short": "A2",
+   "tags": {
+    "势力": "ATX",
+    "战斗分类": "狙击",
+    "远近分类": "远程"
+   },
+   "trait": "lucky",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "嚎叫发射器·光束",
+     "power": 2400,
+     "range": [
+      2,
+      7
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "和光束模式同一把武器，打光束抗性高的敌人时切换到这个。",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "嚎叫发射器·实弹",
+     "power": 2400,
+     "range": [
+      2,
+      7
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "buff": {
+      "critX": 1,
+      "hit": -20
+     },
+     "cd": 2,
+     "critMod": 0,
+     "desc": "3 格内的其他友军暴击倍率 +1（×2 → ×3；赌神 ×4 → ×5），但命中 −20，持续到下一个我方阶段开始。打不中也没关系：打空能喂响介的冷却。",
+     "dmgType": "—",
+     "fire": "support",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "好运加护",
+     "power": 0,
+     "range": [
+      0,
+      3
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 2,
+     "critMod": 0,
+     "desc": "多重锁定：在射程内选择最多 3 台敌机逐一攻击，目标不能反击、防御或回避。",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "lockN": 3,
+     "name": "嚎叫发射器·全开",
+     "power": 2550,
+     "range": [
+      2,
+      7
+     ],
+     "special": "lock",
+     "stat": "射击",
+     "statMul": 1.2,
+     "unlock": 20,
+     "upgrades": [
+      {
+       "lockN": 4,
+       "lv": 30,
+       "note": "Lv30：最多锁定 4 台"
+      }
+     ],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "zocFree",
+    "relay"
+   ],
+   "armor": 500,
+   "awaken": 100,
+   "canFly": true,
+   "defense": 75,
+   "eva": 35,
+   "flying": true,
+   "h": 1,
+   "hp": 4800,
+   "mech": "A3",
+   "mechName": "安杰尔格",
+   "melee": 140,
+   "mov": 7,
+   "pilot": "拉米亚",
+   "shoot": 150,
+   "short": "A3",
+   "tags": {
+    "副势力": "影世界",
+    "势力": "ATX",
+    "战斗分类": "尖兵",
+    "远近分类": "远程"
+   },
+   "trait": "wSeries",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "牛舌步枪",
+     "power": 1600,
+     "range": [
+      1,
+      5
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 10,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "幻影剑",
+     "power": 1800,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 3,
+     "critMod": 0,
+     "desc": "在 1–5 格内放一块 3×3 的烟雾（点哪格那格就是左上角），持续 3 回合：从烟雾里开火、或者打烟雾里的目标，命中 −30（敌我都算）。",
+     "dmgType": "—",
+     "fire": "map",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "烟雾弹",
+     "power": 0,
+     "range": [
+      1,
+      5
+     ],
+     "shape": "box",
+     "size": 3,
+     "smoke": 3,
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 3,
+     "critMod": 20,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "幻影凤凰",
+     "power": 4500,
+     "range": [
+      2,
+      6
+     ],
+     "special": null,
+     "stat": "射击",
+     "statMul": 1.2,
+     "unlock": 20,
+     "upgrades": [
+      {
+       "again": true,
+       "lv": 30,
+       "note": "Lv30：击破目标后可以再攻击一次（不能移动）"
+      }
+     ],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "guard",
+    "darkSword"
+   ],
+   "armor": 1500,
+   "awaken": 100,
+   "defense": 110,
+   "eva": 5,
+   "flying": false,
+   "h": 1,
+   "hp": 9000,
+   "mech": "A4",
+   "mechName": "古兰森三型",
+   "melee": 160,
+   "mov": 5,
+   "pilot": "布鲁克林",
+   "shoot": 110,
+   "short": "A4",
+   "tags": {
+    "势力": "ATX",
+    "战斗分类": "重装",
+    "远近分类": "近战"
+   },
+   "trait": "hotBlood",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "回旋拳",
+     "power": 1400,
+     "range": [
+      1,
+      3
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "计都罗睺剑",
+     "power": 2000,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "psyVeil",
+    "psyRes"
+   ],
+   "armor": 800,
+   "awaken": 100,
+   "defense": 80,
+   "eva": 20,
+   "flying": false,
+   "h": 1,
+   "hp": 6000,
+   "mech": "A5",
+   "mechName": "龙虎王",
+   "melee": 140,
+   "mov": 5,
+   "pilot": "库斯哈",
+   "shoot": 150,
+   "short": "A5",
+   "tags": {
+    "势力": "ATX",
+    "战斗分类": "指挥",
+    "远近分类": "远程"
+   },
+   "trait": "juice",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "2 格内的一台友军回复 3000 × 射击÷100 的 HP。",
+     "dmgType": "—",
+     "fire": "heal",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "念动治愈",
+     "power": 3000,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "龙王破山剑",
+     "power": 1800,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "念动力攻击，特殊伤害。",
+     "dmgType": "特殊",
+     "fire": "indirect",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "龙雷闪",
+     "power": 1000,
+     "range": [
+      2,
+      6
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [],
+   "armor": 700,
+   "awaken": 130,
+   "awakenSwap": {
+    "单分子刀": "隔空 λ 拳",
+    "散弹炮": "λ 驱动·散弹炮"
+   },
+   "defense": 85,
+   "eva": 30,
+   "flying": false,
+   "h": 1,
+   "hp": 5000,
+   "lambdaAwaken": 2,
+   "mech": "U7",
+   "mechName": "强弩",
+   "melee": 150,
+   "mov": 6,
+   "pilot": "宗介",
+   "shield": 4000,
+   "shieldLv": 20,
+   "shieldName": "λ 力场",
+   "shoot": 155,
+   "short": "U7",
+   "tags": {
+    "势力": "秘银",
+    "战斗分类": "特种",
+    "远近分类": "远程"
+   },
+   "trait": "pro",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 10,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "散弹炮",
+     "power": 2600,
+     "range": [
+      1,
+      3
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "awaken": {
+      "desc": "λ 觉醒后的单分子刀：特殊伤害，攻击能力值 = 格斗 + 觉醒，0 CD。",
+      "dmgType": "特殊",
+      "lambda": true,
+      "name": "λ 单分子刀",
+      "power": 1600,
+      "stat": "格斗+觉醒"
+     },
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "单分子刀",
+     "power": 3100,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "indirect",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "榴弹发射器",
+     "power": 2250,
+     "range": [
+      2,
+      5
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": 4,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 3,
+     "critMod": 0,
+     "desc": "特殊伤害：无视光束 / 物理抗性，只会被护盾类效果抵消。λ 驱动：攻击能力值 = 射击 + 觉醒。",
+     "dmgType": "特殊",
+     "fire": "direct",
+     "hit": 90,
+     "ignoreDef": false,
+     "lambda": true,
+     "name": "λ 驱动·散弹炮",
+     "power": 2750,
+     "range": [
+      1,
+      4
+     ],
+     "special": null,
+     "stat": "射击+觉醒",
+     "unlock": 20,
+     "upgrades": [
+      {
+       "lv": 30,
+       "note": "Lv30：射程 1–6",
+       "range": [
+        1,
+        6
+       ]
+      }
+     ],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 2,
+     "critMod": 0,
+     "desc": "近战特殊攻击：隔着最多 3 格用 λ 力场打出的拳，不需要视线。特殊伤害，只会被护盾类效果抵消；攻击能力值 = 格斗 + 觉醒。",
+     "dmgType": "特殊",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "lambda": true,
+     "name": "隔空 λ 拳",
+     "power": 2000,
+     "range": [
+      1,
+      3
+     ],
+     "special": null,
+     "stat": "格斗+觉醒",
+     "unlock": 20,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 3,
+     "critMod": 0,
+     "desc": "把 λ 驱动器的输出推到极限的一击。特殊伤害，攻击能力值 = 射击 + 觉醒；λ 觉醒后冷却变为 0。",
+     "dmgType": "特殊",
+     "fire": "direct",
+     "hit": 95,
+     "ignoreDef": false,
+     "lambda": true,
+     "name": "λ 驱动·极限放出",
+     "power": 4300,
+     "range": [
+      1,
+      5
+     ],
+     "special": null,
+     "startCd": 4,
+     "stat": "射击+觉醒",
+     "unlock": 30,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "supportAtk",
+    "overwatch"
+   ],
+   "armor": 200,
+   "awaken": 100,
+   "defense": 75,
+   "eva": 20,
+   "flying": false,
+   "h": 1,
+   "hp": 3800,
+   "mech": "U6",
+   "mechName": "M9·狙击",
+   "melee": 90,
+   "mov": 5,
+   "pilot": "克鲁兹",
+   "shoot": 175,
+   "short": "U6",
+   "tags": {
+    "势力": "秘银",
+    "战斗分类": "狙击",
+    "远近分类": "远程"
+   },
+   "trait": "longShot",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": false,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 120,
+     "ignoreDef": false,
+     "name": "76mm 狙击炮",
+     "power": 2550,
+     "range": [
+      3,
+      9
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "突击步枪",
+     "power": 1300,
+     "range": [
+      1,
+      4
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "单分子刀",
+     "power": 1200,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": false,
+     "cd": 2,
+     "critMod": 10,
+     "desc": "无视防御：装甲、防御值、屏障、护盾都不起作用。",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 120,
+     "ignoreDef": true,
+     "name": "超长距离狙击",
+     "power": 3950,
+     "range": [
+      5,
+      14
+     ],
+     "special": null,
+     "stat": "射击",
+     "statMul": 1.2,
+     "unlock": 20,
+     "upgrades": [
+      {
+       "again": true,
+       "lv": 30,
+       "note": "Lv30：击破目标后可以再攻击一次（不能移动）"
+      }
+     ],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [],
+   "armor": 500,
+   "awaken": 100,
+   "defense": 85,
+   "eva": 25,
+   "flying": false,
+   "h": 1,
+   "hp": 4800,
+   "mech": "U2",
+   "mechName": "M9·指挥",
+   "melee": 120,
+   "mov": 6,
+   "pilot": "梅丽莎·毛",
+   "shoot": 145,
+   "short": "U2",
+   "tags": {
+    "势力": "秘银",
+    "战斗分类": "指挥",
+    "远近分类": "远程"
+   },
+   "trait": "maoNet",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "突击步枪",
+     "power": 1400,
+     "range": [
+      1,
+      4
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "溅射：与目标相邻的其他敌机受到本次伤害的 50%。",
+     "dmgType": "物理",
+     "fire": "indirect",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "导弹发射器",
+     "power": 1600,
+     "range": [
+      2,
+      6
+     ],
+     "special": "splash",
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": 4,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "单分子刀",
+     "power": 1300,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 2,
+     "critMod": 0,
+     "desc": "给目标打上激光标定：命中后挂一层 −20% 破防（标记类），好让宗介和克鲁兹接着打。",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "标定射击",
+     "power": 2400,
+     "range": [
+      2,
+      6
+     ],
+     "special": "markBreak",
+     "stat": "射击",
+     "statMul": 1.2,
+     "unlock": 20,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "falkeHunt",
+    "dash",
+    "mook"
+   ],
+   "armor": 600,
+   "awaken": 100,
+   "defense": 95,
+   "eva": 25,
+   "flying": false,
+   "h": 1,
+   "hp": 5000,
+   "mech": "U1",
+   "mechName": "M9·猎鹰",
+   "melee": 150,
+   "mov": 6,
+   "pilot": "克鲁佐",
+   "shoot": 165,
+   "short": "U1",
+   "tags": {
+    "势力": "秘银",
+    "战斗分类": "近卫",
+    "远近分类": "近战"
+   },
+   "trait": "falke",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 10,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "单分子刀",
+     "power": 2100,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 115,
+     "ignoreDef": false,
+     "name": "狙击步枪",
+     "power": 1600,
+     "range": [
+      2,
+      8
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "散弹枪",
+     "power": 1300,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  {
+   "abilities": [
+    "laserGuide",
+    "zocFree",
+    "relay"
+   ],
+   "armor": 300,
+   "awaken": 100,
+   "defense": 75,
+   "eva": 30,
+   "flying": false,
+   "h": 1,
+   "hp": 4000,
+   "mech": "U8",
+   "mechName": "M9·侦察",
+   "melee": 120,
+   "mov": 7,
+   "pilot": "杨",
+   "shoot": 130,
+   "short": "U8",
+   "tags": {
+    "势力": "秘银",
+    "战斗分类": "尖兵",
+    "远近分类": "远程"
+   },
+   "trait": "ecs",
+   "w": 1,
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "突击步枪",
+     "power": 1500,
+     "range": [
+      1,
+      4
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "单分子刀",
+     "power": 1400,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "indirect",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "反坦克导弹",
+     "power": 1900,
+     "range": [
+      2,
+      5
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": 2,
+     "v37": true
+    }
+   ]
+  }
+ ],
+ "PROMO_WEAPONS": {
+  "B1": [
+   {
+    "afterMove": false,
+    "cd": 4,
+    "critMod": 0,
+    "desc": "以自身为中心 3 格内的所有敌机受到特殊伤害（不伤友军）。门之力：攻击能力值 = 格斗 + 觉醒。配合「传送」先跳进敌阵中心再发动。",
+    "dmgType": "特殊",
+    "fire": "map",
+    "hit": 100,
+    "iff": true,
+    "ignoreDef": false,
+    "name": "影界·万刃归一",
+    "power": 2900,
+    "rad": 3,
+    "range": [
+     1,
+     1
+    ],
+    "shape": "burst",
+    "special": null,
+    "startCd": 4,
+    "stat": "格斗+觉醒",
+    "unlock": 30,
+    "upgrades": [],
+    "uses": null,
+    "v37": true
+   }
+  ],
+  "CB1": [
+   {
+    "afterMove": true,
+    "again": true,
+    "cd": 3,
+    "critMod": 0,
+    "desc": "量子化跃迁到 5 格内的目标面前斩击，目标不能反击；击破后可以原地再攻击一次。量子化：攻击能力值 = 格斗 + 觉醒。",
+    "dmgType": "光束",
+    "fire": "melee",
+    "hit": 110,
+    "ignoreDef": false,
+    "name": "GN 剑 III·量子跃迁斩",
+    "noCounter": true,
+    "power": 5000,
+    "range": [
+     1,
+     5
+    ],
+    "special": null,
+    "startCd": 4,
+    "stat": "格斗+觉醒",
+    "unlock": 30,
+    "upgrades": [],
+    "uses": null,
+    "v37": true
+   }
+  ],
+  "CB4": [
+   {
+    "afterMove": false,
+    "cd": 3,
+    "critMod": 0,
+    "desc": "把 GN 加农炮和火箭筒的输出全部集中，选 8 个方向之一，直线 8 格内的所有单位（包括友军）受到攻击。",
+    "dmgType": "光束",
+    "fire": "map",
+    "hit": 100,
+    "ignoreDef": false,
+    "len": 8,
+    "name": "GN 加农炮·高压全弹",
+    "power": 3600,
+    "range": [
+     1,
+     1
+    ],
+    "shape": "line",
+    "special": null,
+    "stat": "射击",
+    "statMul": 1.2,
+    "unlock": 20,
+    "upgrades": [],
+    "uses": null,
+    "v37": true
+   }
+  ],
+  "M1": [
+   {
+    "afterMove": true,
+    "cd": 3,
+    "critMod": 0,
+    "desc": "（新项目：作者 2026-10-11 换机制）被动。我方队友攻击、**造成伤害之后**，Feena 追加一次攻击（设定：她操作质量加速器丢陨石）。用这把武器的威力走现成公式、必中、不暴击；目标 = 队友这一击打的那一台（它已经倒下就不追）。每回合上限 = `71-改动.js` 的 `势力特色.月球王国.残月余响每回合上限`（初稿 1 次）。旧范围（自身 4 格 + 队友射程延伸 / 上一版的「敌方前排」）**全部作废**。（2026-10-13：`战斗结构.Feena主动攻击.开 !== false` 时她**自己回合也能主动开这一发**（曲射、无视阻挡），Lv10 即可解锁；关掉开关则逐字节退回「只能被动追加」。）",
+    "dmgType": "特殊",
+    "fire": "indirect",
+    "hit": 100,
+    "ignoreDef": false,
+    "name": "满月·月蚀",
+    "power": 2700,
+    "range": [
+     0,
+     4
+    ],
+    "special": "echoFollow",
+    "startCd": 4,
+    "stat": "射击+觉醒",
+    "unlock": 30,
+    "upgrades": [],
+    "uses": null,
+    "v37": true,
+    "友军攻击后追加": true,
+    "残月下放": false
+   }
+  ],
+  "U7": [
+   {
+    "afterMove": true,
+    "cd": 3,
+    "critMod": 0,
+    "desc": "把 λ 驱动器的输出推到极限的一击。特殊伤害，攻击能力值 = 射击 + 觉醒；λ 觉醒后冷却变为 0。",
+    "dmgType": "特殊",
+    "fire": "direct",
+    "hit": 95,
+    "ignoreDef": false,
+    "lambda": true,
+    "name": "λ 驱动·极限放出",
+    "power": 4300,
+    "range": [
+     1,
+     5
+    ],
+    "special": null,
+    "startCd": 4,
+    "stat": "射击+觉醒",
+    "unlock": 30,
+    "upgrades": [],
+    "uses": null,
+    "v37": true
+   }
+  ],
+  "W1": [
+   {
+    "afterMove": false,
+    "cd": 4,
+    "critMod": 0,
+    "desc": "展开双联破坏步枪原地旋转扫射：以自身为中心 4 格内的所有敌机受到攻击（不伤友军）。",
+    "dmgType": "光束",
+    "fire": "map",
+    "hit": 100,
+    "iff": true,
+    "ignoreDef": false,
+    "name": "零式·旋转破坏步枪",
+    "power": 4100,
+    "rad": 4,
+    "range": [
+     1,
+     1
+    ],
+    "shape": "burst",
+    "special": null,
+    "startCd": 4,
+    "stat": "射击",
+    "statMul": 1.5,
+    "unlock": 30,
+    "upgrades": [],
+    "uses": null,
+    "v37": true
+   }
+  ]
+ },
+ "NEW_FORMULA": [
+  "W2",
+  "W3",
+  "W4",
+  "W5",
+  "CB2",
+  "CB3",
+  "CB4",
+  "CB5",
+  "B1",
+  "M1",
+  "M2",
+  "M3",
+  "M4",
+  "M5",
+  "A1",
+  "A2",
+  "A3",
+  "A4",
+  "A5",
+  "U1",
+  "U2",
+  "U6",
+  "U7",
+  "U8",
+  "CB1",
+  "S1",
+  "W1",
+  "S2",
+  "S3",
+  "S4",
+  "S5",
+  "B3",
+  "B4"
+ ],
+ "FORMS": {
+  "nadleeh": {
+   "armor": 300,
+   "eva": 35,
+   "icon": "CB4N",
+   "mov": 6,
+   "name": "纳德雷",
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "GN 光束剑",
+     "power": 1640,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "GN 光束手枪",
+     "power": 1137,
+     "range": [
+      1,
+      3
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  }
+ },
+ "DEBRIS_T": {
+  "abilities": [],
+  "armor": 0,
+  "eva": 0,
+  "flying": false,
+  "h": 1,
+  "hp": 1000,
+  "mech": "陨石残骸",
+  "melee": 0,
+  "mov": 0,
+  "noEvade": true,
+  "pilot": "",
+  "shoot": 0,
+  "short": "岩",
+  "w": 1,
+  "weapons": []
+ },
+ "CHEST_T": {
+  "abilities": [],
+  "armor": 0,
+  "chest": true,
+  "eva": 0,
+  "flying": false,
+  "h": 1,
+  "hp": 1500,
+  "mech": "补给箱",
+  "melee": 0,
+  "mov": 0,
+  "noEvade": true,
+  "pilot": "",
+  "shoot": 0,
+  "short": "箱",
+  "w": 1,
+  "weapons": []
+ },
+ "COMMANDS": {
+  "meteor": {
+   "cd": 3,
+   "delay": 2,
+   "desc": "指定一个 3×3 区域，2 回合后的我方阶段开始时陨石落下：对区域内敌我所有单位造成 7999 物理伤害（必中，不暴击，会经过减免），区域内的空格生成 HP 1000 的陨石残骸。冷却 3 回合。",
+   "dmg": 7999,
+   "kind": "area",
+   "name": "陨石召唤",
+   "size": 3
+  }
+ },
+ "ENEMY_SUPPORT": [
+  "sniper",
+  "funnel"
+ ],
+ "ENEMY_OVERWATCH": [
+  "sniper"
+ ],
+ "ENEMY_T": {
+  "artillery": {
+   "abilities": [],
+   "armor": 450,
+   "awaken": 100,
+   "defense": 65,
+   "eva": 5,
+   "flying": false,
+   "h": 1,
+   "hp": 4200,
+   "key": "artillery",
+   "mech": "炮击机",
+   "melee": 80,
+   "mov": 3,
+   "pilot": "敌兵",
+   "shoot": 120,
+   "short": "炮",
+   "w": 1,
+   "weak": {
+    "近战": 40
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "近防机枪",
+     "power": 1352,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 1,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "indirect",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "榴弹炮",
+     "power": 2232,
+     "range": [
+      3,
+      7
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "area": "col",
+     "cd": 5,
+     "critMod": 0,
+     "desc": "（新项目新增·初稿）炮击机的整列覆盖射击（范围 / 必中，但**打得中哪一束可以躲**）。",
+     "dmgType": "物理",
+     "fire": "map",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "覆盖轰炸",
+     "power": 2600,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "startCd": 3,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "大招": true
+    }
+   ]
+  },
+  "beamcoat": {
+   "abilities": [],
+   "armor": 400,
+   "awaken": 100,
+   "defense": 65,
+   "eva": 10,
+   "flying": false,
+   "h": 1,
+   "hp": 4000,
+   "key": "beamcoat",
+   "mech": "光束涂层机",
+   "melee": 110,
+   "mov": 5,
+   "pilot": "敌兵",
+   "shoot": 100,
+   "short": "涂",
+   "w": 1,
+   "weak": {
+    "光束": -60,
+    "物理": 30
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "实弹步枪",
+     "power": 1781,
+     "range": [
+      1,
+      4
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "格斗刀",
+     "power": 1722,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 5,
+     "critMod": 0,
+     "desc": "（新项目新增·初稿）光束涂层机的过载脉冲。",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "涂层脉冲炮",
+     "power": 3200,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "startCd": 3,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "大招": true
+    }
+   ]
+  },
+  "beetle": {
+   "abilities": [
+    "frontArmor"
+   ],
+   "armor": 900,
+   "awaken": 100,
+   "defense": 65,
+   "eva": 0,
+   "flying": false,
+   "h": 1,
+   "hp": 7000,
+   "key": "beetle",
+   "mech": "甲虫型重机",
+   "melee": 130,
+   "mov": 4,
+   "noEvade": true,
+   "pilot": "敌兵",
+   "shoot": 80,
+   "short": "甲",
+   "w": 1,
+   "weak": {
+    "背面": 40
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "角撞",
+     "power": 2000,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 5,
+     "critMod": 0,
+     "desc": "（新项目新增·初稿）甲虫型重机的正面冲撞。",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "重甲冲撞",
+     "power": 4000,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "startCd": 3,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "大招": true
+    }
+   ]
+  },
+  "berserker": {
+   "abilities": [
+    "berserk"
+   ],
+   "armor": 300,
+   "awaken": 100,
+   "defense": 80,
+   "eva": 15,
+   "flying": false,
+   "h": 1,
+   "hp": 4500,
+   "key": "berserker",
+   "mech": "狂战士",
+   "melee": 130,
+   "mov": 6,
+   "pilot": "敌兵",
+   "shoot": 80,
+   "short": "狂",
+   "w": 1,
+   "weak": {
+    "反击": 50,
+    "范围": -50
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "双斧",
+     "power": 2148,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 5,
+     "critMod": 0,
+     "desc": "（新项目新增·初稿）狂战士的乱舞。",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "狂乱双斧",
+     "power": 4200,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "startCd": 3,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "大招": true
+    }
+   ]
+  },
+  "bluefish": {
+   "abilities": [
+    "laneCrush"
+   ],
+   "ai": "lane",
+   "armor": 1800,
+   "awaken": 100,
+   "defense": 150,
+   "eva": 0,
+   "flying": false,
+   "h": 3,
+   "hp": 240000,
+   "immovable": true,
+   "key": "bluefish",
+   "mech": "蓝色大肥鱼",
+   "melee": 160,
+   "mov": 2,
+   "noEvade": true,
+   "pilot": "敌将",
+   "shoot": 100,
+   "short": "鱼",
+   "w": 3,
+   "weak": {},
+   "weapons": [
+    {
+     "afterMove": true,
+     "area": "col",
+     "cd": 0,
+     "critMod": 0,
+     "desc": "敌方阶段走完后，对身边 2 格内的所有我方单位造成伤害（必中，不能反击）。",
+     "dmgType": "物理",
+     "fire": "map",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "周身冲击",
+     "power": 2800,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  "bomber": {
+   "abilities": [
+    "selfDestruct"
+   ],
+   "armor": 200,
+   "awaken": 100,
+   "defense": 50,
+   "eva": 15,
+   "flying": false,
+   "h": 1,
+   "hp": 3000,
+   "key": "bomber",
+   "mech": "自爆机",
+   "melee": 100,
+   "mov": 6,
+   "pilot": "敌兵",
+   "shoot": 80,
+   "short": "爆",
+   "w": 1,
+   "weak": {
+    "曲射": 30
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "撞击",
+     "power": 1305,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  "captain": {
+   "abilities": [
+    "commandAura"
+   ],
+   "armor": 600,
+   "awaken": 100,
+   "defense": 80,
+   "eva": 15,
+   "flying": false,
+   "h": 1,
+   "hp": 5500,
+   "key": "captain",
+   "mech": "指挥官机",
+   "melee": 120,
+   "mov": 5,
+   "pilot": "敌将",
+   "shoot": 120,
+   "short": "指",
+   "w": 1,
+   "weak": {
+    "背面": 40,
+    "范围": -50
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "光束步枪",
+     "power": 1832,
+     "range": [
+      1,
+      4
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "光束军刀",
+     "power": 1992,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 5,
+     "critMod": 0,
+     "desc": "（新项目新增·初稿）指挥官机呼叫的集火齐射。",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "指挥齐射",
+     "power": 3400,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "startCd": 3,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "大招": true
+    }
+   ]
+  },
+  "drone": {
+   "abilities": [
+    "summon"
+   ],
+   "armor": 100,
+   "awaken": 100,
+   "defense": 50,
+   "eva": 25,
+   "flying": true,
+   "h": 1,
+   "hp": 2000,
+   "key": "drone",
+   "mech": "无人机",
+   "melee": 60,
+   "mov": 7,
+   "pilot": "敌兵",
+   "shoot": 90,
+   "short": "机",
+   "w": 1,
+   "weak": {
+    "范围": 50
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "机枪",
+     "power": 958,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  "fighter": {
+   "abilities": [],
+   "armor": 150,
+   "awaken": 100,
+   "defense": 50,
+   "eva": 30,
+   "flying": true,
+   "h": 1,
+   "hp": 2600,
+   "key": "fighter",
+   "mech": "战斗机",
+   "melee": 90,
+   "mov": 6,
+   "pilot": "敌兵",
+   "shoot": 110,
+   "short": "战",
+   "w": 1,
+   "weak": {
+    "曲射": -30,
+    "直射": 20
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "机炮",
+     "power": 1635,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "indirect",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "空对地导弹",
+     "power": 1896,
+     "range": [
+      2,
+      4
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": 4,
+     "v37": true
+    }
+   ]
+  },
+  "flagship": {
+   "abilities": [
+    "barrier"
+   ],
+   "armor": 1200,
+   "awaken": 100,
+   "defense": 95,
+   "eva": 0,
+   "flying": true,
+   "h": 3,
+   "hp": 40000,
+   "key": "flagship",
+   "mech": "指挥舰",
+   "melee": 100,
+   "mov": 3,
+   "noEvade": true,
+   "pilot": "敌将",
+   "shoot": 150,
+   "short": "旗舰",
+   "w": 3,
+   "weak": {
+    "曲射": -30,
+    "近战": 30
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 1,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "主炮",
+     "power": 2658,
+     "range": [
+      2,
+      8
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "对空机枪",
+     "power": 1755,
+     "range": [
+      1,
+      3
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 2,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "indirect",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "舰载导弹",
+     "power": 2142,
+     "range": [
+      3,
+      9
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 5,
+     "critMod": 0,
+     "desc": "（新项目新增·初稿）指挥舰的全主炮齐射。",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "旗舰主炮·齐射",
+     "power": 3600,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "startCd": 3,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "大招": true
+    }
+   ]
+  },
+  "fortress": {
+   "abilities": [
+    "barrier"
+   ],
+   "armor": 800,
+   "awaken": 100,
+   "defense": 95,
+   "eva": 0,
+   "flying": false,
+   "h": 2,
+   "hp": 15000,
+   "key": "fortress",
+   "mech": "重装要塞",
+   "melee": 130,
+   "mov": 3,
+   "pilot": "敌将",
+   "shoot": 130,
+   "short": "要塞",
+   "w": 2,
+   "weak": {
+    "光束": 30,
+    "物理": -20
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "重拳",
+     "power": 2296,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 1,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "主炮",
+     "power": 2519,
+     "range": [
+      2,
+      6
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 5,
+     "critMod": 0,
+     "desc": "（新项目新增·初稿）重装要塞的全力一击。",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "要塞重拳",
+     "power": 3800,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "startCd": 3,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "大招": true
+    }
+   ]
+  },
+  "funnel": {
+   "abilities": [],
+   "armor": 300,
+   "awaken": 100,
+   "defense": 80,
+   "eva": 20,
+   "flying": true,
+   "h": 1,
+   "hp": 4800,
+   "key": "funnel",
+   "mech": "浮游炮母机",
+   "melee": 70,
+   "mov": 4,
+   "pilot": "敌兵",
+   "shoot": 130,
+   "short": "浮",
+   "w": 1,
+   "weak": {
+    "直射": -30,
+    "范围": -50,
+    "近战": 60
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 1,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "indirect",
+     "hit": 100,
+     "hits": 3,
+     "ignoreDef": false,
+     "name": "浮游炮",
+     "power": 392,
+     "range": [
+      3,
+      8
+     ],
+     "special": "funnel",
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 5,
+     "critMod": 0,
+     "desc": "（新项目新增·初稿）五段齐射。",
+     "dmgType": "光束",
+     "fire": "indirect",
+     "hit": 100,
+     "hits": 5,
+     "ignoreDef": false,
+     "name": "浮游炮·齐射",
+     "power": 900,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "startCd": 3,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "大招": true
+    }
+   ]
+  },
+  "grunt": {
+   "abilities": [],
+   "armor": 350,
+   "awaken": 100,
+   "defense": 50,
+   "eva": 10,
+   "flying": false,
+   "h": 1,
+   "hp": 3600,
+   "key": "grunt",
+   "mech": "量产机",
+   "melee": 110,
+   "mov": 5,
+   "pilot": "敌兵",
+   "shoot": 100,
+   "short": "量",
+   "w": 1,
+   "weak": {},
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "格斗斧",
+     "power": 1809,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "突击步枪",
+     "power": 1686,
+     "range": [
+      1,
+      4
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  "hound": {
+   "abilities": [],
+   "armor": 200,
+   "awaken": 100,
+   "defense": 50,
+   "eva": 10,
+   "flying": false,
+   "h": 1,
+   "hp": 3000,
+   "key": "hound",
+   "mech": "猎犬",
+   "melee": 90,
+   "mov": 5,
+   "pilot": "敌兵",
+   "shoot": 100,
+   "short": "猎",
+   "w": 1,
+   "weak": {
+    "光束": 30
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "猎枪",
+     "power": 1019,
+     "range": [
+      1,
+      3
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  "ironwall": {
+   "abilities": [
+    "frontArmor"
+   ],
+   "armor": 800,
+   "awaken": 100,
+   "defense": 50,
+   "eva": 0,
+   "flying": false,
+   "h": 1,
+   "hp": 9950,
+   "key": "ironwall",
+   "mech": "铁壁",
+   "melee": 120,
+   "mov": 0,
+   "noEvade": true,
+   "pilot": "敌兵",
+   "shoot": 80,
+   "short": "铁",
+   "w": 1,
+   "weak": {
+    "多段": 30
+   },
+   "weapons": []
+  },
+  "jammer": {
+   "abilities": [
+    "jamAura"
+   ],
+   "armor": 150,
+   "awaken": 100,
+   "defense": 65,
+   "eva": 20,
+   "flying": false,
+   "h": 1,
+   "hp": 2800,
+   "key": "jammer",
+   "mech": "电子战机",
+   "melee": 70,
+   "mov": 5,
+   "pilot": "敌兵",
+   "shoot": 100,
+   "short": "扰",
+   "w": 1,
+   "weak": {
+    "光束": 30
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "电磁脉冲",
+     "power": 1400,
+     "range": [
+      1,
+      3
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "area": "cross",
+     "cd": 5,
+     "critMod": 0,
+     "desc": "（新项目新增·初稿）范围干扰弹，命中后压命中。",
+     "dmgType": "物理",
+     "fire": "indirect",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "全频干扰弹",
+     "power": 1800,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "startCd": 3,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "大招": true
+    }
+   ]
+  },
+  "mirror": {
+   "abilities": [
+    "beamReflect"
+   ],
+   "armor": 500,
+   "awaken": 100,
+   "defense": 65,
+   "eva": 10,
+   "flying": false,
+   "h": 1,
+   "hp": 4500,
+   "key": "mirror",
+   "mech": "镜面装甲机",
+   "melee": 110,
+   "mov": 4,
+   "pilot": "敌兵",
+   "shoot": 110,
+   "short": "镜",
+   "w": 1,
+   "weak": {
+    "近战": 40
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "实弹炮",
+     "power": 1896,
+     "range": [
+      1,
+      5
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 5,
+     "critMod": 0,
+     "desc": "（新项目新增·初稿）镜面装甲把光原样打回来。",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "镜面反射炮",
+     "power": 3300,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "startCd": 3,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "大招": true
+    }
+   ]
+  },
+  "phase": {
+   "abilities": [],
+   "armor": 300,
+   "awaken": 100,
+   "defense": 65,
+   "eva": 15,
+   "flying": false,
+   "h": 1,
+   "hp": 4200,
+   "key": "phase",
+   "mech": "相转移装甲机",
+   "melee": 110,
+   "mov": 5,
+   "pilot": "敌兵",
+   "shoot": 110,
+   "short": "相",
+   "w": 1,
+   "weak": {
+    "光束": 40,
+    "物理": -60
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "光束步枪",
+     "power": 1809,
+     "range": [
+      1,
+      4
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "光束军刀",
+     "power": 1896,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 5,
+     "critMod": 0,
+     "desc": "（新项目新增·初稿）相转移装甲机的穿透斩。",
+     "dmgType": "光束",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "相位斩",
+     "power": 3600,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "startCd": 3,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "大招": true
+    }
+   ]
+  },
+  "pursuer": {
+   "abilities": [],
+   "armor": 900,
+   "awaken": 100,
+   "chase": true,
+   "defense": 50,
+   "eva": 0,
+   "flying": false,
+   "h": 1,
+   "hp": 9000,
+   "key": "pursuer",
+   "mech": "追击炮车",
+   "melee": 80,
+   "mov": 3,
+   "pilot": "敌兵",
+   "shoot": 100,
+   "short": "追",
+   "w": 1,
+   "weak": {
+    "范围": 30
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "indirect",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "追踪炮",
+     "power": 2638,
+     "range": [
+      2,
+      6
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  "raider": {
+   "abilities": [],
+   "armor": 300,
+   "awaken": 100,
+   "defense": 50,
+   "eva": 10,
+   "flying": false,
+   "h": 1,
+   "hp": 3000,
+   "key": "raider",
+   "mech": "突击兵",
+   "melee": 110,
+   "mov": 6,
+   "pilot": "敌兵",
+   "shoot": 90,
+   "short": "突",
+   "w": 1,
+   "weak": {
+    "多段": 30
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "突刺",
+     "power": 1461,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  "regen": {
+   "abilities": [
+    "regen"
+   ],
+   "armor": 400,
+   "awaken": 100,
+   "defense": 80,
+   "eva": 10,
+   "flying": false,
+   "h": 1,
+   "hp": 6000,
+   "key": "regen",
+   "mech": "自修复机",
+   "melee": 120,
+   "mov": 4,
+   "pilot": "敌兵",
+   "shoot": 100,
+   "short": "生",
+   "w": 1,
+   "weak": {
+    "暴击": 50,
+    "范围": -50
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "熔断爪",
+     "power": 1912,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "散弹",
+     "power": 1686,
+     "range": [
+      1,
+      3
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 5,
+     "critMod": 0,
+     "desc": "（新项目新增·初稿）自修复机把修复能量全部转成攻击。",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "再生熔断爪",
+     "power": 3400,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "startCd": 3,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "大招": true
+    }
+   ]
+  },
+  "shield": {
+   "abilities": [],
+   "armor": 600,
+   "awaken": 100,
+   "defense": 65,
+   "eva": 5,
+   "flying": false,
+   "h": 1,
+   "hp": 6000,
+   "key": "shield",
+   "mech": "盾卫",
+   "melee": 110,
+   "mov": 3,
+   "pilot": "敌兵",
+   "shoot": 80,
+   "short": "盾",
+   "w": 1,
+   "weak": {
+    "背面": 30
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "盾击",
+     "power": 1461,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 5,
+     "critMod": 0,
+     "desc": "（新项目新增·初稿）盾卫蓄力后的一记重撞。",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "堡垒冲撞",
+     "power": 3400,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "startCd": 3,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "大招": true
+    }
+   ]
+  },
+  "skyfort": {
+   "abilities": [],
+   "armor": 1000,
+   "awaken": 100,
+   "defense": 95,
+   "eva": 0,
+   "flying": true,
+   "h": 2,
+   "hp": 16000,
+   "key": "skyfort",
+   "mech": "空中要塞",
+   "melee": 80,
+   "mov": 3,
+   "noEvade": true,
+   "pilot": "敌将",
+   "shield": 5000,
+   "shieldName": "力场护盾",
+   "shoot": 140,
+   "short": "空",
+   "w": 2,
+   "weak": {
+    "曲射": -50,
+    "直射": 30
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "光束炮",
+     "power": 2490,
+     "range": [
+      2,
+      7
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "对空机枪",
+     "power": 1524,
+     "range": [
+      1,
+      3
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 5,
+     "critMod": 0,
+     "desc": "（新项目新增·初稿）空中要塞的主炮。",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "要塞光束",
+     "power": 3800,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "startCd": 3,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "大招": true
+    }
+   ]
+  },
+  "sniper": {
+   "abilities": [],
+   "armor": 200,
+   "awaken": 100,
+   "defense": 65,
+   "eva": 10,
+   "flying": false,
+   "h": 1,
+   "hp": 3200,
+   "key": "sniper",
+   "mech": "狙击机",
+   "melee": 70,
+   "mov": 4,
+   "pilot": "敌兵",
+   "shoot": 130,
+   "short": "狙",
+   "w": 1,
+   "weak": {
+    "近战": 50
+   },
+   "weapons": [
+    {
+     "afterMove": false,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "光束",
+     "fire": "direct",
+     "hit": 110,
+     "ignoreDef": false,
+     "name": "长程光束炮",
+     "power": 2296,
+     "range": [
+      4,
+      9
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 5,
+     "critMod": 0,
+     "desc": "（新项目新增·初稿）狙击机压好呼吸的一枪。",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 115,
+     "ignoreDef": false,
+     "name": "超长程狙击",
+     "power": 4000,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "startCd": 3,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "大招": true
+    }
+   ]
+  },
+  "stealth": {
+   "abilities": [
+    "stealth"
+   ],
+   "armor": 100,
+   "awaken": 100,
+   "defense": 65,
+   "eva": 30,
+   "flying": false,
+   "h": 1,
+   "hp": 2600,
+   "key": "stealth",
+   "mech": "隐形侦察机",
+   "melee": 80,
+   "mov": 6,
+   "pilot": "敌兵",
+   "shoot": 120,
+   "short": "隐",
+   "w": 1,
+   "weak": {
+    "范围": 50
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "狙击枪",
+     "power": 1832,
+     "range": [
+      2,
+      6
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 5,
+     "critMod": 0,
+     "desc": "（新项目新增·初稿）隐形机的定点狙杀。",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 110,
+     "ignoreDef": false,
+     "name": "隐匿狙击",
+     "power": 3400,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "startCd": 3,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "大招": true
+    }
+   ]
+  },
+  "swarm": {
+   "abilities": [
+    "summon"
+   ],
+   "armor": 0,
+   "awaken": 100,
+   "defense": 50,
+   "eva": 45,
+   "flying": true,
+   "h": 1,
+   "hp": 1400,
+   "key": "swarm",
+   "mech": "蜂群无人机",
+   "melee": 60,
+   "mov": 7,
+   "pilot": "敌兵",
+   "shoot": 90,
+   "short": "蜂",
+   "w": 1,
+   "weak": {
+    "多段": 50,
+    "范围": 100
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "微型机枪",
+     "power": 1116,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  "tank": {
+   "abilities": [],
+   "armor": 2000,
+   "awaken": 100,
+   "defense": 95,
+   "eva": 0,
+   "flying": false,
+   "h": 2,
+   "hp": 14000,
+   "key": "tank",
+   "mech": "重型坦克",
+   "melee": 100,
+   "mov": 3,
+   "noEvade": true,
+   "pilot": "敌将",
+   "shoot": 130,
+   "short": "坦",
+   "w": 2,
+   "weak": {
+    "曲射": 50,
+    "直射": -30,
+    "背面": 20
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 1,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "主炮",
+     "power": 2444,
+     "range": [
+      2,
+      7
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "同轴机枪",
+     "power": 1407,
+     "range": [
+      1,
+      2
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 5,
+     "critMod": 0,
+     "desc": "（新项目新增·初稿）重型坦克的穿甲弹。",
+     "dmgType": "物理",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "穿甲主炮",
+     "power": 3600,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "startCd": 3,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "大招": true
+    }
+   ]
+  },
+  "turret": {
+   "abilities": [],
+   "armor": 400,
+   "awaken": 100,
+   "defense": 50,
+   "eva": 0,
+   "flying": false,
+   "h": 1,
+   "hp": 3500,
+   "key": "turret",
+   "mech": "固定炮台",
+   "melee": 60,
+   "mov": 0,
+   "noEvade": true,
+   "pilot": "敌兵",
+   "shoot": 110,
+   "short": "台",
+   "w": 1,
+   "weak": {
+    "光束": 30
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "indirect",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "迫击炮",
+     "power": 1461,
+     "range": [
+      3,
+      7
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    }
+   ]
+  },
+  "venom": {
+   "abilities": [
+    "lambdaShield"
+   ],
+   "armor": 500,
+   "awaken": 100,
+   "defense": 80,
+   "eva": 25,
+   "flying": false,
+   "h": 1,
+   "hp": 6000,
+   "key": "venom",
+   "mech": "λ 试作机",
+   "melee": 140,
+   "mov": 6,
+   "pilot": "敌将",
+   "shoot": 140,
+   "short": "λ",
+   "w": 1,
+   "weak": {
+    "多段": 30,
+    "范围": -50
+   },
+   "weapons": [
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "特殊",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "λ 加农炮",
+     "power": 1266,
+     "range": [
+      2,
+      5
+     ],
+     "special": null,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 0,
+     "critMod": 0,
+     "desc": "",
+     "dmgType": "物理",
+     "fire": "melee",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "单分子刀",
+     "power": 2076,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "stat": "格斗",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "v37": true
+    },
+    {
+     "afterMove": true,
+     "cd": 5,
+     "critMod": 0,
+     "desc": "（新项目新增·初稿）λ 试作机解除限制的一炮（特殊伤害，不吃装甲）。",
+     "dmgType": "特殊",
+     "fire": "direct",
+     "hit": 100,
+     "ignoreDef": false,
+     "name": "λ 加农炮·全开",
+     "power": 3600,
+     "range": [
+      1,
+      1
+     ],
+     "special": null,
+     "startCd": 3,
+     "stat": "射击",
+     "unlock": 1,
+     "upgrades": [],
+     "uses": null,
+     "大招": true
+    }
+   ]
+  }
+ },
+ "ENEMY_POOL": [
+  "grunt",
+  "fighter",
+  "artillery",
+  "hound",
+  "raider",
+  "drone",
+  "shield",
+  "beamcoat",
+  "phase",
+  "stealth",
+  "swarm",
+  "beetle",
+  "sniper",
+  "bomber",
+  "mirror",
+  "regen",
+  "jammer",
+  "captain",
+  "funnel",
+  "berserker",
+  "venom"
+ ],
+ "ENEMY_BOSS": [
+  "fortress",
+  "tank",
+  "skyfort"
+ ]
+}
