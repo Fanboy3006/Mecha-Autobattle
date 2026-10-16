@@ -7,7 +7,7 @@
 
 ---
 
-## 一、当前进度与 Git 提交链快照（至 2026-10-16 晚间暂停点）
+## 一、当前进度与 Git 提交链快照（至 M3 收口）
 
 | 阶段 | Git 提交 / 标签 | 状态 | 核心成果 |
 |---|---|---|---|
@@ -16,9 +16,9 @@
 | **Godot M1** | `4065a48` (`[Godot M1]`) | ✅ 已完成 | 数据导出（`godot/data/js/*.json`）、战斗黄金样例 **138 场**（含 2788 自检）、字体后备链、53 项测试 |
 | **Godot M2** | `2d75d22` (`[Godot M2]`) | ✅ 已完成 | `godot/core/battle/` 落盘；138/138 场黄金样例与 `js-reference-final` 逐条一致；D-01 签字确认；65 项测试全绿 |
 | **ARGON 接管审计 & D-02** | `6e5f94c` | ✅ 已完成 | 独立复跑 M2 基线；登记 **D-02（M3 五处冻结语义施工口径纠错）**；落盘 [`协作/Godot迁移-ARGON验收对照表.md`](Godot迁移-ARGON验收对照表.md) |
-| **Stage R1 + M3-Prep** | **本次提交（晚间保存点）** | ✅ 已完成（**141 项测试全绿**） | ① **R1 架构整顿**：新增零 `J.*` 强类型领域目录 `GameCatalog`（`core/data/game_catalog.gd`）、32 张战术卡牌声明式效果执行器 `CardEffects`（`core/battle/card_effects.gd`，替掉 `btl.gd` 27 个硬编码分支）、清理 `flow.gd` 退役防御回复死代码、`test_boundary.gd` 锁死新模块严禁调用 `J.*`；② **M3-Prep**：新增 `RelicBattle`（`core/battle/relic_battle.gd`，58 件藏品开战注入，清掉 DEBT-06）、导出 **30 场带藏品战斗黄金样例**（战斗黄金样例扩至 **168/168 全绿**）、导出局外肉鸽黄金样例 `tests/golden/run_vectors.json`（8 种子×4层地图/推进剂/券/晋升/3选1）+ `test_run_golden.gd`、落盘强类型 `core/run/run_state.gd` |
-| **Stage M3-Core** | **明天开机第一件事** | ⏳ 待继续 | 在 `godot/core/run/` 下用原生 Godot 架构（零 `J.*`）实现：`map_generator.gd`、`map_navigator.gd`（含 D-02 五处口径）、`part_system.gd`、`roster_manager.gd`、`deck_builder.gd`、`relic_system.gd`、`node_resolver.gd` + `session/save_service.gd`，跑通 `run_vectors.json` 逐项对拍、1~4 层 Headless 通关冒烟与第 2 层中途 `save → load` 往返一致性测试 |
-| **Godot M4** | 后续阶段 | ⏳ 待做 | **表现层与 UI（Presentation & Scenes）**：菜单/分队/大地图/编队/战斗屏/手牌栏/招募晋升弹窗/结算屏 + Web 导出与 `/godot/` 试玩验收（含 D-01 体感确认） |
+| **Stage R1 + M3-Prep** | `126ba46` | ✅ 已完成（141 项测试全绿） | ① **R1 架构整顿**：新增零 `J.*` 强类型领域目录 `GameCatalog`（`core/data/game_catalog.gd`）、32 张战术卡牌声明式效果执行器 `CardEffects`（`core/battle/card_effects.gd`，替掉 `btl.gd` 27 个硬编码分支）、清理 `flow.gd` 退役防御回复死代码、`test_boundary.gd` 锁死新模块严禁调用 `J.*`；② **M3-Prep**：新增 `RelicBattle`（`core/battle/relic_battle.gd`，58 件藏品开战注入，清掉 DEBT-06）、导出 **30 场带藏品战斗黄金样例**（战斗黄金样例扩至 **168/168 全绿**）、导出局外肉鸽黄金样例 `tests/golden/run_vectors.json` + `test_run_golden.gd`、落盘强类型 `core/run/run_state.gd` |
+| **Godot M3（Run Core 肉鸽内核 + 存档）** | **本次提交（`[Godot M3]`）** | ✅ 已完成（**326 项测试全绿**） | 在 `godot/core/run/` 下用原生 Godot 架构（**零 `J.*` 调用**）完整落地：`map_generator.gd`（32 张地图与推进剂账 100% 对齐 `run_vectors.json`）、`map_navigator.gd`（移动/跳格/退路预告/林间空地/追击−2/守军闸/小径+2，完整落实 D-02 五处口径）、`part_system.gd`（13 件零件）、`roster_manager.gd`（开局3券/随机5偏移/战后3档 8 局对拍全对、带队核心 Lv20 特例、68 条晋升面板对拍全对、HP 跨战继承与战后回血 50%）、`deck_builder.gd`（34 条三选一候选对拍全对、0 rng）、`relic_system.gd`（58 件藏品局外掉落与出击上限）、`node_resolver.gd`（5类战斗节点编成抽取与真战斗结算 + 休整/黑市/奇遇/瞭望站/遗迹/隧道/侵蚀源）+ `session/save_service.gd`（IEEE-754 无损浮点与整数保真序列化、坏档兜底、第 2 层中途 `save → load` 往返打完 2~4 层与不中断连打 **100% 逐字节相同**） |
+| **Godot M4** | **下一阶段（待作者说继续）** | ⏳ 待开工 | **表现层与 UI（Presentation & Scenes）**：`GameSession` 会话门面 + 菜单/分队/大地图/编队/战斗屏/手牌栏/招募晋升弹窗/结算屏 + Web 导出与 `/godot/` 试玩验收（含 D-01 体感确认） |
 | **Godot M5** | 最终收口 | ⏳ 待做 | 根路径 `/` 切换为 Godot 版，JS 旧版归档 |
 
 ---
