@@ -344,8 +344,9 @@ EXITCODE=0 · SCRIPT ERROR 计数 = 0 · 失败项 = 0
 | | 数字 |
 |---|---|
 | M3 收口基线（交接卡） | 326 |
-| **M4 交付基线** | **663**（+337） |
-| 战斗黄金样例 | 168/168 保持 |
+| **M4 首次交付基线** | **663**（+337） |
+| **M4 最终基线（含 D-05~D-09 修复 + 端到端永久回归）** | **774 项全绿 / 退出码 0 / 零 SCRIPT ERROR**；`test_session_flow` 199 · `test_session_run` 26 · `test_presentation_smoke` 224 · `test_boundary` 37 · `test_font_coverage` 3 |
+| 战斗黄金样例 | 168/168 保持（D-09 改了 `core/run/roster_manager.gd` 一行，黄金仍全绿） |
 | 边界门禁 | `core/` 零引擎耦合 · `session`/`presentation` 零 `J.*` ✅ |
 | 字体门禁 | 会上屏的 **1312** 个非 ASCII 字符**全部有字形** ✅ |
 
