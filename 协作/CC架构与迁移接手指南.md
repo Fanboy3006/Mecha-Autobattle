@@ -52,7 +52,8 @@
 
 ## 3. 你的第一阶段交付任务（已交付 [`协作/架构/Godot迁移架构-v1.md`](架构/Godot迁移架构-v1.md)）
 
-- **《Godot Migration Architecture v1》** 已落盘于 [`协作/架构/Godot迁移架构-v1.md`](架构/Godot迁移架构-v1.md)（含 `迁移地图.md`、`依赖清单.json` 与 `godot-spike/` 原型）。
+- **《Godot Migration Architecture v1》** 已落盘于 [`协作/架构/Godot迁移架构-v1.md`](架构/Godot迁移架构-v1.md)，且 **M0、M1、M2（Battle Core 138/138 黄金样例对齐 + D-01 签字）均已完成**。
+- **M3（肉鸽内核 Run Core）的冻结语义清单与验收口径**已完整落盘于 [**`协作/Godot迁移-GameplayArchitect交接卡.md`**](Godot迁移-GameplayArchitect交接卡.md) 第三节，请直接参照执行 M3。
 
 ---
 
