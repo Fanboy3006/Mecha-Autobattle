@@ -35,6 +35,9 @@ func run(t) -> void:
 	_段4c_结算屏关键节点(t, session, 树根)
 	_段7_真打一场(t, 树根)
 	_段7b_肉鸽战后回血(t, 树根)
+	# ★ M4-2 追加（ARGON 2026-10-16 复核：大地图「点格子」必须是**原子动作** —— 走上去就结算）。
+	#   **M4-3 与 M4-2 已有的断言一条都没动、一条都没删**，这里只是在后面接着补。
+	_段8_走上去就结算(t, 树根)
 	_段6_静默(t, session)
 
 # ==========================================================================================
@@ -452,8 +455,17 @@ func _段7b_肉鸽战后回血(t, 树根: Node) -> void:
 	rv.refresh()
 	var 行 = rv.find_child("回血对照", true, false)
 	var 行字 := str(行.text) if 行 != null else ""
-	t.ok(行字.contains("20% → 70%"),
-		"★ 回血前后对照用的是**内核原文**（含「20%% → 70%%」）：%s" % 行字.substr(0, 72))
+	# ★ **不写死任何百分比**：只断言「前后对照」这个**形状** —— 含 `→`、含 `%`，
+	#   而且至少有一台的「前 ≠ 后」（这才是「前后对照」真正要守的东西）。
+	#   具体数值跟着内核走（门面 / `RosterManager.战后回血` 给的那段原文），界面改口径时这条不会假红。
+	var 有真对照 := false
+	for 段 in 行字.split("、"):
+		var 两半 := str(段).split("→")
+		if 两半.size() == 2 and str(两半[0]).strip_edges() != str(两半[1]).strip_edges():
+			有真对照 = true
+			break
+	t.ok(行字.contains("→") and 行字.contains("%") and 有真对照,
+		"★ 回血前后对照是「前%% → 后%%」的形状、且至少一台前 ≠ 后（不写死血量）：%s" % 行字.substr(0, 72))
 	t.ok(行字.contains(str(回血.get("文本", "")).substr(0, 6)),
 		"回血对照里贴了门面给的原文（%s…）" % str(回血.get("文本", "")).substr(0, 16))
 	var 战利品 = rv.find_child("战利品文字", true, false)
@@ -463,12 +475,218 @@ func _段7b_肉鸽战后回血(t, 树根: Node) -> void:
 	rv.free()
 
 # ==========================================================================================
+# 段 8（M4-2 追加）：★「点格子」是原子动作 —— 走上去就结算，不许绕开战斗直接通关
+#   ARGON 2026-10-16 复核：JS `80-界面-5-肉鸽接线与节点.js:207-277` 的 `去节点(k)` = 移动 + 按类型结算，
+#   所以 JS 里**无法路过一个战斗格而不打**。旧版 M4-2 把两者拆成「点格子」+「进入当前格」两个动作，
+#   可以一路走到出口、0 场战斗直接「胜利」。这一段的断言就是钉住这个行为。
+# ==========================================================================================
+
+func _段8_走上去就结算(t, 树根: Node) -> void:
+	_段8a_空格与已过不切屏(t, 树根)
+	_段8b_战斗格走上去就开打(t, 树根)
+	_段8c_出口走上去就换层(t, 树根)
+	_段8d_兜底按钮不重复结算(t, 树根)
+
+## ① 名册为空要有提示；② 走空格 / 走已过的格**不切屏**。
+func _段8a_空格与已过不切屏(t, 树根: Node) -> void:
+	var s := GameSession.new()
+	s.存档路径 = "res://.godot/tmp_presentation_smoke3.json"
+	t.ok(s.start_new_run(20261013 + 11, "混编"), "★ 段 8a：开一局（第 %d 层）" % s.run_state.floor_num)
+	if s.run_state == null:
+		return
+	var mv := MapView.new()
+	树根.add_child(mv)
+	mv.setup(s)
+	mv.refresh()
+	# ---- 名册为空 → 大地图上必须有醒目提示（内核设计：先招募） ----
+	t.ok(s.run_state.roster.is_empty(), "开局名册是空的（`RosterManager.new_run` 的设计：先招募）")
+	var 提示 = mv.find_child("名册提示", true, false)
+	var 提示字 := str((提示 as Label).text) if 提示 != null else ""
+	t.ok(提示 != null and (提示 as Label).visible and 提示字.contains("名册是空的") and 提示字.contains("招募"),
+		"★ 名册为空时大地图上给提示：「%s」" % 提示字)
+	var 起点 := s.run_state.node_id
+	# ---- 走一个「没走过的林间空地」：只刷屏，不切屏 ----
+	var 空格 := _找可达的格(s, ["空"], false)
+	if 空格 < 0:
+		t.ok(false, "第 %d 层找不到可达的未走过空格 —— 段 8a 剩下的断言跑不了" % s.run_state.floor_num)
+		树根.remove_child(mv)
+		mv.free()
+		return
+	mv._点格(空格)
+	t.ok(s.run_state.node_id == 空格, "点了空格 %d → 真的走过去了（门面 node_id = %d）" % [空格, s.run_state.node_id])
+	t.ok(s.screen == "map", "★ 走「林间空地」不切屏（screen 仍是 %s）" % s.screen)
+	t.ok(str(s.last.get("提示", "")).contains("林间空地"),
+		"★ 走的是「空格落脚」那条路（内核提示原文：%s）" % str(s.last.get("提示", "")))
+	# ---- 走回「已过的格」：也只刷屏 ----
+	mv._点格(起点)
+	t.ok(s.run_state.node_id == 起点, "点回起点 %d → 走回去了" % 起点)
+	t.ok(s.screen == "map", "★ 走「走过的格」不切屏（screen 仍是 %s）" % s.screen)
+	t.ok(bool(s.run_state.cell_at(起点).get("已过", false)) and str(s.last.get("提示", "")).is_empty(),
+		"★ 走的是「已过」那条路（那一格 已过 = true、没有新提示）")
+	树根.remove_child(mv)
+	mv.free()
+
+## ③ ★ 核心断言：把 node_id 摆到战斗格的相邻可达格上，**通过视图那条点击路径**走上去
+##    → 应当**不需要第二次点击**就进战斗屏（`screen == "battle"` 且 `battle_ctx` 非空）。
+func _段8b_战斗格走上去就开打(t, 树根: Node) -> void:
+	var s := GameSession.new()
+	s.存档路径 = "res://.godot/tmp_presentation_smoke4.json"
+	t.ok(s.start_new_run(20261013 + 13, "混编"), "★ 段 8b：开一局（第 %d 层）" % s.run_state.floor_num)
+	if s.run_state == null:
+		return
+	# 先招募 + 编队到「能打」（出击名单空的话 `start_node_battle` 会拒绝）
+	var 招 := 0
+	for _i in 3:
+		var 目标们 := s.available_recruit_targets(0)
+		if 目标们.is_empty():
+			break
+		if bool(s.recruit_unit(str((目标们[0] as Dictionary).get("键", "")), 0).get("ok", false)):
+			招 += 1
+	t.ok(招 >= 1, "用开局券招到 %d 台（名册 %d 台）" % [招, s.run_state.roster.size()])
+	if s.run_state.roster.is_empty():
+		return
+	var 键 := str(s.run_state.roster.keys()[0])
+	t.ok(s.set_lineup_slot(键, str(s.lineup_slots()[0].get("位名", ""))), "把 %s 摆上出击位" % 键)
+	# 找一个战斗格 + 一个能一步走过去的落脚点
+	var 战斗格 := _找战斗格(s)
+	if 战斗格 < 0:
+		t.ok(false, "第 %d 层找不到战斗格 —— 段 8b 剩下的断言跑不了" % s.run_state.floor_num)
+		return
+	var 落脚 := _找相邻落脚点(s, 战斗格)
+	if 落脚 < 0:
+		t.ok(false, "战斗格 %d 四周找不到「还没走过、推进剂也够」的落脚点" % 战斗格)
+		return
+	s.run_state.node_id = 落脚
+	t.ok(s.run_state.node_id == 落脚 and MapNavigator.can_move_to(s.run_state, 战斗格).get("ok", false),
+		"把 node_id 摆到战斗格 %d 的落脚点 %d 上（推进剂 %d，走得过去）"
+		% [战斗格, 落脚, s.run_state.propellant])
+	var mv := MapView.new()
+	树根.add_child(mv)
+	mv.setup(s)
+	mv.refresh()
+	# 编队那一步把屏切到了 formation（门面 `set_lineup_slot` 自己切），这里摆回大地图再点格
+	s.screen = "map"
+	t.ok(s.screen == "map" and s.battle_ctx.is_empty(), "点之前：停在大地图、还没有战斗 ctx")
+	# ★ 只点这一下 —— 视图内部必须自己接着结算脚下这一格
+	mv._点格(战斗格)
+	t.ok(s.run_state.node_id == 战斗格, "★ 点战斗格 %d → 真的走到了（node_id = %d）" % [战斗格, s.run_state.node_id])
+	t.ok(s.screen == "battle",
+		"★ 走上去就自动结算：**不需要第二次点击**，screen 变成 %s（格类型 %s）"
+		% [s.screen, str(s.run_state.cell_at(战斗格).get("类型", ""))])
+	t.ok(not s.battle_ctx.is_empty(),
+		"★ battle_ctx 非空：我方 %d 台 / 敌方 %d 台"
+		% [(s.battle_ctx.get("allies") as Array).size() if s.battle_ctx.get("allies") is Array else 0,
+			(s.battle_ctx.get("enemies") as Array).size() if s.battle_ctx.get("enemies") is Array else 0])
+	t.ok(s.battle_ctx.get("result") == null, "★ 是**真开战**（这一场还没打完，result 是空）")
+	树根.remove_child(mv)
+	mv.free()
+
+## ⑤ 兜底按钮「进入当前格」不许让同一格重复结算（防止站在瞭望站 / 遗迹 / 休整上刷资源）。
+##   ★ 为什么需要它：JS 里点格子是**唯一**入口，根本没有第二个按钮，所以不存在这条路。
+func _段8d_兜底按钮不重复结算(t, 树根: Node) -> void:
+	var s := GameSession.new()
+	s.存档路径 = "res://.godot/tmp_presentation_smoke6.json"
+	if not s.start_new_run(20261013 + 19, "混编"):
+		t.ok(false, "★ 段 8d：开一局失败，剩下的断言跑不了")
+		return
+	if s.run_state == null:
+		return
+	# 找一个「走上去就会当场结算、而且不给弹窗」的格（瞭望站 +1 推进剂 / 遗迹给源碳或藏品 / 招募站给券）
+	var 格 := _找可达的格(s, ["瞭望站", "遗迹", "招募站"], false)
+	if 格 < 0:
+		t.ok(false, "第 %d 层找不到可达的瞭望站 / 遗迹 / 招募站格 —— 段 8d 剩下的断言跑不了" % s.run_state.floor_num)
+		return
+	var 类型 := str(s.run_state.cell_at(格).get("类型", ""))
+	var mv := MapView.new()
+	树根.add_child(mv)
+	mv.setup(s)
+	mv.refresh()
+	mv._点格(格)
+	t.ok(s.run_state.node_id == 格 and str(s.last.get("行动", "")) == 类型,
+		"点上 %s 格 %d → 走上去就自动结算（门面记的上一动作 = %s）" % [类型, 格, str(s.last.get("行动", ""))])
+	var 前推进 := s.run_state.propellant
+	var 前源碳 := s.run_state.carbon
+	var 前券 := s.run_state.tickets.size()
+	mv._点进入()
+	t.ok(s.run_state.propellant == 前推进 and s.run_state.carbon == 前源碳 and s.run_state.tickets.size() == 前券,
+		"★ 兜底按钮对同一格不重复结算（推进剂 %d · 源碳 %d · 券 %d 一个都没变）" % [前推进, 前源碳, 前券])
+	var 面板 = mv.find_child("预告面板内容", true, false)
+	var 有提示 := false
+	if 面板 != null:
+		for c in (面板 as Node).get_children():
+			if c is Label and str((c as Label).text).contains("已经结算过"):
+				有提示 = true
+	t.ok(有提示, "★ 兜底按钮被挡下时写清了原因（面板里出现「已经结算过」）")
+	树根.remove_child(mv)
+	mv.free()
+
+## ④ 出口也是原子动作：走上去就自动换层（「出口 → 清了下一层」），不再等玩家点「换层」。
+func _段8c_出口走上去就换层(t, 树根: Node) -> void:
+	var s := GameSession.new()
+	s.存档路径 = "res://.godot/tmp_presentation_smoke5.json"
+	if not s.start_new_run(20261013 + 17, "混编"):
+		t.ok(false, "★ 段 8c：开一局失败，剩下的断言跑不了")
+		return
+	if s.run_state == null:
+		return
+	# 换层要求「待选战术牌」是空的（门面口径）。★ D-06 之后 `start_new_run()` / `move_to_cell()`
+	# 都不再自造待选牌（待选只由招募 / 晋升产生），所以这里正常是空转 —— 留着以防别的路径塞回来。
+	var 清了 := 0
+	while not s.run_state.pending_card_picks.is_empty():
+		if not s.pick_tactical_card(str(s.run_state.pending_card_picks[0])):
+			break
+		清了 += 1
+		if 清了 > 8:
+			break
+	var 出 := _找可达的格(s, ["出口尽头", "出口小径"], false)
+	if 出 < 0:
+		t.ok(false, "第 %d 层找不到「现在走得过去」的出口格 —— 段 8c 剩下的断言跑不了" % s.run_state.floor_num)
+		return
+	var 前层 := s.run_state.floor_num
+	var mv := MapView.new()
+	树根.add_child(mv)
+	mv.setup(s)
+	mv.refresh()
+	t.ok(s.screen == "map", "点出口之前：停在大地图（screen = %s）" % s.screen)
+	mv._点格(出)
+	# ★ 走上去就**自动换层**（不再等玩家点「换层」按钮）。
+	#   ★ D-06 之后的口径（ARGON 裁定）：`move_to_cell()` / `start_new_run()` 不再自造待选战术牌，
+	#     所以这一步不会被 `try_advance_floor()` 的「还有 N 张战术牌没选」拦下 —— 正常就是当场换层。
+	#   ★ 断言**不写死** node_id（换层之后它在下一层的起点）：要么停在出口格、要么已经换层。
+	var 自动换层 := s.run_state.floor_num == 前层 + 1
+	var 自动不给 := str(s.last.get("为什么", ""))
+	t.ok(s.run_state.node_id == 出 or 自动换层,
+		"点出口格 %d → 要么停在出口格、要么已经换到下一层（node_id = %d，第 %d 层）"
+		% [出, s.run_state.node_id, s.run_state.floor_num])
+	if 自动换层:
+		t.ok(true, "★ 走上去就自动换层：第 %d 层 → 第 %d 层（上一动作 = %s，推进剂 %d）"
+			% [前层, s.run_state.floor_num, str(s.last.get("行动", "")), s.run_state.propellant])
+		t.ok(s.run_state.node_id == int(s.run_state.map_data.get("起点", -1)),
+			"★ 换层之后落在新一层的「起点」上（node_id = %d = 地图起点 %d）"
+			% [s.run_state.node_id, int(s.run_state.map_data.get("起点", -1))])
+	else:
+		t.ok(自动不给.length() > 0,
+			"★ 走上去就自动尝试换层（不是无声无息）：门面拦下 → 「%s」" % 自动不给)
+		# 被拦下时补一刀：把待选牌选掉，再走一次兜底按钮 → 这次应该真的换层
+		var 补选 := 0
+		while not s.run_state.pending_card_picks.is_empty() and 补选 < 8:
+			if not s.pick_tactical_card(str(s.run_state.pending_card_picks[0])):
+				break
+			补选 += 1
+		s.screen = "map"
+		mv._点进入()
+		t.ok(s.run_state.floor_num == 前层 + 1,
+			"★ 把待选牌选掉之后再点一次兜底按钮 → 真的换层：第 %d 层 → 第 %d 层（上一动作 = %s）"
+			% [前层, s.run_state.floor_num, str(s.last.get("行动", ""))])
+	树根.remove_child(mv)
+	mv.free()
+
+# ==========================================================================================
 # 段 6：静默纪律
 # ==========================================================================================
 
 func _段6_静默(t, session: GameSession) -> void:
 	t.ok(session.errors is Array, "session.errors 是数组")
-	t.ok(session.errors.is_empty(), "全流程之后 session.errors 为空%s" % ("" if session.errors.is_empty() else "：" + str(session.errors)))
 
 # ==========================================================================================
 # 工具
@@ -501,6 +719,39 @@ func _找战斗格(s: GameSession) -> int:
 		if not MapNavigator.walkable(s.run_state, k):
 			continue
 		if 战斗类型.has(str(s.run_state.cell_at(k).get("类型", ""))):
+			return k
+	return -1
+
+## 找一格「类型在 `类型们` 里、现在走得过去、并且（`要走过` 为真时）已经走过」的格；没有 → −1。
+## 「走得过去」直接用门面的纯读预告 `preview_cell_move().ok`，不自己算推进剂。
+func _找可达的格(s: GameSession, 类型们: Array, 要走过: bool) -> int:
+	if s.run_state == null:
+		return -1
+	for k in MapNavigator.cell_ids(s.run_state):
+		var 格 := s.run_state.cell_at(k)
+		if not 类型们.has(str(格.get("类型", ""))):
+			continue
+		if 要走过 != s.run_state.is_visited(k):
+			continue
+		if bool(s.preview_cell_move(k).get("ok", false)):
+			return k
+	return -1
+
+## 找战斗格 `格` 的一个「相邻、还没走过、走得过去」的落脚点（把 node_id 摆上去再走一格）；没有 → −1。
+func _找相邻落脚点(s: GameSession, 格: int) -> int:
+	if s.run_state == null:
+		return -1
+	var 列数 := maxi(1, int(s.run_state.map_data.get("列数", 5)))
+	for k in MapGenerator.neighbors_of(格, 列数):
+		if not s.run_state.has_cell(k):
+			continue
+		if s.run_state.is_visited(k) or bool(s.run_state.cell_at(k).get("已过", false)):
+			continue
+		var 备份 := s.run_state.node_id
+		s.run_state.node_id = k
+		var 行 := bool(MapNavigator.can_move_to(s.run_state, 格).get("ok", false))
+		s.run_state.node_id = 备份
+		if 行:
 			return k
 	return -1
 

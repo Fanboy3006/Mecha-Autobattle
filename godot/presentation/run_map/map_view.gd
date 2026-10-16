@@ -35,11 +35,17 @@ var _预告面板: VBoxContainer
 var _按钮组: HBoxContainer
 var _取消瞄准: Button
 var _结果行: Label
+var _名册提示: Label
 
 ## 现在预告哪一格（−1 = 当前所在格）。
 var _预告格: int = -1
 ## 正在瞄准的主动零件：`{"下标": int, "键": String, "目标": Dictionary}`；空 = 没在瞄准。
 var _瞄准: Dictionary = {}
+## 已经自动结算过的格号（−1 = 还没有）。`_进入脚下(false)` 对同一格不再重复结算 ——
+## 防止玩家站在「瞭望站 / 遗迹 / 隧道」这类格上反复点兜底按钮刷资源（JS 里根本没有第二个入口）。
+var _已结算: int = -1
+## 上一次画的是第几层（换层时把 `_已结算` 归零）。
+var _层: int = -1
 
 func setup(p_session: GameSession) -> void:
 	session = p_session
@@ -56,7 +62,11 @@ func refresh() -> void:
 		_节点说明.text = ""
 		_图例.text = ""
 		_结果行.text = ""
+		_名册提示.visible = false
 		return
+	if s.floor_num != _层:
+		_层 = s.floor_num
+		_已结算 = -1
 	var 形状 := MapGenerator.shape(s.floor_num)
 	var 列数 := int(形状.get("列数", 5))
 	var 行数 := int(形状.get("行数", 5))
@@ -66,6 +76,11 @@ func refresh() -> void:
 		UiTheme.文本(s.floor_num), UiTheme.文本(列数), UiTheme.文本(行数),
 		UiTheme.文本(s.propellant), UiTheme.文本(s.propellant_max), UiTheme.文本(s.node_id),
 		UiTheme.节点全名(s.current_type()), MapNavigator.current_exit_kind(s), UiTheme.文本(必经.size())]
+	# ★ 名册空 = 出击 0 台 = 任何战斗格都进不去（`start_node_battle` 会拒绝「出击名单是空的」）。
+	#   内核设计就是「开局先招募」（`RosterManager.new_run` 的注释），所以这里必须说清楚。
+	_名册提示.visible = s.roster.is_empty()
+	if _名册提示.visible:
+		_名册提示.text = "名册是空的 —— 先去顶栏「名册 / 招募 / 晋升」用招募券招人，再编队，才能开战。"
 	_图例.text = "图例：起=起点 战=作战 精=精英 休=休整 市=黑市 事=奇遇 望=瞭望站 遗=遗迹 蚀=侵蚀源 隧=废弃隧道 守=出口守军 尽=出口尽头 径=出口小径 空=林间空地；★=当前所在格 可=现在走得到 必=必经点 过=走过 知=已揭开"
 	_建网格(s, 列数, 行数, 可达, 必经)
 	_取消瞄准.visible = not _瞄准.is_empty()
@@ -83,6 +98,9 @@ func _build() -> void:
 	var 列 := UiTheme.建盒(self, "地图上下列", true, UiTheme.间距_小)
 	_层信息 = UiTheme.建标签(列, "", UiTheme.字号_小节, UiTheme.高亮)
 	_层信息.name = "层信息"
+	_名册提示 = UiTheme.建说明(列, "", UiTheme.字号_正文, UiTheme.负面)
+	_名册提示.name = "名册提示"
+	_名册提示.visible = false
 	var 主体 := UiTheme.建盒(列, "地图主体", false, UiTheme.间距)
 	主体.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
@@ -108,7 +126,7 @@ func _build() -> void:
 	_按钮组 = UiTheme.建盒(右列, "地图按钮组", false, UiTheme.间距_小)
 	var 进 := UiTheme.建按钮(_按钮组, "进入当前格", _点进入)
 	进.name = "进入当前格按钮"
-	进.tooltip_text = "作战 / 精英 / 守军 / 侵蚀源 → 开战；黑市 / 休整 / 奇遇 → 开面板；出口 → 换层"
+	进.tooltip_text = "兜底 / 重试用：正常玩法是**点格子**，走上去就自动结算（战斗格直接开战）。同一格不会重复结算。"
 	var 换 := UiTheme.建按钮(_按钮组, "走出口 / 换层", _点换层)
 	换.name = "换层按钮"
 	换.tooltip_text = "站在出口尽头 / 出口小径上时才能换层（有牌没选完会被拦下）"
@@ -273,16 +291,44 @@ func _刷新节点说明(s: RunState) -> void:
 # ==========================================================================================
 
 func _点进入() -> void:
+	_进入脚下(false)
+
+## 结算脚下这一格（= JS `80-界面-5-肉鸽接线与节点.js:207-277` 的 `去节点()` 后半段）。
+##
+## `自动` = true 表示这一次是「走上去」触发的（**默认路径**）；false = 玩家点了兜底按钮。
+## 门面 `enter_current_node()` 会自己按类型派发：战斗格 → `battle` 屏；出口 → `try_advance_floor()`；
+## 瞭望站 / 遗迹 / 隧道 / 招募站 / 空格 → 当场结算（`last` 里带日志，本屏照实摊开）。
+## 黑市 / 休整 / 奇遇 这三类**门面不开弹窗**（它只把结果写进 `_node_result`），所以由本屏发信号开。
+func _进入脚下(自动: bool) -> void:
 	if session == null:
 		return
 	var s := session.run_state
 	if s == null or s.map_data.is_empty():
 		return
+	var 格 := s.node_id
+	# 兜底按钮：「同一格 + 这一格的事情**已经做过**」就不再重复结算。
+	# `last["行动"] == "移动"` = 落脚之后门面还没记下任何节点动作（例如刚开过面板就关掉了）
+	# → 这时允许再看一次面板，免得玩家关掉面板就再也进不去。
+	# ★ 为什么需要这道闸：JS 里「点格子」是**唯一**入口（`data-act="去节点:k"`），
+	#   根本没有第二个按钮，所以不存在「站在瞭望站/遗迹/休整上反复点、反复领」这条刷资源的路。
+	if not 自动 and _已结算 == 格 and str(session.last.get("行动", "")) != "移动":
+		_清空(_预告面板)
+		UiTheme.建说明(_预告面板, "这一格已经结算过了（走上去的那一下就算完）。想再走一次别的格就点格子。",
+			UiTheme.字号_小, UiTheme.高亮)
+		return
 	var 类型 := s.current_type()
 	if 弹窗节点.has(类型):
+		# 弹窗类节点：门面不开弹窗（它只把结果写进 `_node_result`），由本屏发信号开。
+		# 同上，仍然记「已结算」，这样关掉面板之后兜底按钮不会让同一格再领一次。
+		if 自动:
+			_已结算 = 格
 		请求弹窗.emit(str(弹窗节点[类型]), {})
 		return
-	session.enter_current_node()
+	var r := session.enter_current_node()
+	if 自动 and r is Dictionary and bool((r as Dictionary).get("ok", true)):
+		_已结算 = 格
+	if not 自动:
+		refresh()
 
 func _点换层() -> void:
 	if session == null:
@@ -301,6 +347,12 @@ func 瞄准零件(下标: int, 零件键: String, 目标格: Array) -> void:
 	_瞄准 = {"下标": 下标, "键": 零件键, "目标": 集}
 	refresh()
 
+## 点一个格（界面上点格子 / 测试都走这一条路）。
+##
+## ★ 照 JS `去节点(k)` 的语义：**移动成功之后立刻结算脚下这一格**（不是等玩家再点一次按钮）。
+##   JS 里「点格子」是原子动作，所以**根本无法路过一个战斗格而不打**；
+##   旧版 M4-2 把「移动」与「进入当前格」拆成两个动作 → 玩家可以一路走到出口、一场都不打
+##   （ARGON 2026-10-16 实测：0 场战斗直接通关）。这里修掉。
 func _点格(id: int) -> void:
 	if session == null:
 		return
@@ -315,7 +367,15 @@ func _点格(id: int) -> void:
 		UiTheme.建说明(_预告面板, "现在正在用零件瞄准：只能点粉色高亮的合法目标格（点「取消零件瞄准」回到普通移动）。",
 			UiTheme.字号_小, UiTheme.零件目标色)
 		return
-	session.move_to_cell(id)
+	var 走 := session.move_to_cell(id)
+	if not bool(走.get("ok", false)):
+		refresh()
+		return
+	# ★ 林间空地 / 走过的格：只刷一次屏 —— 不弹任何框、不进任何屏（JS `:220-221` 逐字同口径）
+	if bool(走.get("空格落脚", false)) or bool(走.get("已过", false)):
+		refresh()
+		return
+	_进入脚下(true)
 
 # ==========================================================================================
 # 集合（全部纯读）

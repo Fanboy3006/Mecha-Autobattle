@@ -33,7 +33,26 @@
 ##      只另外提供两个**说真话的读**给 UI 置灰 —— `cards_playable_now()` 与 `hand_card_status()`
 ##      （判据与 JS `:94` 同一套，原因文案照 JS `:100`：`冷却 N 回合` / `需 N 气势` / `点击发动`）。
 ##      曾一度加过的 `本回合打牌上限 = 2` 已**整体删除**（全文件不再出现任何 `2` 张预算）。
-##   4. 「源碳」在 `RunState` 里叫 `carbon`、to_dict() 里叫 `"源碳"`；本门面统一用 `run_state.carbon`。
+##   4. ★ **纠错记录（D-06）**：门面曾**自造「三选一」**——在 `start_new_run()` / `move_to_cell()` /
+##      `use_part()` / `resolve_event_choice()` 四处都调了 `refresh_card_offers()`，而它当时会
+##      `DeckBuilder.offer_cards()` **写** `pending_card_picks`。**封存 JS 里 `R.待选战术牌` 只有两处赋值**：
+##      `src/js/90-肉鸽-5-晋升与通关.js:62`（招募）与 `:151`（晋升）；开局 / 移动 / 用零件 / 事件
+##      **一处都不产生待选牌**。后果很实：每走一格弹一次 3 选 1、`try_advance_floor()` 被幻影待选牌
+##      永久拦住（「走上去自动换层」走不通）、开局还会指向一个不在名册里的键。
+##      现已修：那 4 处调用**全部删除**；`refresh_card_offers(unit_key)` 改成**纯读口子**
+##      （只返回「这台机体此刻的 3 张候选」，不写 `pending_card_picks`、不 `_refresh_modal()`、不 `_emit()`）。
+##      `_refresh_modal()` 保留原有口径（`pending_card_picks` 非空就弹三选一），
+##      于是它**只在招募 / 晋升之后**才会触发。
+##   5. ★ **纠错记录（D-07）**：`finish_battle_and_settle()` 曾**不幂等** —— 准入只看「有没有 ctx」与
+##      「有没有打完」，而结算完成后这两条依然成立，于是同一个 `battle_ctx` 可以**原地无限重结算**
+##      （每调一次再跑一遍 `NodeResolver.resolve_battle`：再发源碳 / 希望 / 藏品 / 经验，`场次`/`胜场` 再 +1。
+##      端到端驱动器实测「第 1 层原地连结算 496 次、胜场 +496、源碳 +1984」）。
+##      M4-3 只在**视图**里加了守卫，但门面是「玩家命令的唯一入口」，这道闸必须由门面守。
+##      现已修：新增 `_本场已结算` 标志 —— 结算成功后置 true；重复调用**只回 `{"ok": false, "为什么": …}`**，
+##      不跑内核、不重算 `_result_cache`、不覆盖 `last`、不 `_emit`；每一处「开一场新战斗」
+##      （`start_quick_battle` / `start_node_battle`）与每一处会话重置（`start_new_run` / `load_saved_run` /
+##      `return_to_menu`）都把它复位。**守的是标志，不是清 `battle_ctx`**（结算屏还要用 ctx 画）。
+##   6. 「源碳」在 `RunState` 里叫 `carbon`、to_dict() 里叫 `"源碳"`；本门面统一用 `run_state.carbon`。
 class_name GameSession
 extends RefCounted
 
@@ -65,6 +84,11 @@ var _result_cache: Dictionary = {}
 var _血比战前: Dictionary = {}
 var _battle_options_cache: Dictionary = {}
 var _quick_battle: bool = false
+## ★ D-07 幂等闸：这一场是否**已经结算过**。`finish_battle_and_settle()` 靠它保证「同一场只结算一次」，
+##   否则同一个 `battle_ctx` 可以原地无限重结算（每调一次再发一遍源碳 / 希望 / 藏品 / 经验，
+##   `场次`/`胜场` 再 +1）。**每一处「开一场新战斗」都要把它复位**。
+##   守的是标志、**不是清 `battle_ctx`** —— 结算屏还要用 ctx 画。
+var _本场已结算: bool = false
 
 # ==========================================================================================
 # 一、开局与存档
@@ -81,12 +105,14 @@ func start_new_run(seed_val: int, squad: String = 默认分队) -> bool:
 	battle_ctx = {}
 	_result_cache = {}
 	_血比战前 = {}
+	_本场已结算 = false
 	_node_result = {}
 	_unit_switches = {}
 	_quick_battle = false
 	_battle_options_cache = _build_battle_options()
-	if run_state.pending_card_picks.is_empty() and run_state.tactical_deck.is_empty():
-		refresh_card_offers()
+	# ★ D-06 纠错：**开局不产生待选战术牌**。封存 JS 里 `R.待选战术牌` 只在
+	#   招募（`90-肉鸽-5-晋升与通关.js:62`）与晋升（同文件 `:151`）两处被赋值；
+	#   开局 / 移动 / 用零件 / 事件结算一处都不产生（那里曾错调 `refresh_card_offers()`）。
 	last = {"行动": "开新局", "种子": seed_val, "分队": run_state.squad,
 		"层": run_state.floor_num, "起源碳": run_state.carbon, "起希望": run_state.hope,
 		"券": run_state.tickets.size(), "日志": _tail_logs(3)}
@@ -115,6 +141,7 @@ func load_saved_run() -> bool:
 	battle_ctx = {}
 	_result_cache = {}
 	_血比战前 = {}
+	_本场已结算 = false
 	_node_result = {}
 	_unit_switches = {}
 	_quick_battle = false
@@ -152,6 +179,7 @@ func return_to_menu() -> void:
 	battle_ctx = {}
 	_result_cache = {}
 	_血比战前 = {}
+	_本场已结算 = false
 	_node_result = {}
 	_unit_switches = {}
 	_battle_options_cache = {}
@@ -208,7 +236,6 @@ func move_to_cell(cell_id: int) -> Dictionary:
 		"追击": bool(r.get("追击", false)), "提示": str(r.get("提示", "")),
 		"日志": _tail_logs(3),
 	}
-	refresh_card_offers()
 	_set_screen("map")
 	return r
 
@@ -225,7 +252,7 @@ func use_part(part_idx: int, target_cell: int) -> Dictionary:
 	_battle_options_cache = _build_battle_options()
 	last = {"行动": "用零件", "零件": str(r.get("零件", "")), "到": int(r.get("到", s.node_id)),
 		"额外": r.get("额外", {}), "零件剩": s.parts.size(), "日志": _tail_logs(3)}
-	refresh_card_offers()
+	# ★ D-06：用零件**不产生待选战术牌**（JS 只有招募 / 晋升两处产生）。
 	_set_screen("map")
 	return r
 
@@ -395,7 +422,16 @@ func pick_tactical_card(card_id: String) -> bool:
 	_emit()
 	return true
 
-## 造一批候选（招募 / 晋升之后内核会自动给；这里也给 UI 一个手动口子，纯读 + 写候选）。
+## ★ **纯读口子**（D-06 纠错）：回答 UI「这台机体此刻的 3 张候选是哪三张」。
+##   **不写 `pending_card_picks`、不调 `_refresh_modal()`、不 `_emit()`。**
+##   待选战术牌**只能由招募 / 晋升产生** —— 封存 JS `90-肉鸽-5-晋升与通关.js:62`（招募）与
+##   `:151`（晋升）是 `R.待选战术牌` 的**唯一**两处赋值；开局 / 移动 / 用零件 / 事件结算都不产生。
+##
+##   实现说明（照实登记）：内核 `DeckBuilder` **没有**一个既算候选又不写状态的函数 ——
+##   `offer_cards()` 与别名 `候选战术牌们()` 是同一个函数，末尾都写 `state.pending_card_picks`。
+##   所以这里用「**先把 `pending_card_picks` 清空，再调 `offer_cards()`**」的办法拿到候选：
+##   它既复用了内核**唯一**的候选算法（不自己在门面里重写一遍排序 / 分池），
+##   又保证**不新增**任何待选牌（函数返回前也不会把候选写回去）。
 func refresh_card_offers(unit_key: String = "") -> Array:
 	var s := _need_run()
 	if s == null:
@@ -405,16 +441,16 @@ func refresh_card_offers(unit_key: String = "") -> Array:
 		键 = str(s.squad_leader) if not str(s.squad_leader).is_empty() else ""
 	if 键.is_empty() and not s.roster.is_empty():
 		键 = str(s.roster.keys()[0])
-	if 键.is_empty():
-		var 默认: Array = Db.T.get("默认五人队") if Db.T.get("默认五人队") is Array else []
-		if not 默认.is_empty() and 默认[0] is Dictionary:
-			键 = str((默认[0] as Dictionary).get("键", ""))
 	if 键.is_empty() or RosterManager.模板(键).is_empty():
-		_refresh_modal()
 		return []
-	var 候选 := DeckBuilder.offer_cards(s, 键, 3)
-	_refresh_modal()
-	return 候选
+	# 只有「本来就没有待选牌」时才代跑一次内核算法；有牌在手时**绝不动它**
+	# （那种情况是招募 / 晋升留下的，由 `pick_tactical_card` 负责清空）。
+	if s.pending_card_picks.is_empty():
+		DeckBuilder.offer_cards(s, 键, 3)
+		var 候选: Array = s.pending_card_picks.duplicate()
+		s.pending_card_picks = []
+		return 候选
+	return DeckBuilder.候选战术牌们(s, 键, 3)
 
 ## 编队 8 个格位（前排 前1.. + 后排 后1..，格数 = `Fm.SLOTS()`）。
 func lineup_slots() -> Array:
@@ -453,29 +489,23 @@ func set_lineup_slot(unit_key: String, slot_name: String) -> bool:
 	if not _在出击里(s, unit_key) and s.lineup.size() >= RosterManager.deploy_limit(s):
 		_fail("出击位满了（上限 %d 台，先把一台撤下来）" % RosterManager.deploy_limit(s), {"ok": false})
 		return false
-	var 旧 := -1
-	# 这一台原先在第几格（不在出击里 → −1）
-	for x in s.lineup:
-		if x is Dictionary and str(x.get("key")) == unit_key:
-			旧 = int(x.get("slot", -1))
-			break
-	# ★ 先只保留「不动的那些」：同一台要**先摘掉旧的条**，否则第一遍会把旧条原样留下、
-	#   循环末尾又补一条新的 → 出击名单里出现**同一台两条**（踩过一次）。
-	var 新出击: Array = []
-	for x in s.lineup:
-		if not (x is Dictionary):
-			continue
-		var k := str(x.get("key"))
-		if k == unit_key:
-			continue
-		if int(x.get("slot", -1)) == 位:
-			# 目标格被占了：把那一台换到「这一台原来待的格」（旧 = −1 → 给一个空位）
-			var 换到 := 旧 if 旧 >= 0 else _第一个空格位(新出击)
-			新出击.append({"key": k, "slot": 换到})
-			continue
-		新出击.append({"key": k, "slot": int(x.get("slot", -1))})
-	新出击.append({"key": unit_key, "slot": 位})
-	s.lineup = 新出击
+	var 旧 := _在出击的第几格(s, unit_key)
+	# ★ 纯函数式重建（不再「就地增删」）：先把「位号 → 一条出击记录」压实成一张表
+	#   （同一位号只留最后一条，旧数据里万一有重复也不会带病传下去），再做两步：
+	#     ① 把「占着目标位的那一台」搬到这一台原来待的位（旧位不存在就找第一个空位）；
+	#     ② 把这一台放到目标位。
+	#   这样**同一位号恒好只有一台**，不会再出现「3 条记录只占 2 个格位」。
+	var 位表 := _压实出击位(s)
+	var 占者 := str(位表.get(位, ""))
+	if not 占者.is_empty() and 占者 != unit_key:
+		var 挪到 := 旧
+		if 挪到 < 0 or 挪到 == 位:
+			挪到 = _第一个空位(位表)
+		位表.erase(位)
+		if 挪到 >= 0:
+			位表[挪到] = 占者
+	位表[位] = unit_key
+	s.lineup = _位表到出击(位表)
 	last = {"行动": "编队", "键": unit_key, "位名": slot_name, "位": 位, "原": 旧,
 		"出击": s.lineup.duplicate(true), "上限": RosterManager.deploy_limit(s)}
 	_set_screen("formation")
@@ -631,7 +661,7 @@ func resolve_event_choice(choice: String = "") -> Dictionary:
 	_node_result = r
 	last = {"行动": "事件", "事件": str(r.get("事件", "")), "选": str(r.get("选", "")),
 		"结果": str(r.get("结果", "")), "日志": _tail_logs(3)}
-	refresh_card_offers()
+	# ★ D-06：事件结算**不产生待选战术牌**（JS 只有招募 / 晋升两处产生）。
 	_set_screen("map")
 	return r
 
@@ -675,6 +705,7 @@ func start_quick_battle(seed_val: int = 20261013) -> bool:
 		if run_state.lineup.size() < RosterManager.deploy_limit(run_state):
 			run_state.lineup.append({"key": k, "slot": run_state.lineup.size()})
 	_quick_battle = true
+	_本场已结算 = false
 	_血比战前 = _名册血比()
 	_battle_options_cache = _build_battle_options()
 	var 种子 := seed_val + 快速战斗种子偏移
@@ -720,6 +751,7 @@ func start_node_battle() -> bool:
 		_fail("战斗内核没有给出 ctx", {"ok": false})
 		return false
 	_quick_battle = false
+	_本场已结算 = false
 	_血比战前 = _名册血比()
 	battle_ctx = ctx
 	_unit_switches = 表(ctx, "选项")
@@ -862,13 +894,23 @@ func auto_finish_battle() -> Dictionary:
 	return last
 
 ## 战后结算：肉鸽路径走内核 `NodeResolver.resolve_battle`（回血 / 券 / 藏品 / 零件 / 耐久 / 换层）。
+## ★ **幂等**（D-07）：同一场只结算一次。重复调用**一个字都不改**（不重跑内核、不重算 `_result_cache`、
+##   不改 `last`、不 `_emit`），只回一条 `{"ok": false, "为什么": …}`。
 func finish_battle_and_settle() -> Dictionary:
 	if battle_ctx.is_empty():
 		return _fail("现在不在战斗里", {"ok": false})
 	if battle_ctx.get("result") == null:
 		return _fail("这一场还没打完（先 `auto_finish_battle()` 或 `step_battle_turn()`）", {"ok": false})
+	if _本场已结算:
+		# ★ D-07：结算过就不再结算 —— 这里**不许**碰任何状态（不跑内核、不重算缓存、不改 last、不 emit）。
+		#   只把一条错误记进 `errors` 并返回；连 `last` 都不覆盖（免得把结算屏的「上一动作」冲掉）。
+		var 为什么 := "这一场已经结算过了（要再打请先走下一格 / 开下一场）"
+		errors.append(为什么)
+		errored.emit(为什么)
+		return {"ok": false, "为什么": 为什么, "屏幕": screen, "已结算": true}
 	var s := run_state
 	if s == null or _quick_battle or s.map_data.is_empty():
+		_本场已结算 = true
 		_result_cache = _build_result_cache({})
 		last = {"行动": "结算", "结果": result_summary()}
 		_set_screen("result")
@@ -899,6 +941,7 @@ func finish_battle_and_settle() -> Dictionary:
 			NodeResolver.清空格(s)
 	_battle_options_cache = _build_battle_options()
 	_result_cache["结算"] = r
+	_本场已结算 = true
 	last = {"行动": "结算", "结果": result_summary(), "内核": r}
 	_set_screen("result")
 	return r
@@ -1358,14 +1401,41 @@ func _在出击里(s: RunState, unit_key: String) -> bool:
 			return true
 	return false
 
-## `已排` 里没用掉的最小格位（换位时找不到旧格就用它兜底）。
-func _第一个空格位(已排: Array) -> int:
-	var 占 := {}
-	for x in 已排:
-		if x is Dictionary:
-			占[int(x.get("slot", -1))] = true
+## 这一台在出击名单里占的位号（不在 → −1）。
+func _在出击的第几格(s: RunState, unit_key: String) -> int:
+	for x in s.lineup:
+		if x is Dictionary and str(x.get("key")) == unit_key:
+			return int(x.get("slot", -1))
+	return -1
+
+## 出击名单 → 「位号 → 键」压实表：同一位号只留**最后**一条；位号越界（<0 / ≥ SLOTS）的丢掉。
+func _压实出击位(s: RunState) -> Dictionary:
+	var 位表 := {}
+	for x in s.lineup:
+		if not (x is Dictionary):
+			continue
+		var k := str(x.get("key", ""))
+		var 位 := int(x.get("slot", -1))
+		if k.is_empty() or 位 < 0 or 位 >= int(Fm.SLOTS()):
+			continue
+		位表[位] = k
+	return 位表
+
+## 「位号 → 键」→ 出击名单（按位号升序，形状照 `RunState.lineup`）。
+func _位表到出击(位表: Dictionary) -> Array:
+	var 位们 := []
+	for 位 in 位表.keys():
+		位们.append(int(位))
+	位们 = JsCompat.stable_sort(位们, func(a, b): return int(a) < int(b))
+	var out: Array = []
+	for 位 in 位们:
+		out.append({"key": str(位表[位]), "slot": int(位)})
+	return out
+
+## `位表` 里没用掉的最小格位（换位时找不到旧格就用它兜底）。
+func _第一个空位(位表: Dictionary) -> int:
 	for i in int(Fm.SLOTS()):
-		if not 占.has(i):
+		if not 位表.has(i):
 			return i
 	return 0
 

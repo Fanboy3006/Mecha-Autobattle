@@ -4,6 +4,9 @@
 ##   段 3 存档读档往返（关键字段逐个对）
 ##   段 4 错误路径不崩（非法输入一律 `{"ok": false}` / false，且**不动状态**）
 ##   段 5 确定性（同种子同一串命令 → `to_dict()` 逐字相同）
+##   段 6 回血前后对照（结算层）
+##   段 7 ★ D-06：待选战术牌只能由招募 / 晋升产生（开局 / 移动 / 用零件 / 事件都不许冒牌）
+##   段 8 ★ D-07：`finish_battle_and_settle()` 必须幂等（同一场只结算一次，重复调用一个字都不改）
 extends RefCounted
 
 const 肉鸽种子 := 20261013
@@ -22,6 +25,8 @@ func run(t) -> void:
 	_错误路径(t)
 	_确定性(t)
 	_回血前后对照(t)
+	_待选牌只由招募晋升产生(t)
+	_结算幂等(t)
 
 # ==========================================================================================
 # 段 1：快速战斗全流程
@@ -323,9 +328,25 @@ func _肉鸽全流程(t) -> void:
 	t.ok(not bool(券空.get("ok", false)) and str(券空.get("为什么", "")).length() > 0,
 		"不存在的机师 + 不传券下标 → **明确拒绝**、why 非空（%s）" % str(券空.get("为什么", "")))
 
-	# ---- 3 选 1 ----
-	if s.run_state.pending_card_picks.is_empty():
-		s.refresh_card_offers(目标)
+	# ---- 3 选 1（★ 待选牌只能由**招募 / 晋升**产生，D-06；不能靠 `refresh_card_offers()` 造）----
+	# 这里刻意再用一张券招一台 —— 招募成功那一刻内核就会写好 `pending_card_picks`。
+	var 招牌 := {}
+	for i in s.run_state.tickets.size():
+		var 目标3 := ""
+		for x in s.available_recruit_targets(i):
+			var k3 := str(x.get("键", ""))
+			if not s.run_state.roster.has(k3) and RosterManager.券合(s.run_state.tickets[i], k3):
+				目标3 = k3
+				break
+		if not 目标3.is_empty():
+			s.run_state.hope = maxi(s.run_state.hope, 30)
+			招牌 = s.recruit_unit(目标3, i)
+			break
+	t.ok(s.run_state.pending_card_picks.size() >= 1,
+		"★ 招募之后才有待选牌（招 %s → 候选 %d 张：%s）"
+		% [str(招牌.get("键", "—")), s.run_state.pending_card_picks.size(), str(s.run_state.pending_card_picks)])
+	t.ok(str(s.modal.get("类型", "")) == "三选一",
+		"★ 招募之后 modal 才变成三选一（真实值「%s」，数据 %s）" % [str(s.modal.get("类型", "")), str(s.modal.get("数据", []))])
 	var 候选 := s.run_state.pending_card_picks.duplicate()
 	t.ok(候选.size() >= 1, "3 选 1 候选 %d 张（%s）" % [候选.size(), str(候选)])
 	var 牌库数前 := s.run_state.tactical_deck.size()
@@ -362,9 +383,19 @@ func _肉鸽全流程(t) -> void:
 	for k in 占位后:
 		if 占位后.count(k) > 1 and not 重复.has(k):
 			重复.append(k)
-	t.ok(s.run_state.lineup.size() == 占位后.size() and 重复.is_empty() and 占位后.size() <= RosterManager.deploy_limit(s.run_state),
-		"挪完之后出击名单 %d 条、格位占用 %d 个、无重复（%s）—— 换位不该把同一台写两条，也不该超出击上限 %d"
-		% [s.run_state.lineup.size(), 占位后.size(), str(占位后), RosterManager.deploy_limit(s.run_state)])
+	var 位号集 := {}
+	var 位号重 := []
+	for x in s.run_state.lineup:
+		if not (x is Dictionary):
+			continue
+		var 位号 := int(x.get("slot", -1))
+		if 位号集.has(位号):
+			位号重.append(位号)
+		位号集[位号] = true
+	t.ok(s.run_state.lineup.size() == 占位后.size() and 重复.is_empty() and 位号重.is_empty()
+		and 占位后.size() <= RosterManager.deploy_limit(s.run_state),
+		"挪完之后出击名单 %d 条、格位占用 %d 个、无重复键（%s）、无重复位号（%s）—— 换位不该把同一台 / 同一格写两条，也不该超出击上限 %d"
+		% [s.run_state.lineup.size(), 占位后.size(), str(重复), str(位号重), RosterManager.deploy_limit(s.run_state)])
 	t.ok(s.screen == "formation", "编队后屏幕 = formation（真实值 %s）" % s.screen)
 	if 键们.size() >= 2:
 		t.ok(s.set_lineup_slot(str(键们[1]), str(格位[1].get("位名", ""))), "把 %s 摆到 %s" % [str(键们[1]), str(格位[1].get("位名", ""))])
@@ -714,18 +745,39 @@ func _回血前后对照(t) -> void:
 		if a < 0.0 or a > 1.0 or b < 0.0 or b > 1.0:
 			越界.append(k)
 	t.ok(越界.is_empty(), "血比前 / 血比后的每一台都落在 [0,1]（越界 %s）" % str(越界))
-	# ★ P0 的**核心**断言：`血比前` 必须是「打完了、还没回血」那一瞬的名册血比。
-	#   造法：手动把这一台的血比压到 0.4（模拟这一场打残了）→ 再调一次结算 →
-	#   `血比前` 必须读到 0.4（**每次都重抓**），而不是复用开战时的 1.0。
-	var 残: Dictionary = s.run_state.roster[一台]
-	残["hpRatio"] = 0.4
-	s.run_state.roster[一台] = 残
-	var 结2 := s.finish_battle_and_settle()
+	# ★ P0 的**核心**：`血比前` 必须是「打完了、还没回血」那一瞬的名册血比。
+	#   D-07 之后同一场**不能重复结算**了，所以要**再开一场**来验：走到第 2 个战斗格 → 开战 →
+	#   先手动把这一台压到 0.4（模拟这一场打残了）→ 打完 → 结算。
+	#   这样「血比前」必须读到 0.4（**每次都重抓**），而不是复用开战时的 1.0。
+	var 打残了 := false
+	if _走到战斗格开战(s, 1):
+		var 残: Dictionary = s.run_state.roster[一台]
+		残["hpRatio"] = 0.4
+		s.run_state.roster[一台] = 残
+		s.auto_finish_battle()
+		打残了 = true
+	else:
+		t.info("第 1 层找不到第二个战斗格，P0 的「压到 40% 再结算」那一条改成换层到第 2 层再试")
+		var 出口尽头 := int(s.run_state.map_data.get("出口尽头", -1))
+		if 出口尽头 >= 0:
+			s.run_state.node_id = 出口尽头
+			s.run_state.mark_visited(出口尽头)
+			MapNavigator.choose_exit(s.run_state, "小径")
+			s.try_advance_floor()
+			if _走到战斗格开战(s, 0):
+				var 残2: Dictionary = s.run_state.roster[一台] if s.run_state.roster.has(一台) else {}
+				if not 残2.is_empty():
+					残2["hpRatio"] = 0.4
+					s.run_state.roster[一台] = 残2
+				s.auto_finish_battle()
+				打残了 = true
+	var 结2 := s.finish_battle_and_settle() if 打残了 else {}
 	var 概2 := s.result_summary()
 	var 比前2: Dictionary = 概2.get("血比前", {})
 	var 比后2: Dictionary = 概2.get("血比后", {})
-	t.ok(absf(float(比前2.get(一台, 1.0)) - 0.4) < 0.0001 and float(比后2.get(一台, 1.0)) > float(比前2.get(一台, 1.0)),
-		"★ P0：把 %s 压到 40%% 再结算 → 血比前 = %d%%、血比后 = %d%%（**前 ≠ 后**，且「前」就是回血前那一瞬的真实值）"
+	t.ok(打残了 and absf(float(比前2.get(一台, 1.0)) - 0.4) < 0.0001
+		and float(比后2.get(一台, 1.0)) > float(比前2.get(一台, 1.0)),
+		"★ P0：把 %s 压到 40%% 之后再打完一场并结算 → 血比前 = %d%%、血比后 = %d%%（**前 ≠ 后**，且「前」就是回血前那一瞬的真实值）"
 		% [一台, int(JsCompat.js_round(float(比前2.get(一台, 1.0)) * 100.0)),
 			int(JsCompat.js_round(float(比后2.get(一台, 1.0)) * 100.0))])
 	var 名字们2: Array = 结2.get("回血", {}).get("名字们", []) if 结2.get("回血", {}).get("名字们") is Array else []
@@ -874,6 +926,130 @@ func _找任一别的格(s: GameSession) -> int:
 			return int(k)
 	return -1
 
+# ==========================================================================================
+# 段 7：★ D-06 —— 待选战术牌只能由**招募 / 晋升**产生
+#   （封存 JS `90-肉鸽-5-晋升与通关.js:62`（招募）与 `:151`（晋升）是 `R.待选战术牌` 的唯二赋值；
+#    开局 / 移动 / 用零件 / 事件结算一处都不产生）
+# ==========================================================================================
+func _待选牌只由招募晋升产生(t) -> void:
+	var s := GameSession.new()
+	s.存档路径 = 存档A
+	t.ok(s.start_new_run(肉鸽种子 + 31, "混编"), "开局成功（屏幕=%s）" % s.screen)
+	t.ok(s.run_state.pending_card_picks.is_empty() and s.modal.is_empty(),
+		"★ D-06：开局**不产生**待选牌（pending=%s、modal=%s、战术牌库 %d 张）"
+		% [str(s.run_state.pending_card_picks), str(s.modal), s.run_state.tactical_deck.size()])
+
+	# ---- 走 5 格：每一步都不许冒牌 ----
+	var 走了 := 0
+	var 脏步 := []
+	for _i in 8:
+		if 走了 >= 5:
+			break
+		var 可达 := MapNavigator.reachable_cells(s.run_state)
+		if 可达.is_empty():
+			break
+		var 移 := s.move_to_cell(int(可达[0]))
+		if not bool(移.get("ok", false)):
+			break
+		走了 += 1
+		if not s.run_state.pending_card_picks.is_empty() or not s.modal.is_empty():
+			脏步.append("第 %d 步（格 %d，类型 %s）" % [走了, s.run_state.node_id, str(s.last.get("类型", ""))])
+	t.ok(走了 >= 5, "连续走了 %d 格（推进剂剩 %d）" % [走了, s.run_state.propellant])
+	t.ok(脏步.is_empty(), "★ D-06：走 %d 格全程都不冒待选牌（pending 空 = %s、modal 空 = %s；脏步 %s）"
+		% [走了, str(s.run_state.pending_card_picks.is_empty()), str(s.modal.is_empty()), str(脏步)])
+
+	# ---- 用零件 / 事件结算也不许冒牌（挑这一层真有这两种格子的种子）----
+	var 零件格 := _找格(s, "遗迹")
+	if 零件格 >= 0:
+		s.run_state.node_id = 零件格
+		s.run_state.mark_visited(零件格)
+		var 前零件牌 := s.run_state.pending_card_picks.size()
+		s.enter_current_node()
+		t.ok(s.run_state.pending_card_picks.size() == 前零件牌,
+			"★ D-06：进「遗迹」并结算之后待选牌没变（%d 张）" % s.run_state.pending_card_picks.size())
+	var 零件件 := PartSystem.grant_part(s.run_state, "wheel", "D-06 测试")
+	if not 零件件.is_empty():
+		var 目标格 := -1
+		for 候选格 in PartSystem.part_targets(s.run_state, "wheel"):
+			目标格 = int(候选格)
+			break
+		var 前用牌 := s.run_state.pending_card_picks.size()
+		var 用 := s.use_part(s.run_state.parts.size() - 1, 目标格)
+		t.ok(s.run_state.pending_card_picks.size() == 前用牌 or not bool(用.get("ok", false)),
+			"★ D-06：`use_part`（%s）之后待选牌没变（%d 张）"
+			% ["成功" if bool(用.get("ok", false)) else "被拒", s.run_state.pending_card_picks.size()])
+	var 事件格 := _找格(s, "事件")
+	if 事件格 >= 0:
+		s.run_state.node_id = 事件格
+		s.run_state.mark_visited(事件格)
+		s.enter_current_node()
+		var 选项 := s.current_event_choices()
+		var 前事件牌 := s.run_state.pending_card_picks.size()
+		if not 选项.is_empty():
+			s.resolve_event_choice(str(int((选项[0] as Dictionary).get("序", 0))))
+		t.ok(s.run_state.pending_card_picks.size() == 前事件牌,
+			"★ D-06：`resolve_event_choice` 之后待选牌没变（%d 张）" % s.run_state.pending_card_picks.size())
+	else:
+		t.info("这一层没有事件格，跳过事件那一条")
+
+	# ---- refresh_card_offers 必须是**纯读**：连调两次，pending 与 modal 逐字不变 ----
+	var 快照前 := SaveService.serialize(s.run_state)
+	var 模前 := str(s.modal)
+	var 键1 := ""
+	for x in s.available_recruit_targets(0):
+		var k := str(x.get("键", ""))
+		if RosterManager.券合(s.run_state.tickets[0], k):
+			键1 = k
+		break
+	var 读1: Array = s.refresh_card_offers(键1)
+	var 读2: Array = s.refresh_card_offers(键1)
+	t.ok(读1 == 读2 and str(s.modal) == 模前 and SaveService.serialize(s.run_state) == 快照前,
+		"★ D-06：`refresh_card_offers(%s)` 是**纯读**（连调两次候选逐项相同 = %s；待选牌 %d 张不变；modal 逐字不变）"
+		% [键1, str(读1 == 读2), s.run_state.pending_card_picks.size()])
+	t.ok(读1.size() <= 3, "纯读口子返回 %d 张候选（%s）—— 只是「问 UI 这台机体能选哪三张」" % [读1.size(), str(读1)])
+
+	# ---- 招募之后才有牌 + 选完不再拦换层 ----
+	s.run_state.hope = maxi(s.run_state.hope, 60)
+	var 招 := {}
+	var 目标 := ""
+	for i in s.run_state.tickets.size():
+		for x in s.available_recruit_targets(i):
+			var k2 := str(x.get("键", ""))
+			if not s.run_state.roster.has(k2) and RosterManager.券合(s.run_state.tickets[i], k2):
+				目标 = k2
+				break
+		if not 目标.is_empty():
+			招 = s.recruit_unit(目标, i)
+			break
+	t.ok(bool(招.get("ok", false)) and not s.run_state.pending_card_picks.is_empty(),
+		"★ D-06：招募 %s 之后待选牌才有（%d 张：%s）"
+		% [目标, s.run_state.pending_card_picks.size(), str(s.run_state.pending_card_picks)])
+	t.ok(str(s.modal.get("类型", "")) == "三选一",
+		"★ D-06：招募之后 modal 才变三选一（真实值「%s」）" % str(s.modal.get("类型", "")))
+	# 连推两轮，把「招募留下的候选」和「反复调 refresh 也不会再冒」都覆盖
+	var 选了几张 := 0
+	var 轮 := 0
+	while 轮 < 3:
+		轮 += 1
+		while not s.run_state.pending_card_picks.is_empty():
+			if not s.pick_tactical_card(str(s.run_state.pending_card_picks[0])):
+				break
+			选了几张 += 1
+		if 选了几张 >= 3:
+			break
+	t.info("选牌循环：一共选了 %d 张（战术牌库 %d 张）" % [选了几张, s.run_state.tactical_deck.size()])
+	var 出口尽头 := int(s.run_state.map_data.get("出口尽头", -1))
+	if 出口尽头 >= 0:
+		s.run_state.node_id = 出口尽头
+		s.run_state.mark_visited(出口尽头)
+		MapNavigator.choose_exit(s.run_state, "小径")
+		var 换 := s.try_advance_floor()
+		t.ok(s.run_state.pending_card_picks.is_empty(),
+			"★ D-06：换层时手上没有待选牌（pending 空 = %s）" % str(s.run_state.pending_card_picks.is_empty()))
+		t.ok(not str(换.get("为什么", "")).contains("张战术牌没选"),
+			"★ D-06：换层**不再**被幻影待选牌拦住（ok=%s、为什么=「%s」、层 %d）"
+			% [str(换.get("ok", false)), str(换.get("为什么", "")), s.run_state.floor_num])
+
 ## 推进剂 0 时这一步必须被内核拒绝（并写进 last）。
 func _被拒绝吗(s: GameSession, 目标: int) -> bool:
 	if 目标 < 0:
@@ -975,3 +1151,144 @@ func _找第几个战斗格(s: GameSession, 序: int) -> int:
 	# 找不到就退到「第 1 个可达格」
 	var 可达 := MapNavigator.reachable_cells(s.run_state)
 	return int(可达[0]) if not 可达.is_empty() else -1
+
+# ==========================================================================================
+# 段 8：★ D-07 —— `finish_battle_and_settle()` **幂等**（同一场只结算一次）
+#   旧行为：同一个 battle_ctx 可以原地无限重结算，每调一次再发源碳 / 希望 / 藏品 / 经验 +
+#   `场次`/`胜场` 再 +1（端到端驱动器实测「第 1 层原地连结算 496 次、胜场 +496、源碳 +1984」）。
+# ==========================================================================================
+
+## 结算前 / 后要逐项对比的那一组数字（纯读，快照用）。
+func _结算数字(s: GameSession) -> Dictionary:
+	var 血 := {}
+	for k in s.run_state.roster.keys():
+		血[str(k)] = int(JsCompat.js_round(float(s.run_state.get_unit_hp_ratio(str(k))) * 100.0))
+	return {
+		"源碳": s.run_state.carbon, "希望": s.run_state.hope, "经验": s.run_state.exp_val,
+		"等级": s.run_state.level, "场次": s.run_state.battles_fought, "胜场": s.run_state.battles_won,
+		"已清节点": s.run_state.nodes_cleared, "藏品": s.run_state.relics.size(),
+		"零件": s.run_state.parts.size(), "券": s.run_state.tickets.size(),
+		"耐久": s.run_state.base_hp, "推进剂": s.run_state.propellant,
+		"血比%": 血, "战术牌库": s.run_state.tactical_deck.size(),
+	}
+
+func _两遍数字一样(a: Dictionary, b: Dictionary) -> Array:
+	var 差 := []
+	for k in a.keys():
+		if str(a[k]) != str(b.get(k, null)):
+			差.append("%s %s → %s" % [str(k), str(a[k]), str(b.get(k, null))])
+	return 差
+
+## 走到一个战斗格并打完（**不结算**），返回是否成功。
+func _走到战斗格开战(s: GameSession, 序: int) -> bool:
+	var 格 := _找第几个战斗格(s, 序)
+	if 格 < 0:
+		return false
+	for _i in 14:
+		if s.run_state.node_id == 格:
+			break
+		var 可 := MapNavigator.reachable_cells(s.run_state)
+		if 可.is_empty():
+			break
+		if not bool(s.move_to_cell(_朝目标走(s, 可, 格)).get("ok", false)):
+			break
+	if s.run_state.node_id != 格:
+		return false
+	return s.start_node_battle()
+
+func _结算幂等(t) -> void:
+	# ---- 肉鸽那条路 ----
+	var s := GameSession.new()
+	s.存档路径 = 存档A
+	s.start_new_run(肉鸽种子 + 41, "混编")
+	_补强名册(s)
+	var 可招 := s.available_recruit_targets(0)
+	if not 可招.is_empty():
+		s.recruit_unit(str(可招[0].get("键", "")), 0)
+	while not s.run_state.pending_card_picks.is_empty():
+		if not s.pick_tactical_card(str(s.run_state.pending_card_picks[0])):
+			break
+	if not _走到战斗格开战(s, 0):
+		t.ok(false, "第 1 层走不到战斗格 / 开不了战，段 8 剩下的断言跑不了")
+		return
+	s.auto_finish_battle()
+	var 首次 := s.finish_battle_and_settle()
+	var 首次成功 := not 首次.has("ok") or bool(首次.get("ok", false))
+	var 前 := _结算数字(s)
+	var 重复结果 := []
+	for _i in 4:
+		重复结果.append(s.finish_battle_and_settle())
+	var 后 := _结算数字(s)
+	var 都拒 := true
+	for r in 重复结果:
+		if bool(r.get("ok", true)) or str(r.get("为什么", "")).length() == 0:
+			都拒 = false
+	t.ok(首次成功, "★ D-07：第一次结算成功（场次 %d / 胜场 %d / 源碳 %d）"
+		% [int(前["场次"]), int(前["胜场"]), int(前["源碳"])])
+	t.ok(都拒 and 重复结果.size() == 4,
+		"★ D-07：后 4 次调用**全部** ok=false 且给 why（为什么=「%s」）" % str(重复结果[0].get("为什么", "")))
+	t.info("★ D-07 幂等：5 次调用前后 —— 源碳 %d / 希望 %d / 经验 %d / 场次 %d / 胜场 %d / 已清节点 %d / 藏品 %d / 耐久 %d / 券 %d"
+		% [int(后["源碳"]), int(后["希望"]), int(后["经验"]), int(后["场次"]), int(后["胜场"]),
+			int(后["已清节点"]), int(后["藏品"]), int(后["耐久"]), int(后["券"])])
+	var 差 := _两遍数字一样(前, 后)
+	t.ok(差.is_empty(), "★ D-07：连调 5 次之后**每一项数字逐项相同**（源碳 %d / 希望 %d / 经验 %d / 场次 %d / 胜场 %d / 血比 %s）%s"
+		% [int(后["源碳"]), int(后["希望"]), int(后["经验"]), int(后["场次"]), int(后["胜场"]),
+			str(后["血比%"]), "" if 差.is_empty() else "；差异：" + str(差)])
+
+	# ---- 复位：走到下一格开新一场 → 能正常结算 ----
+	var 前层格 := s.run_state.node_id
+	var 换格 := false
+	for _i in 14:
+		var 可2 := MapNavigator.reachable_cells(s.run_state)
+		if 可2.is_empty():
+			break
+		if not bool(s.move_to_cell(int(可2[0])).get("ok", false)):
+			break
+		if s.run_state.node_id != 前层格:
+			换格 = true
+			break
+	t.ok(换格, "结算完走到下一格（%d → %d）" % [前层格, s.run_state.node_id])
+	if _走到战斗格开战(s, 1):
+		s.auto_finish_battle()
+		var 第二场 := s.finish_battle_and_settle()
+		t.ok(not 第二场.has("ok") or bool(第二场.get("ok", false)),
+			"★ D-07 复位：新一场能正常结算（场次 %d / 胜场 %d / 源碳 %d；为什么不适用=「%s」）"
+			% [s.run_state.battles_fought, s.run_state.battles_won, s.run_state.carbon, str(第二场.get("为什么", ""))])
+	else:
+		t.info("第 1 层找不到第二个战斗格，跳过「新一场能结算」那一条")
+
+	# ---- 快速战斗那条路 ----
+	var q := GameSession.new()
+	q.存档路径 = 存档B
+	t.ok(q.start_quick_battle(快速种子 + 3), "快速战斗开局成功")
+	q.auto_finish_battle()
+	var 快首次 := q.finish_battle_and_settle()
+	var 快前 := _结算数字(q)
+	var 快重复 := []
+	for _i in 4:
+		快重复.append(q.finish_battle_and_settle())
+	var 快后 := _结算数字(q)
+	var 快都拒 := true
+	for r in 快重复:
+		if bool(r.get("ok", true)):
+			快都拒 = false
+	t.ok(not 快首次.has("ok") or bool(快首次.get("ok", false)), "★ D-07 快速战：第一次结算成功")
+	t.ok(快都拒, "★ D-07 快速战：后 4 次全部 ok=false（为什么=「%s」）" % str(快重复[0].get("为什么", "")))
+	var 快差 := _两遍数字一样(快前, 快后)
+	t.ok(快差.is_empty(), "★ D-07 快速战：连调 5 次之后数字逐项相同（源碳 %d / 希望 %d / 经验 %d / 场次 %d / 胜场 %d）%s"
+		% [int(快后["源碳"]), int(快后["希望"]), int(快后["经验"]), int(快后["场次"]), int(快后["胜场"]),
+			"" if 快差.is_empty() else "；差异：" + str(快差)])
+	# 再开一场快速战斗 → 标志必须复位（要打完再结算，不能拿「没打完」当成功）
+	t.ok(q.start_quick_battle(快速种子 + 4), "★ D-07 复位：再开一场快速战斗（start_quick_battle 复位标志）")
+	q.auto_finish_battle()
+	var 第二快 := q.finish_battle_and_settle()
+	t.ok(not 第二快.has("ok") or bool(第二快.get("ok", false)),
+		"★ D-07 复位：新一场快速战斗能正常结算（场次 %d / 胜场 %d / 源碳 %d）"
+		% [q.run_state.battles_fought, q.run_state.battles_won, q.run_state.carbon])
+	# 重画不二次结算（M4-3 的视图守卫思路在门面这一层也成立）
+	var 三前 := _结算数字(q)
+	for _i in 3:
+		q.finish_battle_and_settle()
+	t.ok(_两遍数字一样(三前, _结算数字(q)).is_empty(),
+		"★ D-07：重复调用之后再次结算屏重画也不会二次结算（源碳 %d / 场次 %d）"
+		% [q.run_state.carbon, q.run_state.battles_fought])
