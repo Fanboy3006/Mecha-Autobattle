@@ -353,8 +353,15 @@ static func recruit(state: RunState, 键: String, 券下标: int = -1) -> Dictio
 	state.hope -= 费
 	记希望来源(state, "支出", 费)
 	state.roster[键] = {"key": 键, "lv": 入队等级, "hpRatio": 1.0}
+	# ★ D-09（2026-10-13）：原来这里写的是 `{"key": 键, "slot": ""}` —— **字符串空值**。
+	#   封存 JS 的名册（`R.队伍`）**根本没有「位」这个字段**（`90-肉鸽-5-晋升与通关.js:133`
+	#   只 push `{键, 等级, hp比}`；出击位是另一份 `R.出击阵 = [{键, 位}]`），所以空串是
+	#   **Godot 移植时自己塞的占位**，不是从 JS 继承来的问题；而全仓库都按 `int(slot)` 读它
+	#   → `int("") == 0` → 多台新招募的机体都会被当成 0 号位，编队屏的占位 / 换位会串。
+	#   改法：写「下一个空闲位号」（= 当前出击人数），与 `NodeResolver.我方编成()` 的
+	#   兜底排位（按添加顺序 0,1,2…）逐位一致；`deploy_limit ≤ 7 < Fm.SLOTS() = 8`，不会越界。
 	if state.lineup.size() < deploy_limit(state):
-		state.lineup.append({"key": 键, "slot": ""})
+		state.lineup.append({"key": 键, "slot": state.lineup.size()})
 	state.add_log("招募 %s（Lv%d，花希望 %d，用掉一张 %s）" % [键, 入队等级, 费, 券名(用券)])
 	if 是核:
 		state.add_log(带队核心入队文字(键))

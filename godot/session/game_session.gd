@@ -52,7 +52,21 @@
 ##      不跑内核、不重算 `_result_cache`、不覆盖 `last`、不 `_emit`；每一处「开一场新战斗」
 ##      （`start_quick_battle` / `start_node_battle`）与每一处会话重置（`start_new_run` / `load_saved_run` /
 ##      `return_to_menu`）都把它复位。**守的是标志，不是清 `battle_ctx`**（结算屏还要用 ctx 画）。
-##   6. 「源碳」在 `RunState` 里叫 `carbon`、to_dict() 里叫 `"源碳"`；本门面统一用 `run_state.carbon`。
+##   6. ★ **补线记录（D-08）**：内核有「推进剂见底 → 追击战」这套机制
+##      （`MapNavigator.exit_chase_pending` / `begin_exit_chase` / `after_chase_win`），
+##      但 Godot 侧**从前一次都没调用过 `begin_exit_chase`**，`enter_current_node()` 里那个
+##      `"追击"` 分支永远走不到（地图生成**从不产** `追击` 类型格）→ 推进剂在**非战斗、非出口**格上
+##      见底就**永久卡死**（走不动、也没战斗格可进）。现已按封存 JS 接上：
+##        · `92-肉鸽界面-1-大图与记录.js:315`：「**这一格结算完**就会触发追击战」；
+##        · `80-界面-6-晋升零件与尾部.js:249-256` `追击战()`：`肉鸽战斗类型 = '追击'` → 打这一场；
+##        · `90-肉鸽-3-开局与移动.js:192-198` `追击之后()`：`追击 = true`、`层推进剂修正 = -2` → `换层()`；
+##        · `90-肉鸽-4-节点结算.js:399-403`（胜）/ `:420`（败）：**两条都**走 `追击之后()`；
+##        · 口径 D（`:204-207`）：**只有「出口那一步」那次**才过守军闸（判据 = `s.exit_chase`，
+##          由「站在出口格 + 推进剂 0」时 `begin_exit_chase` 置位）；**别处的追击战照旧能换层**。
+##      接点：`move_to_cell` / `use_part` / `resolve_rest` / `leave_shop` / `resolve_event_choice`
+##      在「这一格的事做完」之后，以及 `try_advance_floor()` 在出口格那一步（先置位再打）。
+##      判据一律用内核的 `MapNavigator.exit_chase_pending(s)`，**不自写 `推进剂 <= 0`**。
+##   7. 「源碳」在 `RunState` 里叫 `carbon`、to_dict() 里叫 `"源碳"`；本门面统一用 `run_state.carbon`。
 class_name GameSession
 extends RefCounted
 
@@ -84,6 +98,10 @@ var _result_cache: Dictionary = {}
 var _血比战前: Dictionary = {}
 var _battle_options_cache: Dictionary = {}
 var _quick_battle: bool = false
+## ★ D-08：这一场战斗的**战斗格类型**（`"追击"` 与地图上的格类型无关 —— 追击战可能发生在任何一格的
+##   结算之后，脚下那一格的类型还是原来的「空 / 事件 / 黑市…」）。结算时先用它，没有再退回脚下格类型。
+var _本场格类型: String = ""
+
 ## ★ D-07 幂等闸：这一场是否**已经结算过**。`finish_battle_and_settle()` 靠它保证「同一场只结算一次」，
 ##   否则同一个 `battle_ctx` 可以原地无限重结算（每调一次再发一遍源碳 / 希望 / 藏品 / 经验，
 ##   `场次`/`胜场` 再 +1）。**每一处「开一场新战斗」都要把它复位**。
@@ -106,6 +124,7 @@ func start_new_run(seed_val: int, squad: String = 默认分队) -> bool:
 	_result_cache = {}
 	_血比战前 = {}
 	_本场已结算 = false
+	_本场格类型 = ""
 	_node_result = {}
 	_unit_switches = {}
 	_quick_battle = false
@@ -142,6 +161,7 @@ func load_saved_run() -> bool:
 	_result_cache = {}
 	_血比战前 = {}
 	_本场已结算 = false
+	_本场格类型 = ""
 	_node_result = {}
 	_unit_switches = {}
 	_quick_battle = false
@@ -180,6 +200,7 @@ func return_to_menu() -> void:
 	_result_cache = {}
 	_血比战前 = {}
 	_本场已结算 = false
+	_本场格类型 = ""
 	_node_result = {}
 	_unit_switches = {}
 	_battle_options_cache = {}
@@ -236,6 +257,9 @@ func move_to_cell(cell_id: int) -> Dictionary:
 		"追击": bool(r.get("追击", false)), "提示": str(r.get("提示", "")),
 		"日志": _tail_logs(3),
 	}
+	# ★ D-08：走完这一格 → 推进剂见底就开追击战（站的是出口格时留给 `try_advance_floor()`）。
+	if _接追击战(s):
+		return last
 	_set_screen("map")
 	return r
 
@@ -253,8 +277,80 @@ func use_part(part_idx: int, target_cell: int) -> Dictionary:
 	last = {"行动": "用零件", "零件": str(r.get("零件", "")), "到": int(r.get("到", s.node_id)),
 		"额外": r.get("额外", {}), "零件剩": s.parts.size(), "日志": _tail_logs(3)}
 	# ★ D-06：用零件**不产生待选战术牌**（JS 只有招募 / 晋升两处产生）。
+	# ★ D-08：推进剂见底 → 这一格的事做完就开一场追击战（JS `92-肉鸽界面-1:315`
+	#   「这一格结算完就会触发追击战」）。
+	if _接追击战(s):
+		return last
 	_set_screen("map")
 	return r
+
+# ==========================================================================================
+# ★ D-08：推进剂见底 → 追击战（此前 Godot 侧**完全没接线**，会在非战斗格上永久卡死）
+#   封存 JS 口径（三处原文）：
+#     · `92-肉鸽界面-1-大图与记录.js:315`：「推进剂已经用光：**这一格结算完**就会触发追击战」；
+#     · `80-界面-6-晋升零件与尾部.js:249-256` 的 `追击战()`：`肉鸽战斗类型 = '追击'` → 打这一场；
+#     · `90-肉鸽-3-开局与移动.js:192-198` 的 `追击之后()`：`追击 = true`、`层推进剂修正 = -2` → `换层()`；
+#     · `90-肉鸽-4-节点结算.js:399-403`（胜）/ `:420`（败）：**两条都**走 `追击之后()`；
+#     · `:204-207` 明写「在**别处**把推进剂用光触发的追击战**本来就能换层**」，只有「出口那一步」那次
+#       才过守军闸（判据 = `R.出口追击`，由 `界面.前进()` 在「脚下是出口格 + 推进剂 0」时置位）。
+# ==========================================================================================
+
+## 这一格结算完要不要开一场追击战？要 → 开战并返回 true（屏幕已进 `"battle"`）。
+## 判据只用内核的 `MapNavigator.exit_chase_pending(s)`（= `推进剂 <= 0 and not chased`），**不自造**。
+## 站的是出口格时**不在这里开** —— 出口那一步走在 `try_advance_floor()` 里（先 `begin_exit_chase` 置位）。
+func _接追击战(s: RunState) -> bool:
+	if not MapNavigator.exit_chase_pending(s):
+		return false
+	if MapGenerator.exit_kinds().has(s.current_type()):
+		return false
+	return _开追击战(s, false)
+
+## 真的开一场追击战：`NodeResolver.开战(state, 条目, "追击")`，并把这一场的格类型记成 `"追击"`
+## （`finish_battle_and_settle()` 靠它走 `after_chase_win`）。`在出口` = 这一次是不是「出口那一步」的
+## 那一次追击战（是 → 先 `begin_exit_chase` 置位，守军闸才认得它）。
+## ★ 公开给 UI：大地图在「推进剂见底、没路可走」时给一个「打追击战」的按钮就走这里。
+func fight_chase_battle() -> bool:
+	var s := _need_run()
+	if s == null:
+		_fail("还没有进行中的局", {"ok": false})
+		return false
+	if not MapNavigator.exit_chase_pending(s):
+		_fail("现在不是追击战的时机（推进剂 %d、本层已追击过 = %s）" % [s.propellant, str(s.chased)], {"ok": false})
+		return false
+	return _开追击战(s, s.exit_chase)
+
+func _开追击战(s: RunState, 在出口: bool) -> bool:
+	if NodeResolver.我方编成(s).is_empty():
+		return false
+	if 在出口:
+		MapNavigator.begin_exit_chase(s)
+	var 类型 := NodeResolver.战斗类型Of(s, "追击")
+	var rng := Mulberry32.new(NodeResolver.编成种子(s, s.floor_num))
+	var 详情 := NodeResolver.抽编成兜底(s.floor_num, 类型, rng)
+	if 详情.is_empty() or not (详情.get("条目") is Dictionary):
+		_fail("抽不到第 %d 层「追击」的编成" % s.floor_num, {"ok": false})
+		return false
+	s.map_data["本场兜底"] = {"层": s.floor_num, "格": s.node_id, "到": str(详情.get("类型", 类型))} if 详情.get("兜底") != null else null
+	# ★ 让 `finish_battle_and_settle()` 认出这是一场追击战（它按 `_脚下类型(s)` 决定后处理）。
+	s.map_data["当前节点类型"] = "追击"
+	_本场格类型 = "追击"
+	_battle_options_cache = _build_battle_options()
+	var ctx := NodeResolver.开战(s, 详情["条目"], "追击")
+	if ctx.is_empty():
+		_fail("追击战：战斗内核没有给出 ctx", {"ok": false})
+		return false
+	_quick_battle = false
+	_本场已结算 = false
+	_血比战前 = _名册血比()
+	battle_ctx = ctx
+	_unit_switches = 表(ctx, "选项")
+	_result_cache = {}
+	last = {"行动": "追击战", "格类型": "追击", "编成类型": str(详情.get("类型", 类型)),
+		"出口那一步": 在出口, "推进剂": s.propellant, "已追击过": s.chased,
+		"敌方": (ctx.get("enemies") as Array).size(), "我方": (ctx.get("allies") as Array).size(),
+		"手牌": hand_count(), "候补": reserve_preview().size(), "日志": battle_log_lines(3)}
+	_set_screen("battle")
+	return true
 
 ## 走进当前格：战斗节点 → 开战（屏幕进 `"battle"`）；其余节点 → 各自结算（留在 `"map"`）。
 func enter_current_node() -> Dictionary:
@@ -302,6 +398,9 @@ func enter_current_node() -> Dictionary:
 			NodeResolver.清空格(s)
 			_node_result = {"ok": true, "节点": "空", "文本": "林间空地：落脚休整片刻，未遭遇敌情。"}
 			last = {"行动": "空格", "结果": _node_result, "日志": _tail_logs(2)}
+			# ★ D-08：这一格的事做完了 → 推进剂见底就追击战（不然玩家在这儿无路可走）。
+			if _接追击战(s):
+				return _node_result
 			_set_screen("map")
 			return _node_result
 		"招募站":
@@ -313,6 +412,12 @@ func enter_current_node() -> Dictionary:
 			return _node_result
 		"出口尽头", "出口小径":
 			return try_advance_floor()
+	# ★ D-08 兜底：这一格没有「进去就结算」的东西时，也检查一次**追击战** ——
+	#   否则「推进剂 0 + 站在没有节点面板的格子上」会让玩家**无路可走**（走不动、也没东西可点）。
+	#   正常路径上推进剂见底那一下已经在 `move_to_cell()` 里接过一次（那次会置 `chased`），
+	#   走到这里只可能是「直接摆过去 / 从存档回来」这类没有走一步的情况。
+	if _接追击战(s):
+		return last
 	return _fail("这一格（%s）没有可以直接进去的东西" % 类型, {"ok": false, "类型": 类型})
 
 ## 走出口 / 换层（内核 `MapNavigator.resolve_exit`）。
@@ -324,6 +429,13 @@ func try_advance_floor() -> Dictionary:
 		return _fail("还没有大地图", {"ok": false})
 	if not s.pending_card_picks.is_empty():
 		return _fail("还有 %d 张战术牌没选（先选完再换层）" % s.pending_card_picks.size(), {"ok": false})
+	# ★ D-08（口径 D，照 JS `80-界面-6:211-226` 的 `前进()`）：站在**出口格**上、推进剂见底、本层还没被追击过
+	#   → 先在**出口这一格**打一场追击战（先 `begin_exit_chase` 置位，守军闸才认得出「出口那一步」这一次）；
+	#   打赢 / 打输都由 `finish_battle_and_settle()` 走 `after_chase_win` → 换层（守军没清则被记进「待换层」）。
+	#   JS 同款：`if (R.推进剂 <= 0 && !R.追击) { R.出口追击 = true; …打这一场(); if (层变了) return; }`
+	if MapNavigator.exit_chase_pending(s) and MapGenerator.exit_kinds().has(s.current_type()):
+		if _开追击战(s, true):
+			return last
 	var 前层 := s.floor_num
 	var 前推进 := s.propellant
 	var r := MapNavigator.resolve_exit(s)
@@ -592,6 +704,9 @@ func resolve_rest(choice: String = "耐久") -> Dictionary:
 	r["后"] = {"耐久": s.base_hp, "推进剂": s.propellant, "希望": s.hope}
 	_node_result = r
 	last = {"行动": "休整", "选": choice, "结果": r, "日志": _tail_logs(3)}
+	# ★ D-08：休整也可能把推进剂补回来，但若仍是 0（例如选了「耐久」）→ 这一格结算完就追击战。
+	if _接追击战(s):
+		return r
 	_set_screen("map")
 	return r
 
@@ -646,6 +761,9 @@ func leave_shop() -> bool:
 		return false
 	var ok := NodeResolver.黑市离开(s)
 	last = {"行动": "离开黑市", "成功": ok, "已清节点": s.nodes_cleared, "日志": _tail_logs(2)}
+	# ★ D-08：离开黑市 = 这一格的事做完了 → 推进剂见底就追击战。
+	if _接追击战(s):
+		return ok
 	_set_screen("map")
 	return ok
 
@@ -662,6 +780,9 @@ func resolve_event_choice(choice: String = "") -> Dictionary:
 	last = {"行动": "事件", "事件": str(r.get("事件", "")), "选": str(r.get("选", "")),
 		"结果": str(r.get("结果", "")), "日志": _tail_logs(3)}
 	# ★ D-06：事件结算**不产生待选战术牌**（JS 只有招募 / 晋升两处产生）。
+	# ★ D-08：这一格的事做完了 → 推进剂见底就追击战。
+	if _接追击战(s):
+		return r
 	_set_screen("map")
 	return r
 
@@ -706,6 +827,7 @@ func start_quick_battle(seed_val: int = 20261013) -> bool:
 			run_state.lineup.append({"key": k, "slot": run_state.lineup.size()})
 	_quick_battle = true
 	_本场已结算 = false
+	_本场格类型 = ""
 	_血比战前 = _名册血比()
 	_battle_options_cache = _build_battle_options()
 	var 种子 := seed_val + 快速战斗种子偏移
@@ -733,6 +855,9 @@ func start_node_battle() -> bool:
 	if s.map_data.is_empty():
 		_fail("还没有大地图", {"ok": false})
 		return false
+	# ★ D-08：脚下是「追击」→ 走追击战那条（编成用「追击」档、打完走 `after_chase_win`）。
+	if str(s.map_data.get("当前节点类型", "")) == "追击":
+		return _开追击战(s, s.exit_chase)
 	if NodeResolver.我方编成(s).is_empty():
 		_fail("出击名单是空的（先去招募并编队）", {"ok": false})
 		return false
@@ -752,6 +877,7 @@ func start_node_battle() -> bool:
 		return false
 	_quick_battle = false
 	_本场已结算 = false
+	_本场格类型 = 格类型
 	_血比战前 = _名册血比()
 	battle_ctx = ctx
 	_unit_switches = 表(ctx, "选项")
@@ -915,7 +1041,7 @@ func finish_battle_and_settle() -> Dictionary:
 		last = {"行动": "结算", "结果": result_summary()}
 		_set_screen("result")
 		return last["结果"]
-	var 格类型 := _脚下类型(s)
+	var 格类型 := _本场格类型 if not _本场格类型.is_empty() else _脚下类型(s)
 	# ★ P0（2026-10-13 M4-3 实测 + ARGON 复核）：**「血比前」必须在这一句之前、且每次都重抓**。
 	#   `NodeResolver.resolve_battle` 内部会依次跑 `RosterManager.记战斗HP`（把战后血量写回名册）
 	#   再 `战后回血`（+50%）。「回血前后对照」要的是**打完那一瞬间、回血之前**的名册血比，
@@ -925,14 +1051,26 @@ func finish_battle_and_settle() -> Dictionary:
 	var r := NodeResolver.resolve_battle(s, battle_ctx, 格类型)
 	r["格类型"] = 格类型
 	_result_cache = _build_result_cache(r)
-	# 战斗之后：守军 / 追击打赢要补上欠的换层；其他节点清空这一格。
-	if bool(r.get("胜", false)):
+	# 战斗之后：守军 / 追击要补上欠的换层；其他节点清空这一格。
+	# ★ D-08：追击战**胜败都换层**（JS `90-肉鸽-4-节点结算.js:399-403` 胜 / `:420` 败，两条都走 `追击之后()`）。
+	#   注意：内核这边只有**胜利**那一支会碰「按格类型分派」的后处理（而且只认 `出口守军`）——
+	#   `"追击"` 两条、以及「败了但甩掉追兵」那条**内核里没有对应分支**（不是内核 bug，是它只管战斗本身）。
+	#   所以门面这一层按 JS 口径自己分派：只要是「追击」且这一局还没结束，就先补上 JS 那两条结果标记。
+	if 格类型 == "追击" and s.status != "失败":
+		if not bool(r.get("胜", false)):
+			r["追击结束"] = true
+			r["甩掉追兵"] = true
+			s.add_log("追击战没打赢，但甩掉了追兵")
+		var 追 := MapNavigator.after_chase_win(s)
+		r["追击换层"] = 追
+		r["追击"] = true
+	elif bool(r.get("胜", false)):
 		if 格类型 == "出口守军":
 			var 进 := MapNavigator.after_guard_win(s)
 			r["换层"] = 进
 		elif s.propellant <= 0:
-			var 追 := MapNavigator.after_chase_win(s)
-			r["追击换层"] = 追
+			var 追2 := MapNavigator.after_chase_win(s)
+			r["追击换层"] = 追2
 			r["追击"] = true
 		else:
 			NodeResolver.清空格(s)

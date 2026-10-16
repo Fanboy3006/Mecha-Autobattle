@@ -7,6 +7,8 @@
 ##   段 6 回血前后对照（结算层）
 ##   段 7 ★ D-06：待选战术牌只能由招募 / 晋升产生（开局 / 移动 / 用零件 / 事件都不许冒牌）
 ##   段 8 ★ D-07：`finish_battle_and_settle()` 必须幂等（同一场只结算一次，重复调用一个字都不改）
+##   段 9 ★ D-08：推进剂见底 → 追击战（胜利 / 失败都换层；「出口那一步」才过守军闸）
+##   段 10 ★ D-09：招募写进 `lineup` 的位号是**数字**（不是空串）
 extends RefCounted
 
 const 肉鸽种子 := 20261013
@@ -27,6 +29,8 @@ func run(t) -> void:
 	_回血前后对照(t)
 	_待选牌只由招募晋升产生(t)
 	_结算幂等(t)
+	_追击战(t)
+	_招募位号是数字(t)
 
 # ==========================================================================================
 # 段 1：快速战斗全流程
@@ -385,17 +389,29 @@ func _肉鸽全流程(t) -> void:
 			重复.append(k)
 	var 位号集 := {}
 	var 位号重 := []
+	var 位号越界 := []
+	var 位号空 := 0
 	for x in s.run_state.lineup:
 		if not (x is Dictionary):
 			continue
-		var 位号 := int(x.get("slot", -1))
+		var v: Variant = x.get("slot", null)
+		if v is String:
+			位号空 += 1
+			continue
+		var 位号 := int(v)
+		if 位号 < 0 or 位号 >= int(Fm.SLOTS()):
+			位号越界.append(位号)
 		if 位号集.has(位号):
 			位号重.append(位号)
 		位号集[位号] = true
-	t.ok(s.run_state.lineup.size() == 占位后.size() and 重复.is_empty() and 位号重.is_empty()
+	# 真不变量：**编队屏占位数 ≤ 出击名单条数**（名册里的替补**不占格位**，所以「条数 == 占位数」不成立），
+	# 且位号唯一、合法、不是空串。
+	t.ok(占位后.size() <= s.run_state.lineup.size() and 重复.is_empty() and 位号重.is_empty()
+		and 位号越界.is_empty() and 位号空 == 0
 		and 占位后.size() <= RosterManager.deploy_limit(s.run_state),
-		"挪完之后出击名单 %d 条、格位占用 %d 个、无重复键（%s）、无重复位号（%s）—— 换位不该把同一台 / 同一格写两条，也不该超出击上限 %d"
-		% [s.run_state.lineup.size(), 占位后.size(), str(重复), str(位号重), RosterManager.deploy_limit(s.run_state)])
+		"挪完之后：格位占用 %d ≤ 出击名单 %d 条、无重复键（%s）、无重复位号（%s）、位号合法（越界 %s / 空串 %d）—— 换位不该把同一台 / 同一格写两条，也不该超出击上限 %d"
+		% [占位后.size(), s.run_state.lineup.size(), str(重复), str(位号重), str(位号越界), 位号空,
+			RosterManager.deploy_limit(s.run_state)])
 	t.ok(s.screen == "formation", "编队后屏幕 = formation（真实值 %s）" % s.screen)
 	if 键们.size() >= 2:
 		t.ok(s.set_lineup_slot(str(键们[1]), str(格位[1].get("位名", ""))), "把 %s 摆到 %s" % [str(键们[1]), str(格位[1].get("位名", ""))])
@@ -1292,3 +1308,200 @@ func _结算幂等(t) -> void:
 	t.ok(_两遍数字一样(三前, _结算数字(q)).is_empty(),
 		"★ D-07：重复调用之后再次结算屏重画也不会二次结算（源碳 %d / 场次 %d）"
 		% [q.run_state.carbon, q.run_state.battles_fought])
+
+# ==========================================================================================
+# 段 9：★ D-08 —— 推进剂见底 → 追击战（此前 Godot 侧完全没接线，会在非战斗格上永久卡死）
+# ==========================================================================================
+
+## 开一局、招一台、把这一台摆上出击位（追击战要有我方编成才能开）。
+func _起一局能打的(s: GameSession, 种子: int) -> bool:
+	if not s.start_new_run(种子, "混编"):
+		return false
+	s.run_state.hope = maxi(s.run_state.hope, 40)
+	var 可招 := s.available_recruit_targets(0)
+	if 可招.is_empty():
+		return false
+	var 键 := str(可招[0].get("键", ""))
+	var 招 := s.recruit_unit(键, 0)
+	if not bool(招.get("ok", false)):
+		return false
+	while not s.run_state.pending_card_picks.is_empty():
+		if not s.pick_tactical_card(str(s.run_state.pending_card_picks[0])):
+			break
+	s.run_state.lineup = [{"key": 键, "slot": 0}]
+	return NodeResolver.我方编成(s.run_state).size() >= 1
+
+func _追击战(t) -> void:
+	var s := GameSession.new()
+	s.存档路径 = 存档A
+	if not _起一局能打的(s, 肉鸽种子 + 51):
+		t.ok(false, "起局失败（招不到人 / 编成空），段 9 剩下的断言跑不了")
+		return
+	# ---- ★ 正常（推进剂 > 0）路径下**不会**触发追击战（旧行为没砍）----
+	var 可达 := MapNavigator.reachable_cells(s.run_state)
+	if not 可达.is_empty():
+		s.move_to_cell(int(可达[0]))
+	t.ok(s.screen == "map" and s.battle_ctx.is_empty() and s.run_state.propellant > 0,
+		"★ D-08 旧行为：推进剂 %d > 0 时走一格**不会**触发追击战（屏幕 %s、battle_ctx 空 = %s）"
+		% [s.run_state.propellant, s.screen, str(s.battle_ctx.is_empty())])
+
+	# ---- ★ 把推进剂压到 0，站在一个「非战斗、非出口」的格上 → 这一格结算完就开追击战 ----
+	var 空格 := _找格(s, "空")
+	if 空格 < 0:
+		空格 = _找格(s, "瞭望站")
+	if 空格 < 0:
+		t.ok(false, "这一层找不到「非战斗、非出口」的格，段 9 的追击战断言跑不了")
+		return
+	s.run_state.node_id = 空格
+	s.run_state.mark_visited(空格)
+	s.run_state.propellant = 0
+	var 前层 := s.run_state.floor_num
+	t.ok(MapNavigator.exit_chase_pending(s.run_state),
+		"★ D-08：站在「%s」格（%d）推进剂 0 → 内核 `exit_chase_pending` = true"
+		% [str(s.run_state.current_type()), 空格])
+	t.ok(MapNavigator.reachable_cells(s.run_state).is_empty(),
+		"推进剂 0 时哪儿都走不动（能去的格 = %d）—— 不接追击战就会在这里永久卡死"
+		% MapNavigator.reachable_cells(s.run_state).size())
+	var 打 := s.enter_current_node()
+	var 我方数 := (s.battle_ctx["allies"] as Array).size() if s.battle_ctx.get("allies") is Array else 0
+	var 敌方数 := (s.battle_ctx["enemies"] as Array).size() if s.battle_ctx.get("enemies") is Array else 0
+	t.ok(s.screen == "battle" and str(s.run_state.map_data.get("当前节点类型", "")) == "追击",
+		"★ D-08：这一格结算完**开出了追击战**（屏幕 %s、格类型 %s、我方 %d 台 / 敌方 %d 台）"
+		% [s.screen, str(s.run_state.map_data.get("当前节点类型", "")), 我方数, 敌方数])
+	t.ok(str(s.last.get("行动", "")) == "追击战" and s.hand_count() >= 1,
+		"追击战的即时反馈（行动 = %s、手牌 %d 张、编成类型 %s）"
+		% [str(s.last.get("行动", "")), s.hand_count(), str(s.last.get("编成类型", ""))])
+
+	# ---- ★ 打赢 → after_chase_win 生效：layer_prop_bonus == −2 且换到下一层 ----
+	s.auto_finish_battle()
+	var 结果 := str(s.battle_ctx.get("result", {}).get("结果", ""))
+	var 结 := s.finish_battle_and_settle()
+	t.info("追击战：结果 = %s；结算后有 chased = %s / 层 = %d / 层修正 = %d / 状态 = %s / 结键 = %s"
+		% [结果, str(s.run_state.chased), s.run_state.floor_num, s.run_state.layer_prop_bonus,
+			s.run_state.status, str(结.keys())])
+	t.ok(s.run_state.layer_prop_bonus == -2,
+		"★ D-08：`layer_prop_bonus` = %d（被追击过 → 下一层推进剂上限 −2，照 JS `90-肉鸽-3:196`）"
+		% s.run_state.layer_prop_bonus)
+	# 注：`chased` 是**每一层**的临时标记，`enter_floor()` 进新层就清（照 JS `90-肉鸽-3:101-104`），
+	# 所以这里断言它的「效果」—— 层修正 −2 与换层 —— 而不是换层之后再去看它还是不是 true。
+	t.ok(s.run_state.floor_num == 前层 + 1 or s.run_state.status == "胜利",
+		"★ D-08：追击战打完就换层（第 %d 层 → 第 %d 层）—— 「别处的追击战照旧能换层」" % [前层, s.run_state.floor_num])
+	var 账 := MapGenerator.propellant_detail(s.run_state)
+	t.ok(int(账["层修正"]) == -2 and s.run_state.propellant == int(账["上限"]),
+		"新一层推进剂 = %d/%d（层修正 %d 已算进去）"
+		% [s.run_state.propellant, s.run_state.propellant_max, int(账["层修正"])])
+	t.ok(MapNavigator.reachable_cells(s.run_state).size() >= 1, "换层之后又能走了（能去 %d 格）"
+		% MapNavigator.reachable_cells(s.run_state).size())
+
+	# ---- ★ 站在出口格 + 推进剂 0 → 先 begin_exit_chase 置位 + 出口「尽头」被守军闸拦下 ----
+	while not s.run_state.pending_card_picks.is_empty():
+		if not s.pick_tactical_card(str(s.run_state.pending_card_picks[0])):
+			break
+	var 尽头 := int(s.run_state.map_data.get("出口尽头", -1))
+	if 尽头 < 0:
+		t.info("这一层没有「出口尽头」，跳过守军闸那一条")
+		return
+	s.run_state.node_id = 尽头
+	s.run_state.mark_visited(尽头)
+	s.run_state.propellant = 0
+	s.run_state.chased = false
+	s.run_state.exit_chase = false
+	s.run_state.base_hp = s.run_state.base_max_hp   # 前面几场已经打掉不少耐久，这里只验出口口径
+	MapNavigator.choose_exit(s.run_state, "尽头")
+	# 先把守军恢复成「没清」（换层会重建地图，守军可能已经是已过）
+	var 守军 := int(s.run_state.map_data.get("守军", -1))
+	if 守军 >= 0:
+		var 守格 := s.run_state.cell_at(守军)
+		if not 守格.is_empty():
+			守格["已过"] = false
+			守格["类型"] = "守军"
+	s.run_state.map_data["当前节点类型"] = "出口尽头"
+	var 前层2 := s.run_state.floor_num
+	var 出口打 := s.try_advance_floor()
+	t.ok(s.screen == "battle" and bool(s.run_state.exit_chase),
+		"★ D-08 口径 D：站在出口格推进剂 0 → 先 `begin_exit_chase` 置位（exit_chase = %s）并开打（屏幕 %s）"
+		% [str(s.run_state.exit_chase), s.screen])
+	if s.screen == "battle":
+		s.auto_finish_battle()
+		var 结3 := s.finish_battle_and_settle()
+		t.ok(s.run_state.floor_num == 前层2 or s.run_state.pending_floor_change != null,
+			"★ D-08 口径 D：守军没清 + 走尽头 → **不通关也不换层**，这一趟记进「待换层」（层 %d → %d、待换层 %s）"
+			% [前层2, s.run_state.floor_num, str(s.run_state.pending_floor_change)])
+		t.info("出口那一步的追击战：结算完状态 = %s / 持久层 %d / 待换层 %s"
+			% [s.run_state.status, s.run_state.floor_num, str(s.run_state.pending_floor_change)])
+
+	# ---- ★ 出口小径：免守军，追击战打完照常换层 ----
+	var 小径 := int(s.run_state.map_data.get("出口小径", -1))
+	if 小径 < 0:
+		t.info("这一层没有「出口小径」，跳过小径那一条")
+		return
+	while not s.run_state.pending_card_picks.is_empty():
+		if not s.pick_tactical_card(str(s.run_state.pending_card_picks[0])):
+			break
+	s.run_state.node_id = 小径
+	s.run_state.mark_visited(小径)
+	s.run_state.propellant = 0
+	s.run_state.chased = false
+	s.run_state.exit_chase = false
+	s.run_state.base_hp = s.run_state.base_max_hp
+	MapNavigator.choose_exit(s.run_state, "小径")
+	s.run_state.map_data["当前节点类型"] = "出口小径"
+	var 前层3 := s.run_state.floor_num
+	s.try_advance_floor()
+	if s.screen == "battle":
+		s.auto_finish_battle()
+		s.finish_battle_and_settle()
+	t.ok(s.run_state.floor_num == 前层3 + 1 or s.run_state.status == "胜利",
+		"★ D-08 口径 D：走**出口小径**（免守军）→ 追击战打完照常换层（第 %d 层 → 第 %d 层、状态 %s）"
+		% [前层3, s.run_state.floor_num, s.run_state.status])
+	t.ok(s.run_state.pending_floor_change == null or s.run_state.floor_num > 前层3,
+		"小径这一趟没有把换层欠下来（待换层 = %s）" % str(s.run_state.pending_floor_change))
+
+# ==========================================================================================
+# 段 10：★ D-09 —— 招募写进 `lineup` 的位号必须是**数字**（原来写的是空串 ""）
+# ==========================================================================================
+func _招募位号是数字(t) -> void:
+	var s := GameSession.new()
+	s.存档路径 = 存档B
+	t.ok(s.start_new_run(肉鸽种子 + 61, "混编"), "开局成功（屏幕=%s）" % s.screen)
+	s.run_state.hope = maxi(s.run_state.hope, 60)
+	var 招了几台 := 0
+	for i in s.run_state.tickets.size():
+		var 目标 := ""
+		for x in s.available_recruit_targets(i):
+			var k := str(x.get("键", ""))
+			if not s.run_state.roster.has(k) and RosterManager.券合(s.run_state.tickets[i], k):
+				目标 = k
+				break
+		if 目标.is_empty():
+			continue
+		if bool(s.recruit_unit(目标, i).get("ok", false)):
+			招了几台 += 1
+		while not s.run_state.pending_card_picks.is_empty():
+			if not s.pick_tactical_card(str(s.run_state.pending_card_picks[0])):
+				break
+	t.ok(招了几台 >= 2, "★ D-09：招了 %d 台（出击名单 %d 条）" % [招了几台, s.run_state.lineup.size()])
+	var 位号 := []
+	var 空串 := 0
+	var 重号 := []
+	var 见过 := {}
+	for x in s.run_state.lineup:
+		if not (x is Dictionary):
+			continue
+		var v: Variant = x.get("slot", null)
+		if v is String:
+			空串 += 1
+			位号.append(str(v))
+			continue
+		位号.append(int(v))
+		if 见过.has(int(v)):
+			重号.append(int(v))
+		见过[int(v)] = true
+	t.ok(空串 == 0, "★ D-09：`lineup` 里没有字符串位号（空串 %d 个；真实位号 %s）" % [空串, str(位号)])
+	t.ok(重号.is_empty(), "★ D-09：多台新招募的机体**不再都算 0 号位**（重复位号 %s）" % str(重号))
+	var 占位 := 0
+	for x in s.lineup_slots():
+		if not str(x.get("键", "")).is_empty():
+			占位 += 1
+	t.ok(占位 == s.run_state.lineup.size(),
+		"★ D-09：编队屏占位数 %d == 出击名单条数 %d（位号唯一 → 不再串台）" % [占位, s.run_state.lineup.size()])
