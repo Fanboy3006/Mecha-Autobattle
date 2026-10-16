@@ -206,3 +206,188 @@ ARGON 用工作区外的独立副本（**不进仓库**）：`F:\DSH-mecha\.tool
 |---|---|---|---|
 | 1 | D-01 的「职业牌开局不在手」正式规则，是否维持 | 这是**手感**判断，只有作者能定；D-01 取舍说明已写明「M4 界面接通后试玩确认」 | 先维持（它保证「一张不丢」，且角色牌开局在手更符合直觉）；试玩后若觉得第 1 回合太弱，再谈「初始上限 6 → 8」 |
 | 2 | `编制类藏品` 额外掉率 `0.15` 是否维持（作者 2026-10-11 拍板「低概率额外掉一件」，初稿 15%） | 影响平均出击台数（当时实测 20 局平均只能上 4.45 台） | 维持 15%，等 M4 能整局试玩后再用真实数据谈 |
+| 3 | ~~「Web 版在 Pages 上可玩」这条 M4 出口条件怎么验~~ | —— | ✅ **已解决，不再需要作者决定**：ARGON 已用**一次性提权**在本机真的跑通浏览器冒烟（7/7 全绿，见 §8.3b，含中文渲染截图）。以后每次跑会在 GUI 里弹一次批准，作者点一下即可。**push 到 main 后 CI 会再自动复跑一遍** |
+
+---
+
+## §8 D-03：M4 开工前的口径纠错登记（ARGON 派单前实测，2026-10-16）
+
+**性质**：与 D-02 同类 —— 交接卡（设计意图）与**已落盘内核的真实 API**不一致。**内核为准**，交接卡文字作废；ARGON 已在 M4-1 派单里直接下纠错后的口径，DS4F 不需要自己猜。
+
+### 8.1 开工核对结果（独立复跑，不是转述）
+
+| 检查项 | 命令 / 依据 | 实测 |
+|---|---|---|
+| 本地 main | `git rev-parse HEAD` | `c7dbdd5e60d34eb68e35829f468f4382cbdb0a2a` ✅ 与交接卡一致 |
+| 工作区干净 | `git status --short` | 空 ✅ 无未提交改动 |
+| 回归门禁 | `godot --headless --path godot --script res://tests/run_tests.gd` | **退出码 0 · 全部通过：326 项** ✅ 与交接卡一致 |
+
+> **结论**：交接卡第一节的「326 项全绿 · `c7dbdd5`」**属实，ARGON 已独立复现**。
+
+### 8.2 交接卡 §3.2 与真实 API 的七处不一致（M4-1 已按右列施工）
+
+| # | 交接卡 §3.2 的写法 | 真实内核 | ARGON 裁决 |
+|---|---|---|---|
+| 1 | `Btl.切换单位开关(ctx, unit_id, key)` | **不存在**。只有 `Btl.设单位开关(ctx:Dictionary, 开关表:Variant) -> void`，且它是**整表替换**、不是逐键切换 | `GameSession.toggle_unit_switch(unit_id, switch_key)` 由会话层**读出现表 → 翻转一键 → 整表回传**；开关键 `"保留大招"` / `"TRANSAM"` / `"本回合开TRANSAM"`（以源码为准） |
+| 2 | `Btl.激活单位状态(ctx, unit_id)` | **不存在**；全项目 grep `激活单位状态` 零命中。势力状态查询是 `Fac.势力状态(u, 势力)`，其激活函数 `_激活势力状态` 是**私有** | 只能走 `设单位开关` 的 `"本回合开TRANSAM"` 这一条路实现「手动激活」；**不新开内核口子**（改内核属 M5 之后） |
+| 3 | `RosterManager.new_run(...)` 被当作返回 Dictionary 用 | 真实返回 **`RunState`**（`static func new_run(种子:int, 分队:String="无", 分队类型:String="混编") -> RunState`） | `GameSession.start_new_run` 直接收 RunState；**不要**再 `from_dict()` 一次 |
+| 4 | 战斗手牌/候补的 ctx 键名未给出 | 真实为 `ctx["战术手牌"]`（手牌）、`ctx["候补初始牌"]`（候补）、`ctx["战术牌池"]`（牌池）；**不存在** 名为 `"战术牌库"` 的 ctx 键 | 会话门面一律用真实键名；`RunState.tactical_deck`（战术牌库）是**局外**字段，经 `RelicSystem.build_battle_options` 的 `选项["已选战术牌"]` 注入战斗 |
+| 5 | `RunState` 字段用英文名（`floor` / `source_carbon`…） | 真实是 **`floor_num` / `node_id` / `carbon` / `hope` / `base_hp` / `roster` / `lineup` / `tickets` / `relics` / `parts` / `tactical_deck` / `pending_card_picks`**（存档 40 个中文键由 `to_dict()` 翻译） | UI 与门面只读真实字段；**存档格式一个字节不改** |
+| 6 | `GameSession` 可为「`RefCounted` 或 Autoload Node」 | `Godot迁移架构-v1.md` §6.2 原文写的是 **Autoload** | **ARGON 定案：`class_name GameSession extends RefCounted`，不做 Autoload。** 理由：① `--headless` 可直接 `new()` 跑 `test_session_flow.gd`，不依赖 SceneTree；② 全项目现**无任何 `[autoload]` 段**，为门面单开一个 autoload 会引入隐式全局态；③ 表现层根节点自己持有一个实例即可满足单向数据流。**v1 文档 §6.2 那一行由 ARGON 在 M5 收口时同步修正** |
+| 7 | 交接卡 §2.1 第 3 条说字体门禁覆盖「所有 `.gd` 与 `.tscn`」 | `build_font_subset.py` 扫描时**跳过 `tools/` 与 `tests/`**；`test_font_coverage.gd` 才是真门禁 | **M4 新增 UI 文案必须只用 GB2312 一级常用字**（子集常驻 3755 字）；本机**未安装 fontTools**、`tools/.cache` 不存在，**跑不了 `build_font_subset.py`** → 生僻字 = 门禁必红 = 返工 |
+| 8 | 交接卡 §3.2 写 `godot/presentation/boot.tscn` | 真实路径是 **`godot/presentation/boot/boot.tscn`**（多一层同名目录）；`project.godot` 的 `run/main_scene` 指向它 | 派单按真实路径下；**`main_scene` 不许改**（改了 Web 冒烟与 CI 都读不到首页） |
+| 9 | 交接卡 §3.2 写「**9 格编队**：前排 4 格（前1..前4）+ 后排 5 格（后1..后5）」；`CLAUDE.md` §3 也这么写 | **早已改成「正交双排 4×2 = 8 格」**（前1..前4 slot 0..3 / 后1..后4 slot 4..7；`SLOTS = 8`）。铁证：`godot/data/js/05-阵型.json` 的 `SLOTS=8`、`src/js/05-阵型.js:6`（「前 4 后 4 … 共 8 格」）与 `:17`（「**改前**是错开 9 格 = 前 4 后 5」）、`协作/接口约定.md:1384-1390`（「**从「错开 9 格 前4后5」改为「正交双排 4×2」**」）、`协作/架构快照.json:17`（2026-10-13 改的，基线 2838 → 2535） | ★ **ARGON 在 M4-2 派单里传了过期的 9 格口径**（自认）。DS4F 自己读 `Fm` 数据做了 8 格 —— **以数据为准**。已同步修正本表、`M4-表现层接口契约.md`、`M4试玩清单.md`。**任何硬写 9 的代码/文案都是错的**（另见 `协作/审计/src可发现性与RouteMap评估.md:129-133`，上一轮审计已纠过一次同类口径） |
+| 10 | 交接卡 §3.2 要求手牌栏显示「**本回合剩余可打牌次数（`2 - 本回合已打出`）**」，DS4F 照此在门面里加了 `本回合打牌上限 = 2` 的**硬拦截** | **内核与封存 JS 都没有「每回合 N 张」这条规则**。JS 判据只有 `够气 = 当前气 >= 耗 && 冷却 <= 0 && 剩 > 0`（`src/js/80-界面-3-战斗屏与方针栏.js:94-95`）；手牌栏显示的是 `手牌 N/上限`（上限 = `手牌总上限` = **10**，`71-改动-4-战斗结构.js:448`），**不是**剩余可打数；`60-战斗-1-方针与记录.js:1171-1172` 的 `ctx.已打出战术牌.push(...)` 只是**记录**，无 length 判据；全仓库 grep `每回合出牌/出牌次数/最多出/已打出战术牌.length` **零命中** | ★ **判为「自造规则」，已令 DS4F 回退**（写这段时正在改）：删掉常量与拦截；`cards_played_this_turn()` 保留为**事实**；`cards_playable_this_turn()` 改名 **`cards_playable_now()`**（按 JS 同一判据数手牌）；新增 **`hand_card_status(card_id)`** 给 UI 置灰 + 写原因（`冷却 N 回合` / `需 N 气势` / `剩余 0 次`）。**并立规矩：门面也不得发明规则**（门面不在黄金样例覆盖面上，自造门槛黄金样例永远抓不到） |
+| 11 | 交接卡 §3.2 M4-3 要求手牌显示「层级标签（角色/**势力**/职业/统帅/**基础**）」 | 战术卡牌表的 `层级` **真实只有 4 档**：**势力 12 / 职业 12 / 角色 6 / 统帅 2 = 32 张**（ARGON 扫全部 `data/js/*.json` 实测计数）。**没有「基础」这一档** | ★「基础」是**交接卡凭空多写的第五档**。UI **照数据原值显示 4 档**，**不许造第五档**。M4-3 处理正确。注：`C_CMD_1` 那张牌叫**基础激励**，但它的 `层级` 是 **统帅** —— 别把牌名当档位 |
+| 12 | 交接卡 §3.2 M4-3 要求手牌栏显示「我方**平均**气势/**最高**气势」 | 战斗 `ctx` 里**只有全队一个** `气势`（数值）+ `Btl.气势上限()`；**没有逐台气势**，也**没有平均/最高**（ARGON 核 `btl.gd:47` / `:56` 实测） | ★ 交接卡这条是**基于错误假设**。UI 只显示 `气势 当前/上限`，**不许自己编平均/最高**。M4-3 处理正确 |
+| 13 | 交接卡 §3.2 M4-3 要求「敌方**下一拍行动意图**预告与 **Boss 阶段**预告」 | **core 里没有 `算意图(ctx)`**（ARGON 实测 core 命中 0；JS 侧在 `60-战斗-3-开局与simulate.js:195`）。core **有**的是零件：`Boss.bossAction`（2 处）、`Boss.Boss参数`（8 处）、`Boss.Boss本回合放大技能`（3 处）、`压制射击` 的机制与日志（`setup.gd:16`，但那是**机制**不是**预告封装**） | ★ **不是 bug，是迁移还没做到那一层**。M4-3 用 `Boss.bossAction` + Boss 参数拼出了 Boss 阶段与部分意图（**已自证纯读**：调用前后 `rng.steps` 0→0、ctx 快照 16604 字符逐字不变）。**缺口如实登记，M5 可补**：JS `算意图()` 独有的「压制射击预告标记 / `形状` / `命中修正` 封装」UI 未重现 |
+
+### 8.5 D-04：已接受差异（ARGON 定性，不改 `core/`）
+| # | 现象 | ARGON 定性 | 依据 |
+|---|---|---|---|
+| **D-04** | `RunState.from_dict()` 会把 `1.0` 这类**整数值的 float** 规格化成 `int 1` → 存档往返后 `to_dict()["名册"][k]["hpRatio"]` 由 float `1.0` 变 int `1`；「存档前内存态 vs 读回态」逐字比会分叉 | **接受为已接受差异，不把 int 还原成 float** | ① **JS 里 `1.0` 就是 `1`**（无 int/float 之分）→ 规格化成 `int` 反而**更贴 JS 口径**；② 真正要守的是**幂等性**：`serialize(from_dict(d)) == serialize(load(save(d)))` —— 这条**已经过**（DS4F 实测），说明编码是自洽且幂等的；③ 非整数值（如 `0.85`）走 `{"$f":…}` 原样保留，不受影响；④ M4 阶段动 `core/run/run_state.gd` 有撞坏 168 场黄金战斗的风险，**收益不足**。**UI 侧一律按百分比显示，不得依赖 int/float 区分** | DS4F 报告 + `session/save_service.gd` 的 `_规格化`；`Godot迁移架构-v1.md` §6.3「存档只存 `RunState` 的数据，不存派生量」 |
+
+---
+
+## §9 Stage M4 验收记录（ARGON 独立复跑，2026-10-16）
+
+> **口径**：本节的每个数字都是 **ARGON 自己在 `F:\DSH-mecha\.tools\godot\Godot_v4.7.2-stable_win64_console.exe` 上跑出来的**，不是子代理转述。
+
+### 9.1 三件交付物与归属
+
+| 子任务 | 交付物 | 行数 | ARGON 判定 |
+|---|---|---|---|
+| **M4-1** 会话门面 | `godot/session/game_session.gd`（`class_name GameSession extends RefCounted`，**非 autoload**） | 1436 | ✅ 通过（含 2 轮 D-03 回退） |
+| | `godot/tests/unit/test_session_flow.gd` | 977（单独 **155 项**） | ✅ |
+| **M4-2** 局外 UI | `presentation/theme/ui_theme.gd` · `widgets/{top_bar,modal_layer,unit_card}.gd` · `menus/{menu,roster,pick_card,shop,rest,event}_view.gd` · `run_map/{map_view,formation_view}.gd` · `boot/boot.gd`（重写；`boot.tscn` 一字未改） | 新增 15 个 `.gd` | ✅ |
+| **M4-3** 战斗屏 | `presentation/battle/battle_view.gd`（57→579 行）· `battle/result_view.gd`（58→237）· `widgets/unit_card.gd`（158→205，只扩展） | 3 个 | ✅ |
+| 冒烟测试 | `godot/tests/unit/test_presentation_smoke.gd`（213→509 行，单独 **182 项**） | 509 | ✅ |
+
+### 9.2 headless 回归门禁（ARGON 复跑）
+
+```
+$ godot --headless --path godot --script res://tests/run_tests.gd
+==========================================
+✓ 全部通过：663 项
+EXITCODE=0 · SCRIPT ERROR 计数 = 0 · 失败项 = 0
+```
+
+| | 数字 |
+|---|---|
+| M3 收口基线（交接卡） | 326 |
+| **M4 交付基线** | **663**（+337） |
+| 战斗黄金样例 | 168/168 保持 |
+| 边界门禁 | `core/` 零引擎耦合 · `session`/`presentation` 零 `J.*` ✅ |
+| 字体门禁 | 会上屏的 **1312** 个非 ASCII 字符**全部有字形** ✅ |
+
+### 9.3 D-01 签字证据（从门禁输出里取的**真实名单**，不是转述）
+
+```
+默认五人队 · JS 参考版初始手牌：C_CMD_1 C_HEAVY_1 C_GUARD_1 C_VANG_1 C_SNIPE_1 F_MOON_1
+默认五人队 · 正式规则初始手牌：C_CMD_1 U_CB2 U_M1 U_B1 F_MOON_1 F_CB_1
+                              激励·乱射·狙击神技·满月·星落·突击号令·月光祈愿·TRANS-AM 解放
+候补（4）：C_HEAVY_1 铁壁 · C_GUARD_1 热血 · C_VANG_1 集中 · C_SNIPE_1 必中·直击   ← 四张**全是职业牌**
+```
+
+- ✅ `D-01：在场机师的角色初始牌全部进了初始手牌 ["U_CB2","U_M1","U_B1"]`
+- ✅ `D-01：没有初始牌被丢弃（手牌 6 + 候补 4 = 初始牌 10）`
+- ✅ `D-01：空出 2 位 → 按序补入 ["C_HEAVY_1","C_GUARD_1"]，手牌回到 6 张`；满上限不再补；补位记 `触发条件码 = 候补补位`
+- ✅ `D-01 对照：JS 参考版会吞掉角色牌（确认差异真实存在）`
+- ⚠️ **更正**：M4-3 的报告把候补写成「势力 / 角色」两层 —— **那是报告笔误**，载荷数据是 `C_*` 四张**职业牌**（已按上表核对）。**以本节为准。**
+
+### 9.4 Web 导出 + 真实浏览器冒烟（M4 出口条件「Web 版可玩」）
+
+| 检查 | 结果 |
+|---|---|
+| Web 导出 | ✅ `index.wasm` 39 514 754 · **`index.pck` 1 518 604**（比 M0 版 +128 400，因为打进了新 UI 脚本）· `index.html` 5 443 |
+| 包里有没有新 UI | ✅ 直接扫 pck 字节：`map_view.gd` / `battle_view.gd` / `top_bar.gd` / `game_session.gd` / `ui_theme.gd` / `manifest.json` / `NotoSansSC-Subset` **全部 True** |
+| `web_smoke.mjs`（真 Chromium，一次性提权） | ✅ **7/7 全绿、EXIT=0**：`/godot/` 启动 1552 ms · 校验和 `182751003` · 数据 34/47/32 · **无脚本错误** · 根路径 JS 版 200 与标题正确 |
+| **点进去逐屏截图**（ARGON 自写的 `.tools/smoke/m4_shots.mjs`，按 canvas 坐标点） | ✅ **4 张截图、零脚本错误**：主菜单 → **快速测试战斗战斗屏** → 分队选择 → 战术牌库弹窗 |
+
+**人眼确认过的画面事实**（截图在 `.tools/smoke/m4shots/`）：
+- 主菜单：顶栏常驻状态条在位；「继续游戏（读档）」**置灰并把原因写在下面**（三层反馈的「预告」）；
+- **战斗屏**：`我方阵型（前 4 + 后 4，正交 4×2 = 8 格）` 与敌方针锋相对、16 张单位卡带 HP 条；
+- **手牌栏**：`手牌 6 / 10 张（初始手牌上限 6）· 牌库剩余 13 张 · 本回合已打出 0 张（事实报告，内核没有张数上限）· 现在能打 6 张 · 第 1 回合`；
+- **候补区（D-01 重点）**：`候补初始牌：4 张` + 逐张【铁壁】【热血】【集中】【必中·直击】；
+- 手牌卡逐张带 `层级·归属` / `耗气·回气·冷却·剩余次数` / `【点击发动】+ 效果说明`；
+- 战报栏可见 `〔势力〕` 高亮行；
+- **中文全部正常渲染，无方块**。
+
+### 9.5 还没做完的（如实登记，不粉饰）
+
+| # | 项 | 状态 |
+|---|---|---|
+| 1 | **作者完整打通一局肉鸽**（`Godot迁移架构-v1.md` §10 的 M4 出口条件后半句） | ⏳ **只能作者做** —— 已备好 [`Godot迁移-M4试玩清单.md`](Godot迁移-M4试玩清单.md) 与本地试玩入口 |
+| 2 | 敌方意图预告的 JS 独有部分（`压制射击` 预告标记 / `形状` / `命中修正` 封装） | 📌 缺口已登记（§8.2 #13），M5 可补 |
+| 3 | 演出/动画（`85-播放` 对应物） | 📌 不在 M4 范围（`Godot迁移架构-v1.md` §11 归 `presentation/battle` 重写，属后续） |
+| 4 | 音频 / 音乐接线 | 📌 不在 M4 范围 |
+| 5 | **数据侧没有「分队表」** —— 全仓 `godot/data/js/*.json` grep `分队表`/`SQUAD_T`/`squads` **零命中**（ARGON 实测），所以 `Db.catalog.squads()` 为空 → 门面的 `available_squads()` **返回空数组**。M4-2 的 `menu_view._候选分队()` 降级成「默认分队 + 职业名 + `RosterManager.势力们()`（内核纯读）」共 14 项，**并在界面上如实写明**「数据侧还没导出「分队表」，这里用职业 + 势力兜底」 | ⚠️ **可接受的降级 + 已如实披露**，但**这是真缺口**：分队的权威定义在 JS `90-肉鸽-*` 里，**M5 应把它导出成 `分队表` 并让 `Db.catalog.squads()` 有货**，届时 UI 的兜底分支自然失效。★ 唯一轻微违反契约 §1.2（表现层不自己造数据）的地方，**已登记不掩盖** |
+
+### 8.2b M4 表现层「不得破坏的既有契约」（ARGON 实测锚点，破坏即门禁红）
+
+| 契约 | 锚点 | 谁在依赖 | 对 M4 的约束 |
+|---|---|---|---|
+| **`boot.gd` 必须保留 `static func smoke_checksum() -> int` 且返回值 `182751003`** | `godot/tests/unit/test_rng.gd:25`：`load("res://presentation/boot/boot.gd").smoke_checksum() == 182751003` | headless 门禁第 `test_rng` 套 | 重写 `boot.gd` 时**这两个东西一个都不能删**：静态函数本体 + 那个魔数 |
+| **控制台必须打一行 `MECHA_SMOKE {json}`** | `godot/tools/web_smoke.mjs:43-45`：轮询 90 s 找 `MECHA_SMOKE` 前缀，`JSON.parse` 后断言 `checksum == 182751003`、`ALLY_T==34 && 编成表==47 && 战术卡牌表==32` | Pages 发布门禁（`.github/workflows/pages.yml`） | 重写后 `print("MECHA_SMOKE %s" % JSON.stringify({"checksum":…, "version":…, "data":…}))` 必须**原样还在**（键名也别改），且 **`_ready()` 里必须真的执行到**（别放到某个只在主菜单才建的节点里） |
+| **主场景仍是 `res://presentation/boot/boot.tscn`** | `godot/project.godot:9` | 编辑器/导出/冒烟全部 | 可以改 `boot.tscn` 的**内容**，不许改它的**路径**、不许改 `main_scene` |
+| 全项目**无 `[autoload]` 段** | `godot/project.godot` | 现有一切 | 表现层要拿 `GameSession` 就**自己 `new()` 一个实例挂在根节点上**，不要加 autoload（见 8.2 #6） |
+
+### 8.3 M4 环境风险（ENV-WEB 子代理 5 条路线实测回执，2026-10-16）
+
+> ⚠️ **本表在上一版里有一处 ARGON 写错的结论，已更正**（原文说「Godot 4 认项目本地 `res://export_templates/`」，**实测不被识别**）。保留下面的更正痕迹，是因为这个错很容易再犯。
+
+| 风险 | 实测事实 | 结论 |
+|---|---|---|
+| Web 导出模板放哪 | **5 条路线逐个实测**：<br>**a) `APPDATA` 重定向到 workspace ✅ 唯一可行** —— Godot 自己在 `%APPDATA%\Godot\export_templates\` 下建目录；<br>b) `XDG_DATA_HOME` / `HOME` / `USERPROFILE` / `GODOT_EDITOR_SETTINGS` ❌（只认 `APPDATA`）；<br>c) `%APPDATA%\Godot` junction ❌（`UnauthorizedAccessException`）；<br>d) `--export-templates <dir>` **该选项不存在**（`--help` 实查）；<br>e) **项目内 `res://export_templates/` ❌（测两次都不认）** ← **上一版 ARGON 写错的就是这条** | ✅ 用 **a**：`$env:APPDATA` 指向 workspace 内目录即可。**版本目录名 = `4.7.2.stable`**，需要 `web_nothreads_release.zip`（+ debug 可选）+ `version.txt` |
+| 要不要下 1.28 GB | **不用**。写了 `.tools/zipmember.mjs`：读远程 tpz 尾部 EOCD + 中央目录，用 HTTP Range **只取单个成员并 inflate** → `templates/web_nothreads_release.zip` 10 245 903 B + `templates/version.txt` 13 B（`4.7.2.stable`，带尾部换行），**网络只走 9.81 MiB**，0.9 s | ✅ 省了 1222 MiB。CI 也可以改用这个思路 |
+| Web 导出能不能跑 | **真的跑通了**（导出耗时 **2.9 s**，`EXITCODE=0`）：`index.html` 5 443 · `index.js` 279 815 · **`index.wasm` 39 514 754** · `index.pck` 1 390 204 · 3 张 png · 2 个 audio worklet js；HTML 里 `GODOT_THREADS_ENABLED = false`（与预设 `variant/thread_support=false` 一致 → **不需要 COOP/COEP 响应头**） | ✅ **本机能出 Web 包** |
+| 导出包里有没有游戏数据 | ARGON 直接扫 `index.pck` 字节：`manifest.json` ✅、`ALLY_T` ✅、`boot.tscn` ✅、`NotoSansSC-Subset` ✅（中文字体进包，**中文不会变方块**） | ✅ 数据与字体都进包了 |
+| **浏览器冒烟能不能在本机跑** | ★ **能 —— ARGON 已用「一次性提权」真的跑通了**（2026-10-16，见下方 §8.3b）。<br>普通沙箱下确实不行（子代理那一轮的全部结论仍然成立）：`chromium.launch: spawn EPERM`（Chrome 用 `--remote-debugging-pipe` **命名管道**）；裸启动即死 `FATAL:mojo\...\platform_channel.cc:112 Check failed: 拒绝访问 (0x5)` + crashpad `OpenProcess: 拒绝访问`。<br>但 DSH 允许对**刚被拒的那条命令**做**一次** `danger-full-access` 重试（会向作者弹批准）—— 批了以后 Chromium 正常起来 | ✅ **本机能跑**，代价是每次要作者批一次。**不必依赖 CI、也不必麻烦作者手动开终端** |
+| 字体子集不可重建 | 本机 `python` = `C:\Python314\python.exe`，**fontTools 未安装**；`tools/.cache` 不存在（源字体需联网下载） | ⚠️ M4 只许用常用字；若真需要新字，**回来问 ARGON 再决定** |
+| 沙箱内 HTTPS 全废 | `curl.exe` **所有 HTTPS 都失败**：`schannel: AcquireCredentialsHandle failed: SEC_E_NO_CREDENTIALS 0x8009030E`（明文 HTTP 200、TCP 443 通）。**Node 的 TLS 正常**（`fetch` 200） | ★ 本沙箱内**一切 HTTPS 下载/探测走 Node，别用 curl**（省掉一整轮排查） |
+
+> **§8.3 更正后的结论**：
+> - **本机能做**：headless 全套门禁 + **真 Web 导出**（APPDATA 重定向 + Range 取单成员模板）+ 组装 `_site` + **真实浏览器冒烟**（一次性提权）。
+>   一键脚本已留：`.tools/web-export-and-site.ps1`（`-SkipSmoke` 只导出）。
+> - `_site` 组装只要两样：`_site/index.html`（仓库根那个**自包含**生成物，ART / AUDIO 已内联）+ `_site/godot/`（导出产物）。
+> - `godot/export_templates/` 保持**空**（实测不被识别）；模板落在 `.tools/godot-appdata/Godot/export_templates/4.7.2.stable/`，**在仓库外，不会污染 git**。
+
+### 8.3b ★ ARGON 自己跑通的浏览器冒烟（2026-10-16 实测，M4 前基线）
+
+**做法**（两次调用：第一次按常规跑，拿到沙箱的真实拒绝；第二次对**同一条命令**申请一次性 `danger-full-access` 重试并获作者批准）：
+
+```powershell
+# 1) 组装站点（不重新导出，直接用现有 build/web）
+$S = 'F:\DSH-mecha\.tools\smoke\_site'
+Copy-Item F:\DSH-mecha\mecha-autobattle\index.html "$S\index.html"          # 根 = JS 版（自包含）
+Copy-Item F:\DSH-mecha\mecha-autobattle\godot\build\web\* "$S\godot\" -Recurse   # /godot/ = Godot 版
+# 2) 冒烟
+$env:NODE_PATH = 'F:\DSH-mecha\.tools\smoke\node_modules'
+$env:CHROME_PATH = 'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe'
+node F:\DSH-mecha\.tools\smoke\web_smoke.mjs $S F:\DSH-mecha\.tools\smoke\shots
+```
+
+**真实输出（7/7 全绿，`EXIT=0`）**：
+```
+✓ /godot/ 启动（1260 ms）
+✓ 浏览器内确定性校验和 = 182751003（期望 182751003）
+✓ Web 包里带上了数据（机师 34 · 编成 47 · 战术牌 32）
+✓ 无脚本错误
+✓ 根路径 JS 版 HTTP 200
+✓ 根路径页面标题「机甲指挥」
+✓ JS 版无页面错误
+```
+
+**截图证据**：`.tools/smoke/shots/smoke-godot.png`（1280×720）—— ARGON 已人眼确认：
+**中文在 Web 上正常渲染，没有方块**；`⚡🛡` 两个符号经后备字体链也画出来了；
+页面上 `确定性自检: 182751003` 与 headless 结果**一致**。
+
+> **意义**：M4 出口条件「**Web 版在 Pages 上可玩**」的**自动化那一半已经打通**，本机就能验，
+> 不再需要「要么等 CI、要么麻烦作者开终端」。M4-3 交付后 ARGON 会**重跑一次**（导出的必须是带真 UI 的那一版）。
+
+### 8.4 M4 出口条件（引用 `Godot迁移架构-v1.md` §10，ARGON 认这个口径）
+
+> **M4 可玩版本** · 表现层：编队、战斗屏、卡牌栏、大地图、招募 / 晋升 / 结算 →
+> **作者完整打通一局肉鸽；Web 版在 Pages 上可玩。**
+
+三件交付物（交接卡 §3.2 的 M4-1 / M4-2 / M4-3）与这三项一一对应，缺一不算 M4 完成。

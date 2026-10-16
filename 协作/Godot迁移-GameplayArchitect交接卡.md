@@ -1,5 +1,14 @@
 # Godot 迁移阶段 · Gameplay & Software Architect 交接卡（M3 收口 → M4 交接版）
 
+> ⚠️ **【ARGON 2026-10-16 纠错横幅 —— 读 §3.2 之前先看这条】**
+> 本文件 §3.2 的施工接口有 **10 处与已落盘内核 / 封存 JS 不一致**，**以左列为准**；逐条对照与铁证见
+> [**`Godot迁移-ARGON验收对照表.md` §8（D-03）**](Godot迁移-ARGON验收对照表.md)。最容易踩的三处：
+> 1. **`Btl.切换单位开关` / `Btl.激活单位状态` 源码里不存在** → 真实只有 `Btl.设单位开关(ctx, 开关表)`（**位号为键、整表替换**）+ `FacCb.手动开天人`。
+> 2. **阵型是 8 格（前 4 后 4 · 正交 4×2），不是 9 格（前 4 后 5）** —— 2026-10-13 就改了（`协作/接口约定.md:1384`）。
+> 3. **内核没有「每回合最多打 2 张牌」这条规则** → §3.2 那句「本回合剩余可打牌次数（`2 - 本回合已打出`）」**作废**，任何按它加的门槛都是自造规则。
+>
+> 另：本文件写的 `godot/presentation/boot.tscn` 真实路径是 **`presentation/boot/boot.tscn`**（多一层目录）。
+
 > **交接对象**：下一任架构师（DSH 主会话 ARGON）
 > **角色职责**：你同时负责 **Gameplay Architecture + Godot Software Architecture + 迁移边界与验收**；子代理 **DS4F**（`subagent`）负责低成本调查与实际代码施工（项目架构主导权已从外部 CC 彻底收回 DSH）。
 > **最高战略纲领**：[**`协作/项目方向调整-Godot唯一引擎.md`**](项目方向调整-Godot唯一引擎.md) —— **最终只维护一套正式游戏引擎：Godot**（Web 导出 + GitHub Pages 静态托管发布，点开即玩）。
@@ -24,8 +33,8 @@
 | **ARGON 接管审计 & D-02** | `6e5f94c` | ✅ 已完成 | 独立复跑 M2 基线；登记 **D-02（M3 五处冻结语义施工口径纠错）**；落盘 [`协作/Godot迁移-ARGON验收对照表.md`](Godot迁移-ARGON验收对照表.md) |
 | **Stage R1 + M3-Prep** | `126ba46` | ✅ 已完成（141 项全绿） | ① **R1 架构整顿**：新增零 `J.*` 强类型领域目录 `GameCatalog`（`core/data/game_catalog.gd`）、32 张战术卡牌声明式效果执行器 `CardEffects`（`core/battle/card_effects.gd`，替掉 `btl.gd` 27 个硬编码分支）、清理 `flow.gd` 退役防御回复死代码、`test_boundary.gd` 锁死新模块严禁调用 `J.*`；② **M3-Prep**：新增 `RelicBattle`（`core/battle/relic_battle.gd`，58 件藏品开战注入，清掉 DEBT-06）、导出 **30 场带藏品战斗黄金样例**（战斗黄金样例扩至 **168/168 全绿**）、导出局外肉鸽黄金样例 `tests/golden/run_vectors.json` + `test_run_golden.gd`、落盘强类型 `core/run/run_state.gd` |
 | **Godot M3（Run Core 肉鸽内核 + 存档）** | `52a953c` (`[Godot M3]`) | ✅ 已完成（**326 项全绿**） | 在 `godot/core/run/` 下用原生 Godot 架构（**零 `J.*` 调用**）完整落地：`map_generator.gd`、`map_navigator.gd`、`part_system.gd`、`roster_manager.gd`、`deck_builder.gd`、`relic_system.gd`、`node_resolver.gd` + `session/save_service.gd`；跑通 `run_vectors.json` 全量对拍、1~4 层真战斗通关冒烟、第 2 层中途 `save → load` 往返逐字节一致 |
-| **Godot M4（表现层与 UI + Web 导出）** | **下一任架构师开机直接执行** | 🎯 **当前任务** | 建立 `session/game_session.gd` 统一会话门面 + 构建 `presentation/` 原生 Godot 场景（菜单/分队/大地图/编队/战斗屏/手牌栏/招募晋升3选1弹窗/结算屏）+ Web 导出与试玩验收（含 D-01 体感确认） |
-| **Godot M5** | 最终收口 | ⏳ 待做 | 根路径 `/` 切换为 Godot 版，JS 旧版归档，开启 P2 玩法迭代 |
+| **Godot M4（表现层与 UI + Web 导出）** | **（本地提交，待作者试玩签字后推送）** | ✅ **已完成（663 项全绿）** | ① `session/game_session.gd` 会话门面（1436 行，`RefCounted` 非 autoload）+ `test_session_flow.gd`（155 项）；② `presentation/` 全套 UI：顶栏状态条 / 主菜单与分队 / 正方形大地图 / 8 格编队 / 招募晋升 / 3 选 1 / 黑市 / 休整 / 奇遇 / 战斗屏（双方 8 格 + 底部手牌栏 + **D-01 候补预览**）/ 战后结算屏；③ Web 导出 + **真实 Chromium 冒烟 7/7 全绿** + 逐屏截图。**验收记录见 [`Godot迁移-ARGON验收对照表.md`](Godot迁移-ARGON验收对照表.md) §9**；**作者试玩清单见 [`Godot迁移-M4试玩清单.md`](Godot迁移-M4试玩清单.md)** |
+| **Godot M5** | 最终收口 | ⏳ 待做（等作者 M4 试玩签字） | 根路径 `/` 切换为 Godot 版，JS 旧版归档，开启 P2 玩法迭代；补 M4 登记的缺口（敌方意图预告的 JS 独有项、演出/动画、音频） |
 
 ---
 
