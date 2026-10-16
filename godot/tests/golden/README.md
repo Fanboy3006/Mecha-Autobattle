@@ -1,7 +1,7 @@
 # 黄金样例（从 JS 参考版导出，M2 / M3 的对拍依据）
 
 由 `godot/tools/export_golden.mjs` 从封存的 JS 参考版（tag `js-reference-final`，规则签名 `r1:05a9cbf9`）导出。
-**它们是迁移那一刻 JS 的行为快照，不是绝对真值**：Godot 跑不过时，先问 ARGON「这是规则还是缺陷」；是缺陷就登记到已接受差异表、由 ARGON 签字，不改 JS。
+**它们是迁移那一刻 JS 的行为快照，不是绝对真值**：Godot 跑不过时，先问 ARGON「这是规则还是缺陷」；是缺陷就登记到 [`已接受差异表.md`](已接受差异表.md)、由 ARGON 签字，不改 JS；Battle Core 为每条差异留一个对账开关，`tests/golden_runner.gd` 打开它重跑样例。
 
 ## 口径
 

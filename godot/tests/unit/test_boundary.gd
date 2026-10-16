@@ -5,8 +5,8 @@ extends RefCounted
 const RULES := [
 	["只能继承 RefCounted / Resource / Object（不碰场景树）", "extends\\s+(?!RefCounted\\b|Resource\\b|Object\\b)\\w+", "extends Node2D"],
 	["不用引擎随机数（只用 Mulberry32）", "\\b(randi|randf|randi_range|randf_range|randfn|randomize|seed)\\s*\\(|RandomNumberGenerator", "var x = randi() % 6"],
-	["不用内置 round()（用 JsCompat.js_round）", "(?<![\\w.])round\\s*\\(", "var d = round(a * 1.5)"],
-	["不用 sort / sort_custom（用 JsCompat.stable_sort）", "\\.sort(_custom)?\\s*\\(", "arr.sort_custom(f)"],
+	["不用内置 round()（用 J.round / JsCompat.js_round）", "(?<![\\w.])(?<!func )round\\s*\\(", "var d = round(a * 1.5)"],
+	["不用 sort / sort_custom（用 J.sort / JsCompat.stable_sort）", "(?<!\\bJ)\\.sort(_custom)?\\s*\\(", "arr.sort_custom(f)"],
 	["不读时间", "\\b(Time\\.|OS\\.get_ticks|OS\\.get_unix_time)", "var now = Time.get_ticks_msec()"],
 	["不读写文件 / user://", "\\b(FileAccess|DirAccess|ResourceSaver|ConfigFile)\\b", "FileAccess.open(p, 1)"],
 	["不访问场景树", "\\b(get_tree|get_node|get_parent|add_child)\\s*\\(", "get_tree().quit()"],

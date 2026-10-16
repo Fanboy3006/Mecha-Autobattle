@@ -81,7 +81,7 @@ def project_chars() -> str:
     for p in ROOT.rglob("*"):
         if p.is_file() and p.suffix in TEXT_EXT and not (set(p.relative_to(ROOT).parts) & SKIP_DIRS):
             seen.update(p.read_text(encoding="utf-8", errors="ignore"))
-    return "".join(sorted(c for c in seen if c.isprintable()))
+    return "".join(sorted(c for c in seen if c.isprintable() or c == "\u3000"))   # 全角空格 isprintable() 为假，但会上屏
 
 
 def main() -> None:

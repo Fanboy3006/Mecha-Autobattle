@@ -1,7 +1,7 @@
 {
  "STAT_KEY": {
-  "射击": "shoot",
   "格斗": "melee",
+  "射击": "shoot",
   "觉醒": "awaken",
   "防御": "defense"
  },

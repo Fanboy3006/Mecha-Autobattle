@@ -20,11 +20,36 @@ static func load_game_data(errors: Array = []) -> GameData:
 			if not parsed.has(name):
 				errors.append("%s 里缺少常量 %s" % [file, name])
 				continue
-			consts[name] = parsed[name]
+			consts[name] = _decode(parsed[name])
 			origin[name] = file
 	if not errors.is_empty():
 		return null
 	return GameData.new(consts, origin, str(manifest.get("来源", "")), str(manifest.get("rulesSignature", "")))
+
+## 数据里 JSON 存不了的数（Infinity / NaN）按 {"$f": IEEE-754 位串} 存，这里还原
+static func _decode(v: Variant) -> Variant:
+	if v is Dictionary:
+		if v.size() == 1 and v.has("$f"):
+			var b := PackedByteArray()
+			for i in 8:
+				b.append(String(v["$f"]).substr(i * 2, 2).hex_to_int())
+			return b.decode_double(0)
+		for key in v.keys():
+			v[key] = _decode(v[key])
+		return v
+	if v is Array:
+		for i in v.size():
+			v[i] = _decode(v[i])
+		return v
+	return v
+
+## 读入并装进 Db（会话启动与测试共用）；失败返回 false，原因写进 errors
+static func install(errors: Array = []) -> bool:
+	var data := load_game_data(errors)
+	if data == null:
+		return false
+	Db.install(data)
+	return true
 
 static func _read_json(path: String, errors: Array) -> Variant:
 	if not FileAccess.file_exists(path):

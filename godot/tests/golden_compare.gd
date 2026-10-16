@@ -26,12 +26,17 @@ static func diff(expected: Variant, actual: Variant, path: String = "") -> Strin
 	if expected is Dictionary:
 		var keys := {}
 		for k in expected.keys():
-			keys[k] = true
+			keys[String(k)] = true
 		for k in actual.keys():
-			keys[k] = true
+			keys[String(k)] = true
 		var sorted := keys.keys()
 		sorted.sort()
 		for k in sorted:
+			# JS 的 undefined（导出时不写）与 null 在 Godot 里都是 null：值为 null 的字段与「没有这个字段」视为相同
+			if not expected.has(k) and actual.get(k) == null:
+				continue
+			if not actual.has(k) and expected.get(k) == null:
+				continue
 			if not expected.has(k):
 				return "%s.%s：实际多出这个字段" % [path, k]
 			if not actual.has(k):

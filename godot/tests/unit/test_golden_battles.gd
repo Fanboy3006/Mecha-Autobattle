@@ -1,6 +1,6 @@
 ## 战斗黄金样例（从 JS 参考版导出，godot/tools/export_golden.mjs）。
 ## M1：校验样例文件完整、可解码，比对器能抓到分叉。
-## M2：Battle Core 落地后，这里逐场重跑并与期望比对（全部通过 = 战斗玩法迁移完成）。
+## M2：用 Battle Core 逐场重跑并与期望比对（事件逐条 + 每回合状态摘要 + 结果；全部通过 = 战斗玩法迁移完成）。
 extends RefCounted
 
 const GROUPS := ["default", "faction", "character", "card_baseline"]
@@ -49,4 +49,27 @@ func run(t) -> void:
 			if e[k] is float and not is_finite(e[k]):
 				floats = -1
 	t.ok(floats == 0, "样例数值解码正常")
-	t.info("Battle Core 尚未实现（M2）：%d 场待对拍" % total)
+
+	# M2：逐场重跑对拍
+	var errors := []
+	t.ok(DataLoader.install(errors), "数据装入 Db %s" % ("" if errors.is_empty() else str(errors)))
+	var passed := 0
+	var fails := []
+	for smp in all_samples:
+		var out := GoldenRunner.run(smp)
+		var report := GoldenCompare.compare_events(smp, out.events)
+		if report == "":
+			report = GoldenRunner.compare_digests(smp, out.digests)
+		if report == "":
+			var d := GoldenCompare.diff(GoldenCompare.decode(smp["期望"]["结果"]), out.result, "结果")
+			if d != "":
+				report = "%s · %s" % [smp["id"], d]
+		if report == "" and not out.命令错误.is_empty():
+			report = "%s · %s" % [smp["id"], out.命令错误[0]]
+		if report == "":
+			passed += 1
+		else:
+			fails.append(report)
+	for f in fails.slice(0, 8):
+		t.info(f)
+	t.ok(fails.is_empty(), "Battle Core 对拍：%d / %d 场与 JS 参考版逐条一致" % [passed, total])

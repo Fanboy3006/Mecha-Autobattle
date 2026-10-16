@@ -1,12 +1,5 @@
 {
  "ENEMY_TIER": {
-  "头目": [
-   "captain",
-   "venom",
-   "regen",
-   "funnel",
-   "berserker"
-  ],
   "杂兵": [
    "grunt",
    "fighter",
@@ -26,6 +19,13 @@
    "sniper",
    "artillery",
    "beetle"
+  ],
+  "头目": [
+   "captain",
+   "venom",
+   "regen",
+   "funnel",
+   "berserker"
   ]
  },
  "BOSS_SPECIAL": [
@@ -33,24 +33,24 @@
   "bluefish"
  ],
  "TIER_LV": {
-  "Boss": 2,
-  "头目": 2,
   "杂兵": 0,
-  "精锐": 1
+  "精锐": 1,
+  "头目": 2,
+  "Boss": 2
  },
  "DEF_BY_CLASS": {
-  "尖兵": 75,
-  "指挥": 80,
-  "特种": 85,
-  "狙击": 75,
+  "重装": 110,
   "近卫": 95,
-  "重装": 110
+  "特种": 85,
+  "指挥": 80,
+  "狙击": 75,
+  "尖兵": 75
  },
  "DEF_BY_TIER": {
-  "Boss": 95,
-  "头目": 80,
   "杂兵": 50,
-  "精锐": 65
+  "精锐": 65,
+  "头目": 80,
+  "Boss": 95
  },
  "NEW_POWER": [
   "W2",

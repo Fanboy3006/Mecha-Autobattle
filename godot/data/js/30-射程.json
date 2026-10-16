@@ -1,12 +1,16 @@
 {
  "KIND_MELEE": "近战",
+ "KIND_DIRECT": "直射",
+ "KIND_INDIRECT": "曲射",
+ "KIND_AREA": "范围",
+ "KIND_HEAL": "修理",
  "KIND_SUPPORT": "支援",
  "RANGE_KIND": {
+  "melee": "近战",
   "direct": "直射",
-  "heal": "修理",
   "indirect": "曲射",
   "map": "范围",
-  "melee": "近战",
-  "support": "范围"
+  "support": "范围",
+  "heal": "修理"
  }
 }

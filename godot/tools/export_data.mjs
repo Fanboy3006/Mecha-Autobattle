@@ -34,9 +34,14 @@ const 非普通 = (v, seen = new Set()) => {
   if (!是普通对象(v)) return true;
   return Object.values(v).some(x => 非普通(x, seen));
 };
+/** 拷贝成普通数据（去掉 undefined）。键保持 JS 的遍历顺序：战斗里有按键顺序取第一个匹配的写法（如 tierOfEnemy 遍历 ENEMY_TIER），
+ *  顺序一变结果就可能变；Godot 的 Dictionary 按插入顺序遍历，所以这里必须原样保留。 */
 const 排序键 = v => {
+  if (typeof v === 'number' && !Number.isFinite(v)) {            // Infinity / NaN：JSON 存不了，按黄金样例的约定存位串
+    const b = Buffer.alloc(8); b.writeDoubleLE(v); return { $f: b.toString('hex') };
+  }
   if (Array.isArray(v)) return v.map(排序键);
-  if (v && typeof v === 'object') return Object.fromEntries(Object.keys(v).sort().filter(k => v[k] !== undefined).map(k => [k, 排序键(v[k])]));
+  if (v && typeof v === 'object') return Object.fromEntries(Object.keys(v).filter(k => v[k] !== undefined).map(k => [k, 排序键(v[k])]));
   return v;
 };
 

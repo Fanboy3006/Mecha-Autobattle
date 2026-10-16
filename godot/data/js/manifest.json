@@ -14,6 +14,7 @@
    "ROWS",
    "SLOTS",
    "ROW_FRONT",
+   "ROW_BACK",
    "正交路数",
    "最大列数",
    "阻挡表",
@@ -92,6 +93,10 @@
   ],
   "30-射程.json": [
    "KIND_MELEE",
+   "KIND_DIRECT",
+   "KIND_INDIRECT",
+   "KIND_AREA",
+   "KIND_HEAL",
    "KIND_SUPPORT",
    "RANGE_KIND"
   ],
@@ -125,6 +130,7 @@
    "重试上限",
    "形状表",
    "地图列数",
+   "地图行数",
    "节点类型表",
    "出口类型表",
    "推进剂余量表",

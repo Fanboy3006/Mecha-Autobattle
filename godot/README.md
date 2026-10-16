@@ -3,7 +3,7 @@
 本项目**唯一长期维护的游戏引擎**。仓库根目录的 JS 版是冻结的玩法参考（tag `js-reference-final`），迁移完成后移到 `archive/js/`。
 架构与迁移计划：[`../协作/架构/Godot迁移架构-v1.md`](../协作/架构/Godot迁移架构-v1.md)
 
-当前进度：**M0 地基** ✅ · **M1 数据与样例** ✅（`data/js/` 115 个常量 · 138 场战斗黄金样例）· 下一步 **M2 Battle Core**。
+当前进度：**M0 地基** ✅ · **M1 数据与样例** ✅（`data/js/` 121 个常量 · 138 场战斗黄金样例）· **M2 Battle Core** ✅（`core/battle/`：138/138 场与 JS 参考版逐条一致；正式规则与 JS 的差异见 [`tests/golden/已接受差异表.md`](tests/golden/已接受差异表.md)）· 下一步 **M3 肉鸽内核**。
 
 ## 本地开发
 
@@ -19,7 +19,8 @@ godot --headless --path godot --script res://tests/run_tests.gd     # 退出码 
 
 | 目录 | 内容 | 规矩 |
 |---|---|---|
-| `core/` | 纯逻辑（战斗 / 肉鸽内核、随机数、规则） | 只继承 `RefCounted` / `Resource`；不碰场景树、文件、时间、引擎随机数；四舍五入用 `JsCompat.js_round`，排序用 `JsCompat.stable_sort`。`tests/unit/test_boundary.gd` 自动检查 |
+| `core/` | 纯逻辑（战斗 / 肉鸽内核、随机数、规则） | 只继承 `RefCounted` / `Resource`；不碰场景树、文件、时间、引擎随机数；四舍五入用 `J.round`（= `JsCompat.js_round`），排序用 `J.sort`（= `JsCompat.stable_sort`）；与 JS 语义不同的地方（真假值、`||`、数字转字符串、`includes`…）一律走 `core/util/js.gd` 的 `J`。`tests/unit/test_boundary.gd` 自动检查 |
+| `core/battle/` | 战斗内核，一个文件对应 JS 的一个片段：`setup`（开局 / 一回合 / 胜负）· `flow`（回合开始 / 行动 / 结算）· `btl`（记录 / 气势 / 嘲讽 / 自爆 / 词条 / 战术牌）· `calc`（命中 / 伤害 / 标定）· `ai` · `boss` · `fac*`（六个势力）· `params` · `units` · `traits` · `reach` · `fm` · `diff` | 入口：`Setup.开局()` → 每回合 `Btl.打战术牌()`… → `Setup.打一回合()`；单位与 ctx 是 Dictionary，键名照 JS |
 | `data/js/` | 内容与数值（从 JS 参考版导出，`manifest.json` 记来源与规则签名）；由 `session/data_loader.gd` 读入成 `GameData` | 内核只读；小数要能被 Godot 无损解析（`test_data` 检查） |
 | `session/` | 会话层：读数据、存档、命令分发（IO 只在这里） | |
 | `presentation/` | 场景与界面 | 只读内核状态；玩家操作变成命令交给内核 |

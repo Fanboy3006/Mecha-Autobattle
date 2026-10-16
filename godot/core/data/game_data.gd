@@ -29,3 +29,7 @@ func origin_of(name: String) -> String:
 
 func names() -> Array:
 	return _consts.keys()
+
+## 全部常量（Db.install 用；调用方只读）
+func consts() -> Dictionary:
+	return _consts
