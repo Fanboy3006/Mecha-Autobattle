@@ -403,6 +403,34 @@ ARGON 用一次性诊断脚本（跑完即删，不在仓库里）拿门面跑�
 - 战报栏可见 `〔势力〕` 高亮行；
 - **中文全部正常渲染，无方块**。
 
+### 9.4c ★ 复现方式落在哪（不要再只依赖仓库外的东西）
+
+M4 的 Web 验收一开始**全部依赖 `F:\DSH-mecha\.tools\` 下的东西**（模板的 APPDATA 重定向、一键导出脚本、
+`playwright-core`、本地试玩服务、逐屏截图脚本）—— **工作区一丢就复现不了**。
+现已把「怎么复现」与可复用的脚本落进仓库：
+
+- **runbook**：[`协作/架构/Godot-本机Web导出与冒烟.md`](Godot-本机Web导出与冒烟.md)
+  —— 环境事实 / 5 条模板路线实测结论 / `APPDATA` 重定向 / **Range 只取单成员省掉 1.22 GB** /
+  导出 / `_site` 组装 / 冒烟 7 项期望输出 / 沙箱的坑（Chromium 要一次性提权、`curl` 的 HTTPS 全废→走 Node）/
+  本地试玩服务 / Web 存档落 IDBFS / 与 CI 的分工 / 复现清单。
+- **脚本**（`godot/tools/`，该目录已被 `export_presets` 的 `exclude_filter` 与字体扫描的 `SKIP_DIRS` 排除，
+  实测对门禁与 Web 包**零影响**）：`zipmember.mjs` · `web_export_and_site.ps1` · `serve_site.mjs` ·
+  `idbfs_check.mjs` · `web_click_shots.mjs`（+ 原有的 `web_smoke.mjs`）。
+  搬运后**逐字节比对过**：与 ARGON 实测通过的原件 SHA256 相同（`.ps1` 只改了 2 处 `$PSScriptRoot`）。
+
+> ★★ **踩到一颗雷（ARGON 自认，已修复但根因未动，请作者/CC 裁决）**：
+> `docs/实现/` 那两份文件我一开始是放对了地方的，结果 **`checkSealed()` 的作用域把 `docs/` 也算了进去**
+> （`godot/tools/js_ref.mjs:37` 的排除清单只有 `':!godot', ':!.github', ':!协作'`）→
+> **我一加文档，`git diff --quiet js-reference-final` 就 EXIT=1，红线当场变红**（实测确认：作用域内与我不同的
+> 只有那两个 docs 文件，且标签之后动过作用域的只有我这一笔）。
+> 我已把 runbook 挪到 `协作/架构/`（被排除）并把 `docs/实现/README.md` 还原成**封存标签那一版**，红线已恢复 EXIT=0。
+> **但根因没动** —— 这是会给别人踩的雷：**`docs/**`、`CLAUDE.md`、`art/battle/**`、`对局录像/**` 都在 seal 作用域内，
+> 而这四样都是注定要改的**（作者改文档、机设线往 `art/battle/` 加稿、录像不断新增）。
+> 任何人改完文档再跑 `export_data.mjs` / `export_golden.mjs` / `export_run_golden.mjs`，都会撞上
+> **「JS 参考版与 js-reference-final 不一致…请先还原 JS 改动」** —— 而他们**根本没碰过 JS**，最坏会被误导去回退无关工作。
+> **ARGON 的建议（不自己动，属守卫语义的变更）**：把作用域**反转成只锁真正的 JS 游戏代码** ——
+> `git diff --quiet <tag> -- src tests index.html`（这才是 `loadReference()` 真正读的东西），
+> 而不是「除了 godot/.github/协作 全都要锁」。**要不要改请作者/CC 拍板。**
 ### 9.4b ★ 红线复核：JS 封存完好 + Web 存档存储层可用（ARGON 补验，此前从未验过）
 
 **① 「JS 参考版仍封存」这条红线 —— 用 `checkSealed()` 的真实判据独立跑过：**
