@@ -1,0 +1,5 @@
+# Godot 生成
+.godot/
+build/
+# 字体源文件缓存（8 MB，构建子集时下载）
+tools/.cache/

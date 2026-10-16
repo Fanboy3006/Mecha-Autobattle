@@ -1,0 +1,95 @@
+# 发布到 GitHub Pages（仓库 Settings → Pages → Source = GitHub Actions）
+#
+# 迁移期间的站点布局（见 协作/架构/Godot迁移架构-v1.md §8.3）：
+#   /         → JS 参考版（与以前「从分支发布」时一样：整个仓库的文件，音乐等相对路径照常可用）
+#   /godot/   → Godot 版（M0 是占位页；M4 可完整打通一局后与根路径对调）
+# 任何一步失败（测试、导出、浏览器冒烟）都不会发布，线上保持上一版。
+name: 发布到 GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 缓存 Godot 与 Web 模板
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/godot-ci
+          key: godot-4.7.2-web-v1
+
+      - name: 安装 Godot 与 Web 导出模板
+        run: bash godot/tools/ci_setup_godot.sh --with-web-templates
+
+      - name: 导入工程
+        run: godot --headless --path godot --import
+
+      - name: 运行测试
+        run: godot --headless --path godot --script res://tests/run_tests.gd
+
+      - name: 导出 Web 版（单线程）
+        run: |
+          mkdir -p godot/build/web
+          touch godot/build/.gdignore
+          godot --headless --path godot --export-release "Web" build/web/index.html
+          test -f godot/build/web/index.wasm
+          ls -la godot/build/web
+
+      - name: 组装站点
+        run: |
+          mkdir _site
+          rsync -a --exclude .git --exclude .github --exclude godot --exclude _site ./ _site/
+          mkdir -p _site/godot
+          cp -r godot/build/web/. _site/godot/
+          touch _site/.nojekyll
+          du -sh _site _site/godot
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 浏览器冒烟（Godot 版校验和 + 根路径 JS 版能打开）
+        run: |
+          mkdir -p /tmp/smoke
+          npm install --no-save --prefix /tmp/smoke playwright-core@1.48.2
+          cp godot/tools/web_smoke.mjs /tmp/smoke/
+          mkdir -p smoke-shots
+          CHROME_PATH="$(command -v google-chrome)" node /tmp/smoke/web_smoke.mjs _site smoke-shots
+
+      - name: 保存冒烟截图
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-screenshots
+          path: smoke-shots/
+          if-no-files-found: ignore
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
