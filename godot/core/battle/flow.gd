@@ -1,4 +1,6 @@
 ## 60-战斗-2-回合流程.js：回合开始（增援 / 势力 / 气势 / 指挥 / 词条 / 发牌）、单位行动、动作结算。
+## ★ R1 退役清理：行动方针取消后「防御」不再发生 —— resolveAction 的 defend 分支不再改单位状态，
+##   回合开始时消费「防御回复」回 5% HP 的那一段死代码已删（defending / 防御回复 由此恒为假，引擎里的读法不变）。
 class_name Flow
 extends RefCounted
 
@@ -31,14 +33,6 @@ static func 回合开始(ctx: Dictionary) -> void:
 						"turns": 1.0,
 					})
 	Calc.标定经济点名(ctx)
-	for u in Units.livingUnits(ctx):
-		if not J.truthy(u.get("防御回复")):
-			continue
-		u.防御回复 = false
-		var amt := minf(J.round(float(u.maxHp) * 0.05), float(u.maxHp) - float(u.hp))
-		if amt > 0:
-			u.hp = float(u.hp) + amt
-			Btl.pushLog(ctx, "%s 防御调整完成，回复 %s" % [u.name, J.s(amt)], J.merged({"类型": "回复", "回复": amt, "目标剩余HP": u.hp}, Btl.谁(u), Btl.谁目标(u)))
 	Btl.词条冷却延长(ctx)
 	Btl.词条隐身刷新(ctx)
 	if Params.战术卡牌开(ctx):
@@ -168,10 +162,10 @@ static func resolveAction(actor: Dictionary, action: Dictionary, ctx: Dictionary
 			Btl.pushLog(ctx, "%s【%s】→ %s：再行动一次" % [actor.name, w.name, t.name], J.merged(J.merged({"类型": "再动", "单位": actor.key, "目标": t.key}, Btl.谁(actor)), Btl.谁目标(t)))
 			return 空
 		"defend":
-			# 方针已取消：只有「禁止攻击」才会走到这里，现在不会发生；防御给气势（防御每台加 / 每回合上限）不迁移
-			actor.defending = true
-			actor.防御回复 = true
-			Btl.pushLog(ctx, "%s 进入防御（本回合伤害按防御 +50 结算，下回合开始回复 5%% HP）" % actor.name, J.merged({"类型": "防御"}, Btl.谁(actor)))
+			# 退役（R1）：行动方针已取消，Btl.禁止攻击 恒为假 → 没有任何地方会产出 defend。
+			# 原来的 actor.defending / actor.防御回复（防御 +50 与「下回合回复 5% HP」）一起删掉；
+			# 这里只留一声明确的报错，免得万一有新代码产出 defend 时静默掉进下面的攻击分支。
+			push_error("Flow.resolveAction：收到已退役的 defend 行动（禁止攻击恒为假，应有新代码接错了）")
 			return 空
 		"heal":
 			var tgt: Dictionary = action.target

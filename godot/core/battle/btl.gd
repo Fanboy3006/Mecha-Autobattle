@@ -1,4 +1,5 @@
 ## 60-战斗-1-方针与记录.js：战斗记录、气势、嘲讽 / 镜甲 / 自爆、敌方词条的回合效果、战术卡牌（牌池 / 发牌 / 打牌）。
+## ★ R1：32 张战术牌的**效果本体**搬到了 core/battle/card_effects.gd（CARD_OPS 声明式表 + 通用算子执行器）；这里只管牌池 / 发牌 / 打牌流程。
 ## 「行动方针」已取消（作者 2026-10-15）：当前方针恒为「全军突击」，禁止攻击恒为假；
 ## 旧的「设战术 / 预约战术」不迁移（ARGON 2026-10-16：由战术牌 CMD_ALL_OUT / CMD_COVER 取代）。
 class_name Btl
@@ -596,12 +597,6 @@ static func 卡牌加标定(目标: Variant, 层数: Variant, 来源名: Variant
 		d.来源们 = J.concat(J.or_(d.get("来源们"), []), [{"键": "CARD", "名": 来源名, "方": "ally", "怎么来的": "战术牌"}])
 	return float(d.层数)
 
-static func _血比(u: Dictionary) -> float:
-	return float(u.hp) / float(u.maxHp)
-
-static func _回血(u: Dictionary, 比: float) -> void:
-	u.hp = minf(float(u.maxHp), float(u.hp) + J.round(float(u.maxHp) * 比))
-
 static func 打战术牌(ctx: Variant, cardId: Variant) -> Dictionary:
 	if ctx == null:
 		return {"成功": false, "原因": "无战斗上下文"}
@@ -620,187 +615,8 @@ static func 打战术牌(ctx: Variant, cardId: Variant) -> Dictionary:
 	if 气势前 < 耗:
 		return {"成功": false, "原因": "气势不足"}
 	ctx.气势 = maxf(0.0, minf(气势上限(), 气势前 - 耗 + 回))
-	var allies := Units.livingOf("ally", ctx)
-	var enemies := Units.livingOf("enemy", ctx)
-	var src := "卡牌:%s" % card.id
-	var 势 := func(u): return 提取单位三层信息(u).势力
-	match card.id:
-		"C_HEAVY_1":
-			for u in allies:
-				if Units.unitRow(u) == Fm.ROW_FRONT or Reach.职业是(u, "重装"):
-					换同源增益(u, src, {"def": 40.0, "剩余": 1.0})
-					加卡牌护盾(u, J.round(float(u.maxHp) * 0.15))
-		"C_HEAVY_2":
-			var 重装们 := allies.filter(func(u): return Reach.职业是(u, "重装"))
-			var 目标们 := 重装们
-			if 重装们.is_empty():
-				目标们 = []
-				if not allies.is_empty():
-					var 排 := allies.duplicate()
-					J.sort(排, func(a, b): return _血比(a) - _血比(b))
-					目标们 = [排[0]]
-			for u in 目标们:
-				_回血(u, 0.25)
-				换同源增益(u, src, {"def": 30.0, "剩余": 2.0})
-		"C_GUARD_1":
-			for u in allies:
-				if Reach.职业是(u, "近卫"):
-					换同源增益(u, src, {"dmgMul": 0.35, "hit": 15.0, "剩余": 1.0})
-		"C_GUARD_2":
-			for u in allies:
-				换同源增益(u, src, {"meleeDmgMul": 0.20, "剩余": 1.0})
-				if Reach.职业是(u, "近卫"):
-					减单位大招冷却(u, 1.0)
-		"C_VANG_1":
-			for u in allies:
-				if Reach.职业是(u, "尖兵"):
-					换同源增益(u, src, {"eva": 25.0, "hit": 15.0, "crit": 15.0, "剩余": 1.0})
-		"C_VANG_2":
-			for u in allies:
-				if Reach.职业是(u, "尖兵"):
-					换同源增益(u, src, {"crit": 35.0, "dmgMul": 0.20, "剩余": 1.0})
-		"C_SNIPE_1":
-			for u in allies:
-				if Reach.职业是(u, "狙击"):
-					换同源增益(u, src, {"hit": 40.0, "crit": 20.0, "dmgMul": 0.20, "剩余": 1.0})
-		"C_SNIPE_2":
-			var 带标 := enemies.filter(func(e): return Calc.标定经济层数(e) > 0)
-			for e in (带标 if not 带标.is_empty() else enemies):
-				换同源增益(e, src, {"def": -30.0, "剩余": 2.0})
-				卡牌加标定(e, 3.0, card.名, true)
-		"C_CMD_1":
-			for u in allies:
-				换同源增益(u, src, {"hit": 10.0, "剩余": 1.0})
-		"C_CMD_2":
-			var 排 := enemies.duplicate()
-			J.sort(排, func(a, b):
-				var d := float(b.hp) - float(a.hp)
-				return d if d != 0 else float(a.slot) - float(b.slot))
-			var 靶集 := enemies.filter(func(e): return Units.unitRow(e) == Fm.ROW_BACK)
-			if not 排.is_empty() and not J.inc(靶集, 排[0]):
-				靶集.append(排[0])
-			for e in 靶集:
-				卡牌加标定(e, 1.0, card.名)
-				换同源增益(e, src, {"hit": -15.0, "剩余": 1.0})
-		"C_SPEC_1":
-			for e in enemies:
-				换同源增益(e, "卡牌扰乱", {"hit": -20.0, "turns": 1.0, "剩余": 1.0})
-		"C_SPEC_2":
-			var 带标 := enemies.filter(func(e): return Calc.标定经济层数(e) > 0)
-			for e in (带标 if not 带标.is_empty() else enemies):
-				换同源增益(e, "破甲引信", {"def": -25.0, "turns": 2.0, "剩余": 2.0})
-		"F_SEED_1":
-			for u in allies:
-				if 势.call(u) == "卫星国防军" or Units.unitRow(u) == Fm.ROW_FRONT:
-					加卡牌护盾(u, J.round(float(u.maxHp) * 0.15))
-		"F_SEED_2":
-			for u in allies:
-				if 势.call(u) == "卫星国防军":
-					换同源增益(u, src, {"dmgMul": 0.30, "eva": 20.0, "剩余": 1.0})
-					减单位大招冷却(u, 1.0)
-		"F_METEOR_1":
-			for u in allies:
-				if 势.call(u) == "流星小队":
-					换同源增益(u, src, {"eva": 25.0, "dmg": 25.0, "剩余": 1.0})
-		"F_METEOR_2":
-			for u in allies:
-				if 势.call(u) == "流星小队":
-					换同源增益(u, src, {"crit": 30.0, "dmgMul": 0.30, "剩余": 1.0})
-		"F_MOON_1":
-			if not allies.is_empty():
-				var 排 := allies.duplicate()
-				J.sort(排, func(a, b):
-					var d := _血比(a) - _血比(b)
-					return d if d != 0 else float(a.slot) - float(b.slot))
-				_回血(排[0], 0.30)
-		"F_MOON_2":
-			for u in allies:
-				if 势.call(u) == "月球王国":
-					换同源增益(u, src, {"dmgMul": 0.25, "def": 20.0, "剩余": 1.0})
-		"F_CB_1":
-			for u in allies:
-				if 势.call(u) == "天人":
-					var 状 := Fac.势力状态(u, "天人")
-					var 回合 := float(ctx.turn) if J.truthy(ctx.turn) else 1.0
-					状.激活 = true
-					状.剩余回合 = 2.0
-					状.启动回合 = 回合
-					状.结束回合 = 回合 + 2.0
-					if J.truthy(ctx.get("战况计数")) and _是(u, "CB1"):
-						ctx.战况计数.刹那命中或TA = float(ctx.战况计数.刹那命中或TA) + 1.0
-					换同源增益(u, src, {"eva": 15.0, "dmgMul": 0.30, "剩余": 2.0})
-		"F_CB_2":
-			for u in allies:
-				if 势.call(u) == "天人":
-					加卡牌护盾(u, J.round(float(u.maxHp) * 0.25))
-					减单位大招冷却(u, 1.0)
-		"F_ATX_1":
-			for u in allies:
-				if 势.call(u) == "ATX":
-					换同源增益(u, src, {"eva": 25.0, "crit": 20.0, "剩余": 1.0})
-		"F_ATX_2":
-			for u in allies:
-				减单位大招冷却(u, 2.0)
-				换同源增益(u, src, {"hit": 25.0, "剩余": 1.0})
-		"F_MITH_1":
-			for u in allies:
-				if 势.call(u) == "秘银":
-					换同源增益(u, src, {"eva": 25.0, "hit": 15.0, "剩余": 1.0})
-		"F_MITH_2":
-			for u in allies:
-				if 势.call(u) == "秘银":
-					换同源增益(u, src, {"dmgMul": 0.25, "剩余": 1.0})
-			for e in enemies:
-				卡牌加标定(e, 1.0, card.名)
-		"U_CB1":
-			for u in allies:
-				if _是(u, "CB1"):
-					减单位大招冷却(u, 99.0, true)
-					换同源增益(u, src, {"dmgMul": 0.40, "hit": 25.0, "剩余": 1.0})
-		"U_CB2":
-			for u in allies:
-				if _是(u, "CB2"):
-					换同源增益(u, src, {"crit": 40.0, "dmgMul": 0.35, "剩余": 1.0})
-		"U_M1":
-			for u in allies:
-				_回血(u, 0.15)
-				换同源增益(u, src, {"hit": 15.0, "剩余": 1.0})
-				if _是(u, "M1"):
-					减单位大招冷却(u, 2.0)
-		"U_A1":
-			for u in allies:
-				if _是(u, "A1"):
-					减单位大招冷却(u, 99.0, true)
-					换同源增益(u, src, {"dmgMul": 0.50, "剩余": 1.0})
-		"U_S1":
-			for u in allies:
-				_回血(u, 0.25)
-				u.debuffs = []
-				u.armorCut = 0.0
-				if J.is_arr(u.get("buffs")):
-					u.buffs = u.buffs.filter(func(b): return not (b != null and (J.num0(b.get("hit")) < 0 or J.num0(b.get("def")) < 0)))
-				换同源增益(u, src, {"dmgMul": 0.25, "剩余": 1.0})
-		"U_B1":
-			for u in allies:
-				if _是(u, "B1"):
-					加卡牌护盾(u, J.round(float(u.maxHp) * 0.20))
-					换同源增益(u, src, {"dmgMul": 0.25, "剩余": 1.0})
-					var 同路敌 = J.find(enemies, func(e): return Fm.colOfSlot(e.slot) == Fm.colOfSlot(u.slot))
-					if 同路敌 == null and not enemies.is_empty():
-						同路敌 = enemies[0]
-					if 同路敌 != null:
-						卡牌加标定(同路敌, 2.0, card.名)
-		"CMD_ALL_OUT":
-			ctx.当前战术 = "总攻"
-			for u in allies:
-				换同源增益(u, src, {"dmgMul": 0.35, "hit": 15.0, "剩余": 1.0})
-				减单位大招冷却(u, 1.0)
-		"CMD_COVER":
-			ctx.当前战术 = "掩护"
-			for u in allies:
-				加卡牌护盾(u, J.round(float(u.maxHp) * 0.25))
-				u.debuffs = []
-				u.armorCut = 0.0
+	# 效果按声明式表执行（core/battle/card_effects.gd 的 CARD_OPS）
+	var 效果摘要 := CardEffects.execute(ctx, card)
 	card.剩余次数 = (J.num(card.剩余次数) if card.get("剩余次数") != null else 1.0) - 1.0
 	var 冷 := J.num0(card.get("冷却"))
 	card.当前冷却 = 冷 if 冷 != 0 else 1.0
@@ -817,4 +633,4 @@ static func 打战术牌(ctx: Variant, cardId: Variant) -> Dictionary:
 		"效果说明": card.get("效果说明"), "回合": ctx.turn if J.truthy(ctx.turn) else 1.0,
 	})
 	检查条件发牌(ctx, "打战术牌", {"cardId": card.id})
-	return {"成功": true, "牌": card, "气势": ctx.气势}
+	return {"成功": true, "牌": card, "气势": ctx.气势, "效果摘要": 效果摘要}

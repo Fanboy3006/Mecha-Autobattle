@@ -33,3 +33,7 @@ func names() -> Array:
 ## 全部常量（Db.install 用；调用方只读）
 func consts() -> Dictionary:
 	return _consts
+
+## 与 consts() 是同一份（GameCatalog 的入参）；留这个名字是为了让「表」与「领域目录」两处叫法对得上
+func tables() -> Dictionary:
+	return _consts

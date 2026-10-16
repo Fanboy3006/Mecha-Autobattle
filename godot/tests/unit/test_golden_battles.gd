@@ -3,7 +3,7 @@
 ## M2：用 Battle Core 逐场重跑并与期望比对（事件逐条 + 每回合状态摘要 + 结果；全部通过 = 战斗玩法迁移完成）。
 extends RefCounted
 
-const GROUPS := ["default", "faction", "character", "card_baseline"]
+const GROUPS := ["default", "faction", "character", "card_baseline", "relic"]
 const EXPECTED_SIGNATURE := "r1:05a9cbf9"
 
 func run(t) -> void:
@@ -23,7 +23,7 @@ func run(t) -> void:
 		t.ok(meta.get("rulesSignature", "") == EXPECTED_SIGNATURE, "%s 来自封存的 JS 参考版" % g)
 		total += samples.size()
 		all_samples.append_array(samples)
-	t.ok(total == 138, "黄金样例共 %d 场" % total)
+	t.ok(total == 168, "黄金样例共 %d 场" % total)
 
 	# 比对器自检：样例与自身比对 = 相同；改动一个伤害值 = 报出第一处分叉
 	var s: Dictionary = all_samples[0]

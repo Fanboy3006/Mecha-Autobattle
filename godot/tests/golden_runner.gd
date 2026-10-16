@@ -9,7 +9,9 @@ const DISPLAY_ONLY := ["文本", "效果说明", "触发说明"]
 static func run(sample: Dictionary) -> Dictionary:
 	var 输入: Dictionary = GoldenCompare.decode(sample["输入"])
 	var 命令: Array = GoldenCompare.decode(sample["命令"])
-	var 选项: Dictionary = J.merged(输入.get("选项", {}), {"方针": {}, "手牌装填": Btl.手牌装填_JS参考})
+	# 藏品（M3-Prep）：黄金样例把这一局的藏品 id 数组放在 `输入.藏品`（JS 那边是 `肉鸽.RUN.藏品`，
+	# Godot 侧走 `选项.藏品` —— DEBT-06）。没有这个键的样例 = 空数组 = 一个字段都不动。
+	var 选项: Dictionary = J.merged(输入.get("选项", {}), {"方针": {}, "手牌装填": Btl.手牌装填_JS参考, "藏品": 输入.get("藏品")})
 	var ctx := Setup.开局(输入["我方"], 输入["敌方规格"], 输入["种子"], null, 选项)
 	var 摘要们 := [摘要(ctx)]
 	var 顶 := maxf(float(Db.T.MAX_TURN), J.num0(ctx.get("回合上限")) if J.truthy(ctx.get("回合上限")) else float(Db.T.MAX_TURN)) + 2.0

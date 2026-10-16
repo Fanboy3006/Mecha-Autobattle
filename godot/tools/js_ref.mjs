@@ -60,7 +60,11 @@ function 声明名们(行) {
   return 名们;
 }
 
-/** 列出 L0/L1/L2/L3 片段里的顶层常量名（数据候选） */
+/** 列出 L0/L1/L2/L3 片段里的顶层常量名 + 顶层函数名（数据候选 / 给导出脚本用的纯函数口子）。
+ *  ★ 2026-10-13（M3-Prep）：`export_run_golden.mjs` 要调 JS 参考版里的 **模块内纯函数**
+ *    （如 `掷战后券` / `随机券`，它们只以 `function 名(...)` 声明，没挂到 `__game`）——
+ *    所以这里连 `^function 名` 一起收。**对 `export_data.mjs` 零影响**：那边遇到函数直接 `continue`
+ *    （连 `未导出` 清单都不记），所以 `data/js/**` 与 manifest 一个字节都不变。 */
 function 顶层常量(jsRoot) {
   const shell = readFileSync(join(jsRoot, 'src', 'shell.html'), 'utf8');
   const files = [...shell.matchAll(/^<!-- @include js\/(\S+) -->/gm)].map(m => m[1])
@@ -71,6 +75,7 @@ function 顶层常量(jsRoot) {
     for (const m of src.matchAll(/^(?:const|let|var)\s+([^\n]*)/gmu)) {
       for (const name of 声明名们(m[1])) out.push({ name, module: f });
     }
+    for (const m of src.matchAll(/^function\s+([\p{L}_$][\p{L}\p{N}_$]*)/gmu)) out.push({ name: m[1], module: f });
   }
   return out;
 }

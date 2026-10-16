@@ -97,6 +97,10 @@ static func 开局(我方编成: Array, 敌方编成: Array, 种子: Variant, �
 		"log": [], "_rng_at": [], "result": null, "again": [],
 		"波次": 波次,
 	}
+	# 藏品（93-藏品.js 的「开战应用」段）：**与 JS 同一时机** —— ctx 造好后、应用全场词条之前
+	# （60-战斗-3-开局与simulate.js:131 → 134）。藏品 id 数组从 `选项.藏品` 来（DEBT-06：不读全局 `肉鸽.RUN`）；
+	# 不传 / 空数组 → 立刻返回，一个字段都不动（既有黄金样例逐字不变）。
+	RelicBattle.apply_on_battle_start(ctx, J.or_(选项.get("藏品") if 选项 is Dictionary else null, []))
 	Btl.应用全场词条(ctx)
 	for u in Units.livingUnits(ctx):
 		u.weapons = (u.weapons as Array).map(func(e): return J.merged(e, {"cd": 0.0}))
