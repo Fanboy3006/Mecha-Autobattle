@@ -53,6 +53,8 @@ func refresh() -> void:
 func _build() -> void:
 	name = "主菜单"
 	UiTheme.占满(self)
+	self.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	self.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var 居中 := CenterContainer.new()
 	居中.name = "菜单居中"
 	UiTheme.占满(居中)
@@ -94,7 +96,7 @@ func _build() -> void:
 	种子行.add_child(_种子输入)
 	var 开局键 := UiTheme.建按钮(分队列, "开这一局", _点开局)
 	开局键.name = "开局按钮"
-	开局键.tooltip_text = "立刻开一局新肉鸽，进第 1 层大地图"
+	开局键.tooltip_text = "立刻开一局新肉鸽：开局先弹【招募】窗（名册是空的，先招 1 台再进第 1 层大地图）"
 	_分队说明 = UiTheme.建说明(分队列, "", UiTheme.字号_小, UiTheme.次要文字)
 	_分队面板.visible = false
 
@@ -113,12 +115,28 @@ func _点开始新() -> void:
 func _点快速战斗() -> void:
 	if session == null:
 		return
+	# ★ DECK-2 / DECK-3：界面入口开的就是**单机牌组（阶段制）**那一套规则
+	#   （上排专属牌 / 下排公有牌 / 单机战意 / 0.5 秒一步的即时演出）。
+	#   ★ 测试与旧调用一律**不经过这里**（它们直接 `GameSession.new()` + `start_quick_battle(种子)`），
+	#     所以老路径的 2000+ 项断言与 168 场黄金样例一个字都不变。
+	session.set_unit_deck_mode(true)
 	session.start_quick_battle()
 
 func _点开局() -> void:
 	if session == null:
 		return
-	session.start_new_run(_读种子(), _选中的分队())
+	# ★ DECK-2：这一局也走单机牌组（战斗时上排专属牌 + 下排公有牌；战后三选一只出公有牌）。
+	session.set_unit_deck_mode(true)
+	if not session.start_new_run(_读种子(), _选中的分队()):
+		return
+	# ★ 修复「选完小队没有招募页面」（2026-10-16 作者试玩反馈）：
+	#   开局会发 3 张招募券，可名册是**空的** —— 不开招募窗就直接进大地图，玩家会 0 机体裸奔。
+	#   所以这里开完局立刻请求弹「招募」。
+	#   ★ 走**视图层信号**（`_接视图信号` 把它接到 `boot.打开弹窗`），
+	#     不改门面 `start_new_run()` 的默认 `screen = "map"` / `modal = {}`
+	#     —— `test_session_flow.gd:264/956` 与 `test_session_run.gd:72` 钉着那两条断言。
+	if session.ticket_count() > 0:
+		请求弹窗.emit("招募", {})
 
 func _读种子() -> int:
 	var 文 := _种子输入.text.strip_edges()

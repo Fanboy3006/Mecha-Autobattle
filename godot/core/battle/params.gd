@@ -291,7 +291,7 @@ static func 兰斯伤害倍率(att: Variant, def: Variant, w: Variant, o: Varian
 		m *= 1.0 + 后排远程增伤()
 	if not (o != null and J.truthy(o.get("不带掩护"))):
 		var 掩护 := 兰斯掩护减免(def, w, ctx, o.get("被挡") if o != null else null)
-		if 掩护 > 0 and not Reach.职业是(att, "狙击") and not FacMith.秘银取消被挡(att, def):
+		if 掩护 > 0 and not Reach.职业是(att, "狙击") and not FacMith.秘银取消被挡(att, def, ctx):
 			m *= 1.0 - 掩护
 	return m
 
@@ -423,6 +423,42 @@ static func 动作QTE开() -> bool:
 static func 战术卡牌参数() -> Dictionary:
 	return _块("战术卡牌")
 
+## 手牌上限：`手牌总上限` / `初始手牌上限` 等（数据里是数；没有 / 是 0 就给默认值）
+static func 手牌上限(_ctx: Variant, 键: String = "手牌总上限", 默认值: int = 10) -> int:
+	var v = 战术卡牌参数().get(键)
+	if (v is float or v is int) and not is_nan(float(v)) and float(v) > 0:
+		return int(v)
+	return 默认值
+
+# ---------------- 秘银 v0.2（MITH-1，默认关，保护黄金样例） ----------------
+## 秘银 v0.2 底层扩展总开关。三处任一是真就是开：ctx.选项.秘银v02 / ctx.选项.大招牌化 /
+## 数据里的 `战斗结构.大招牌化.开`。默认 false —— 关着的时候 MITH-1 的新字段 / 新计数 / 新日志
+## 一条都不产出（既有 1313 项门禁与 168 场黄金样例逐字不变）。
+static func 秘银v02开(ctx: Variant) -> bool:
+	if ctx is Dictionary:
+		var 选 = ctx.get("选项")
+		if 选 is Dictionary:
+			if J.truthy(选.get("秘银v02")) or J.truthy(选.get("大招牌化")):
+				return true
+	var 块 = _S().get("大招牌化")
+	return 块 is Dictionary and J.truthy(块.get("开"))
+
+## ★ DECK-4：ATX v0.2 卡表开关。默认**跟着单机牌组走**（`单机牌组_开` 真 = 真）；
+## 显式 `选项.ATXv02 = false` / `选项.ATXv02 = true`，或数据里的 `战斗结构.ATXv02.开` 都能单独盖掉。
+## 关着的时候 `FacAtx` 一张牌都不装、一个算子都不执行（既有 168 场黄金样例与全部旧测试逐字不变）。
+static func ATXv02开(ctx: Variant = null) -> bool:
+	if ctx is Dictionary:
+		var 选 = ctx.get("选项")
+		if 选 is Dictionary:
+			if 选.get("ATXv02") == false:
+				return false
+			if J.truthy(选.get("ATXv02")):
+				return true
+	var 块 = _S().get("ATXv02")
+	if 块 is Dictionary and 块.get("开") == false:
+		return false
+	return 单机牌组_开(ctx)
+
 static func 战术卡牌开(ctx: Variant = null) -> bool:
 	if ctx is Dictionary:
 		if ctx.get("战术卡牌开") == false:
@@ -435,3 +471,78 @@ static func 战术卡牌开(ctx: Variant = null) -> bool:
 		if 选 is Dictionary and 选.get("战术卡牌") == true:
 			return true
 	return J.truthy(J.g(_S().get("战术卡牌"), "开"))
+
+# ---------------- 单机牌组（DECK-1：阶段制 / 战意 / 主武器卡 / 七职业，默认关） ----------------
+## 单机牌组的总开关。三处任一是真就是开：
+##   ctx.单机牌组 == true / ctx.选项.单机牌组 == true / 数据里的 战斗结构.单机牌组.开 == true。
+## 默认 false —— 关着的时候这一整套新字段 / 新日志 / 新消耗一条都不产出，
+## 既有 168 场黄金样例与全部旧测试因此逐字不变。
+static func 单机牌组参数() -> Dictionary:
+	return _块("单机牌组")
+
+static func 单机牌组_开(ctx: Variant = null) -> bool:
+	if ctx is Dictionary:
+		if J.truthy(ctx.get("单机牌组")):
+			return true
+		var 选 = ctx.get("选项")
+		if 选 is Dictionary and J.truthy(选.get("单机牌组")):
+			return true
+	return 单机牌组参数().get("开") == true
+
+static func _单机数(键: String, 默认值: float) -> float:
+	var v := J.num(单机牌组参数().get(键))
+	return v if is_finite(v) else 默认值
+
+static func 单机牌组_维修职业() -> String:
+	var v = 单机牌组参数().get("维修职业")
+	return str(v) if J.truthy(v) else "维修"
+
+static func 单机牌组_维修机体() -> Array:
+	var v = 单机牌组参数().get("维修机体")
+	return v if v is Array else ["B3", "M5", "M3"]
+
+static func 单机牌组_不转维修机体() -> Array:
+	var v = 单机牌组参数().get("不转维修机体")
+	return v if v is Array else ["A5"]
+
+## ★ 战意（Will）：每个我方单位自己的资源，从 0 起算、上限 100。
+static func 战意上限() -> float: return _单机数("战意上限", 100.0)
+static func 开场战意() -> float: return _单机数("开场战意", 0.0)
+static func 回合初战意() -> float: return _单机数("回合初战意", 5.0)
+static func 命中战意() -> float: return _单机数("命中战意", 2.0)
+static func 被击战意() -> float: return _单机数("被击战意", 2.0)
+static func 闪避战意() -> float: return _单机数("闪避战意", 2.0)
+static func 击破战意() -> float: return _单机数("击破战意", 10.0)
+
+## ★ 上排（单机专属牌）与下排（全队公有牌）的容量标尺。
+static func 专属起手() -> float: return _单机数("专属起手", 2.0)
+static func 专属每回合抽() -> float: return _单机数("专属每回合抽", 1.0)
+static func 专属手牌上限() -> float: return _单机数("专属手牌上限", 4.0)
+static func 公有起手() -> float: return _单机数("公有起手", 3.0)
+static func 公有每回合抽() -> float: return _单机数("公有每回合抽", 1.0)
+static func 公有手牌自然上限() -> float: return _单机数("公有手牌自然上限", 6.0)
+static func 公有手牌硬上限() -> float: return _单机数("公有手牌硬上限", 8.0)
+static func 指挥公有减费() -> float: return _单机数("指挥公有减费", 5.0)
+
+## 别名（带完整前缀，方便调用点一眼看出属于哪套规则）
+static func 单机牌组_战意上限() -> float: return 战意上限()
+static func 单机牌组_开场战意() -> float: return 开场战意()
+static func 单机牌组_回合初战意() -> float: return 回合初战意()
+static func 单机牌组_命中战意() -> float: return 命中战意()
+static func 单机牌组_被击战意() -> float: return 被击战意()
+static func 单机牌组_闪避战意() -> float: return 闪避战意()
+static func 单机牌组_击破战意() -> float: return 击破战意()
+static func 单机牌组_专属起手() -> float: return 专属起手()
+static func 单机牌组_专属每回合抽() -> float: return 专属每回合抽()
+static func 单机牌组_专属手牌上限() -> float: return 专属手牌上限()
+static func 单机牌组_公有起手() -> float: return 公有起手()
+static func 单机牌组_公有每回合抽() -> float: return 公有每回合抽()
+static func 单机牌组_公有手牌自然上限() -> float: return 公有手牌自然上限()
+static func 单机牌组_公有手牌硬上限() -> float: return 公有手牌硬上限()
+static func 单机牌组_指挥公有减费() -> float: return 指挥公有减费()
+
+## 单机牌组模式下这台单位算哪个职业（键或单位都认）。
+## 非模式：与原来完全一样（读 tags.战斗分类 / 职业字段 / 模板）。
+## 模式：维修机体（维诺 / 苏菲 / Iris 等带治疗武器、且不在「不转维修」名单里）归【维修】。
+static func 单机牌组_职业(键或单位: Variant, ctx: Variant = null) -> String:
+	return Units.unit_class(键或单位, ctx)

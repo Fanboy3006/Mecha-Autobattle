@@ -216,6 +216,11 @@ static func enemyAction(actor: Dictionary, ctx: Dictionary) -> Variant:
 	var foes := Units.livingOf(Units.otherSide(actor.side), ctx)
 	if foes.is_empty():
 		return null
+	# ★ MITH-2：「ECS 隐形」—— 到杨下一次攻击之前，敌人不能选它为目标。
+	#   只有秘银 v0.2 会给单位打 `_隐身`；没有隐身单位时这里一个都不筛（既有路径逐字不变）。
+	var 可见 := foes.filter(func(t): return not J.truthy(t.get("_隐身")))
+	if not 可见.is_empty():
+		foes = 可见
 	var pool := weaponPool(actor, ctx)
 	if pool.is_empty():
 		return null
@@ -237,5 +242,8 @@ static func enemyAction(actor: Dictionary, ctx: Dictionary) -> Variant:
 		return null
 	return {"kind": "attack", "weapon": pick.entry.t, "target": pick.target, "expected": pick.exp, "slot": pick.get("slot"), "hit": pick.get("hit"), "entry": pick.entry, "被挡": J.truthy(pick.get("被挡"))}
 
-static func hasOverwatch(u: Dictionary) -> bool:
+static func hasOverwatch(u: Dictionary, ctx: Variant = null) -> bool:
+	# ★ DECK-1：单机牌组模式下压制射击整条链路短路（不查表、不触发）。
+	if Params.单机牌组_开(ctx):
+		return false
 	return u.side == "enemy" and J.inc(Db.T.ENEMY_OVERWATCH, u.key)

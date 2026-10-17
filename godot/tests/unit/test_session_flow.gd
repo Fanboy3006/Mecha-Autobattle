@@ -10,6 +10,7 @@
 ##   段 9 ★ D-08：推进剂见底 → 追击战（胜利 / 失败都换层；「出口那一步」才过守军闸）
 ##   段 9b ★★ D-10：追击战的**触发时机**对齐 JS「这一格结算完才会触发追击战」（战斗格先打节点战）
 ##   段 10 ★ D-09：招募写进 `lineup` 的位号是**数字**（不是空串）
+##   段 14 ★ UX-2：发牌来源机体（`source_unit_text` / `source_slots` / 发牌日志的来源字段 / 零随机数）
 extends RefCounted
 
 const 肉鸽种子 := 20261013
@@ -33,6 +34,10 @@ func run(t) -> void:
 	_追击战(t)
 	_追击战D10(t)
 	_招募位号是数字(t)
+	_UX1_战后回地图清战斗(t)
+	_UX1_编队移动互换(t)
+	_UX1_点脚下格不污染错误(t)
+	_UX2_发牌来源机体(t)
 
 # ==========================================================================================
 # 段 1：快速战斗全流程
@@ -1684,3 +1689,379 @@ func _招募位号是数字(t) -> void:
 			占位 += 1
 	t.ok(占位 == s.run_state.lineup.size(),
 		"★ D-09：编队屏占位数 %d == 出击名单条数 %d（位号唯一 → 不再串台）" % [占位, s.run_state.lineup.size()])
+
+# ==========================================================================================
+# 段 11：★ UX-1（2026-10-19）—— 战后回大地图必须清掉战斗上下文（作者试玩反馈第 2 条）
+#
+#   反馈原文：「走地图的时候也需要可以打开查看编队」（他在 `screen = map` 连点 11 次灰掉的
+#   顶栏按钮）。根因 = 结算屏点「继续（回大地图）」只发了切屏信号，`battle_ctx` 一直挂着，
+#   于是 `in_battle()` 永真、顶栏「编队 / 招募 / 牌库」被永久锁死。
+# ==========================================================================================
+
+func _UX1_战后回地图清战斗(t) -> void:
+	var s := GameSession.new()
+	s.存档路径 = 存档A
+	t.ok(s.start_new_run(肉鸽种子 + 71, "混编"), "★ UX-1 ①：开一局（屏幕=%s）" % s.screen)
+	_补强名册(s)
+	_清待选与券(s)
+	if not _走到战斗格开战(s, 0):
+		t.ok(false, "★ UX-1 ①：走不到战斗格 / 开不了战 —— 断言跑不了")
+		return
+	t.ok(s.in_battle(), "★ UX-1 ①：战斗真的开起来了（`in_battle() == true`）")
+	# ---- 打一半不许被「回大地图」悄悄丢掉（那就成了孤儿战斗）----
+	var 半 := s.return_to_map_after_battle()
+	t.ok(not bool(半.get("ok", true)) and s.in_battle(),
+		"★★ UX-1 ①：**打一半**调 `return_to_map_after_battle()` 被拒（%s），战斗上下文还在（不产生孤儿战斗）"
+		% str(半.get("为什么", "")))
+	s.auto_finish_battle()
+	var 结算 := s.finish_battle_and_settle()
+	t.ok(str(s.screen) == "result" and s.in_battle(),
+		"★ UX-1 ①：结算完停在结算屏、battle_ctx 仍在（%s / in_battle=%s）" % [s.screen, str(s.in_battle())])
+	t.ok(结算 is Dictionary, "★ UX-1 ①：结算返回字典（%s）" % ("胜" if bool((结算 as Dictionary).get("胜", false)) else "结算完"))
+	# 把战后带出来的「三选一 / 招募券」决定做完（= 玩家关掉那些弹窗），否则顶栏本来就该锁着
+	_清待选与券(s)
+	var 前错误 := s.errors.size()
+	var 回 := s.return_to_map_after_battle()
+	t.ok(bool(回.get("ok", false)), "★★ UX-1 ①：结算完之后 `return_to_map_after_battle()` 成功（清了战斗上下文 = %s）"
+		% str(回.get("清了战斗上下文", false)))
+	t.ok(not s.in_battle(), "★★ UX-1 ①：回大地图之后 `session.in_battle() == false`（battle_ctx 已清空）")
+	t.ok(str(s.screen) == "map", "★★ UX-1 ①：屏幕回到 map（真实值 %s）" % s.screen)
+	t.ok(not s.pending_battle_confirm, "★ UX-1 ①：不是战前编队确认态（`pending_battle_confirm == false`）")
+	t.ok(s.errors.size() == 前错误, "★ UX-1 ①：这次回地图一条错误都没产生（%d → %d 条）" % [前错误, s.errors.size()])
+	# 清掉 ctx 之后再结算 → 明确拒绝（不会拿旧 ctx 原地反复结算）
+	var 又 := s.finish_battle_and_settle()
+	t.ok(not bool(又.get("ok", true)), "★ UX-1 ①：ctx 清掉之后 `finish_battle_and_settle()` 被拒（%s）"
+		% str(又.get("为什么", "")))
+	# 回到大地图之后还能照常走格子 / 再打一场（状态机没被卡住）
+	var 可走 := MapNavigator.reachable_cells(s.run_state)
+	t.ok(not 可走.is_empty(), "★ UX-1 ①：回地图之后还能走（可达 %d 格）" % 可走.size())
+
+## 把「三选一待选牌」与「没决定的招募券」都处理完（段 11 / 段 12 的夹具；走门面公开口子）。
+func _清待选与券(s: GameSession) -> int:
+	var n := 0
+	while s.run_state != null and not s.run_state.pending_card_picks.is_empty() and n < 16:
+		if not s.pick_tactical_card(str(s.run_state.pending_card_picks[0])):
+			break
+		n += 1
+	var 丢 := 0
+	while s.ticket_count() > 0 and 丢 < 16:
+		if not bool(s.discard_ticket(0).get("ok", false)):
+			break
+		丢 += 1
+	return n + 丢
+
+# ==========================================================================================
+# 段 12：★★ UX-1 —— `set_lineup_slot` 的重复占格 Bug（作者试玩反馈第 3 条的根因）
+#
+#   实测症状：把 `前1` 的机体挪到 `前2`、或与 `前2` 互换时，同一台机体在 `lineup` 里又多出
+#   一条记录（`S1` 占 3 格），`lineup.size()` 涨到 8 > 上限 6 → 画面上还有空格却永远报
+#   「出击位满了（上限 6）」，日志里连报 17 次卡死 12 分钟。
+# ==========================================================================================
+
+func _UX1_编队移动互换(t) -> void:
+	var s := GameSession.new()
+	s.存档路径 = 存档B
+	t.ok(s.start_new_run(肉鸽种子 + 72, "混编"), "★ UX-1 ②：开一局（编队段）")
+	_补强名册(s)
+	# ★ 段 12 需要「名册比出击上限多几台」才有「未上阵的机体」可换（`_补强名册` 只补到 6 台）。
+	var 上限0 := RosterManager.deploy_limit(s.run_state)
+	var 表: Array = Db.T.get("ALLY_T") if Db.T.get("ALLY_T") is Array else []
+	for e in 表:
+		if s.run_state.roster.size() >= 上限0 + 2:
+			break
+		if not (e is Dictionary):
+			continue
+		var 补键 := str((e as Dictionary).get("mech", ""))
+		if 补键.is_empty() or s.run_state.roster.has(补键):
+			continue
+		s.run_state.roster[补键] = {"key": 补键, "lv": 30, "hpRatio": 1.0}
+	var 位们: Array = []
+	for x in s.lineup_slots():
+		位们.append(str(x.get("位名", "")))
+	var 键们: Array = []
+	for k in s.run_state.roster.keys():
+		键们.append(str(k))
+	t.ok(键们.size() >= 3 and 位们.size() >= 2,
+		"★ UX-1 ②：名册 %d 台 · 格位 %d 个（出击上限 %d）" % [键们.size(), 位们.size(),
+			RosterManager.deploy_limit(s.run_state)])
+	var 甲 := str(键们[0])
+	var 前1 := str(位们[0])
+	var 前2 := str(位们[1])
+	t.ok(s.set_lineup_slot(甲, 前1), "★ UX-1 ②：先把 %s 摆到 %s" % [甲, 前1])
+	var 错前 := s.errors.size()
+	# ---- ① 已在「前1」的机体挪到「前2」：不许报满、不许重复 ----
+	t.ok(s.set_lineup_slot(甲, 前2), "★★ UX-1 ②：把已在 %s 的 %s 挪到 %s **成功**（不被「出击位满了」拦）" % [前1, 甲, 前2])
+	t.ok(_编队无重复(s), "★★ UX-1 ②：挪完之后 `lineup` 里同一台 / 同一格都只有 1 条（%s）" % str(s.run_state.lineup))
+	t.ok(_位名上的键(s, 前2) == 甲 and _位名上的键(s, 前1) != 甲,
+		"★★ UX-1 ②：%s 现在真的在 %s（不在 %s）" % [甲, 前2, 前1])
+	# ---- ② 连续调换 20 次：一次都不许假「满」，一次都不许重复 ----
+	var 全成 := true
+	var 有重复 := false
+	for i in 20:
+		var 目标 := 前2 if i % 2 == 0 else 前1
+		if not s.set_lineup_slot(甲, 目标):
+			全成 = false
+		if not _编队无重复(s):
+			有重复 = true
+	t.ok(全成, "★★ UX-1 ②：连续调换 20 次（%s ↔ %s）**全部成功** —— 不再触发假的「出击位满了」" % [前1, 前2])
+	t.ok(not 有重复, "★★ UX-1 ②：这 20 次里 `lineup` 从头到尾没有重复键 / 重复位号")
+	var 满报 := 0
+	for i in range(错前, s.errors.size()):
+		if str(s.errors[i]).contains("出击位满了"):
+			满报 += 1
+	t.ok(满报 == 0, "★★ UX-1 ②：这 20 次一条「出击位满了」都没有（真实 %d 条）" % 满报)
+	# ---- ③ 与「前2」上的另一台**直接互换** ----
+	var 乙 := ""
+	for k in 键们:
+		if k != 甲 and k != _位名上的键(s, 前2):
+			乙 = k
+			break
+	if not 乙.is_empty():
+		t.ok(s.set_lineup_slot(乙, 前2), "★ UX-1 ②：把 %s 摆到 %s（换掉原来那台）" % [乙, 前2])
+		var 甲位 := _位名上的键(s, 前2)
+		t.ok(s.set_lineup_slot(甲, 前2), "★★ UX-1 ②：把 %s 拖到 %s（那上面是 %s）→ 成功" % [甲, 前2, 甲位])
+		t.ok(_位名上的键(s, 前2) == 甲 and _位名上的键(s, 前1) == 甲位,
+			"★★ UX-1 ②：两台**直接互换格位**（%s → %s、%s → %s）" % [甲位, 前1, 甲, 前2])
+		t.ok(_编队无重复(s), "★★ UX-1 ②：互换之后仍然没有重复键 / 重复位号")
+	# ---- ④ 满编时把**未上阵**的机体拖到**已有人的格位** = 替换，人数不变、不报满 ----
+	var 上限 := RosterManager.deploy_limit(s.run_state)
+	t.ok(s.run_state.lineup.size() <= 上限, "★ UX-1 ②：出击 %d 台 ≤ 上限 %d 台" % [s.run_state.lineup.size(), 上限])
+	var 未上阵 := ""
+	for k in 键们:
+		if not _在编队里(s, k):
+			未上阵 = k
+			break
+	if 未上阵.is_empty():
+		t.ok(false, "★ UX-1 ②：名册里没有「未上阵」的机体 —— ④ 那段跑不了")
+	else:
+		var 目标位 := 前2
+		var 原占 := _位名上的键(s, 目标位)
+		var 人数前 := s.run_state.lineup.size()
+		t.ok(s.set_lineup_slot(未上阵, 目标位),
+			"★★ UX-1 ②：满编（%d / %d）时把未上阵的 %s 拖到已有人的 %s → **不报满、替换成功**"
+			% [人数前, 上限, 未上阵, 目标位])
+		t.ok(_位名上的键(s, 目标位) == 未上阵 and _位名上的键(s, 前1) != 原占,
+			"★★ UX-1 ②：%s 占住了 %s，原来那台 %s 下阵" % [未上阵, 目标位, 原占])
+		t.ok(s.run_state.lineup.size() == 人数前,
+			"★★ UX-1 ②：替换之后总上阵人数不变（%d → %d）—— 所以本来就不该撞上限闸"
+			% [人数前, s.run_state.lineup.size()])
+		t.ok(_编队无重复(s), "★★ UX-1 ②：替换之后仍然没有重复键 / 重复位号")
+		# ---- ⑤ 真正的「往空格加人」仍然要拦（上限闸没有被改废）----
+		var 空格 := ""
+		for x in s.lineup_slots():
+			if str(x.get("键", "")).is_empty():
+				空格 = str(x.get("位名", ""))
+				break
+		var 另一个 := ""
+		for k in 键们:
+			if not _在编队里(s, k):
+				另一个 = k
+				break
+		if not 空格.is_empty() and not 另一个.is_empty() and s.run_state.lineup.size() >= 上限:
+			var 拒 := s.set_lineup_slot(另一个, 空格)
+			t.ok(not 拒, "★ UX-1 ②：满编时往**空格**再加一台（%s → %s）仍然被上限拒掉（上限闸没改废）"
+				% [另一个, 空格])
+
+## 编队名单的不变量：没有重复键、没有重复位号、位号合法。
+func _编队无重复(s: GameSession) -> bool:
+	var 键集 := {}
+	var 位集 := {}
+	for x in s.run_state.lineup:
+		if not (x is Dictionary):
+			return false
+		var k := str(x.get("key", ""))
+		var 位 := int(x.get("slot", -1))
+		if k.is_empty() or 位 < 0 or 位 >= int(Fm.SLOTS()):
+			return false
+		if 键集.has(k) or 位集.has(位):
+			return false
+		键集[k] = true
+		位集[位] = true
+	return true
+
+## 这一台在不在出击名单里（纯读 `lineup`）。
+func _在编队里(s: GameSession, 键: String) -> bool:
+	for x in s.run_state.lineup:
+		if x is Dictionary and str(x.get("key", "")) == 键:
+			return true
+	return false
+
+## 这个位名上现在是谁（空位 → 空串）。
+func _位名上的键(s: GameSession, 位名: String) -> String:
+	for x in s.lineup_slots():
+		if x is Dictionary and str(x.get("位名", "")) == 位名:
+			return str(x.get("键", ""))
+	return ""
+
+# ==========================================================================================
+# 段 13：★ UX-1 —— 点脚下这一格不许污染 `session.errors`；`errors` 有上限 + 可清空
+# ==========================================================================================
+
+func _UX1_点脚下格不污染错误(t) -> void:
+	var s := GameSession.new()
+	s.存档路径 = 存档B
+	t.ok(s.start_new_run(肉鸽种子 + 73, "混编"), "★ UX-1 ③：开一局（脚下 = 第 %d 格）" % s.run_state.node_id)
+	var 前错误 := s.errors.size()
+	var 前动作 := str(s.last.get("行动", ""))
+	var r := s.move_to_cell(int(s.run_state.node_id))
+	t.ok(not bool(r.get("ok", true)) and bool(r.get("noop", false)),
+		"★★ UX-1 ③：点脚下这一格 → `ok == false` 且 `noop == true`（静默返回，%s）" % str(r.get("why", "")))
+	t.ok(s.errors.size() == 前错误,
+		"★★ UX-1 ③：**不往 `session.errors` 里堆东西**（%d → %d 条）" % [前错误, s.errors.size()])
+	t.ok(s.当前动作错误().is_empty(),
+		"★★ UX-1 ③：`当前动作错误()` 仍是空的（视图不会挂一句「上一次没做成」）")
+	t.ok(str(s.last.get("行动", "")) == 前动作,
+		"★ UX-1 ③：连 `last` 都没被改写（还是「%s」那一拍）" % 前动作)
+	# ---- `errors` 有上限（只留最近 50 条）+ 可以清空 ----
+	for _i in 80:
+		s.move_to_cell(99999)
+	t.ok(s.errors.size() <= 50, "★★ UX-1 ③：连拒 80 次之后 `errors` 只留最近 %d 条（≤ 50，不再无限膨胀）" % s.errors.size())
+	s.clear_errors()
+	t.ok(s.errors.is_empty() and s.当前动作错误().is_empty(),
+		"★★ UX-1 ③：`clear_errors()` 之后 `errors` 空、`当前动作错误()` 也清空")
+
+# ==========================================================================================
+# 段 14：★ UX-2 —— 发牌来源机体（作者反馈第 4 条「发牌需要做一些示意，牌来自哪些机体」）
+#
+#   规格 = 《任务单-M4试玩反馈6项修复与体验升级-ARGON.md》子任务 UX-2 第 1 项：
+#     · `hand_cards()` / `bench_cards()` 每张牌都带 `source_unit_text`（含「来自：」）与 `source_slots`（Array）；
+#     · 角色牌 → 该角色机体；职业牌 → 同职业机体；势力牌 → 同势力机体；统帅牌 → 指挥官（统帅）；
+#     · `card_hover_text()` 里能看到「来自：」；
+#     · `发牌` 日志条目带 `来源文本` / `来源位`，且整段解析**一个随机数都不掷**（硬性红线 3）。
+# ==========================================================================================
+
+func _UX2_发牌来源机体(t) -> void:
+	var s := GameSession.new()
+	s.存档路径 = 存档A
+	t.ok(s.start_quick_battle(快速种子), "★ UX-2 ①：开一场快速战斗（手牌 %d 张 / 候补 %d 张）"
+		% [s.hand_count(), s.reserve_preview().size()])
+	var 手 := s.hand_cards()
+	var 候 := s.bench_cards()
+	t.ok(not 手.is_empty() and not 候.is_empty(),
+		"★ UX-2 ①：`hand_cards()` %d 张 · `bench_cards()` %d 张都拿得到" % [手.size(), 候.size()])
+	var 位名集 := {}
+	for i in int(Fm.SLOTS()):
+		位名集[Fm.位名(float(i))] = true
+	var 全牌数 := 0
+	var 缺文 := 0
+	var 非数组 := 0
+	var 位坏 := 0
+	var 有槽 := 0
+	for 池 in [手, 候]:
+		for c in 池:
+			if not (c is Dictionary):
+				continue
+			全牌数 += 1
+			var 文 := str((c as Dictionary).get("source_unit_text", ""))
+			if 文.is_empty() or not 文.contains("来自："):
+				缺文 += 1
+			var 位: Variant = (c as Dictionary).get("source_slots")
+			if not (位 is Array):
+				非数组 += 1
+				continue
+			if not (位 as Array).is_empty():
+				有槽 += 1
+			for x in (位 as Array):
+				if not 位名集.has(str(x)):
+					位坏 += 1
+	t.ok(全牌数 >= 6, "★ UX-2 ①：手牌 + 候补一共 %d 张牌参与来源解析" % 全牌数)
+	t.ok(缺文 == 0, "★★ UX-2 ①：每一张牌的 `source_unit_text` 都非空且含「来自：」（缺 %d 张）" % 缺文)
+	t.ok(非数组 == 0, "★★ UX-2 ①：每一张牌的 `source_slots` 都是 `Array` 类型（不是 Array 的 %d 张）" % 非数组)
+	t.ok(位坏 == 0, "★★ UX-2 ①：`source_slots` 里的位名全部是真实阵型位名（前1..前4 / 后1..后4；坏的 %d 个）" % 位坏)
+	t.ok(有槽 >= 1, "★ UX-2 ①：其中 %d 张牌真的解析到了具体机体的槽位" % 有槽)
+
+	# ---- 四型各抽一张核对（角色 / 职业 / 势力 / 统帅）----
+	var 角色牌 := {}
+	var 职业牌 := {}
+	var 势力牌 := {}
+	for c in 手 + 候:
+		if not (c is Dictionary):
+			continue
+		var 层 := str((c as Dictionary).get("层级", ""))
+		if 层 == "角色" and 角色牌.is_empty():
+			角色牌 = c
+		elif 层 == "职业" and 职业牌.is_empty():
+			职业牌 = c
+		elif 层 == "势力" and 势力牌.is_empty():
+			势力牌 = c
+	if not 角色牌.is_empty():
+		var 文 := str(角色牌.get("source_unit_text", ""))
+		t.ok(文.contains("来自："), "★★ UX-2 ① 角色牌：手牌【%s】写着来源机体「%s」"
+			% [str(角色牌.get("名", "")), 文])
+		if _UX2_有槽(角色牌):
+			var 角键 := str(角色牌.get("角色", ""))
+			if 角键.is_empty():
+				角键 = str(角色牌.get("归属", ""))
+			var 机师 := str(RosterManager.模板(角键).get("pilot", ""))
+			t.ok(机师.is_empty() or 文.contains(机师),
+				"★★ UX-2 ① 角色牌：指向它自己的角色机体（%s ← %s）" % [文, 机师])
+			t.ok(文.contains("（") and 文.contains("）"),
+				"★ UX-2 ① 角色牌：括号里写清了位名（%s）" % 文)
+	if not 职业牌.is_empty():
+		var 文2 := str(职业牌.get("source_unit_text", ""))
+		t.ok(文2.contains("来自：") and _UX2_有槽(职业牌) and 文2.contains(str(职业牌.get("归属", ""))),
+			"★★ UX-2 ① 职业牌：手牌【%s】指向我方同职业机体「%s」"
+			% [str(职业牌.get("名", "")), 文2])
+	if not 势力牌.is_empty():
+		var 文3 := str(势力牌.get("source_unit_text", ""))
+		t.ok(文3.contains("来自：") and _UX2_有槽(势力牌) and 文3.contains(str(势力牌.get("归属", ""))),
+			"★★ UX-2 ① 势力牌：手牌【%s】指向我方同势力机体「%s」"
+			% [str(势力牌.get("名", "")), 文3])
+	var 统帅源 := s.card_source("CMD_ALL_OUT")
+	t.ok(str(统帅源.get("文本", "")) == "来自：指挥官（统帅）" and (统帅源.get("位") as Array).is_empty(),
+		"★★ UX-2 ① 统帅通用牌：`card_source(\"CMD_ALL_OUT\")` = %s · 位 %s"
+		% [str(统帅源.get("文本", "")), str(统帅源.get("位"))])
+	var 未知源 := s.card_source("绝无此卡")
+	t.ok(not str(未知源.get("文本", "")).is_empty(), "★ UX-2 ①：查不到的牌也给一句来源（%s）"
+		% str(未知源.get("文本", "")))
+
+	# ---- 悬停说明里也看得到「来自：」----
+	var 悬停 := s.card_hover_text(手[0])
+	var 悬停行 := 0
+	for 行 in 悬停.split("\n"):
+		if str(行).contains("来自："):
+			悬停行 += 1
+	t.ok(悬停行 >= 1, "★★ UX-2 ①：`card_hover_text()` 含「来自：」说明（%d 行）" % 悬停行)
+
+	# ---- 纯读：附来源字段绝不写回内核手牌 ----
+	var 快前 := JSON.stringify(s.battle_ctx.get("战术手牌"))
+	s.hand_cards()
+	s.bench_cards()
+	var 快后 := JSON.stringify(s.battle_ctx.get("战术手牌"))
+	t.ok(快前 == 快后, "★★ UX-2 ①：`hand_cards()` / `bench_cards()` 是纯读（附来源字段不写回内核手牌）")
+
+	# ---- 发牌日志：来源字段 + 展示文本 + 零随机数 ----
+	var 前 := int(s.battle_ctx.rng.steps)
+	# 夹具：清空手牌，让内核的「候补补位」真的把候补牌补进来（纯流程，不掷随机数）。
+	s.battle_ctx["战术手牌"] = []
+	var 补 := Btl.候补补位(s.battle_ctx)
+	var 后 := int(s.battle_ctx.rng.steps)
+	t.ok(not 补.is_empty(), "★ UX-2 ①：夹具造出 %d 条「候补补位」发牌" % 补.size())
+	t.ok(前 == 后, "★★ UX-2（硬性红线 3）：整段来源解析 + 发牌 **一个随机数都没掷**（rng %d → %d）" % [前, 后])
+	var 有条 := 0
+	var 有字段 := 0
+	var 缺来 := 0
+	for e in s.battle_log_entries(0):
+		if not (e is Dictionary) or str((e as Dictionary).get("类型", "")) != "发牌":
+			continue
+		有条 += 1
+		if str((e as Dictionary).get("来源文本", "")).contains("来自："):
+			有字段 += 1
+		else:
+			缺来 += 1
+		if not str((e as Dictionary).get("文本", "")).contains("来自："):
+			缺来 += 1
+	t.ok(有条 > 0 and 有字段 == 有条,
+		"★★ UX-2 ①：%d 条「发牌」日志**全部**带 `来源文本`（含「来自：」）" % 有条)
+	t.ok(缺来 == 0, "★★ UX-2 ①：`发牌` 日志正文里也写得出「来自：…」（缺 %d 处）" % 缺来)
+	var 有行 := 0
+	for 行 in s.battle_log_lines(0):
+		if str(行).contains("〔发牌〕") and str(行).contains("来自："):
+			有行 += 1
+	t.ok(有行 > 0, "★★ UX-2 ①：战斗日志展示行里看得到「〔发牌〕…· 来自：XXX」（%d 行）" % 有行)
+
+## 这张牌解析到了具体机体吗（`source_slots` 非空）。
+func _UX2_有槽(c: Dictionary) -> bool:
+	var 位: Variant = c.get("source_slots")
+	return 位 is Array and not (位 as Array).is_empty()
+

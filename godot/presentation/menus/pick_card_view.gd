@@ -51,7 +51,10 @@ func refresh() -> void:
 func _build() -> void:
 	name = "选牌面板"
 	UiTheme.占满(self)
+	self.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	self.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var 列 := UiTheme.建盒(self, "选牌上下列", true, UiTheme.间距_小)
+	UiTheme.占满留边(列)
 	UiTheme.建标签(列, "选 1 张并进战术牌库", UiTheme.字号_小节, UiTheme.高亮)
 	_说明 = UiTheme.建说明(列, "", UiTheme.字号_小, UiTheme.次要文字)
 	_候选列表 = UiTheme.建滚动(列, "候选列表", 380.0)
@@ -60,6 +63,7 @@ func _build() -> void:
 func _建候选卡(id: String) -> void:
 	var c := DeckBuilder.找到(id)
 	var 卡 := UiTheme.建面板(_候选列表, "候选卡_" + id, UiTheme.卡片底, UiTheme.边框)
+	卡.clip_contents = true
 	var 列 := UiTheme.建盒(卡, "候选卡上下列_" + id, true, 2)
 	if c.is_empty():
 		UiTheme.建标签(列, "【%s】（数据表里找不到这张牌）" % id, UiTheme.字号_正文, UiTheme.负面)
@@ -76,11 +80,33 @@ func _建候选卡(id: String) -> void:
 	UiTheme.建说明(列, "效果：%s" % UiTheme.文本(c.get("效果说明", "—")), UiTheme.字号_小, UiTheme.主文字)
 	var 选 := UiTheme.建按钮(列, "选这张", _点选.bind(id))
 	选.tooltip_text = "并进战术牌库，之后在战斗手牌里出现"
+	# ★ Mouse Over：整张牌的说明（门面 `card_hover_text` 的原文）
+	var 悬停 := session.card_hover_text(c) if session != null else ""
+	HoverTooltip.bind(选, 悬停, "战术牌")
+	HoverTooltip.bind(卡, 悬停, "战术牌")
+	HoverTooltip.bind(头, 悬停, "战术牌")
 
+## 点「选这张」：并进牌库之后把「招募券闭环」接上。
+## ★ 重画一律**不做**：`pick_tactical_card()` 内部会 `_emit()` → `boot.route()` → `弹窗层.refresh()`
+##   → 要么原地 `refresh()` 这个视图（还有待选牌）、要么换成下一个弹窗（下面的两条分支）。
 func _点选(id: String) -> void:
 	if session == null:
 		return
-	session.pick_tactical_card(id)
+	if not session.pick_tactical_card(id):
+		return
+	var s: RunState = session.run_state
+	if s == null or not s.pending_card_picks.is_empty():
+		return
+	# ★ 修复「招募券要求做出决定才能进入下一个选择」（2026-10-16 作者试玩反馈）——
+	#   三选一选完之后把闭环接上（都在**视图层**发信号，不动门面默认值）：
+	#   ① 手上还有没决定的招募券 → 立刻回【招募】页面继续做决定（招募一台，或「放弃此券」）；
+	#   ② 券都决定完、而且这一局一格都还没走过（刚开局招完人）→ 送去【编队】屏。
+	#   两个信号都由 `ModalLayer._接信号` → `boot` 转发（`请求弹窗` / `请求屏幕`）。
+	if session.ticket_count() > 0:
+		请求弹窗.emit("招募", {})
+		return
+	if session.screen == "map" and session.还没走过格():
+		请求屏幕.emit("formation")
 
 func _点生成() -> void:
 	if session == null:
@@ -99,8 +125,8 @@ func _结果文字() -> String:
 	if str(末.get("行动", "")) == "选战术牌":
 		return "选好了：【%s】已经并进牌库（牌库 %s → %s 张）。" % [str(末.get("牌", "")),
 			UiTheme.文本(末.get("牌库前", 0)), UiTheme.文本(末.get("牌库后", 0))]
-	if not session.errors.is_empty():
-		return "上一次没选成：%s" % UiTheme.文本(session.errors[session.errors.size() - 1])
+	if not session.当前动作错误().is_empty():
+		return "上一次没选成：%s" % UiTheme.文本(session.当前动作错误())
 	return ""
 
 func _清空(节点: Node) -> void:

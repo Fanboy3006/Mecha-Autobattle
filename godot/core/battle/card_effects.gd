@@ -23,6 +23,16 @@ extends RefCounted
 const 令牌_源 := "@源"
 const 令牌_牌名 := "@牌名"
 
+## ★ MITH-1：内置的 TDD-1 衍生牌模板（「呼叫达纳号」「火力支援请求」等按 id 取它）。
+## `效果` 里的选谁 / 打多少都写在数据里；这里只给一份能跑的默认（打敌方生命最低的一台 1200 定伤）。
+const TDD1_TEMPLATE: Dictionary = {
+	"id": "TDD-1", "名": "TDD-1 导弹", "归属": "秘银", "是TDD1": true, "衍生": true,
+	"耗气": 0.0, "回气": 0.0, "限次": 1.0, "冷却": 0.0, "层级": "势力",
+	"说明": "衍生牌：对敌方造成导弹伤害，打出后移除且推进秘银连携计数",
+	"效果说明": "对敌方一台单位造成 1200 固定伤害（衍生牌，打出后移除）",
+	"效果": [{"选": {"方": "enemy", "取一": "最低血比"}, "效果": [{"算子": "固定伤害", "值": 1200.0}]}],
+}
+
 const CARD_OPS: Dictionary = {
 	# ---------------- 职业牌 ----------------
 	"C_HEAVY_1": [
@@ -219,6 +229,11 @@ const CARD_OPS: Dictionary = {
 	],
 }
 
+## ★ MITH-1：非 CARD_OPS 的衍生牌模板（id → 卡牌定义）。按 id 传进来时先查这里。
+const 衍生牌模板: Dictionary = {
+	"TDD-1": TDD1_TEMPLATE,
+}
+
 # ======================== 入口 ========================
 ## 打出一张牌的全部效果。返回「效果摘要」（一行一条：算子名 + 实际打到的单位），给三层反馈的「即时」用。
 ## 牌不在 CARD_OPS 里（只有耗气 / 回气 / 记档的牌）= 无效果，与封存版的 match 无分支一致。
@@ -231,10 +246,7 @@ static func execute(ctx: Dictionary, card: Dictionary) -> Array:
 		"enemies": Units.livingOf("enemy", ctx),
 	}
 	var 摘要: Array = []
-	var 组们 = CARD_OPS.get(String(card.get("id")))
-	if not (组们 is Array):
-		return 摘要
-	for 组 in 组们:
+	for 组 in 组表(card):
 		if not (组 is Dictionary):
 			continue
 		if 组.has("全局"):
@@ -250,8 +262,159 @@ static func execute(ctx: Dictionary, card: Dictionary) -> Array:
 			摘要.append_array(执行算子(运行, 算子, 目标们))
 	return 摘要
 
+## ★ MITH-1：单独执行一串算子（`btl.gd` 的连携分支用它，与 `execute` 共用同一套执行器 / 同一套选择器）。
+static func execute_ops(ctx: Dictionary, card: Dictionary, ops: Variant) -> Array:
+	if ctx == null or card == null or not (ops is Array):
+		return []
+	var 运行: Dictionary = {
+		"ctx": ctx,
+		"card": card,
+		"源": "卡牌:%s" % String(card.get("id")),
+		"allies": Units.livingOf("ally", ctx),
+		"enemies": Units.livingOf("enemy", ctx),
+	}
+	var 摘要: Array = []
+	for 组 in ops:
+		if not (组 is Dictionary):
+			continue
+		if 组.has("全局"):
+			for 算子 in 组.get("全局", []):
+				摘要.append_array(执行算子(运行, 算子, []))
+			continue
+		var 目标们 := 选单位(运行, 组.get("选"))
+		if 目标们.is_empty():
+			continue
+		for 算子 in 组.get("效果", []):
+			摘要.append_array(执行算子(运行, 算子, 目标们))
+	return 摘要
+
+# ======================== 衍生牌通道（★ MITH-1） ========================
+## 牌的效果组表：CARD_OPS 里的牌按 id 查；衍生牌（带 `效果` 字段的模板 / 实例）直接用它自己的。
+static func 组表(card: Dictionary) -> Array:
+	if card.get("效果") is Array:
+		return card.get("效果")
+	var 组们 = CARD_OPS.get(String(card.get("id")))
+	return 组们 if 组们 is Array else []
+
+## 模板 / id → 一张完整的衍生牌定义（找不到就退回内置 TDD-1 模板）。
+static func 衍生牌定义(tpl_or_id: Variant) -> Dictionary:
+	if tpl_or_id is Dictionary:
+		return _并(TDD1_TEMPLATE, tpl_or_id)
+	var 键 := String(tpl_or_id)
+	var 命 = 衍生牌模板.get(键)
+	if 命 is Dictionary:
+		return _并(TDD1_TEMPLATE, 命)
+	var 表 = Db.T.战术卡牌表
+	if 表 is Array:
+		for c in 表:
+			if c is Dictionary and String(c.get("id")) == 键:
+				return c
+	return TDD1_TEMPLATE
+
+## 后写的盖前面的（不改原字典）
+static func _并(底: Dictionary, 盖: Dictionary) -> Dictionary:
+	var o := 底.duplicate(true)
+	for k in 盖.keys():
+		o[k] = 盖[k]
+	return o
+
+## ★ 衍生牌置入手牌（「呼叫达纳号」「火力支援请求」等）。
+## 断路器 2（单回合生成上限）：`每回合上限 > 0` 时按 `来源卡牌 id` 记 `本回合衍生牌生成计数`，超出的不生成。
+## 手牌满（>= 手牌总上限，默认 10）→ **直接作废丢弃**（不进待触发池、不走「记满手牌推迟」），并写一条日志。
+## 返回「效果摘要」：置入的逐张一条，被上限截住的一条「生成受限」。
+static func grant_derived_card(ctx: Dictionary, tpl_or_id: Variant, count: int = 1, max_per_turn: int = 0, source_key: String = "") -> Array:
+	var 摘要: Array = []
+	if ctx == null or count <= 0:
+		return 摘要
+	var tpl: Dictionary = 衍生牌定义(tpl_or_id)
+	# ★ MITH-2：秘银 v0.2 开着时 TDD-1 用 v0.2 的牌面（260 物理伤害 + 「饱和攻击」追加）；
+	#   名字与「衍生 / 是TDD1」口径保持不变（既有 MITH-1 验收断言的日志原文就写着「TDD-1 导弹」）。
+	var v02牌: Dictionary = MithrilV02Cards.衍生牌定义(ctx, tpl_or_id)
+	if not v02牌.is_empty():
+		tpl = v02牌
+	# ★ DECK-4：单机牌组模式下，衍生攻击卡进**下排公有手牌**（硬上限 8 张），不进上排战术手牌。
+	#   TDD-1 因此带 `卡类: "衍生攻击卡"`；打出后**不销毁主武器卡**、且推进秘银连携计数（见 btl.gd）。
+	#   关着 = 这一段一行都不执行（既有黄金样例与 MITH-1 / MITH-2 全部测试逐字不变）。
+	if Params.单机牌组_开(ctx):
+		return _置入公有手牌(ctx, tpl, count, max_per_turn, source_key)
+	if not (ctx.get("战术手牌") is Array):
+		ctx.战术手牌 = []
+	var 上限: int = 10
+	if Params.战术卡牌参数().get("手牌总上限") != null:
+		上限 = Params.手牌上限(ctx, "手牌总上限", 10)
+	var 限次 := count
+	if max_per_turn > 0:
+		if not (ctx.get("本回合衍生牌生成计数") is Dictionary):
+			ctx["本回合衍生牌生成计数"] = {}
+		var 计: Dictionary = ctx["本回合衍生牌生成计数"]
+		var 已 := int(计.get(source_key, 0))
+		var 余 := maxi(0, max_per_turn - 已)
+		if count > 余:
+			摘要.append("生成受限：【%s】本回合上限 %d 张（已生成 %d，本次要求 %d，只做 %d）" % [str(tpl.get("名", "")), max_per_turn, 已, count, 余])
+		限次 = mini(count, 余)
+		计[source_key] = 已 + 限次
+	var 牌名 := str(tpl.get("名", ""))
+	for _i in range(限次):
+		if ctx.战术手牌.size() >= 上限:
+			Btl.记(ctx, {"类型": "衍生牌作废", "卡牌": 牌名, "文本": "〔衍生牌〕手牌已满（%d/%d），【%s】作废" % [上限, 上限, 牌名]})
+			摘要.append("衍生牌作废：【%s】手牌已满（%d/%d）" % [牌名, 上限, 上限])
+			continue
+		var 实例 = Btl.克隆战术牌(tpl, ctx)
+		# 强制标记（模板写没写都算衍生牌）：衍生 = true、是TDD1 按模板（或 id == "TDD-1"）、剩余次数 = 1
+		实例["衍生"] = true
+		实例["是TDD1"] = bool(tpl.get("是TDD1", str(tpl.get("id", "")) == "TDD-1"))
+		实例["剩余次数"] = 1.0
+		ctx.战术手牌.append(实例)
+		var 记条: Dictionary = {"类型": "衍生牌置入", "卡牌": 牌名, "文本": "〔衍生牌〕置入手牌：【%s】" % 牌名}
+		if 实例.get("_实例号") != null:
+			记条["实例号"] = 实例["_实例号"]
+		Btl.记(ctx, 记条)
+		摘要.append("衍生牌置入：【%s】" % 牌名)
+	return 摘要
+
+## ★ DECK-4：单机牌组模式的衍生攻击卡通道 —— 置入 `ctx.公有手牌`（下排），硬上限 `公有手牌硬上限()`（8 张）。
+## 断路器 2（单回合生成上限）与老通道同一本账（`本回合衍生牌生成计数` 按来源卡牌 id 记），不会因为换了个池子就放开。
+static func _置入公有手牌(ctx: Dictionary, tpl: Dictionary, count: int, max_per_turn: int, source_key: String) -> Array:
+	var 摘要: Array = []
+	if not (ctx.get("公有手牌") is Array):
+		ctx["公有手牌"] = []
+	var 上限 := int(Params.公有手牌硬上限())
+	var 限次 := count
+	if max_per_turn > 0:
+		if not (ctx.get("本回合衍生牌生成计数") is Dictionary):
+			ctx["本回合衍生牌生成计数"] = {}
+		var 计: Dictionary = ctx["本回合衍生牌生成计数"]
+		var 已 := int(计.get(source_key, 0))
+		var 余 := maxi(0, max_per_turn - 已)
+		if count > 余:
+			摘要.append("生成受限：【%s】本回合上限 %d 张（已生成 %d，本次要求 %d，只做 %d）" % [
+				str(tpl.get("名", "")), max_per_turn, 已, count, 余])
+		限次 = mini(count, 余)
+		计[source_key] = 已 + 限次
+	var 牌名 := str(tpl.get("名", ""))
+	for _i in range(限次):
+		if ctx.公有手牌.size() >= 上限:
+			Btl.记(ctx, {"类型": "衍生牌作废", "卡牌": 牌名,
+				"文本": "〔衍生牌〕公有手牌已满（%d/%d），【%s】作废" % [上限, 上限, 牌名]})
+			摘要.append("衍生牌作废：【%s】公有手牌已满（%d/%d）" % [牌名, 上限, 上限])
+			continue
+		var 实例 = Btl.克隆战术牌(tpl, ctx)
+		实例["衍生"] = true
+		实例["是TDD1"] = bool(tpl.get("是TDD1", str(tpl.get("id", "")) == "TDD-1"))
+		实例["卡类"] = "衍生攻击卡"
+		实例["剩余次数"] = 1.0
+		ctx.公有手牌.append(实例)
+		var 记条: Dictionary = {"类型": "衍生牌置入", "卡牌": 牌名, "公有手牌": true,
+			"文本": "〔衍生牌〕置入公有手牌：【%s】" % 牌名}
+		if 实例.get("_实例号") != null:
+			记条["实例号"] = 实例["_实例号"]
+		Btl.记(ctx, 记条)
+		摘要.append("衍生牌置入公有手牌：【%s】" % 牌名)
+	return 摘要
+
 # ======================== 选择器 ========================
 static func 选单位(运行: Dictionary, 选: Variant) -> Array:
+
 	var 表: Dictionary = 选 if 选 is Dictionary else {}
 	if 表.has("同路于"):
 		return _同路单位(运行, 表["同路于"])
@@ -397,10 +560,76 @@ static func 执行算子(运行: Dictionary, 算子: Variant, 目标们: Array) 
 		var ctx = 运行.get("ctx")
 		if ctx is Dictionary:
 			ctx["当前战术"] = String(表.get("值"))
+	# ---------------- ★ MITH-1 新增算子 ----------------
+	elif 名 == "置入衍生牌":
+		var ctx2 = 运行.get("ctx")
+		if not (ctx2 is Dictionary):
+			return []
+		var 牌 = 运行.get("card")
+		var 源键 := str(表.get("来源", ""))
+		if 源键 == "":
+			源键 = String(牌.get("id")) if 牌 is Dictionary else ""
+		目标们 = grant_derived_card(ctx2, 表.get("模板", "TDD-1"), int(表.get("数量", 1)), int(表.get("每回合上限", 0)), 源键)
+	elif 名 == "双倍连携":
+		var ctx3 = 运行.get("ctx")
+		if not (ctx3 is Dictionary):
+			return []
+		# 断路器 4：封顶 2 倍 —— 同名 / 多次打出绝不叠加成 4 倍
+		ctx3["本回合连携触发倍率"] = clampi(int(表.get("倍率", 2)), 1, 2)
+	elif 名 == "回气势":
+		var ctx4 = 运行.get("ctx")
+		if not (ctx4 is Dictionary):
+			return []
+		Btl.加气势(ctx4, 表.get("值"))
+	elif 名 == "减秘银牌冷却":
+		var ctx5 = 运行.get("ctx")
+		if not (ctx5 is Dictionary):
+			return []
+		Btl.减秘银牌冷却(ctx5, 运行.get("card"), int(表.get("值", 1)))
+	elif 名 == "固定伤害":
+		var ctx6 = 运行.get("ctx")
+		var 打掉 := 0.0
+		for u in 目标们:
+			if u is Dictionary and float(u.get("hp", 0.0)) > 0.0:
+				打掉 += _固定伤害(ctx6, u, _数(表.get("值")))
+		return ["固定伤害：%s（合计 %d）" % ["、".join(目标们.map(func(u): return str(u.get("name", "")))), int(打掉)]]
+	# ---------------- ★ MITH-2：秘银 v0.2 专属算子（全部转给 MithrilV02Cards 执行） ----------------
+	elif 名 == "v02":
+		var ctx7 = 运行.get("ctx")
+		if not (ctx7 is Dictionary) or not Params.秘银v02开(ctx7):
+			return []
+		return MithrilV02Cards.执行算子(运行, 表, 目标们)
+	# ---------------- ★ DECK-4：ATX v0.2 专属算子（全部转给 FacAtx 执行） ----------------
+	elif 名 == "atx":
+		var ctx8 = 运行.get("ctx")
+		if not (ctx8 is Dictionary) or not Params.ATXv02开(ctx8):
+			return []
+		return FacAtx.执行算子(运行, 表, 目标们)
 	else:
 		push_error("CardEffects：未知的算子「%s」" % 名)
 		return []
 	return [_摘要(运行, 名, 目标们)]
+
+## ★ MITH-1：「固定伤害」—— 直接扣血、**不消耗 ctx.rng**（方便确定性单元测试），也不走命中 / 暴击 / 减伤。
+## 打死了照旧记一条攻击事件并走 `Fac.势力击破`。
+static func _固定伤害(ctx: Variant, 目标: Dictionary, 值: float) -> float:
+	if not (值 > 0.0) or float(目标.get("hp", 0.0)) <= 0.0:
+		return 0.0
+	var 前 := float(目标.hp)
+	var 实 := minf(前, JsCompat.js_round(值))
+	目标.hp = 前 - 实
+	if ctx is Dictionary:
+		var 字段: Dictionary = {
+			"类型": "攻击", "单位": "", "目标": 目标.get("key"), "武器": "固定伤害", "伤害": 实, "命中": true,
+			"固定伤害": true, "目标剩余HP": 目标.hp,
+		}
+		if 目标.get("side") != null and 目标.get("slot") != null:
+			字段["目标方"] = 目标.side
+			字段["目标位"] = 目标.slot
+		Btl.pushLog(ctx, "〔固定伤害〕%s 受到 %d 点伤害（不掷命中 / 不消耗随机数）" % [str(目标.get("name", "")), int(实)], 字段)
+		if 前 > 0.0 and float(目标.hp) <= 0.0:
+			Fac.势力击破(ctx, null, 目标)
+	return 实
 
 static func _加计数(运行: Dictionary, 键: String, 加: float) -> void:
 	var ctx = 运行.get("ctx")

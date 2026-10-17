@@ -1,4 +1,7 @@
 ## 72-势力-5：秘银（SRT 交叉训练：情报岗挂标定 → 作战岗兑现破防；倒下接力）。
+## ★ MITH-2：**秘银 v0.2 一开，上面这套 v0.1 机制整体退役** —— 标定（毛的「标定射击 −20% 破防」那条线）
+##   与「倒下接力」全部早退，由 Uruz 连携作战（`core/battle/mithril_v02_cards.gd`）接管。
+##   开关关着（默认）= 这一段判定不成立，v0.1 行为与既有 168 场黄金样例逐字不变（硬性红线 2）。
 class_name FacMith
 extends RefCounted
 
@@ -7,8 +10,25 @@ const 秘银标定来源 := "势力·秘银"
 static func 秘银参数() -> Dictionary:
 	return Fac.势力参数("秘银")
 
+## ★ MITH-2：v0.1 机制（标定 / 兑现 / 取消被挡 / 倒下接力）是否已经退役
+static func 旧机制退役(ctx: Variant) -> bool:
+	return Params.秘银v02开(ctx)
+
 static func 是秘银(u: Variant) -> bool:
 	return Fac.是我方势力(u, "秘银")
+
+# ======================== ★ DECK-4：秘银 v0.2 卡牌的三分类（双排分流） ========================
+## 口径的唯一真源在 `MithrilV02Cards`（逐张牌的 `卡类` 字段）；这里给势力侧两个方便调用的别名，
+## 免得调用点自己去记住四种卡类字符串。
+##   · 主武器卡 / 专属精神牌 → 该机体的**上排专属牌库**（跟着 Lv10 → Lv20 → Lv30 晋升解锁）；
+##   · 衍生攻击卡（TDD-1）    → 全队**下排公有手牌**（打出不销毁主武器卡、推进秘银连携计数）；
+##   · 公有牌                 → 全队**下排公有牌库**。
+static func 卡类(card: Variant) -> String:
+	return MithrilV02Cards.卡类(card)
+
+static func 是专属牌(card: Variant) -> bool:
+	return MithrilV02Cards.是主武器卡(card) or MithrilV02Cards.是专属精神牌(card) \
+		or MithrilV02Cards.是衍生攻击卡(card)
 
 static func 是秘银情报岗(u: Variant, p: Variant) -> bool:
 	var 参 = p if J.truthy(p) else 秘银参数()
@@ -48,6 +68,9 @@ static func 秘银挂标定(ctx: Variant, 挂者: Variant, 目标: Variant, p: V
 	var 参 = p if J.truthy(p) else 秘银参数()
 	if ctx == null or 挂者 == null or 目标 == null:
 		return 0.0
+	# ★ MITH-2：秘银 v0.2 开着 → 情报岗（含毛的「标定射击」那条线）不再挂任何标定
+	if 旧机制退役(ctx):
+		return 0.0
 	if not 是秘银情报岗(挂者, 参):
 		return 0.0
 	if 目标.side == 挂者.side:
@@ -85,6 +108,9 @@ static func 秘银兑现(ctx: Variant, 攻击者: Variant, 目标: Variant, p: V
 	var 参 = p if J.truthy(p) else 秘银参数()
 	var 标: Dictionary = J.or_(参.get("标定"), {})
 	if ctx == null or 攻击者 == null or 目标 == null:
+		return 0.0
+	# ★ MITH-2：秘银 v0.2 开着 → 作战岗不再兑现破防（-20%/层 这条线整个下线）
+	if 旧机制退役(ctx):
 		return 0.0
 	if J.or_(参.get("兑现收益"), {}).get("破防") == false:
 		return 0.0
@@ -126,10 +152,15 @@ static func 秘银兑现(ctx: Variant, 攻击者: Variant, 目标: Variant, p: V
 		刷新秘银缓存(ctx, 参)
 	return 兑了
 
-static func 秘银取消被挡(attacker: Variant, 目标: Variant) -> bool:
+## ★ MITH-2：签名多了一个可选 `ctx`（有 ctx 就按开关退役；没有 ctx 时退回看攻击者身上的
+##   `秘银v02` 标记 —— `秘银开局` 在 v0.2 开着时给每台秘银成员打上，`Reach.rowBlockPenalty`
+##   那条没有 ctx 的老路径也能按开关退役）。
+static func 秘银取消被挡(attacker: Variant, 目标: Variant, ctx: Variant = null) -> bool:
 	if attacker == null or attacker.get("side") != "ally":
 		return false
 	if 目标 == null:
+		return false
+	if Params.秘银v02开(ctx) or J.truthy(attacker.get("秘银v02")):
 		return false
 	if J.or_(秘银参数().get("兑现收益"), {}).get("取消被挡") == false:
 		return false
@@ -140,6 +171,9 @@ static func 倒下接力(ctx: Variant, 被击破者: Variant, p: Variant) -> flo
 	var 接: Dictionary = J.or_(参.get("倒下接力"), {})
 	var 上限 := maxf(0.0, J.round(J.num0(接.get("每场次数"))))
 	if ctx == null or 被击破者 == null or 上限 <= 0:
+		return 0.0
+	# ★ MITH-2：秘银 v0.2 开着 → 不再接管站位、不再白送一次行动（「倒下接力」退役）
+	if 旧机制退役(ctx):
 		return 0.0
 	if 被击破者.side != "ally":
 		return 0.0
@@ -165,6 +199,9 @@ static func 倒下接力(ctx: Variant, 被击破者: Variant, p: Variant) -> flo
 	var 再动: bool = 接.get("再动一次") != false
 	if 再动:
 		ctx.again.append(接管者)
+		# ★ DECK-1：再动统一为「主武器卡回手」（只对单机牌组单位生效）
+		if 接管者.get("主武器已销毁") != null:
+			接管者["主武器已销毁"] = false
 	Fac.势力记录(ctx, "秘银（SRT 交叉训练·倒下接力）%s 被击破 → %s 接管他的岗位（%s：%s → %s）%s　每场 %s 次，本场已用 %s 次" % [
 		被击破者.name, 接管者.name, 岗, Fm.位名(接管者原位), Fm.位名(原), "并立刻再行动一次" if 再动 else "", J.s(上限), J.s(战场.倒下接力次数)],
 		{"势力": "秘银", "特色": "倒下接力", "结果": "接管", "单位": 接管者.key, "单位方": 接管者.side, "单位位": 接管者.slot,
@@ -175,6 +212,9 @@ static func 倒下接力(ctx: Variant, 被击破者: Variant, p: Variant) -> flo
 
 static func 刷新秘银缓存(ctx: Variant, p: Variant) -> void:
 	if ctx == null:
+		return
+	# ★ MITH-2：v0.2 开着 = 岗位 / 标定名单 / 接力次数这套缓存整个不需要（旧机制已退役）
+	if 旧机制退役(ctx):
 		return
 	var 参 = p if J.truthy(p) else 秘银参数()
 	var 上限 := maxf(0.0, J.round(J.num0(J.or_(参.get("倒下接力"), {}).get("每场次数"))))
@@ -210,6 +250,21 @@ static func 刷新秘银缓存(ctx: Variant, p: Variant) -> void:
 
 static func 秘银开局(ctx: Dictionary, p: Variant) -> void:
 	var 参 = p if J.truthy(p) else 秘银参数()
+	# ★ MITH-2：秘银 v0.2 开着、且我方有秘银成员在场 → 初始化 v0.2 状态 + 记一条开局日志，
+	#   完全不碰 v0.1 的岗位 / 标定 / 接力字段（那套已经退役）。
+	if 旧机制退役(ctx):
+		var 成员 := Fac.势力在场("秘银", ctx)
+		ctx.秘银 = {"倒下接力次数": 0.0, "标定挂过": 0.0, "兑现次数": 0.0, "v02": true}
+		if not 成员.is_empty():
+			for u in 成员:
+				u["秘银v02"] = true
+				u["_本回合被秘银攻击回合"] = -1
+			MithrilV02Cards.初始化(ctx)
+			Fac.势力记录(ctx, "秘银 v0.2「Uruz 连携作战」开局：%d 名成员在场（%s），v0.1 的标定 / 兑现 / 取消被挡 / 倒下接力全部退役" % [
+				成员.size(), "、".join(成员.map(func(u): return str(u.get("name", ""))))],
+				{"势力": "秘银", "特色": "Uruz连携作战", "结果": "开局", "成员": 成员.map(func(u): return u.get("key")),
+					"台数": float(成员.size()), "版本": "v0.2"})
+		return
 	ctx.秘银 = {"倒下接力次数": 0.0, "标定挂过": 0.0, "兑现次数": 0.0}
 	for u in Units.sideUnits("ally", ctx):
 		if not 是秘银(u):
@@ -225,6 +280,9 @@ static func 秘银开局(ctx: Dictionary, p: Variant) -> void:
 
 static func 秘银回合结束(ctx: Dictionary, p: Variant) -> void:
 	var 参 = p if J.truthy(p) else 秘银参数()
+	# ★ MITH-2：v0.2 开着 → 不再重算标定破防百分比、也不再刷岗位缓存
+	if 旧机制退役(ctx):
+		return
 	var 每层 := J.num0(J.or_(参.get("标定"), {}).get("破防百分比"))
 	for t in ctx.allies + ctx.enemies:
 		for d in 标定条目们(t):

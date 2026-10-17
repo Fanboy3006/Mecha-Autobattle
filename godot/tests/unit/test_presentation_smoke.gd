@@ -506,6 +506,9 @@ func _段8a_空格与已过不切屏(t, 树根: Node) -> void:
 	var 提示字 := str((提示 as Label).text) if 提示 != null else ""
 	t.ok(提示 != null and (提示 as Label).visible and 提示字.contains("名册是空的") and 提示字.contains("招募"),
 		"★ 名册为空时大地图上给提示：「%s」" % 提示字)
+	# ★ 2026-10-18：有未决招募券时点格子不移动（先把券决定完）—— 这一段要验「走空格 / 走已过的格」，
+	#   所以先把开局那几张券决定掉（走的是门面公开口子 `discard_ticket()`）。
+	_清券(s)
 	var 起点 := s.run_state.node_id
 	# ---- 走一个「没走过的林间空地」：只刷屏，不切屏 ----
 	var 空格 := _找可达的格(s, ["空"], false)
@@ -569,11 +572,18 @@ func _段8b_战斗格走上去就开打(t, 树根: Node) -> void:
 	# 编队那一步把屏切到了 formation（门面 `set_lineup_slot` 自己切），这里摆回大地图再点格
 	s.screen = "map"
 	t.ok(s.screen == "map" and s.battle_ctx.is_empty(), "点之前：停在大地图、还没有战斗 ctx")
-	# ★ 只点这一下 —— 视图内部必须自己接着结算脚下这一格
+	# ★ 只点这一下 —— ★ 2026-10-18：视图内部先把这一格接到**战前编队确认屏**，
+	#   再由【确认编队 · 开始战斗】真的开打（不再是「点一下就进战斗屏」那一步到位）。
 	mv._点格(战斗格)
 	t.ok(s.run_state.node_id == 战斗格, "★ 点战斗格 %d → 真的走到了（node_id = %d）" % [战斗格, s.run_state.node_id])
+	t.ok(s.screen == "formation" and s.pending_battle_confirm,
+		"★ 走上去先接战前编队确认屏：screen = %s、pending = %s（格类型 %s）"
+		% [s.screen, str(s.pending_battle_confirm), str(s.run_state.cell_at(战斗格).get("类型", ""))])
+	t.ok(s.battle_ctx.is_empty(), "★ 确认之前还没开战（battle_ctx 空）")
+	# ★ 再点【确认编队 · 开始战斗】→ 这时才真的开打
+	s.confirm_formation_and_start_battle()
 	t.ok(s.screen == "battle",
-		"★ 走上去就自动结算：**不需要第二次点击**，screen 变成 %s（格类型 %s）"
+		"★ 确认之后**不需要第三次点击**就进战斗：screen 变成 %s（格类型 %s）"
 		% [s.screen, str(s.run_state.cell_at(战斗格).get("类型", ""))])
 	t.ok(not s.battle_ctx.is_empty(),
 		"★ battle_ctx 非空：我方 %d 台 / 敌方 %d 台"
@@ -599,6 +609,8 @@ func _段8d_兜底按钮不重复结算(t, 树根: Node) -> void:
 		t.ok(false, "第 %d 层找不到可达的瞭望站 / 遗迹 / 招募站格 —— 段 8d 剩下的断言跑不了" % s.run_state.floor_num)
 		return
 	var 类型 := str(s.run_state.cell_at(格).get("类型", ""))
+	# ★ 2026-10-18：有未决招募券时点格子不移动 —— 这一段验的是「兜底按钮不重复结算」，先把券清掉。
+	_清券(s)
 	var mv := MapView.new()
 	树根.add_child(mv)
 	mv.setup(s)
@@ -644,6 +656,9 @@ func _段8c_出口走上去就换层(t, 树根: Node) -> void:
 	if 出 < 0:
 		t.ok(false, "第 %d 层找不到「现在走得过去」的出口格 —— 段 8c 剩下的断言跑不了" % s.run_state.floor_num)
 		return
+	# ★ 2026-10-18：有未决招募券时点格子不移动（先把券决定完）—— 这一段要验「走出口就自动换层」，
+	#   所以先把开局那几张券决定掉。
+	_清券(s)
 	var 前层 := s.run_state.floor_num
 	var mv := MapView.new()
 	树根.add_child(mv)
@@ -675,6 +690,7 @@ func _段8c_出口走上去就换层(t, 树根: Node) -> void:
 			if not s.pick_tactical_card(str(s.run_state.pending_card_picks[0])):
 				break
 			补选 += 1
+		_清券(s)
 		s.screen = "map"
 		mv._点进入()
 		t.ok(s.run_state.floor_num == 前层 + 1,
@@ -736,15 +752,21 @@ func _段9a_走上去就开追击战且不被顶掉(t, 树根: Node) -> void:
 	mv.refresh()
 	t.ok(str(s.last.get("行动", "")) != "追击战" and s.battle_ctx.is_empty(),
 		"点之前：还没开打（推进剂被夹具设成 %d = 走这一格的花费）" % 费)
-	# ★ 只点这一下 —— ★ D-10：这一格**自己还有没结算的东西**（战斗格 / 黑市 / 事件 / 休息…），
-	#   所以门面**先不开**追击战，而是先结算这一格（战斗格 → `battle` 屏打脚下的节点战）。
-	#   结算完（`finish_battle_and_settle()`）才轮到追击战。封存 JS 口径 =
-	#   `92-肉鸽界面-1-大图与记录.js:315`：「**这一格结算完**就会触发追击战」。
+	# ★ 只点这一下 —— ★ 2026-10-18：战斗格走上去**先进战前编队确认屏**（不是直接开打）；
+	#   点【确认编队 · 开始战斗】才真的走 `enter_current_node()` 结算这一格。
+	#   ★ D-10 的前提不变：门面**不在 `move_to_cell` 里开追击战** —— 这一格自己还有没结算的东西，
+	#     所以先结算这一格（战斗格 → `battle` 屏打脚下的节点战），结算完才轮到追击战。
 	mv._点格(战斗格)
 	t.ok(s.run_state.propellant == 0, "★ 这一步走完推进剂见底（propellant = %d）" % s.run_state.propellant)
+	t.ok(s.screen == "formation" and s.pending_battle_confirm,
+		"★ 2026-10-18：战斗格走上去先进战前编队确认屏（screen = %s、pending = %s；脚下这一格类型 = %s）"
+		% [s.screen, str(s.pending_battle_confirm), 真类型])
+	t.ok(str(s.run_state.map_data.get("当前节点类型", "")) == 真类型 and s.battle_ctx.is_empty(),
+		"★ 确认之前还没开打、也没有被改成「追击」（`map_data[\"当前节点类型\"]` 仍是 %s、battle_ctx 空 = %s）"
+		% [str(s.run_state.map_data.get("当前节点类型", "")), str(s.battle_ctx.is_empty())])
+	s.confirm_formation_and_start_battle()
 	t.ok(s.screen == "battle",
-		"★ D-10：门面**不在 `move_to_cell` 里开追击战**，而是先结算这一格：screen = %s（脚下这一格类型 = %s）"
-		% [s.screen, 真类型])
+		"★ D-10：确认之后才结算这一格：screen = %s（脚下这一格类型 = %s）" % [s.screen, 真类型])
 	t.ok(str(s.last.get("行动", "")) == "开战" and str(s.last.get("格类型", "")) == 真类型,
 		"★ D-10：先打的是**脚下的节点战**（上一动作 = %s / 格类型 = %s / 这一格真类型 = %s）"
 		% [str(s.last.get("行动", "")), str(s.last.get("格类型", "")), 真类型])
@@ -861,7 +883,9 @@ func _段9b_证据_不设守卫会怎样(t, 树根: Node) -> void:
 func _行动(s: GameSession) -> String:
 	return str(s.last.get("行动", ""))
 
-## ③ 「打追击战」兜底按钮：够格时可点、点了进战斗；不够格时不可点、点了也不打（并给原因）。
+## ③ 「打追击战」兜底按钮：★ 2026-10-18 起**只在推进剂为 0 时可见**；够格时点它进「战前编队确认屏」，
+##   再点【确认编队 · 开始战斗】才真的走门面 `fight_chase_battle()` 进战斗；
+##   不够格时不可点（或藏起来），点了也不打（并给原因）。
 func _段9c_打追击战按钮(t, 树根: Node) -> void:
 	var s := GameSession.new()
 	s.存档路径 = "res://.godot/tmp_presentation_smoke9.json"
@@ -873,32 +897,45 @@ func _段9c_打追击战按钮(t, 树根: Node) -> void:
 	if not _招募并上阵(s, 3):
 		t.ok(false, "★ 段 9c：招募 / 上阵没做成（追击战要求出击名单非空），剩下的断言跑不了")
 		return
+	# ★ 门面那道「有未决招募券不许开新战斗」的闸会挡住这一段的点击路 —— 先把券决定完。
+	var 丢 := 0
+	while s.ticket_count() > 0 and 丢 < 12:
+		if not bool(s.discard_ticket(0).get("ok", false)):
+			break
+		丢 += 1
 	var mv := MapView.new()
 	树根.add_child(mv)
 	mv.setup(s)
 	s.screen = "map"
 	mv.refresh()
 	var 按钮 = mv.find_child("打追击战按钮", true, false)
-	t.ok(按钮 != null, "大地图上有「打追击战按钮」")
-	t.ok(按钮 != null and bool((按钮 as Button).disabled),
-		"★ 推进剂还够（%d）→ 按钮不可点" % s.run_state.propellant)
+	t.ok(按钮 != null, "大地图上有「打追击战按钮」（节点还在树里，靠 `visible` 控制露面）")
+	t.ok(按钮 != null and not bool((按钮 as Button).visible),
+		"★★ 段 9c：推进剂还够（%d）→ 「打追击战」按钮**藏起来**（visible = false，不再常驻误导玩家）" % s.run_state.propellant)
 	# ★ 不够格时点了也不许开打（并要给出原因）
 	mv._点打追击()
 	t.ok(s.battle_ctx.is_empty() and s.screen == "map",
 		"★ 不够格时点它 → 不开打（screen 仍是 %s，battle_ctx 仍空）" % s.screen)
 	t.ok(_面板里有(mv, "用不上"), "★ 不够格时写清了为什么用不上")
-	# 造出「推进剂见底 + 本层没被追击过 + 不在战斗里」→ 按钮应当可用
+	# 造出「推进剂见底 + 本层没被追击过 + 不在战斗里」→ 按钮应当露面且可点
 	s.run_state.propellant = 0
 	s.run_state.chased = false
 	s.run_state.node_id = int(s.run_state.map_data.get("起点", 0))
 	s.screen = "map"
 	mv.refresh()
 	var 按钮2 = mv.find_child("打追击战按钮", true, false)
-	t.ok(按钮2 != null and not bool((按钮2 as Button).disabled),
-		"★ 推进剂见底（%d）+ 本层没追击过 → 按钮可点（判据 = 内核 exit_chase_pending）" % s.run_state.propellant)
+	t.ok(按钮2 != null and bool((按钮2 as Button).visible) and not bool((按钮2 as Button).disabled),
+		"★★ 段 9c：推进剂见底（%d）+ 本层没追击过 → 按钮露面且可点（判据 = 内核 exit_chase_pending）" % s.run_state.propellant)
+	# ★ 2026-10-18：点它进的是**战前编队确认屏**（不是直接开打）
 	mv._点打追击()
+	t.ok(s.screen == "formation" and s.pending_battle_confirm and str(s.pending_battle_kind) == "chase",
+		"★★ 段 9c：点「打追击战」→ 进战前编队确认屏（screen = %s、pending = %s、kind = %s）"
+		% [s.screen, str(s.pending_battle_confirm), str(s.pending_battle_kind)])
+	t.ok(s.battle_ctx.is_empty(), "★★ 段 9c：确认之前还没开打（battle_ctx 空）")
+	# ★ 再点【确认编队 · 开始战斗】→ 这时才真的走 `fight_chase_battle()`
+	s.confirm_formation_and_start_battle()
 	t.ok(s.screen == "battle" and str(s.last.get("行动", "")) == "追击战",
-		"★ 点「打追击战」→ 进门面的 `fight_chase_battle()`：screen = %s、上一动作 = %s"
+		"★★ 段 9c：点【确认编队 · 开始战斗】→ 进门面的 `fight_chase_battle()`：screen = %s、上一动作 = %s"
 		% [s.screen, str(s.last.get("行动", ""))])
 	t.ok(not s.battle_ctx.is_empty(), "★ 这一场真的有 ctx（敌方 %d 台）"
 		% [(s.battle_ctx.get("enemies") as Array).size() if s.battle_ctx.get("enemies") is Array else 0])
@@ -1011,8 +1048,24 @@ func _招募并上阵(s: GameSession, 最多: int) -> bool:
 		s.recruit_unit(str((目标们[0] as Dictionary).get("键", "")), 0)
 	if s.run_state == null or s.run_state.roster.is_empty():
 		return false
+	# ★ 2026-10-18：招募会带出「三选一」，先选掉（免得待选牌影响后面的换层 / 结算路径）。
+	var 选 := 0
+	while not s.run_state.pending_card_picks.is_empty() and 选 < 12:
+		if not s.pick_tactical_card(str(s.run_state.pending_card_picks[0])):
+			break
+		选 += 1
 	var 键 := str(s.run_state.roster.keys()[0])
 	return s.set_lineup_slot(键, str(s.lineup_slots()[0].get("位名", "")))
+
+## ★ 把手上**没决定的招募券**全部放弃（2026-10-18 起：有未决券时大地图点格子不移动、
+## 也不许手动开新战斗）。夹具专用 —— 走的是门面公开口子 `discard_ticket()`。返回丢了几张。
+func _清券(s: GameSession) -> int:
+	var 丢 := 0
+	while s != null and s.ticket_count() > 0 and 丢 < 12:
+		if not bool(s.discard_ticket(0).get("ok", false)):
+			break
+		丢 += 1
+	return 丢
 
 ## 视图的「预告面板」里有没有含 `关键词` 的那一行字（用来证明「写清了为什么」）。
 func _面板里有(v: Node, 关键词: String) -> bool:

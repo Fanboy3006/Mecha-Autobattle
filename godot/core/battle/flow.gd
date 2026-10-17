@@ -5,6 +5,14 @@ class_name Flow
 extends RefCounted
 
 static func 回合开始(ctx: Dictionary) -> void:
+	# ★ MITH-1：本回合连携计数清零。**只在秘银 v0.2 开着时写** —— 关着时连这两个字段都不新增，
+	#   黄金样例的 ctx 与事件逐字不变（硬性红线 2）。
+	if Params.秘银v02开(ctx):
+		ctx["本回合秘银牌数"] = 0
+		ctx["本回合连携触发倍率"] = 1
+		ctx["本回合衍生牌生成计数"] = {}
+		# ★ MITH-2：v0.2 的每回合状态（饱和攻击 / ECM 减命中 / 两张降费）也一起翻篇
+		MithrilV02Cards.本回合重置(ctx)
 	var 在场的: Array = ctx.enemies.duplicate()
 	增援(ctx)
 	Btl.词条到点自爆(ctx, 在场的)
@@ -36,6 +44,9 @@ static func 回合开始(ctx: Dictionary) -> void:
 	Btl.词条冷却延长(ctx)
 	Btl.词条隐身刷新(ctx)
 	if Params.战术卡牌开(ctx):
+		# ★ MITH-2：绑定角色已阵亡的秘银牌，回合初就清一遍（「检查时移除」）
+		if Params.秘银v02开(ctx):
+			MithrilV02Cards.清理阵亡卡牌(ctx)
 		Btl.候补补位(ctx)
 		Btl.检查条件发牌(ctx, "回合开始", {"回合": ctx.turn, "_内部自动": true})
 
@@ -158,6 +169,9 @@ static func resolveAction(actor: Dictionary, action: Dictionary, ctx: Dictionary
 			var t: Dictionary = action.target
 			t.grantedTurn = ctx.turn
 			ctx.again.append(t)
+			# ★ DECK-1：再动 = 主武器卡回手（只对单机牌组单位生效）
+			if t.get("主武器已销毁") != null:
+				t["主武器已销毁"] = false
 			Calc.spendWeapon(actor, action.entry)
 			Btl.pushLog(ctx, "%s【%s】→ %s：再行动一次" % [actor.name, w.name, t.name], J.merged(J.merged({"类型": "再动", "单位": actor.key, "目标": t.key}, Btl.谁(actor)), Btl.谁目标(t)))
 			return 空
@@ -213,6 +227,12 @@ static func resolveAction(actor: Dictionary, action: Dictionary, ctx: Dictionary
 		if 打死了:
 			Fac.势力击破(ctx, actor, 实际)
 			Btl.自爆(ctx, actor, 实际)
+			# ★ MITH-2：克鲁佐（U1）的击破计数 —— 「单分子刀·猎鹰」的触发条件用
+			if str(actor.get("key")) == "U1" and J.truthy(ctx.get("战况计数")) and ctx.战况计数.has("克鲁佐击破"):
+				ctx.战况计数["克鲁佐击破"] = int(ctx.战况计数.get("克鲁佐击破", 0)) + 1
+		# ★ MITH-2：秘银成员打过的目标记一笔（「76mm 狙击炮」的「本回合已被秘银攻击过 → 必中」用）
+		if actor.get("side") == "ally" and J.truthy(actor.get("秘银v02")):
+			实际["_本回合被秘银攻击回合"] = int(ctx.get("turn", 1))
 		if float(rec.字段.伤害) > 0:
 			Fac.势力友军攻击后(ctx, actor, 实际, rec.字段)
 		if float(rec.字段.伤害) > 0:
@@ -239,5 +259,8 @@ static func resolveAction(actor: Dictionary, action: Dictionary, ctx: Dictionary
 				"暴击": rec.字段.暴击, "击破": 打死了, "未命中段数": 未中段, "_内部自动": true,
 			})
 	Calc.spendWeapon(actor, action.entry)
+	# ★ MITH-2：杨（U8）的「ECS 隐形」到它下一次攻击为止 —— 这一击打出去就解除
+	if J.truthy(actor.get("_隐身")):
+		actor.erase("_隐身")
 	Fac.势力武器用后(ctx, actor, action.entry, w)
 	return {"击破": 击破}

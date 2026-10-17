@@ -41,7 +41,9 @@ var exp_val: int = 0
 
 ## 名册：key -> {"key": String, "lv": int, "hpRatio": float}
 var roster: Dictionary = {}
-## 出击位：[{"key": String, "slot": String}]
+## 出击位：[{"key": String, "slot": int}]  —— `slot` = 格位号 `0..Fm.SLOTS()-1`（`前1..前4` / `后1..后4`）。
+##   ★ UX-4：**写**一律写整数位号；**读**要容忍旧档（`slot == ""` / 位名 `"前3"` / 纯字符串条目），
+##   统一走 `NodeResolver.解析槽位()` → 编队屏用 `_规范编队槽位()` 就地补成明确位号。
 var lineup: Array = []
 ## 招募券：[{"id": int, "类": String, "名": String, "源": String}]
 var tickets: Array = []

@@ -5,11 +5,14 @@
 ##   ④ 移动、跳格、林间空地扣费与标记、退路成本预告（纯读）；
 ##   ⑤ 推进剂归零 → 追击打赢 → 下一层上限 −2（**无推进剂恢复**，★ D-02 口径 C）；
 ##   ⑥ 出口追击守军闸拦截 / 守军打赢放行 / 出口小径免守军 + 下一层上限 +2（★ 口径 D / E）/ 第 4 层通关；
-##   ⑦ 13 件零件：数据 / 目标格枚举 / 位移 / 增值 / 买卖折算。
+##   ⑦ 13 件零件（按《黑流树海》原版规格）：数据表 / 目标格 / 位移 / 跨层损坏 / 抽取 / 买卖折算
+##      —— 任务单 §5 的 8 组核心验收断言：① 直线不拐弯 ② 无视断路空格 ③ 推进剂消耗与 0 推进剂禁则
+##      ④ 跨层损坏 ⑤ 触须迷雾限制 ⑥ 融雪与小八界 ⑦ 血蕈浪花与黑市售价 ⑧ `weight_by_rarity` 接口。
 extends RefCounted
 
 const 种子们 := [20261010, 20261011, 20261012, 20261013, 20261014, 20261015, 20261016, 20261017]
-const 主动零件 := ["wheel", "limb", "hover", "exo", "engine", "spring", "jet", "bagua", "thaw", "tentacle", "rite"]
+## ★ 2026-10-17：`rite` 河谷祭祈改为 `用: false` 被动常驻 → 主动可点击件从 11 件降为 **10 件**。
+const 主动零件 := ["wheel", "limb", "hover", "exo", "engine", "spring", "jet", "bagua", "thaw", "tentacle"]
 
 var _地图缓存: Dictionary = {}
 
@@ -25,6 +28,7 @@ func run(t) -> void:
 	_守军闸与小径(t)
 	_零件数据(t)
 	_零件目标与位移(t)
+	_零件跨层与抽取(t)
 	_零件买卖(t)
 
 # ==========================================================================================
@@ -290,6 +294,14 @@ func _新局(图: Dictionary) -> RunState:
 	s.propellant_max = s.propellant
 	return s
 
+## 给一件零件验「门面口径」用的一次性会话：手上就是这个 `RunState`，停在大地图屏。
+## （`GameSession.part_can_use_now()` 只读 `run_state` / `screen`，不碰表现层。）
+func _会话(s: RunState) -> GameSession:
+	var g := GameSession.new()
+	g.run_state = s
+	g.screen = "map"
+	return g
+
 func _移动与跳格(t) -> void:
 	var 图 := _合成图()
 	var s := _新局(图)
@@ -482,31 +494,81 @@ func _守军闸与小径(t) -> void:
 	t.ok(MapGenerator.exit_kinds()["出口尽头"] == "尽头" and MapGenerator.exit_kinds()["出口小径"] == "小径", "出口类型表 = 尽头 / 小径")
 
 # ==========================================================================================
-# ⑧ 零件：数据 / 目标格 / 位移
+# ⑧ 零件：数据表（对齐《黑流树海》原版 —— 13 件里主动可点击的 10 件）
 # ==========================================================================================
 
 func _零件数据(t) -> void:
 	var 表 := PartSystem.part_table()
 	t.ok(表.size() == 13, "零件表 13 件")
-	t.ok(PartSystem.active_part_ids().size() == 11, "能动的那 11 件（`用: true`）")
+	t.ok(PartSystem.active_part_ids().size() == 10,
+		"主动可点击的零件 = **10 件**（`用: true`；`rite` 河谷祭祈改为被动常驻）")
 	var 缺 := []
 	for k in 主动零件:
 		if not 表.has(k):
 			缺.append(k)
 		elif not bool(PartSystem.part_info(k).get("用", false)):
 			缺.append(k + "(用:false)")
-	t.ok(缺.is_empty(), "11 件主动零件齐全：%s" % ", ".join(主动零件))
-	t.ok(PartSystem.tradable_part_ids().size() == 13, "买卖池 = 全表 13 件（含两件理财自然物）")
-	var w := PartSystem.part_info("wheel")
-	t.ok(String(w["名"]) == "报废轮子" and String(w["类"]) == "加工品" and int(w["次数"]) == 1
-		and String(w["移动"]) == "line2" and int(w["价"]) == 3 and bool(w["用"]), "wheel 报废轮子：加工品 / 1 次 / line2 / 价 3")
-	var b := PartSystem.part_info("bloodcap")
-	t.ok(b.get("次数") == null and int(b["估价"]) == 3 and not bool(b["用"]) and bool(b["可卖"]),
-		"bloodcap 血蕈：自然物（次数 null、估价 3、不能主动用、可卖）")
-	t.ok(String(PartSystem.part_info("rite")["名"]) == "河谷祭祈" and PartSystem.零件箱上限() == 8,
-		"rite 河谷祭祈 + 零件箱上限 8")
+	t.ok(缺.is_empty(), "10 件主动零件齐全：%s" % ", ".join(主动零件))
+	t.ok(not bool(PartSystem.part_info("rite").get("用", true)),
+		"rite 河谷祭祈 = 被动常驻（数据表 `用: false`，不在 10 件主动件里）")
+	t.ok(PartSystem.tradable_part_ids().size() == 13,
+		"买卖池 13 件 = 10 件主动件 + 两件理财自然物 + `rite`（`用: false` 但 `可买: true`）")
+
+	# ---- 10 件加工品逐件对齐原版规格 ----
+	# 每条 = [名, 类, 次数, range 算子, 价, rarity, free, breakOnNextFloor, 用]
+	var 规格 := {
+		"wheel": ["报废轮子", "加工品", 1, "line2", 2, "low", false, false, true],
+		"limb": ["报废假肢", "加工品", 1, "adj8", 2, "low", false, false, true],
+		"hover": ["气垫底座", "加工品", 2, "ring12", 4, "mid", false, false, true],
+		"exo": ["试作外骨骼", "加工品", 2, "line3", 4, "mid", false, false, true],
+		"engine": ["标准引擎", "加工品", 3, "adj8", 4, "mid", false, false, true],
+		"spring": ["重弹簧", "加工品", 1, "ring12", 6, "mid", true, true, true],
+		"jet": ["一次性喷气背包", "加工品", 1, "any", 8, "mid", true, false, true],
+		"bagua": ["小八界", "加工品", 1, "bagua", 4, "low", true, true, true],
+		"thaw": ["老妈的融雪", "加工品", 1, "thaw", 8, "high", false, false, true],
+		"tentacle": ["坎诺特的触须", "加工品", 2, "tentacle", 12, "high", false, false, true],
+	}
+	var 坏 := []
+	for k in 规格.keys():
+		var 期望: Array = 规格[k]
+		var P := PartSystem.part_info(k)
+		var 实 := [String(P.get("名", "")), String(P.get("类", "")), int(P.get("次数", -1)),
+			PartSystem.part_range(k), int(P.get("价", -1)), PartSystem.part_rarity(k),
+			PartSystem.part_is_free(k), PartSystem.part_breaks_on_next_floor(k),
+			bool(P.get("用", false))]
+		if 实 != 期望:
+			坏.append("%s：期望 %s 实际 %s" % [k, str(期望), str(实)])
+	t.ok(坏.is_empty(), "10 件加工品的 range / 次数 / 价 / rarity / free / 跨层损坏 逐件对齐原版规格%s"
+		% ("" if 坏.is_empty() else "：" + "；".join(坏)))
+	t.ok(PartSystem.part_range("wheel") == "line2" and PartSystem.part_range("exo") == "line3"
+		and String(PartSystem.part_info("wheel").get("range", "")) == "line(2)"
+		and String(PartSystem.part_info("exo").get("range", "")) == "line(3)",
+		"line(n) 归一化：表里 `range: \"line(2)\"` / `\"line(3)\"` → 算子 line2 / line3（也兼容旧的 `移动` 字段）")
+
+	var 概 := PartSystem.part_info("rite")
+	t.ok(String(概.get("名")) == "河谷祭祈" and String(概.get("类")) == "概念体"
+		and 概.get("次数") == null and int(概["价"]) == 6 and PartSystem.part_rarity("rite") == "mid"
+		and not bool(概.get("用", true)) and not PartSystem.part_is_free("rite"),
+		"rite 河谷祭祈：概念体 / 不计次数 / 价 6 / rarity mid / 被动常驻（`用: false`）")
+	var 血 := PartSystem.part_info("bloodcap")
+	t.ok(String(血.get("类")) == "自然物" and 血.get("次数") == null and int(血["初值"]) == 2
+		and int(血["价"]) == 4 and PartSystem.part_rarity("bloodcap") == "mid"
+		and not bool(血.get("用", true)) and bool(血.get("可卖", false)),
+		"bloodcap 血蕈：自然物（次数 null、初值 2、价 4、rarity mid、不能主动用、可卖）")
+	var 浪 := PartSystem.part_info("wave")
+	t.ok(String(浪.get("类")) == "自然物" and int(浪["初值"]) == 3 and int(浪["价"]) == 6
+		and PartSystem.part_rarity("wave") == "low" and not bool(浪.get("用", true)),
+		"wave 浪花：自然物（初值 3、价 6、rarity low、不能主动用）")
+	t.ok(bool(PartSystem.part_info("jet").get("downgradePool", false)),
+		"jet 一次性喷气背包带 `downgradePool: true`")
+	t.ok(bool(PartSystem.part_info("bagua").get("noTargetSelect", false)),
+		"bagua 小八界带 `noTargetSelect: true`（一键随机传送、不用选落点）")
+	t.ok(PartSystem.零件箱上限() == 8, "零件箱上限 8")
 	var n := PartSystem.new_part("wheel")
-	t.ok(String(n["id"]) == "wheel" and int(n["uses"]) == 1 and n["value"] == null, "new_part：{id, uses, value}")
+	t.ok(String(n["id"]) == "wheel" and int(n["uses"]) == 1 and n["value"] == null,
+		"new_part：{id, uses, value}（加工品没有估价）")
+	t.ok(int(PartSystem.new_part("bloodcap")["value"]) == 2 and int(PartSystem.new_part("wave")["value"]) == 3,
+		"new_part：自然物带上表里的初值（血蕈 2 / 浪花 3）")
 
 	# 推进剂加成（河谷祭祈）
 	var s := RunState.new()
@@ -524,165 +586,450 @@ func _零件数据(t) -> void:
 
 func _零件目标与位移(t) -> void:
 	var s := _新局(_合成图())
+	# 从起点 (0,0) 出发，全部按**网格坐标几何距离**算（不走近路 / 不看连通）
 	var 期望 := {
-		"wheel": [2, 6, 10], "limb": [1, 5], "hover": [1, 2, 5, 6, 10],
-		"exo": [2, 3, 6, 7, 10, 11, 15], "engine": [1, 5], "spring": [1, 2, 5, 6, 10],
+		"wheel": [1, 2, 5, 10],            # line(2)：横竖 1~2 格（不含斜角）
+		"limb": [1, 5, 6],                 # adj8：相邻 8 格（含斜角）
+		"hover": [1, 2, 5, 6, 10],         # ring12：曼哈顿 1~2 的 12 格菱形
+		"exo": [1, 2, 3, 5, 10, 15],       # line(3)：横竖 1~3 格（不含斜角）
+		"engine": [1, 5, 6],               # adj8
+		"spring": [1, 2, 5, 6, 10],        # ring12
 	}
 	var 坏 := []
 	for k in 期望.keys():
 		var 实 := PartSystem.part_targets(s, k)
 		if 实 != 期望[k]:
 			坏.append("%s：期望 %s 实际 %s" % [k, str(期望[k]), str(实)])
-	t.ok(坏.is_empty(), "11 件里的 6 件跳跃类目标格逐条对齐（ring / ringline / line2 / line3 / step）%s"
+	t.ok(坏.is_empty(), "6 件位移件的目标格按几何距离逐条对齐（adj8 / ring12 / line(2) / line(3)）%s"
 		% ("" if 坏.is_empty() else "：" + "；".join(坏)))
 	t.ok(PartSystem.part_targets(s, "jet").size() == 24, "jet 喷气背包（any）：除当前格之外 24 格全可点")
-	t.ok(PartSystem.part_targets(s, "tentacle") == [2], "tentacle 触须：直接指向本层黑市那一格")
 	t.ok(PartSystem.part_targets(s, "bloodcap").is_empty() and PartSystem.part_targets(s, "wave").is_empty(),
 		"两件自然物不能用（目标格为空）")
-	t.ok(PartSystem.part_targets(s, "rite").is_empty(), "rite 没有位移（目标格为空）")
-	s.revealed_cells = [14]
-	t.ok(PartSystem.part_targets(s, "thaw") == [14], "thaw 融雪：只飞到**已知**的非战斗格（揭开 (2,4) 遗迹后 = [14]）")
-	t.ok(not PartSystem.part_targets(s, "thaw").has(12), "thaw 飞不到出口尽头（战斗类节点）")
+	t.ok(PartSystem.part_targets(s, "rite").is_empty(), "rite 河谷祭祈被动常驻（目标格为空）")
 
-	# 用零件位移：不消耗推进剂、不结算
-	var s2 := _新局(_合成图())
-	s2.parts = [PartSystem.new_part("wheel")]
-	var 推前 := s2.propellant
-	var r := PartSystem.use_part(s2, 0, 2)
-	t.ok(bool(r["ok"]) and s2.node_id == 2 and s2.propellant == 推前, "用轮子跳到 2 格远：位移成功且**不消耗推进剂**")
-	t.ok(s2.parts.is_empty(), "次数用光（1 次）→ 零件从手上消失")
-	t.ok(not bool(PartSystem.use_part(s2, 0, 6)["ok"]), "零件已经用光 → 拒绝")
-	var s3 := _新局(_合成图())
-	s3.parts = [PartSystem.new_part("engine")]
-	PartSystem.use_part(s3, 0, 1)
-	PartSystem.use_part(s3, 0, 6)
-	t.ok(int((s3.parts[0] as Dictionary)["uses"]) == 1, "引擎能用 3 次：用掉 2 次后还剩 1 次")
-	var s4 := _新局(_合成图())
-	s4.parts = [PartSystem.new_part("engine")]
-	t.ok(not bool(PartSystem.use_part(s4, 0, 12)["ok"]), "目标不在这一件的目标格里 → 拒绝（引擎到不了 4 格远）")
+	# ---- 断言 1：直线不拐弯（wheel = line(2) / exo = line(3)，仅横竖 4 方向）----
+	t.ok(not PartSystem.LINE_ALLOW_DIAGONAL,
+		"断言 1：`PartSystem.LINE_ALLOW_DIAGONAL = false`（line(n) 只认横竖 4 方向）")
+	var 当 := PartSystem.cell_xy(s, s.node_id)
+	t.ok(not PartSystem.part_targets(s, "wheel").has(6) and not PartSystem.part_targets(s, "exo").has(6),
+		"断言 1：dx == 1, dy == 1 的斜角格 (1,1) 不在 wheel / exo 的目标列表里")
+	var 斜 := []
+	for 件 in ["wheel", "exo"]:
+		var 界 := 2 if 件 == "wheel" else 3
+		for k in PartSystem.part_targets(s, 件):
+			var xy := PartSystem.cell_xy(s, k)
+			var dx := absi(int(xy["x"]) - int(当["x"]))
+			var dy := absi(int(xy["y"]) - int(当["y"]))
+			if not (dx == 0 or dy == 0) or maxi(dx, dy) < 1 or maxi(dx, dy) > 界:
+				斜.append("%s→(%d,%d)" % [件, dx, dy])
+	t.ok(斜.is_empty(), "断言 1：wheel / exo 的每个目标格都满足「dx == 0 或 dy == 0」且落在 1~n 格（不可拐弯）%s"
+		% ("" if 斜.is_empty() else "：" + "、".join(斜)))
+	t.ok(PartSystem.part_targets(s, "wheel").has(2) and PartSystem.part_targets(s, "wheel").has(10)
+		and PartSystem.part_targets(s, "exo").has(3) and PartSystem.part_targets(s, "exo").has(15),
+		"断言 1：wheel 到得了横竖 2 格（(2,0)/(0,2)）、exo 到得了横竖 3 格（(3,0)/(0,3)）")
 
-	# thaw：+2 希望 +3 经验
-	var s5 := _新局(_合成图())
-	s5.parts = [PartSystem.new_part("thaw")]
-	s5.revealed_cells = [14]
-	s5.hope = 0
-	s5.exp_val = 0
-	s5.level = 1
-	var r5 := PartSystem.use_part(s5, 0, 14)
-	t.ok(bool(r5["ok"]) and s5.node_id == 14, "融雪：飞跃到已知非战斗格 (2,4)")
-	t.ok(s5.hope == 2 and s5.exp_val == 3 and s5.level == 1, "融雪附加效果：希望 +2、经验 +3（3 < 门槛 8，不升级）")
-	t.ok(int((r5["额外"] as Dictionary)["希望"]) == 2 and int((r5["额外"] as Dictionary)["经验"]) == 3, "返回里带回额外效果明细")
+	# ---- 断言 2：无视断路 / 空格（只看 (x, y) 几何距离，不用 BFS 连通）----
+	var 挖 := _新局(_合成图())
+	for k in [1, 2, 5]:
+		(挖.cell_at(k) as Dictionary)["exists"] = false   # 人为挖掉 (1,0)、(2,0)、(0,1)
+	t.ok(PartSystem.part_targets(挖, "wheel").has(10) and not PartSystem.part_targets(挖, "wheel").has(1)
+		and not PartSystem.part_targets(挖, "wheel").has(2),
+		"断言 2：中间格不存在也不影响 wheel 选中对岸的 (0,2)；不存在的格自己不是目标")
+	t.ok(PartSystem.part_targets(挖, "exo").has(3),
+		"断言 2：exo 穿过 (1,0)/(2,0) 两个空格照样选中 (3,0)")
+	t.ok(PartSystem.part_targets(挖, "hover").has(10) and PartSystem.part_targets(挖, "spring").has(10),
+		"断言 2：hover / spring 无视 (0,1) 的空缺，照样选中 (0,2)")
+	var 洞 := _新局(_合成图())
+	(洞.map_data["格"] as Dictionary).erase(1)   # 直接把中间格从格表里删掉（连 exists 都没有）
+	(洞.map_data["格"] as Dictionary).erase(5)
+	t.ok(PartSystem.part_targets(洞, "wheel").has(2) and PartSystem.part_targets(洞, "hover").has(6),
+		"断言 2：中间格被整格删掉（空格）也照样算得到对岸的目标格")
+	var 跳 := _新局(_合成图())
+	(跳.cell_at(1) as Dictionary)["exists"] = false
+	(跳.cell_at(5) as Dictionary)["exists"] = false
+	跳.parts = [PartSystem.new_part("wheel")]
+	var 前推 := 跳.propellant
+	var r轮 := PartSystem.use_part(跳, 0, 2)
+	t.ok(bool(r轮["ok"]) and 跳.node_id == 2 and 跳.propellant == 前推 - 1,
+		"断言 2：wheel 跨过空格瞬移到 (2,0)（推进剂 %d → %d）" % [前推, 跳.propellant])
+	var 跳2 := _新局(_合成图())
+	(跳2.cell_at(1) as Dictionary)["exists"] = false
+	(跳2.cell_at(2) as Dictionary)["exists"] = false
+	跳2.parts = [PartSystem.new_part("exo")]
+	var r外 := PartSystem.use_part(跳2, 0, 3)
+	t.ok(bool(r外["ok"]) and 跳2.node_id == 3, "断言 2：exo 跨过两个空格瞬移到 (3,0)")
+	var 跳3 := _新局(_合成图())
+	(跳3.cell_at(5) as Dictionary)["exists"] = false
+	跳3.parts = [PartSystem.new_part("hover")]
+	var r气 := PartSystem.use_part(跳3, 0, 10)
+	t.ok(bool(r气["ok"]) and 跳3.node_id == 10, "断言 2：hover 跨过空格瞬移到 (0,2)")
+	var 跳4 := _新局(_合成图())
+	(跳4.cell_at(5) as Dictionary)["exists"] = false
+	跳4.parts = [PartSystem.new_part("spring")]
+	var r簧 := PartSystem.use_part(跳4, 0, 10)
+	t.ok(bool(r簧["ok"]) and 跳4.node_id == 10 and 跳4.propellant == 前推,
+		"断言 2：spring 跨过空格瞬移到 (0,2)，且不耗推进剂（仍是 %d）" % 跳4.propellant)
 
-	# bagua：探明四邻 + 回复 1 推进剂
-	var s6 := _新局(_合成图())
-	s6.parts = [PartSystem.new_part("bagua")]
-	s6.propellant = 1
-	var r6 := PartSystem.use_part(s6, 0, 6)
-	var 探 := int((r6["额外"] as Dictionary)["探明"])
-	t.ok(bool(r6["ok"]) and 探 == 4, "小八界：落地探明四邻 4 格（额外.探明 = %d）" % 探)
-	t.ok(s6.propellant == 2 and int((r6["额外"] as Dictionary)["推进剂"]) == 1, "小八界：回复 +1 推进剂（1 → 2）")
-	t.ok(s6.is_revealed(1) and s6.is_revealed(5) and s6.is_revealed(7) and s6.is_revealed(11), "四邻接格都进了「已揭开」")
+	# ---- 断言 3：推进剂消耗与「0 推进剂禁则」----
+	var 可落 := {"wheel": 2, "limb": 1, "hover": 1, "exo": 2, "engine": 1, "thaw": 12, "tentacle": 2}
+	var 疑 := []
+	for 件 in 可落.keys():
+		var sN := _新局(_合成图())
+		if 件 == "tentacle":
+			sN.mark_revealed(2)          # 触须只认已探明的黑市
+		sN.parts = [PartSystem.new_part(件)]
+		sN.propellant = 5
+		var rN := PartSystem.use_part(sN, 0, int(可落[件]))
+		if not bool(rN["ok"]) or sN.propellant != 4:
+			疑.append("%s：ok=%s 推进剂 5 → %d（%s）"
+				% [件, str(rN.get("ok", false)), sN.propellant, str(rN.get("why", ""))])
+	t.ok(疑.is_empty(), "断言 3：7 件 `free: false` 的主动件用一次后 `state.propellant` 精确 −1（5 → 4）%s"
+		% ("" if 疑.is_empty() else "：" + "；".join(疑)))
+	t.ok(PartSystem.part_is_free("spring") and PartSystem.part_is_free("jet")
+		and PartSystem.part_is_free("bagua") and not PartSystem.part_is_free("wheel")
+		and not PartSystem.part_is_free("thaw"),
+		"断言 3：只有 spring / jet / bagua 是 `free: true`（免推进剂）")
+	var 拒 := []
+	for 件 in 可落.keys():
+		var s0 := _新局(_合成图())
+		if 件 == "tentacle":
+			s0.mark_revealed(2)
+		s0.parts = [PartSystem.new_part(件)]
+		s0.propellant = 0
+		var r0 := PartSystem.use_part(s0, 0, int(可落[件]))
+		var 门 := _会话(s0).part_can_use_now(0)
+		var 差 := (bool(r0["ok"]) or not str(r0.get("why", "")).contains("推进剂不足")
+			or bool(门.get("ok", true)) or not str(门.get("why", "")).contains("推进剂不足")
+			or s0.node_id != 0)
+		if 差:
+			拒.append("%s：use_part=%s/「%s」 门面=%s/「%s」"
+				% [件, str(r0.get("ok", false)), str(r0.get("why", "")),
+					str(门.get("ok", true)), str(门.get("why", ""))])
+	t.ok(拒.is_empty(),
+		"断言 3：`propellant == 0` 时这 7 件的 `use_part` 与 `part_can_use_now().ok` 都是 false，原因含「推进剂不足」%s"
+		% ("" if 拒.is_empty() else "：" + "；".join(拒)))
+	var 免坏 := []
+	for 件 in ["spring", "jet", "bagua"]:
+		var sF := _新局(_合成图())
+		sF.parts = [PartSystem.new_part(件)]
+		sF.propellant = 0
+		var 门F := _会话(sF).part_can_use_now(0)
+		if not bool(门F.get("ok", false)) or not bool(门F.get("free", false)) or sF.node_id != 0:
+			免坏.append("%s：ok=%s free=%s why=「%s」"
+				% [件, str(门F.get("ok", false)), str(门F.get("free", true)), str(门F.get("why", ""))])
+	t.ok(免坏.is_empty(), "断言 3：`propellant == 0` 时 spring / jet / bagua 的 `part_can_use_now().ok` 仍为 true%s"
+		% ("" if 免坏.is_empty() else "：" + "；".join(免坏)))
+	var 落点 := {"spring": 10, "jet": 24, "bagua": -1}
+	var 免费坏 := []
+	for 件 in 落点.keys():
+		var sU := _新局(_合成图())
+		sU.parts = [PartSystem.new_part(件)]
+		sU.propellant = 0
+		var rU := PartSystem.use_part(sU, 0, int(落点[件]))
+		if not bool(rU["ok"]) or sU.propellant != 0:
+			免费坏.append("%s：ok=%s 推进剂 %d（%s）"
+				% [件, str(rU.get("ok", false)), sU.propellant, str(rU.get("why", ""))])
+	t.ok(免费坏.is_empty(),
+		"断言 3：0 推进剂下 spring / jet / bagua 照样用得出来，且既不扣也不回推进剂（仍是 0）%s"
+		% ("" if 免费坏.is_empty() else "：" + "；".join(免费坏)))
+
+	# ---- 断言 5：坎诺特的触须 —— 迷雾里的黑市选不中 ----
+	var 触 := _新局(_合成图())
+	触.parts = [PartSystem.new_part("tentacle")]
+	t.ok(not MapNavigator.is_known(触, 2) and PartSystem.black_market_cell(触) == 2,
+		"断言 5：本层黑市 = 格 2（(2,0)），一开始 `is_known == false`（迷雾里）")
+	t.ok(PartSystem.part_targets(触, "tentacle").is_empty(),
+		"断言 5：迷雾里的黑市不可选中 → tentacle 的 `part_targets` 为空（%s）"
+		% str(PartSystem.part_targets(触, "tentacle")))
+	var r迷 := PartSystem.use_part(触, 0, 2)
+	t.ok(not bool(r迷["ok"]) and 触.node_id == 0, "断言 5：未探明时直接 `use_part` 也被拒（不偷偷飞过去）")
+	触.mark_revealed(2)
+	t.ok(PartSystem.part_targets(触, "tentacle") == [2], "断言 5：探明之后黑市可选（目标格 = [2]）")
+	var 碳前 := 触.carbon
+	var r触 := PartSystem.use_part(触, 0, 2)
+	t.ok(bool(r触["ok"]) and 触.node_id == 2, "断言 5：触须直达已探明的黑市格")
+	t.ok(触.carbon == 碳前 + 4 and int((r触["额外"] as Dictionary)["源碳"]) == 4,
+		"断言 5：移动后 `state.carbon` 精确 +4（%d → %d）" % [碳前, 触.carbon])
+	t.ok(int((触.parts[0] as Dictionary)["uses"]) == 1,
+		"断言 5：剩余次数 2 → 1")
+
+	# ---- 断言 6：老妈的融雪 —— 迷雾里的非战斗格都能选 ----
+	var 雪 := _新局(_合成图())
+	雪.node_id = 7
+	雪.mark_visited(7)          # 当前格 = (2,1) 空
+	雪.parts = [PartSystem.new_part("thaw")]
+	雪.hope = 0
+	雪.exp_val = 0
+	雪.level = 1
+	var 雪目标 := PartSystem.part_targets(雪, "thaw")
+	t.ok(雪目标.has(0) and 雪目标.has(12) and 雪目标.has(19),
+		"断言 6：thaw 到得了**未探明**的非战斗格（起点 0 / 出口尽头 12 / 出口小径 19）")
+	t.ok(not 雪目标.has(5) and not 雪目标.has(13) and not 雪目标.has(7),
+		"断言 6：thaw 到不了战斗格 5（作战）/ 13（出口守军），当前格 7 也不能选")
+	t.ok(雪目标.size() == 22, "断言 6：thaw 的目标格 = 25 格 − 当前格 1 − 两个战斗格 = %d" % 雪目标.size())
+	var r雪 := PartSystem.use_part(雪, 0, 12)
+	t.ok(bool(r雪["ok"]) and 雪.node_id == 12, "断言 6：融雪飞到未探明的出口尽头 (2,2)")
+	t.ok(雪.hope == 2 and int((r雪["额外"] as Dictionary)["希望"]) == 2,
+		"断言 6：落地 `state.hope` +2（0 → %d）" % 雪.hope)
+	t.ok(雪.exp_val == 0 and 雪.level == 1 and int((r雪["额外"] as Dictionary)["经验"]) == 0,
+		"断言 6：融雪**不再给**肉鸽经验（exp 仍是 0，★ 旧版的 +3 已删）")
+
+	# ---- 断言 6：小八界 —— 优先未探明的非战斗格、免推进剂、不回推进剂、不揭四邻雾 ----
+	var 卦 := _新局(_合成图())
+	卦.parts = [PartSystem.new_part("bagua")]
+	卦.propellant = 1
+	var 候 := PartSystem.bagua_candidates(卦)
+	var 候合法 := not 候.is_empty()
+	for k in 候:
+		if MapNavigator.is_known(卦, k) or PartSystem.is_combat_type(PartSystem.cell_type(卦.cell_at(k))):
+			候合法 = false
+	t.ok(候合法 and not 候.has(0),
+		"断言 6：小八界的候选池 = 本层**未探明**的非战斗格（%d 格，不含当前格）" % 候.size())
+	var r卦 := PartSystem.use_part(卦, 0, -1)
+	var 落卦 := int(r卦.get("target", -1))
+	t.ok(bool(r卦["ok"]) and 候.has(落卦) and 卦.node_id == 落卦,
+		"断言 6：一键随机传送落在候选池里的非战斗格（%d）" % 落卦)
+	t.ok(卦.propellant == 1, "断言 6：小八界免推进剂，也**不回**推进剂（仍是 1）")
+	t.ok(卦.revealed_cells.size() == 1 and 卦.is_revealed(落卦),
+		"断言 6：只揭开落点本身、**不揭四邻雾**（已揭开 = %s）" % str(卦.revealed_cells))
+	var 全 := _新局(_合成图())
+	全.parts = [PartSystem.new_part("bagua")]
+	for k in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]:
+		全.mark_revealed(k)
+	var 全候 := PartSystem.bagua_candidates(全)
+	t.ok(全候.has(全.node_id) and 全候.size() == 23,
+		"断言 6：全探明之后候选池 = 全部非战斗格（含当前格 0，共 %d 格）" % 全候.size())
+	var r全 := PartSystem.use_part(全, 0, -1)
+	t.ok(bool(r全["ok"]) and 全候.has(int(r全.get("target", -1))) and 全.parts.is_empty(),
+		"断言 6：全探明时从全部非战斗格里随机抽一个（可能原地不动），一次用尽后从手上移除")
 
 # ==========================================================================================
-# ⑨ 零件：增值 / 买卖折算
+# ⑨ 零件：跨层损坏 / 稀有度抽取（断言 4、断言 8）
+# ==========================================================================================
+
+func _零件跨层与抽取(t) -> void:
+	# ---- 断言 4：跨层损坏 —— spring / bagua 掉，wheel / rite 留 ----
+	var 持 := ["spring", "bagua", "wheel", "rite"]
+	var 直 := RunState.new()
+	直.seed_val = 20261010
+	直.floor_num = 1
+	直.map_data = _合成图()
+	for k in 持:
+		直.parts.append(PartSystem.new_part(k))
+	t.ok(PartSystem.part_breaks_on_next_floor("spring") and PartSystem.part_breaks_on_next_floor("bagua")
+		and not PartSystem.part_breaks_on_next_floor("wheel") and not PartSystem.part_breaks_on_next_floor("rite"),
+		"断言 4：只有 spring / bagua 带 `breakOnNextFloor: true`")
+	var 坏名 := PartSystem.break_on_next_floor(直)
+	var 键直 := []
+	for p in 直.parts:
+		键直.append(PartSystem.part_key(p))
+	t.ok(坏名.size() == 2 and 坏名.has("重弹簧") and 坏名.has("小八界"),
+		"断言 4：`break_on_next_floor` 返回被损坏的两件（%s）" % str(坏名))
+	t.ok(直.parts.size() == 2 and 键直.has("wheel") and 键直.has("rite")
+		and not 键直.has("spring") and not 键直.has("bagua"),
+		"断言 4：损坏后手上只剩 wheel 与 rite（%s）" % str(键直))
+	var 换 := RunState.new()
+	换.seed_val = 20261010
+	MapNavigator.enter_floor(换, 1)
+	for k in 持:
+		换.parts.append(PartSystem.new_part(k))
+	var r换 := MapNavigator.advance_floor(换)
+	var 键换 := []
+	for p in 换.parts:
+		键换.append(PartSystem.part_key(p))
+	t.ok(bool(r换["ok"]) and 换.floor_num == 2, "断言 4：`MapNavigator.advance_floor` 进到第 2 层")
+	t.ok((r换.get("跨层损坏") as Array).size() == 2,
+		"断言 4：换层结果带回「跨层损坏」两件（%s）" % str(r换.get("跨层损坏")))
+	t.ok(换.parts.size() == 2 and 键换.has("wheel") and 键换.has("rite")
+		and not 键换.has("spring") and not 键换.has("bagua"),
+		"断言 4：换层之后 spring / bagua 自动从 `state.parts` 移除，wheel / rite 保留（%s）" % str(键换))
+
+	# ---- 断言 8：`weight_by_rarity` 接口（默认 null = 等权抽取）----
+	var 抽 := RunState.new()
+	抽.seed_val = 20261010
+	抽.floor_num = 1
+	抽.map_data = _合成图()
+	抽.node_id = 0
+	var 池 := PartSystem.tradable_part_ids()
+	var 默认见 := {}
+	var 非法 := 0
+	for i in 200:
+		var k := PartSystem.draw_part(抽, i)
+		if not 池.has(k):
+			非法 += 1
+		默认见[k] = true
+	t.ok(非法 == 0 and 默认见.size() == 池.size(),
+		"断言 8：`draw_part(默认 null)` = 买卖池等权抽取（200 次把 %d 件全抽到过）" % 默认见.size())
+	var 逐格同 := true
+	for i in 20:
+		if PartSystem.draw_part(抽, i) != NodeResolver.抽零件(抽, i):
+			逐格同 = false
+	t.ok(逐格同, "断言 8：`NodeResolver.抽零件(state, salt)` 默认透传 null → 与 `PartSystem.draw_part` 逐盐相同")
+	var 高池 := ["thaw", "tentacle"]
+	var 高见 := {}
+	var 高档 := true
+	for i in 50:
+		var k := PartSystem.draw_part(抽, i, {"low": 0, "mid": 0, "high": 100})
+		高见[k] = true
+		if not 高池.has(k):
+			高档 = false
+	t.ok(高档 and 高见.size() == 2,
+		"断言 8：传 `{\"low\": 0, \"mid\": 0, \"high\": 100}` → 只出 high 档的 thaw / tentacle（%s）"
+		% str(高见.keys()))
+	var 低池 := ["wheel", "limb", "bagua", "wave"]
+	var 低档 := true
+	for i in 50:
+		if not 低池.has(PartSystem.draw_part(抽, i, {"low": 100, "mid": 0, "high": 0})):
+			低档 = false
+	t.ok(低档, "断言 8：传 `{\"low\": 100, \"mid\": 0, \"high\": 0}` → 只出 low 档（%s）" % str(低池))
+	var 门权 := true
+	for i in 30:
+		if not 高池.has(NodeResolver.抽零件(抽, i, {"low": 0, "mid": 0, "high": 100})):
+			门权 = false
+	t.ok(门权, "断言 8：`NodeResolver.抽零件(state, salt, 权重表)` 也严格按稀有度权重抽")
+
+# ==========================================================================================
+# ⑩ 零件：增值 / 买卖折算（断言 7）
 # ==========================================================================================
 
 func _零件买卖(t) -> void:
-	# 卖价：自然物按当前估价；加工品 / 概念体 max(2, floor(价 × 0.6))
-	var 期望卖 := {"wheel": 2, "limb": 2, "hover": 3, "exo": 3, "engine": 2, "spring": 2,
-		"jet": 4, "bagua": 5, "thaw": 3, "tentacle": 2, "rite": 3}
+	# ---- 卖价：自然物按当前估价；加工品 / 概念体固定 1 源碳 ----
+	t.ok(PartSystem.sell_price(PartSystem.new_part("bloodcap")) == 2, "断言 7：黑市卖血蕈 = 当前估价 2")
+	t.ok(PartSystem.sell_price(PartSystem.new_part("wave")) == 3, "断言 7：黑市卖浪花 = 当前估价 3")
+	t.ok(PartSystem.sell_price({"id": "bloodcap", "uses": null, "value": 9}) == 9,
+		"断言 7：血蕈涨价之后按**当前估价**卖（9）")
+	var 加工与概念 := ["wheel", "limb", "hover", "exo", "engine", "spring", "jet", "bagua",
+		"thaw", "tentacle", "rite"]
 	var 坏 := []
-	for k in 期望卖.keys():
+	for k in 加工与概念:
 		var 实 := PartSystem.sell_price(PartSystem.new_part(k))
-		if 实 != 期望卖[k]:
-			坏.append("%s：期望 %d 实际 %d" % [k, 期望卖[k], 实])
-	t.ok(坏.is_empty(), "11 件加工品 / 概念体卖价 = max(2, floor(价 × 0.6))%s" % ("" if 坏.is_empty() else "：" + "；".join(坏)))
-	t.ok(PartSystem.sell_price(PartSystem.new_part("bloodcap")) == 3, "血蕈按当前估价卖（初始 3）")
-	t.ok(PartSystem.sell_price(PartSystem.new_part("wave")) == 4, "浪花按当前估价卖（初始 4）")
-	t.ok(PartSystem.sell_price({"id": "bloodcap", "uses": null, "value": 9}) == 9, "血蕈涨价之后按**当前估价**卖（9）")
+		if 实 != 1:
+			坏.append("%s：%d" % [k, 实])
+	t.ok(坏.is_empty(),
+		"断言 7：10 件加工品 + 概念体（河谷祭祈）卖价**固定 1 源碳**，不再按参考价折算%s"
+		% ("" if 坏.is_empty() else "：" + "；".join(坏)))
 
-	# 黑市买价（f1 藏品打折 0.7）
+	# ---- 黑市买价（f1 藏品打折 0.7）----
 	var s := RunState.new()
-	t.ok(PartSystem.buy_price(s, "jet") == 8 and PartSystem.buy_price(s, "bagua") == 9, "黑市买价 = 表里的参考价")
+	t.ok(PartSystem.buy_price(s, "jet") == 8 and PartSystem.buy_price(s, "bagua") == 4
+		and PartSystem.buy_price(s, "tentacle") == 12,
+		"黑市买价 = 表里的「价」（喷气背包 8 / 小八界 4 / 触须 12）")
 	s.relics = ["f1"]
-	t.ok(PartSystem.buy_price(s, "jet") == 6 and PartSystem.buy_price(s, "bagua") == 6,
-		"有 f1 藏品 → 买价 × 0.7 四舍五入（8→6、9→6）")
+	t.ok(PartSystem.buy_price(s, "jet") == 6 and PartSystem.buy_price(s, "bagua") == 3,
+		"有 f1 藏品 → 买价 × 0.7 四舍五入（8 → 6、4 → 3）")
 
-	# 血蕈：每次战斗胜利后估价 +2、封顶 15
-	var s2 := RunState.new()
-	s2.parts = [PartSystem.new_part("bloodcap")]
-	var 涨1 := PartSystem.bloodcap_appreciate(s2)
-	t.ok(涨1.size() == 1 and int((s2.parts[0] as Dictionary)["value"]) == 5, "血蕈战后估价 +2（3 → 5）")
-	for i in 10:
-		PartSystem.bloodcap_appreciate(s2)
-	t.ok(int((s2.parts[0] as Dictionary)["value"]) == 15, "血蕈估价封顶 15（★ 不再往上涨）")
-	t.ok(PartSystem.sell_price(s2.parts[0]) == 15, "封顶后按 15 源碳卖出")
+	# ---- 断言 7：血蕈 —— 胜 / 败都 +2，且**无上限** ----
+	var 血 := RunState.new()
+	血.seed_val = 20261010
+	血.floor_num = 1
+	血.map_data = _合成图()
+	血.parts = [PartSystem.new_part("bloodcap")]
+	var 胜报 := {"result": {"结果": "胜"}, "allies": [], "enemies": []}
+	var 败报 := {"result": {"结果": "败"}, "allies": [], "enemies": []}
+	NodeResolver.resolve_battle(血, 胜报, "作战")
+	t.ok(int((血.parts[0] as Dictionary)["value"]) == 4, "断言 7：打赢一场后血蕈估价 2 → 4（`NodeResolver.resolve_battle`）")
+	NodeResolver.resolve_battle(血, 败报, "作战")
+	t.ok(int((血.parts[0] as Dictionary)["value"]) == 6, "断言 7：打输一场后血蕈估价**同样** +2（4 → 6）")
+	for i in 6:
+		NodeResolver.resolve_battle(血, 胜报, "作战")
+	var 血值 := int((血.parts[0] as Dictionary)["value"])
+	t.ok(血值 == 18 and 血值 > 15,
+		"断言 7：连打多场血蕈估价**没有上限**（6 + 6×2 = %d > 15）" % 血值)
+	t.ok(PartSystem.sell_price(血.parts[0]) == 血值,
+		"断言 7：黑市按当前估价 %d 卖出（不再封顶 15）" % 血值)
 
-	# 浪花：移动后估值在 2~8 之间确定性波动
-	var s3 := RunState.new()
-	s3.seed_val = 20261010
-	s3.floor_num = 1
-	s3.map_data = _合成图()
-	s3.node_id = 0
-	s3.parts = [PartSystem.new_part("wave")]
-	var 见 := {}
-	var 变了 := 0
-	for k in [1, 5, 6, 11, 12, 18, 24]:
-		s3.visited_cells.append(k)
-		var 变 := PartSystem.wave_fluctuate(s3, k)
-		var v := int((s3.parts[0] as Dictionary)["value"])
-		见[v] = true
-		if not 变.is_empty():
-			变了 += 1
-	t.ok(见.keys().size() > 1 and 变了 > 0, "浪花：每一步都在 2~8 之间波动（出现过 %d 个不同估价）" % 见.keys().size())
+	# ---- 断言 7：浪花 —— 每次移动 −6 / +8，夹在 [0, 999] ----
+	var 浪 := RunState.new()
+	浪.seed_val = 20261010
+	浪.floor_num = 1
+	浪.map_data = _合成图()
+	浪.node_id = 0
+	var 件 := PartSystem.new_part("wave")
+	件["value"] = 500
+	件["val"] = 500
+	浪.parts = [件]
+	var 异 := 0
 	var 越界 := false
-	for v in 见.keys():
-		if v < 2 or v > 8:
+	for i in 30:
+		浪.visited_cells.append(i + 1)
+		var 前 := PartSystem.current_value(浪.parts[0])
+		PartSystem.wave_fluctuate(浪, i)
+		var 后 := PartSystem.current_value(浪.parts[0])
+		var 差 := 后 - 前
+		if not (差 == -6 or 差 == 8):
+			异 += 1
+		if 后 < 0 or 后 > 999:
 			越界 = true
-	t.ok(not 越界, "浪花估价恒落在 2~8（%s）" % str(见.keys()))
-	var a := PartSystem.new_part("wave")
-	var s4 := RunState.new()
-	s4.seed_val = 20261010
-	s4.floor_num = 1
-	s4.visited_cells = [1, 5, 6]
-	s4.parts = [a]
-	PartSystem.wave_fluctuate(s4, 11)
-	var 值1 := int((s4.parts[0] as Dictionary)["value"])
-	s4.parts = [PartSystem.new_part("wave")]
-	PartSystem.wave_fluctuate(s4, 11)
-	t.ok(值1 == int((s4.parts[0] as Dictionary)["value"]), "同一局同一步永远是同一个数（确定性，不消耗 rng）")
+	t.ok(异 == 0, "断言 7：浪花每次移动估价只按 −6 或 +8 变化（30 次全部合规，例外 %d 次）" % 异)
+	t.ok(not 越界, "断言 7：浪花估价恒落在 [0, 999]")
+	var 顶 := PartSystem.new_part("wave")
+	顶["value"] = 999
+	顶["val"] = 999
+	浪.parts = [顶]
+	PartSystem.wave_fluctuate(浪, 99)
+	var 顶值 := PartSystem.current_value(浪.parts[0])
+	t.ok(顶值 <= 999 and (顶值 == 999 or 顶值 == 993),
+		"断言 7：估价 999 时只可能夹回 999 / 993（实际 %d）" % 顶值)
+	var 底 := PartSystem.new_part("wave")
+	底["value"] = 0
+	底["val"] = 0
+	浪.parts = [底]
+	PartSystem.wave_fluctuate(浪, 98)
+	var 底值 := PartSystem.current_value(浪.parts[0])
+	t.ok(底值 >= 0 and (底值 == 0 or 底值 == 8),
+		"断言 7：估价 0 时只可能夹成 0 / 8（实际 %d）" % 底值)
+	var 甲 := RunState.new()
+	甲.seed_val = 20261010
+	甲.floor_num = 1
+	甲.map_data = _合成图()
+	甲.parts = [PartSystem.new_part("wave")]
+	var 乙 := RunState.new()
+	乙.seed_val = 20261010
+	乙.floor_num = 1
+	乙.map_data = _合成图()
+	乙.parts = [PartSystem.new_part("wave")]
+	PartSystem.wave_fluctuate(甲, 7)
+	PartSystem.wave_fluctuate(乙, 7)
+	t.ok(PartSystem.current_value(甲.parts[0]) == PartSystem.current_value(乙.parts[0]),
+		"断言 7：同种子同一步的浪花估价逐字相同（带种子的确定性步进，不消耗全局 rng）")
 
-	# 卖零件：源碳到账 + 零件移走
+	# ---- 卖零件：源碳到账 + 零件移走 ----
 	var s5 := RunState.new()
 	s5.carbon = 10
 	s5.parts = [PartSystem.new_part("jet"), PartSystem.new_part("rite")]
 	var 卖 := PartSystem.sell_part(s5, 0)
-	t.ok(bool(卖["ok"]) and int(卖["价"]) == 4 and s5.carbon == 14, "卖喷气背包 +4 源碳（10 → 14）")
+	t.ok(bool(卖["ok"]) and int(卖["价"]) == 1 and s5.carbon == 11,
+		"断言 7：黑市卖加工品（喷气背包）固定 +1 源碳（10 → 11）")
 	t.ok(s5.parts.size() == 1 and PartSystem.part_key(s5.parts[0]) == "rite", "卖掉的是第 0 件，祭祈留在手上")
+	var 卖祭 := PartSystem.sell_part(s5, 0)
+	t.ok(int(卖祭["价"]) == 1 and s5.carbon == 12, "断言 7：黑市卖概念体（河谷祭祈）也固定 1 源碳（11 → 12）")
 	t.ok(PartSystem.sell_part(s5, 5).is_empty(), "下标越界 → 空结果（不崩）")
 
-	# 箱满：保留新的、换掉参考价最低的旧件
+	# ---- 箱满：保留新的、换掉参考价最低的旧件（按新价格表）----
 	var s6 := RunState.new()
 	var 箱 := ["wheel", "limb", "hover", "exo", "engine", "spring", "jet", "bagua"]
-	s6.parts = []
 	for k in 箱:
 		s6.parts.append(PartSystem.new_part(k))
 	t.ok(s6.parts.size() == 8 and PartSystem.零件箱满了吗(s6), "零件箱 8 件 = 上限")
 	var 得 := PartSystem.grant_part(s6, "thaw", "遗迹")
 	t.ok(bool(得.get("满了", false)) and s6.parts.size() == 8, "箱满时不静默丢：收下新的，箱子里仍然是 8 件")
-	t.ok(String((得["换掉"] as Dictionary)["id"]) == "spring", "换掉的是参考价最低的旧件（重弹簧 价 2）")
+	t.ok(String((得["换掉"] as Dictionary)["id"]) == "wheel",
+		"箱满替换按**当前价**挑最便宜的：wheel / limb 都是 2（比 spring 的 6 便宜），取先遇上的 wheel（%s）"
+		% str(得["换掉"]))
 	var 键们 := []
 	for p in s6.parts:
 		键们.append(PartSystem.part_key(p))
-	t.ok(键们.has("thaw") and not 键们.has("spring"), "新件在箱子里、最便宜的那件被换掉")
+	t.ok(键们.has("thaw") and not 键们.has("wheel") and 键们.has("spring") and 键们.has("limb"),
+		"新件在箱子里、参考价最低的 wheel 被换掉，spring（价 6）/ limb（价 2）都留着")
 	var s7 := RunState.new()
 	s7.parts = [PartSystem.new_part("rite")]
 	for k in ["wheel", "limb", "hover", "exo", "engine", "spring", "jet"]:
 		s7.parts.append(PartSystem.new_part(k))
 	PartSystem.recalc_propellant_bonus(s7)
 	var 换 := PartSystem.grant_part(s7, "thaw", "遗迹")
-	t.ok(s7.part_prop_bonus == 1 and String((换["换掉"] as Dictionary)["id"]) == "spring",
-		"箱满时按**参考价**挑最便宜的换：祭祈（参考价 6）留着，重弹簧（价 2）被换掉 → 加成仍是 1")
+	t.ok(s7.part_prop_bonus == 1 and String((换["换掉"] as Dictionary)["id"]) == "wheel",
+		"箱满时按**参考价**挑最便宜的换：祭祈（参考价 6）留着，wheel（价 2）被换掉 → 加成仍是 1")
 	PartSystem.recalc_propellant_bonus(s7)
 	PartSystem.sell_part(s7, 0)
 	t.ok(s7.part_prop_bonus == 0, "卖掉祭祈 → 推进剂加成重算为 0")
+

@@ -419,11 +419,19 @@ static func 五维(u: Dictionary) -> Dictionary:
 	}
 
 ## 晋升前后的五维面板（数字**全部**来自 `Units.makeUnit()`，不在这里自己造公式）。
+## ★ DECK-4：顺带报出「上排专属牌库」的解锁情况（**纯读**，不写 state）：
+##   `解锁专属牌` = 这一次晋升**新解锁**的那几张（Lv10→Lv20 报 Lv20 档、Lv20→Lv30 报 Lv30 档）；
+##   `专属牌库`   = 晋升到 `到` 之后该机体**全部**已解锁的专属牌（含倍率）。
 static func 晋升预览(键: String, 等级: int) -> Dictionary:
 	var 前 := 五维(Units.makeUnit(键, "ally", 0.0, float(等级)))
 	var 到 := 晋升目标(等级)
 	var 后 := 五维(Units.makeUnit(键, "ally", 0.0, float(到))) if 到 != 0 else 前.duplicate(true)
-	return {"键": 键, "前": 前, "后": 后, "到": 到}
+	var 出新: Array = []
+	var 全库: Array = []
+	if 到 != 0:
+		出新 = DeckBuilder.新解锁专属牌(键, 到)
+		全库 = DeckBuilder.unit_exclusive_cards(键, 到)
+	return {"键": 键, "前": 前, "后": 后, "到": 到, "解锁专属牌": 出新, "专属牌库": 全库}
 
 ## 真的晋升（先判完再动手；失败时券与希望一分不扣）。
 static func promote(state: RunState, 键: String) -> Dictionary:
@@ -451,12 +459,21 @@ static func promote(state: RunState, 键: String) -> Dictionary:
 	if 特记(state).get("下次晋升减价") == true:
 		特记(state)["下次晋升减价"] = false
 	var 后: Dictionary = 晋升预览(键, 到)["前"]
+	# ★ DECK-4：晋升即解锁上排专属牌（Lv20 / Lv30）。**只写进返回字典**，
+	#   `state.roster[键]` 仍然只有 `{key, lv, hpRatio}` 三个键（存档契约一个字都不动）。
+	var 解锁: Array = DeckBuilder.新解锁专属牌(键, 到)
 	state.add_log("%s 晋升到 Lv%d（−%d 希望，剩 %d；用掉一张 %s）：HP %d → %d、装甲 %d → %d、防御 %d → %d、机动 %d → %d"
 		% [键, 到, 价, state.hope, 券名(找["券"]), 前["maxHp"], 后["maxHp"], 前["armor"], 后["armor"],
 			前["defense"], 后["defense"], 前["mov"], 后["mov"]])
+	if not 解锁.is_empty():
+		state.add_log("%s 的专属牌库解锁：%s（威力倍率 ×%s）" % [键,
+			"、".join(解锁.map(func(x): return "【%s】" % String(x.get("名", "")))),
+			str(DeckBuilder.等级倍率(到))])
 	DeckBuilder.offer_cards(state, 键)
 	return {"ok": true, "键": 键, "从": 从, "到": 到, "价": 价, "前": 前, "后": 后,
-		"券": 找["券"], "券下标": int(找["下标"]), "希望": state.hope}
+		"券": 找["券"], "券下标": int(找["下标"]), "希望": state.hope,
+		"解锁专属牌": 解锁, "专属牌库": DeckBuilder.unit_exclusive_cards(键, 到),
+		"等级倍率": DeckBuilder.等级倍率(到)}
 
 ## 名册上每台的晋升情况（界面 / 测试读它）。
 static func 晋升清单(state: RunState) -> Array:

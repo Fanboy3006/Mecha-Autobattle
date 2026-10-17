@@ -35,7 +35,10 @@ func _initialize() -> void:
 		var suite = script.new()
 		t._suite = path.get_file()
 		print("[%s]" % path.get_file().trim_suffix(".gd"))
-		suite.run(t)
+		# ★ 测试可以是**协程**（`run()` 里有 `await`）：排版类断言必须先跑过帧，
+		#   否则 `Control.get_global_rect()` 全是 0×0。同步的 `run()` 返回 null，
+		#   这一句 await 立刻结束，既有测试一个字都不用改。
+		await suite.run(t)
 		print("")
 	print("==========================================")
 	if t.fails == 0:

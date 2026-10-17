@@ -15,6 +15,8 @@ var session: GameSession = null
 var _说明: Label
 var _选项按钮组: HBoxContainer
 var _休整结果: VBoxContainer
+## ★ 2026-10-18：这一格是不是已经结算过（结算成功后置位；刷新时据此藏掉选项按钮）。
+var _已结算: bool = false
 
 func setup(p_session: GameSession) -> void:
 	session = p_session
@@ -39,6 +41,10 @@ func refresh() -> void:
 	if str(r.get("节点", "")) != "休整":
 		UiTheme.建标签(_休整结果, "在上面选一项：", UiTheme.字号_正文, UiTheme.次要文字)
 		return
+	_已结算 = true
+	# ★ 2026-10-18：这一格结算完就**没有第二次**了 —— 选项按钮藏起来（门面那一层也会拒绝第二次）。
+	# ★ UX-1 第 6 项：顺手**置灰**（藏起来 + 置灰，两条腿都不许它被第二次点中）。
+	_隐藏选项按钮()
 	_填结果(r)
 
 ## 休整回血比例的文字（**纯读** `战斗结构.HP继承.休整回血比例`；读不到就写「内核默认」）。
@@ -60,7 +66,10 @@ func _回血比例文字() -> String:
 func _build() -> void:
 	name = "休整面板"
 	UiTheme.占满(self)
+	self.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	self.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var 列 := UiTheme.建盒(self, "休整上下列", true, UiTheme.间距)
+	UiTheme.占满留边(列)
 	UiTheme.建标签(列, "休整：坐下来修一修", UiTheme.字号_小节, UiTheme.高亮)
 	_说明 = UiTheme.建说明(列, "", UiTheme.字号_小, UiTheme.次要文字)
 	_选项按钮组 = UiTheme.建盒(列, "选项按钮组", false, UiTheme.间距_小)
@@ -72,10 +81,33 @@ func _build() -> void:
 	b3.tooltip_text = "这一层多走两步（上限 +1 之内）"
 	_休整结果 = UiTheme.建滚动(列, "休整结果", 260.0)
 
+## ★ 2026-10-18（作者试玩反馈第 3 条）：休整是**单次幂等**的 ——
+##   点一下结算成功就**立刻关窗回大地图**（不再留在面板上，于是也不可能连点 6 次刷属性）。
+##   选的是「晋升减价」时，那一条已经在门面 `last` / 日志里写清了（面板关掉也查得到）。
+## ★ UX-1 第 6 项（2026-10-19）补两道：
+##   ① 结算成功之后把三个动作按钮**置灰**（不只是藏起来）—— 自动化 / 键盘走到也点不出第二次；
+##   ② 本屏自己记的 `_已结算` 先兜一道：第二次点击直接静默返回，**不再往门面送一条报错**。
 func _点选(choice: String) -> void:
 	if session == null:
 		return
-	session.resolve_rest(choice)
+	if _已结算:
+		return
+	var r := session.resolve_rest(choice)
+	if not bool(r.get("ok", false)):
+		# 被门面拦下（例如「当前节点已结算完毕」）→ 留在面板上如实显示原因，不关窗。
+		refresh()
+		return
+	_已结算 = true
+	_隐藏选项按钮()
+	请求关闭弹窗.emit()
+
+func _隐藏选项按钮() -> void:
+	if _选项按钮组 == null:
+		return
+	_选项按钮组.visible = false
+	for c in _选项按钮组.get_children():
+		if c is Button:
+			(c as Button).disabled = true
 
 ## 结果页那个「回大地图」按钮：只关弹窗，不再动任何状态。
 func _点关闭结果页() -> void:

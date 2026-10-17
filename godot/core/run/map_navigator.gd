@@ -185,8 +185,8 @@ static func move_to(state: RunState, target_id: int) -> Dictionary:
 			"" if 类型 == "空" else " · %s" % 类型, state.propellant])
 	if d > 1:
 		state.add_log("跳过中间格，直接前往（−%d 推进剂）" % d)
-	# ★ 任务书 §1 模块 2 · (3)：浪花估价在**每次移动成功后**确定性波动（2~8，不消耗 rng）
-	var 浪变 := PartSystem.wave_fluctuate(state, target)
+	# ★ 任务书 §1 模块 2 · (3)：浪花估价在**每次移动成功后**确定性波动（−6 / +8，不消耗 rng）
+	var 浪变 := PartSystem.wave_fluctuate(state)
 	if not 浪变.is_empty():
 		state.add_log("浪花估价波动：%s（可在黑市按新的估价卖出）" % "、".join(浪变))
 	return {
@@ -388,7 +388,9 @@ static func advance_floor(state: RunState) -> Dictionary:
 	state.pending_floor_change = null
 	var 前 := state.floor_num
 	enter_floor(state, 前 + 1)
-	return {"ok": true, "换层": true, "通关": false, "层": state.floor_num, "从": 前}
+	# ★ 任务单 PART-2 · 1：进入下一层时结算「跨层损坏」（重弹簧 / 小八界自动从手上移除）。
+	var 坏 := PartSystem.break_on_next_floor(state)
+	return {"ok": true, "换层": true, "通关": false, "层": state.floor_num, "从": 前, "跨层损坏": 坏}
 
 ## 走出口（普通路径）：先按「被追击过 → 下一层上限 −2」定修正，再走 `advance_floor`。
 static func resolve_exit(state: RunState) -> Dictionary:

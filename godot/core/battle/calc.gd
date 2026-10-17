@@ -70,6 +70,9 @@ static func hitRate(att: Dictionary, w: Dictionary, def: Dictionary, opts: Dicti
 	var 职排命中 := Params.职业排位命中修正(att, def, w, ctx)
 	var base = J.nz(opts.get("baseHit"), w.get("hit"))
 	var h := float(base) - eva + J.round((float(J.nz(att.get("aim"), 160.0)) - 160.0) / 2.0) + buffSum(att, "hit") + J.num0(opts.get("blockPenalty")) - 隐匿 + 总攻命中 + 兰斯命中 + 职排命中
+	# ★ MITH-2：「ECM 干扰」—— 本回合敌方攻击秘银成员命中 −15（这个 ctx 字段只有秘银 v0.2 会写）
+	if ctx != null and att.get("side") == "enemy" and def.get("side") == "ally":
+		h -= J.num0(ctx.get("本回合敌方命中秘银减命中"))
 	return {"hit": J.clamp(J.round(h), 0, 100), "raw": J.round(h), "eva": eva, "尖兵闪": 尖兵闪, "隐匿": 隐匿, "兰斯命中": 兰斯命中}
 
 static func critRate(w: Dictionary, att: Variant) -> float:
@@ -196,6 +199,10 @@ static func dmgCore(att: Variant, w: Dictionary, def: Dictionary, o: Dictionary 
 				c.职业排位倍率 = 职排倍
 	if ign:
 		return c
+	# ★ MITH-2：「本回合受到伤害 +N%」（秘银 v0.2「单分子刀·猎鹰」的代价）。buff 里没有这个键 = 一个字节都不动。
+	var 受伤乘 := buffSum(def, "受伤Mul")
+	if 受伤乘 != 0.0:
+		c.dmg = maxf(0.0, J.round(float(c.dmg) * (1.0 + 受伤乘)))
 	# —— REDUCTIONS 第 1 / 3 / 4 段（按 1 → 3 → 4 的顺序）——
 	# 1 能量屏障：≤2500 无效化
 	if abilOn(def, "barrier") and J.num(def.get("barrierLeft")) > 0 and float(c.dmg) <= 2500:
@@ -523,7 +530,7 @@ static func resolveAttack(att: Dictionary, def: Dictionary, w: Dictionary, ctx: 
 	var 掩护减伤合计 := 0.0
 	var 威力倍率 := 1.0 if opts.get("威力倍率") == null else float(opts.威力倍率)
 	var 本发威力 := float(Params.威力取档(att, w, "power"))
-	var sure := isSure(w)
+	var sure := isSure(w) or J.truthy(opts.get("必中"))
 	var hits := maxf(1.0, J.num0(w.get("hits")) if J.truthy(w.get("hits")) else 1.0)
 	var rolls := []
 	var total := 0.0
@@ -548,7 +555,13 @@ static func resolveAttack(att: Dictionary, def: Dictionary, w: Dictionary, ctx: 
 		var q := float(hitRate(att, w, def, {"baseHit": p, "blockPenalty": blockPenalty, "turn": ctx.turn, "ctx": ctx}).hit)
 		var hit := sure or rng.next_float() * 100.0 < q
 		if hit:
-			var cr := (not sure) and rng.next_float() * 100.0 < critRate(w, att)
+			var cr := false
+			# ★ MITH-2：`opts.必暴` = 必暴击（秘银 v0.2「超长距离狙击 · 连携·2」）。不传这个参数时
+			#   与原写法（`(not sure) and rng…`）逐字等价：必中武器不抽随机数。
+			if J.truthy(opts.get("必暴")):
+				cr = true
+			elif not sure:
+				cr = rng.next_float() * 100.0 < critRate(w, att)
 			var 段标 = null
 			if cr and 加成 != null and 标定记号 == null:
 				var 条 = 标定经济条(def)
@@ -612,6 +625,19 @@ static func resolveAttack(att: Dictionary, def: Dictionary, w: Dictionary, ctx: 
 	var 引爆 = 标定经济引爆(ctx, att, def, w, total)
 	if 引爆 != null:
 		def.hp = 引爆.剩余HP
+	# ★ DECK-1：单机战意的「命中 +2 / 被击 +2 / 闪避 +2 / 击破 +10」。
+	#   只对带 `战意` 字段的单位生效（只有单机牌组模式会初始化这个字段）；
+	#   预览口径（expectedDamage / preview）不结算。关着模式 = 一次都不进。
+	if not J.truthy(opts.get("preview")):
+		_结算单机牌组战意(att, def, landed, ctx, 原HP)
+	# ★ MITH-2：秘银 v0.2 的两个「受击」计数（只有 v0.2 开局的 ctx 会预置这两把键 —— 关着时一个字节都不动）
+	if landed > 0.0 and not J.truthy(opts.get("preview")) and def.get("side") == "ally" and J.truthy(def.get("秘银v02")):
+		var 计0 = ctx.get("战况计数")
+		if 计0 is Dictionary:
+			if 计0.has("秘银受击"):
+				计0["秘银受击"] = int(计0.get("秘银受击", 0)) + 1
+			if str(def.get("key")) == "U7" and 计0.has("宗介受击"):
+				计0["宗介受击"] = int(计0.get("宗介受击", 0)) + 1
 	if not J.truthy(opts.get("preview")) and Params.气势总攻开():
 		var 气参 := Params.气势总攻参数()
 		var 阈 := J.num0(气参.get("受重击阈值"))
@@ -683,6 +709,24 @@ static func resolveAttack(att: Dictionary, def: Dictionary, w: Dictionary, ctx: 
 		if 标定产 != 0:
 			字段.标定产 = 标定产
 	return {"文本": 文本, "字段": 字段}
+
+## ★ DECK-1：战意结算（按「攻击行动」计，不按段数乘算）。不是单机牌组单位 → `Btl.加战意` 直接返回 0。
+static func _结算单机牌组战意(att: Variant, def: Variant, landed: float, ctx: Dictionary, 原HP: float) -> void:
+	if not (att is Dictionary) or not (def is Dictionary):
+		return
+	if landed > 0.0:
+		Btl.加战意(att, Params.命中战意(), ctx, "命中")
+		Btl.加战意(def, Params.被击战意(), ctx, "被击")
+		# 重装【铁壁护卫】期间每次被击额外 +2
+		if J.same(def.get("铁壁护卫中"), ctx.get("turn")):
+			Btl.加战意(def, 2.0, ctx, "铁壁被击")
+		if 原HP > 0.0 and float(def.hp) <= 0.0:
+			Btl.加战意(att, Params.击破战意(), ctx, "击破")
+	else:
+		Btl.加战意(def, Params.闪避战意(), ctx, "闪避")
+		# 尖兵【机动脱离】期间每次成功闪避额外 +2
+		if J.same(def.get("机动脱离中"), ctx.get("turn")):
+			Btl.加战意(def, 2.0, ctx, "机动脱离")
 
 static func 应用武器debuff(def: Dictionary, d: Dictionary, 武器名: Variant, att: Variant) -> String:
 	var 源: String = J.s(d.src) if J.truthy(d.get("src")) else "%s(敌)" % J.s(武器名)

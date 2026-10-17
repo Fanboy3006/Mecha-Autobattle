@@ -4,7 +4,7 @@
 ##   货架 = `NodeResolver.黑市货(run_state)`；价格 = `NodeResolver.黑市价(run_state, id)`
 ##          （`f1` 藏品打 7 折 —— 这里把「原价 → 折后价」写出来，让打折看得出来）；
 ##   刷新 = `NodeResolver.黑市刷新价` / `黑市刷新次数`（显示刷新价与已刷新次数）；
-##   卖零件 = `PartSystem.sell_price(件)`（自然物按当前估价，加工品 / 概念体 6 折）。
+##   卖零件 = `PartSystem.sell_price(件)`（自然物按**当前实时估价**，加工品 / 概念体**固定 1 源碳**）。
 ## 动作只调 `GameSession`：`buy_from_shop` / `refresh_shop` / `sell_part_in_shop` / `leave_shop`。
 class_name ShopView
 extends Control
@@ -53,7 +53,10 @@ func refresh() -> void:
 func _build() -> void:
 	name = "黑市面板"
 	UiTheme.占满(self)
+	self.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	self.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var 列 := UiTheme.建盒(self, "黑市上下列", true, UiTheme.间距_小)
+	UiTheme.占满留边(列)
 	UiTheme.建标签(列, "黑市", UiTheme.字号_小节, UiTheme.高亮)
 	_说明 = UiTheme.建说明(列, "", UiTheme.字号_小, UiTheme.次要文字)
 	_货架 = UiTheme.建滚动(列, "货架", 250.0)
@@ -61,9 +64,12 @@ func _build() -> void:
 	UiTheme.建标签(列, "手上的零件（卖掉换源碳）", UiTheme.字号_小节, UiTheme.高亮)
 	_零件区 = UiTheme.建滚动(列, "零件区", 150.0)
 	var 底部 := UiTheme.建盒(列, "黑市底部", false, UiTheme.间距_小)
-	var 走 := UiTheme.建按钮(底部, "离开黑市", _点离开)
+	# ★ 2026-10-18（作者试玩反馈第 3 条）：底部给一颗**醒目**的【离开黑市 · 返回大地图】——
+	#   点它 = 门面 `leave_shop()`（这一格算清掉了）之后**自动关窗**回大地图。
+	var 走 := UiTheme.建按钮(底部, "离开黑市 · 返回大地图", _点离开)
 	走.name = "离开按钮"
-	走.tooltip_text = "离开这一格（这一格就算清掉了）"
+	走.add_theme_color_override("font_color", UiTheme.正面)
+	走.tooltip_text = "离开这一格（这一格就算清掉了），回大地图继续走"
 	_结果 = UiTheme.建说明(列, "", UiTheme.字号_小, UiTheme.正面)
 
 # ==========================================================================================
@@ -136,11 +142,21 @@ func _点刷新() -> void:
 # 零件区（卖）
 # ==========================================================================================
 
+## 手上的零件（卖掉换源碳）。
+##
+## ★ 任务单 PART-3（黑流树海原版对齐）：**自然物与加工品 / 概念体分开写**——
+##   · 自然物（血蕈 `bloodcap` / 浪花 `wave`）：按**当前实时估价**卖，估价就写在标签与按钮上；
+##   · 加工品 / 概念体：**固定 1 源碳**。
+## 价一律来自内核纯读 `PartSystem.sell_price()`（表现层一个数都不算、也不乘任何折扣）。
 func _建零件区(s: RunState) -> void:
 	_清空(_零件区)
 	if s.parts.is_empty():
 		UiTheme.建标签(_零件区, "手上没有零件。", UiTheme.字号_小, UiTheme.弱文字)
 		return
+	var 说明行 := UiTheme.建说明(_零件区,
+		"自然物（血蕈 / 浪花）按当前估价卖出，估价会随战斗 / 移动变化；加工品与概念体固定卖 1 源碳。",
+		UiTheme.字号_小, UiTheme.弱文字)
+	说明行.name = "零件卖价说明"
 	for i in s.parts.size():
 		var 件: Variant = s.parts[i]
 		if not (件 is Dictionary):
@@ -148,13 +164,27 @@ func _建零件区(s: RunState) -> void:
 		var 键 := PartSystem.part_key(件)
 		var 信息 := PartSystem.part_info(键)
 		var 名 := str(信息.get("名", 键))
+		var 类 := str(信息.get("类", ""))
+		var 自然 := 类 == "自然物"
 		var 价 := PartSystem.sell_price(件)
+		var 次数: Variant = (件 as Dictionary).get("uses")
+		var 次文 := "常驻（不计次数）" if 次数 == null else ("剩 %s 次" % UiTheme.文本(次数))
 		var 行 := UiTheme.建盒(_零件区, "零件行_%d" % i, false, UiTheme.间距_小)
-		var l := UiTheme.建标签(行, "%s ×%s · 卖价 %d 源碳" % [名, UiTheme.文本((件 as Dictionary).get("uses", "—")), 价],
-			UiTheme.字号_小, UiTheme.主文字)
+		var 文案 := ""
+		if 自然:
+			文案 = "【%s】%s · 当前估价 %d 源碳" % [名, 次文, 价]
+		elif 类 == "概念体":
+			文案 = "【%s】%s · 卖价 1 源碳（概念体固定）" % [名, 次文]
+		else:
+			文案 = "【%s】%s · 卖价 1 源碳（加工品固定）" % [名, 次文]
+		var l := UiTheme.建标签(行, 文案, UiTheme.字号_小, UiTheme.源碳色 if 自然 else UiTheme.主文字)
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		l.tooltip_text = "%s\n自然物按当前估价卖；加工品 / 概念体按 6 折卖" % str(信息.get("说明", 信息.get("效果", "")))
-		UiTheme.建按钮(行, "卖掉", _点卖.bind(i))
+		var 尾 := "自然物按当前估价卖出；加工品与概念体固定卖 1 源碳。"
+		l.tooltip_text = "%s\n%s" % [str(信息.get("说明", 信息.get("效果", ""))), 尾]
+		var 钮文 := ("卖出 -> 获得 %d 源碳（当前估价）" % 价) if 自然 else "卖出 -> 获得 1 源碳"
+		var 卖 := UiTheme.建按钮(行, 钮文, _点卖.bind(i))
+		卖.name = "零件卖出按钮_%d" % i
+		卖.tooltip_text = 尾
 
 func _点卖(下标: int) -> void:
 	if session == null:
@@ -188,8 +218,8 @@ func _结果文字() -> String:
 		"卖零件":
 			return "卖掉【%s】+%s 源碳（源碳 %s → %s）。" % [str(末.get("名", "")), UiTheme.文本(末.get("价", 0)),
 				UiTheme.文本(末.get("源碳前", 0)), UiTheme.文本(末.get("源碳后", 0))]
-	if not session.errors.is_empty():
-		return "上一次没做成：%s" % UiTheme.文本(session.errors[session.errors.size() - 1])
+	if not session.当前动作错误().is_empty():
+		return "上一次没做成：%s" % UiTheme.文本(session.当前动作错误())
 	return ""
 
 func _清空(节点: Node) -> void:

@@ -98,6 +98,101 @@ static func 默认等级(键: Variant, side: String) -> float:
 		return 10.0
 	return runEnemyLv("battle", 1, 0) + float(Db.T.TIER_LV[DataFn.tierOfEnemy(键)])
 
+## ======================== 单机牌组（DECK-1）职业判读 ========================
+## ★ 只在 `Params.单机牌组_开(ctx) == true`（或这台单位自己带 `单机牌组` 标记）时才把
+##   维诺（B3）/ 苏菲（M5）/ Iris（M3）等带治疗武器的机体映射为第 7 职业【维修】；
+##   关着的时候与原数据（tags.战斗分类）逐字一致 —— 黄金样例与旧测试因此零改动。
+##   显式写了 `tags.战斗分类 == "维修"` / `职业 == "维修"` / `维修 == true` 的单位，任何模式下都认。
+##   A5（库斯哈）带治疗武器但保留【指挥】（ATX 卡按指挥口径走），见数据里的「不转维修机体」。
+static func _键Of(u: Variant) -> String:
+	if u == null:
+		return ""
+	if u is String or u is StringName:
+		return str(u)
+	if u is Dictionary:
+		return str(J.or_(J.or_(J.or_(J.or_(u.get("tplKey"), u.get("key")), u.get("mech")), u.get("键")), ""))
+	return ""
+
+static func _标签Of(u: Variant, tpl: Variant) -> Dictionary:
+	if u is Dictionary and u.get("tags") is Dictionary:
+		return u.tags
+	if tpl != null and tpl.get("tags") is Dictionary:
+		return tpl.tags
+	return {}
+
+static func 模板有治疗武器(tpl: Variant) -> bool:
+	if tpl == null or not (tpl.get("weapons") is Array):
+		return false
+	for w in tpl.weapons:
+		if w is Dictionary and w.get("fire") == "heal":
+			return true
+	return false
+
+static func 单位有治疗武器(u: Variant) -> bool:
+	if not (u is Dictionary) or not (u.get("weapons") is Array):
+		return false
+	for e in u.weapons:
+		if not (e is Dictionary):
+			continue
+		var w = e.get("t") if e.get("t") is Dictionary else e
+		if w is Dictionary and w.get("fire") == "heal":
+			return true
+	return false
+
+static func 是维修机体(u: Variant, ctx: Variant = null) -> bool:
+	var 键 := _键Of(u)
+	var tpl = DataFn.tplOf(键) if 键 != "" else null
+	var 维修名 := Params.单机牌组_维修职业()
+	if str(_标签Of(u, tpl).get("战斗分类", "")) == 维修名:
+		return true
+	if u is Dictionary:
+		if str(u.get("职业", "")) == 维修名 or str(u.get("单机牌组职业", "")) == 维修名:
+			return true
+		if J.truthy(u.get("维修")) or J.truthy(u.get("单机牌组维修")):
+			return true
+	if 键 == "":
+		return false
+	# ctx 里可以临时加名单（测试 / 事件用），优先级最高
+	if ctx is Dictionary and ctx.get("维修机体") is Array and J.inc(ctx.维修机体, 键):
+		return true
+	if J.inc(Params.单机牌组_不转维修机体(), 键):
+		return false
+	if J.inc(Params.单机牌组_维修机体(), 键):
+		return true
+	if 模板有治疗武器(tpl) or 单位有治疗武器(u):
+		return true
+	return false
+
+## 这台单位的职业。`u` 可以是单位字典、角色键（String）或模板键。
+static func unit_class(u: Variant, ctx: Variant = null) -> String:
+	if u == null:
+		return ""
+	var 键 := _键Of(u)
+	var tpl = DataFn.tplOf(键) if 键 != "" else null
+	var 显式 := str(_标签Of(u, tpl).get("战斗分类", ""))
+	var 维修名 := Params.单机牌组_维修职业()
+	if 显式 == 维修名:
+		return 维修名
+	if u is Dictionary:
+		if str(u.get("职业", "")) == 维修名 or str(u.get("单机牌组职业", "")) == 维修名:
+			return 维修名
+		if J.truthy(u.get("维修")) or J.truthy(u.get("单机牌组维修")):
+			return 维修名
+	var 开 := Params.单机牌组_开(ctx)
+	if u is Dictionary and J.truthy(u.get("单机牌组")):
+		开 = true
+	if 开 and 是维修机体(u, ctx):
+		return 维修名
+	if 显式 != "":
+		return 显式
+	if u is Dictionary and J.truthy(u.get("职业")):
+		return str(u.get("职业"))
+	return ""
+
+## 别名（调用点想写「职业Of」的用这个）。
+static func 职业Of(u: Variant, ctx: Variant = null) -> String:
+	return unit_class(u, ctx)
+
 static func makeUnits(编成: Array, side: String) -> Array:
 	var out := []
 	for i in 编成.size():

@@ -4,7 +4,10 @@
 class_name GoldenRunner
 extends RefCounted
 
-const DISPLAY_ONLY := ["文本", "效果说明", "触发说明"]
+## 只给玩家看、不参与对拍的字段（黄金样例里没有它们，多了不算分叉）。
+## ★ 2026-10-19 UX-2：`发牌` 条目新增 `来源文本` / `来源位`（哪台机体带出来的这张牌）
+##   —— 纯展示字段，内核数值与随机数一个都没动，所以进这张表跳过。
+const DISPLAY_ONLY := ["文本", "效果说明", "触发说明", "来源文本", "来源位"]
 
 static func run(sample: Dictionary) -> Dictionary:
 	var 输入: Dictionary = GoldenCompare.decode(sample["输入"])

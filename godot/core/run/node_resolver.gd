@@ -200,8 +200,121 @@ static func 增援波次(条目: Dictionary, 场次: int = 0) -> Array:
 	return 出
 
 # ======================== 我方参战编成 ========================
-## 出击名单 → 我方编成（按 `05-阵型.js` 的默认职业排位摆位；名册里记的 `hpRatio` 带上）。
+## ★ UX-4（M4 二轮试玩反馈 1）：**槽位名 → 战斗格位号**的统一映射表。
+##   `前1..前4` = 0..3、`后1..后5` = 4..8（数据侧现在是 **8 格 = 前排 4 + 后排 4**，
+##   所以 `后5` 只做**兼容解析**用 —— 真正的合法范围永远以 `Fm.SLOTS()` 为准）。
+const 槽位映射 := {"前1": 0, "前2": 1, "前3": 2, "前4": 3, "后1": 4, "后2": 5, "后3": 6, "后4": 7, "后5": 8}
+
+## 槽位名 / 位号 → 战斗格位号（解析不出来 → −1）。
+##   · 位名（`"前3"` / `"后1"`…）走 `槽位映射表()`（= `槽位映射` + `Fm.位名()` 现场生成那一份）；
+##   · 整数 / 浮点整值 / 数字字符串 `0..8` 一律认（编队屏与存档两种写法都兼容）；
+##   · 空串 / `null` / 别的一律 −1（→ 调用方按 `_默认位()` 兜底，旧黄金样例照旧）。
+## ★ 公开别名 `解析槽位()` 给门面（`game_session.gd`）用。
+static func _解析槽位(slot_val: Variant) -> int:
+	if slot_val == null or slot_val is bool:
+		return -1
+	if slot_val is int:
+		var i := int(slot_val)
+		return i if i >= 0 and i <= 8 else -1
+	if slot_val is float:
+		var f := float(slot_val)
+		if not is_equal_approx(f, floor(f)):
+			return -1
+		var n := int(f)
+		return n if n >= 0 and n <= 8 else -1
+	var s := str(slot_val).strip_edges()
+	if s.is_empty():
+		return -1
+	var 表 := 槽位映射表()
+	if 表.has(s):
+		return int(表[s])
+	if s.is_valid_int():
+		var v := s.to_int()
+		return v if v >= 0 and v <= 8 else -1
+	return -1
+
+static func 解析槽位(slot_val: Variant) -> int:
+	return _解析槽位(slot_val)
+
+## `槽位映射` + `Fm.位名()` 现场生成的那一份（数据侧换成 9 格 / 换排名时自动跟上）。
+static func 槽位映射表() -> Dictionary:
+	var 表 := 槽位映射.duplicate()
+	for i in int(Fm.SLOTS()):
+		表[Fm.位名(float(i))] = i
+	return 表
+
+## 出击名单 → 我方编成。
+##
+## ★ UX-4（M4 二轮试玩反馈 1）——「**编队屏里摆成什么样，进战斗就站什么样**」：
+##   ① 只要 `state.lineup` 里存在至少 1 台「带**非空且合法**槽位（映射后落在 `0..Fm.SLOTS()-1`）
+##      的**存活**机体」，或者 `map_data.lineup_customized` 明确标了「玩家已经调过编队」，
+##      就进**严格模式**（`_按玩家槽位编成()`）：
+##        · **只出战 `state.lineup` 里列出的机体** —— 名册里有、但玩家特意下阵的机体，
+##          **绝不**再被补进战场；
+##        · 每一项的 `slot` 映射后合法且未被占用 → **原样拿它当 `位`**（玩家拖到哪格就站哪格）；
+##        · 仅当 slot 为空 / 解析不了 / 与前面撞格时，才按 `_默认位()` + 第一个空位兜底。
+##   ② 反过来，`state.lineup` 为空、或整份名单都是「纯字符串 / `slot == ""`」（旧黄金样例、
+##      旧内核测试、D-09 之前的旧档）→ **逐字沿用旧逻辑**（`_默认位` + 从 `roster` 补到
+##      `deploy_limit`），因此既有黄金样例与旧测试 100% 不变。
 static func 我方编成(state: RunState) -> Array:
+	var 排位: Array = Db.T.get("默认五人队") if Db.T.get("默认五人队") is Array else []
+	if _是玩家编队(state):
+		return _按玩家槽位编成(state, 排位)
+	return _按默认位编成(state, 排位)
+
+## 这一局的出击名单是不是「玩家亲手摆过」（= 严格按 `slot` 出战、不从名册补人）。
+## 判据二选一：① 名单上至少 1 台**带合法槽位的存活**机体；② `map_data.lineup_customized` 标记。
+static func _是玩家编队(state: RunState) -> bool:
+	if state == null:
+		return false
+	if bool(state.map_data.get("lineup_customized", false)):
+		return true
+	for x in state.lineup:
+		if not (x is Dictionary):
+			continue
+		var 键 := str(x.get("key", ""))
+		if 键.is_empty() or not state.roster.has(键):
+			continue
+		var 位 := _解析槽位((x as Dictionary).get("slot"))
+		if 位 < 0 or 位 >= int(Fm.SLOTS()):
+			continue
+		if RosterManager.数(state.roster[键].get("hpRatio"), 1.0) <= 0.0:
+			continue    # 倒下的机体不算「玩家把这一格摆好了」
+		return true
+	return false
+
+## 严格模式：**只**出战 `state.lineup` 里列出的存活机体，`位` 优先取玩家指定的 `slot`。
+static func _按玩家槽位编成(state: RunState, 排位: Array) -> Array:
+	var 上限 := RosterManager.deploy_limit(state)
+	var 出 := []
+	var 已占 := {}
+	var 已用 := {}
+	for x in state.lineup:
+		if 出.size() >= 上限:
+			break
+		var 键 := ""
+		var 槽: Variant = null
+		if x is Dictionary:
+			键 = str((x as Dictionary).get("key", ""))
+			槽 = (x as Dictionary).get("slot")
+		elif x is String:
+			键 = str(x)
+		if 键.is_empty() or 已用.has(键) or not state.roster.has(键):
+			continue
+		if RosterManager.数(state.roster[键].get("hpRatio"), 1.0) <= 0.0:
+			continue    # 倒下的机体不上场（与「至少 1 台存活」那道闸同一口径）
+		var 位 := _解析槽位(槽)
+		if 位 < 0 or 位 >= int(Fm.SLOTS()) or 已占.has(位):
+			位 = _兜底位(排位, 键, 出.size(), 已占)
+		if 位 < 0:
+			continue
+		已用[键] = true
+		已占[位] = true
+		出.append({"键": 键, "位": float(位), "等级": float(RosterManager.整数(state.roster[键].get("lv"), 10)), "hp比": state.roster[键].get("hpRatio")})
+	return 出
+
+## 旧口径（**逐字保留**：黄金样例 / 旧内核测试 / 旧档全走这条 —— 名册里没上阵的照样补到上限）。
+static func _按默认位编成(state: RunState, 排位: Array) -> Array:
 	var 名册键 := state.roster.keys()
 	var 出击 := []
 	for x in state.lineup:
@@ -213,7 +326,6 @@ static func 我方编成(state: RunState) -> Array:
 	for k in 名册键:
 		if not 出击.has(k):
 			缺.append(k)
-	var 排位: Array = Db.T.get("默认五人队") if Db.T.get("默认五人队") is Array else []
 	var 出 := []
 	var 已用 := {}
 	for k in 出击:
@@ -235,14 +347,34 @@ static func _默认位(排位: Array, 键: String, 序: int) -> float:
 			return float(e.get("位", 序))
 	return float(序 % int(Fm.SLOTS()))
 
+## 一台机体的「默认位号」（= `_默认位()` 的整数版；编队屏初始化槽位时也用它，两边同一个口径）。
+static func 默认位号(键: String, 序: int = 0) -> int:
+	var 排位: Array = Db.T.get("默认五人队") if Db.T.get("默认五人队") is Array else []
+	return int(_默认位(排位, 键, 序))
+
+## 严格模式的兜底位：先问「默认五人队」的写死位；被占了 / 越界 → 第一个空位；8 格全满 → −1。
+static func _兜底位(排位: Array, 键: String, 序: int, 已占: Dictionary) -> int:
+	var 位 := int(_默认位(排位, 键, 序))
+	if 位 >= 0 and 位 < int(Fm.SLOTS()) and not 已占.has(位):
+		return 位
+	for i in int(Fm.SLOTS()):
+		if not 已占.has(i):
+			return i
+	return -1
+
 # ======================== 开战 / 战后结算 ========================
 ## 开一场真战斗（`Setup.开局`），返回 ctx。
-static func 开战(state: RunState, 条目: Dictionary, 覆盖类型: String = "") -> Dictionary:
+## ★ DECK-2：第 4 个参数 `附加选项`（默认 `null` = 一个字段都不加，旧调用逐字不变）——
+##   门面 `GameSession` 用它把 `单机牌组: true` 透传进内核（节点战 / 追击战两条路同一处）。
+static func 开战(state: RunState, 条目: Dictionary, 覆盖类型: String = "", 附加选项: Variant = null) -> Dictionary:
 	var 我方 := 我方编成(state)
 	var 敌方 := 编成到规格(条目, state.battles_fought)
 	var 选项 := RelicSystem.build_battle_options(state)
 	选项["波次"] = 增援波次(条目, state.battles_fought)
 	选项["侵蚀源强攻加成"] = 0.0
+	if 附加选项 is Dictionary:
+		for k in (附加选项 as Dictionary).keys():
+			选项[k] = (附加选项 as Dictionary)[k]
 	var 种子 := state.seed_val + state.floor_num * 131 + state.battles_fought * 17 + state.node_id * 7
 	return Setup.开局(我方, 敌方, 种子, null, 选项)
 
@@ -281,6 +413,11 @@ static func resolve_battle(state: RunState, ctx: Dictionary, 格类型: String =
 	var 是胜: bool = str(ctx.result.get("结果")) == "胜"
 	state.battles_fought += 1
 	state.battles_won += 1 if 是胜 else 0
+	# ★ 任务单 PART-2 · 2：每打完一场战斗（**胜败都算**、且一场只记一次）→ 血蕈估价 +2（无上限）。
+	#   放在最前面：下面两条返回路径（含「耐久耗尽、本局结束」）都会经过这里，只调一次。
+	var 血蕈涨 := PartSystem.bloodcap_appreciate(state)
+	if not 血蕈涨.is_empty():
+		state.add_log("血蕈估价上涨：%s" % "、".join(血蕈涨))
 	var 带伤 := RosterManager.记战斗HP(state, {"我方": ctx.get("allies", [])})
 	var 倒下 := 倒下单位数(state)          # ★ 战后回血**之前**的阵亡数（阵亡机体永不永久死亡）
 	var 回血 := RosterManager.战后回血(state)
@@ -361,13 +498,10 @@ static func 零件箱上限() -> int:
 	return 整数(Db.T.get("零件箱初值"), 8)
 
 ## 抽一个零件键（同种子可复现）；抽不到 / 箱满 → 返回 `""`。
-static func 抽零件(state: RunState, 格号: int) -> String:
-	var 表: Dictionary = Db.catalog.parts()
-	if 表.is_empty():
-		return ""
-	var 键们 := 表.keys()
-	var r := Mulberry32.new(state.seed_val + state.floor_num * 613 + 格号 * 37 + 7)
-	return str(键们[mini(键们.size() - 1, int(floor(r.next_float() * float(键们.size()))))])
+## ★ 任务单 PART-2 · 2：统一走 `PartSystem.draw_part`，并把 `weight_by_rarity` 透传下去
+##   （`null` = 13 件等权；传 `{"low": 50, "mid": 35, "high": 15}` 时按稀有度加权）。
+static func 抽零件(state: RunState, 格号: int = -1, weight_by_rarity: Variant = null) -> String:
+	return PartSystem.draw_part(state, 格号, weight_by_rarity)
 
 static func 发零件(state: RunState, 奖: String, 来源: String) -> Variant:
 	var 必给: bool = 奖 == "精英" or 奖 == "Boss"
@@ -513,6 +647,56 @@ static func 黑市刷新(state: RunState) -> Dictionary:
 static func 黑市离开(state: RunState) -> bool:
 	state.nodes_cleared += 1
 	return true
+
+# ======================== 黑市：买牌 / 删牌（DECK-4 下排公有牌池） ========================
+## ★ DECK-4：黑市**只操作全队公有牌池**（`state.tactical_deck`，层级 = 职业 / 势力 / 统帅）。
+##   角色牌属于机体上排「专属牌库」，跟着 Lv10 → Lv20 → Lv30 晋升解锁，黑市一张都碰不到。
+static func 黑市牌价(state: RunState, card_id: String) -> int:
+	var c := DeckBuilder.找到(card_id)
+	var 层 := str(c.get("层级", ""))
+	var 基 := 整数(cfg().get("黑市牌价"), 6)
+	var 加表 := {"职业": 0, "势力": 1, "统帅": 2}
+	return 基 + 整数(加表.get(层, 0))
+
+static func 黑市删牌价(state: RunState) -> int:
+	var 基 := 整数(cfg().get("黑市删牌价"), 4)
+	return 基 + int(state.floor_num)
+
+static func 黑市买牌(state: RunState, card_id: String) -> Dictionary:
+	if state == null:
+		return {"ok": false, "why": "没有进行中的局"}
+	var c := DeckBuilder.找到(card_id)
+	if c.is_empty():
+		return {"ok": false, "why": "没有这张战术牌（%s）" % card_id}
+	if not DeckBuilder.是公有牌(c):
+		return {"ok": false, "why": "黑市只卖公有牌（职业 / 势力 / 统帅）；角色牌进机体专属牌库，靠晋升解锁"}
+	if state.tactical_deck.has(card_id):
+		return {"ok": false, "why": "这张牌已经在公有牌池里了"}
+	var 价 := 黑市牌价(state, card_id)
+	if state.carbon < 价:
+		return {"ok": false, "why": "源碳不够（要 %d，只有 %d）" % [价, state.carbon]}
+	state.carbon -= 价
+	state.tactical_deck.append(card_id)
+	state.add_log("黑市：花 %d 源碳买下战术牌【%s】（公有牌池，现在 %d 张）" % [价, str(c.get("名", card_id)), state.tactical_deck.size()])
+	return {"ok": true, "牌": card_id, "名": str(c.get("名", card_id)), "价": 价,
+		"源碳": state.carbon, "公有牌池": state.tactical_deck.duplicate()}
+
+static func 黑市删牌(state: RunState, card_id: String) -> Dictionary:
+	if state == null:
+		return {"ok": false, "why": "没有进行中的局"}
+	if not state.tactical_deck.has(card_id):
+		return {"ok": false, "why": "这张牌不在公有牌池里（%s）" % card_id}
+	var c := DeckBuilder.找到(card_id)
+	if not c.is_empty() and not DeckBuilder.是公有牌(c):
+		return {"ok": false, "why": "黑市只删公有牌（角色牌不归公有牌池管）"}
+	var 价 := 黑市删牌价(state)
+	if state.carbon < 价:
+		return {"ok": false, "why": "源碳不够（删牌要 %d，只有 %d）" % [价, state.carbon]}
+	state.carbon -= 价
+	state.tactical_deck.erase(card_id)
+	state.add_log("黑市：花 %d 源碳删掉战术牌【%s】（公有牌池，现在 %d 张）" % [价, str(c.get("名", card_id)), state.tactical_deck.size()])
+	return {"ok": true, "牌": card_id, "名": str(c.get("名", card_id)), "价": 价,
+		"源碳": state.carbon, "公有牌池": state.tactical_deck.duplicate()}
 
 ## 瞭望站：远眺（4 格）/ 登高（12 格 + 1 推进剂）。
 static func 结算瞭望站(state: RunState, 选: String = "登高") -> Dictionary:

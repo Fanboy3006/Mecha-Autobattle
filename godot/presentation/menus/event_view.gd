@@ -19,6 +19,8 @@ var _标题: Label
 var _说明: Label
 var _选项按钮组: VBoxContainer
 var _事件结果: VBoxContainer
+## ★ 2026-10-18：这一次奇遇是不是已经选过了（选过一次之后选项按钮收起，不许重选）。
+var _已选: bool = false
 
 func setup(p_session: GameSession) -> void:
 	session = p_session
@@ -54,7 +56,10 @@ func refresh() -> void:
 func _build() -> void:
 	name = "奇遇面板"
 	UiTheme.占满(self)
+	self.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	self.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var 列 := UiTheme.建盒(self, "奇遇上下列", true, UiTheme.间距)
+	UiTheme.占满留边(列)
 	_标题 = UiTheme.建标题(列, "奇遇", UiTheme.字号_小节)
 	_说明 = UiTheme.建说明(列, "", UiTheme.字号_小, UiTheme.次要文字)
 	UiTheme.建标签(列, "选一项", UiTheme.字号_小节, UiTheme.高亮)
@@ -72,9 +77,20 @@ func _点关闭结果页() -> void:
 func _填奇遇(s: RunState) -> void:
 	var 事 := _当前事件(s)
 	_标题.text = "奇遇：%s" % str(事.get("名", "（认不出来的事件）"))
-	_说明.text = "选项由内核的事件表动态给出；选完当场结算，同一格只结算一次。"
+	_说明.text = "选项由内核的事件表动态给出；选完当场结算，**同一格只结算一次**（门面与视图两层都拦）。"
+	# ★ 2026-10-18：这一次奇遇选过没有 —— 三种判据（任一成立就算已选）：
+	#   ① 本视图刚点过（`_已选`）；② 门面 `last` 的上一动作就是「事件」；③ 门面记了「这一格已结算」。
+	var 已选 := _已选
+	if str(session.last.get("行动", "")) == "事件":
+		已选 = true
+	if session.节点已结算过():
+		已选 = true
+	_已选 = 已选
 	var 选 := session.current_event_choices()
-	if 选.is_empty():
+	if 已选:
+		_选项按钮组.visible = false
+		UiTheme.建标签(_选项按钮组, "这一格已经选过了 —— 不再重复结算。", UiTheme.字号_正文, UiTheme.次要文字)
+	elif 选.is_empty():
 		UiTheme.建标签(_选项按钮组, "这个事件现在没有选项（可能已经结算过了）。", UiTheme.字号_正文, UiTheme.次要文字)
 	else:
 		for 条 in 选:
@@ -87,16 +103,34 @@ func _填奇遇(s: RunState) -> void:
 		UiTheme.建标签(_事件结果, "事件：%s" % str(末.get("事件", "")), UiTheme.字号_正文, UiTheme.高亮)
 		UiTheme.建标签(_事件结果, "你选了：%s" % str(末.get("选", "")), UiTheme.字号_正文, UiTheme.主文字)
 		UiTheme.建标签(_事件结果, "结果：%s" % str(末.get("结果", "")), UiTheme.字号_小节, UiTheme.正面)
-		UiTheme.建按钮(_事件结果, "知道了，回大地图", _点关闭结果页)
+		UiTheme.建按钮(_事件结果, "确认并返回大地图", _点关闭结果页)
 	else:
 		var 已 := session.current_node_result()
 		if str(已.get("节点", "")) == "事件":
 			UiTheme.建标签(_事件结果, "这一格已经结算过：%s" % UiTheme.文本(已.get("选", "")), UiTheme.字号_正文, UiTheme.次要文字)
+			UiTheme.建按钮(_事件结果, "确认并返回大地图", _点关闭结果页)
 
+## ★ 2026-10-18：选一项 → 门面结算；成功后**立刻收起选项按钮**防止重选，并按结果分流：
+##   · 触发了三选一（`pending_card_picks` 非空）→ `_refresh_modal()` 已经自动把「三选一」弹出来了；
+##   · 拿到了招募券 → 把「招募」弹出来，先把券处理掉；
+##   · 两者都没有 → 留在面板上显示结果摘要 + 醒目的【确认并返回大地图】。
 func _点选(序: int) -> void:
 	if session == null:
 		return
-	session.resolve_event_choice(UiTheme.文本(序))
+	var r := session.resolve_event_choice(UiTheme.文本(序))
+	if not bool(r.get("ok", false)):
+		refresh()
+		return
+	_已选 = true
+	if _选项按钮组 != null:
+		_选项按钮组.visible = false
+	if session.run_state != null and not session.run_state.pending_card_picks.is_empty():
+		请求弹窗.emit("三选一", {})
+		return
+	if session.ticket_count() > 0:
+		请求弹窗.emit("招募", {})
+		return
+	refresh()
 
 # ==========================================================================================
 # 小工具

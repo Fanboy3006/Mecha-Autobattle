@@ -1,21 +1,38 @@
-## 零件系统（PartSystem）—— 对齐封存 JS 参考版 `src/js/94-零件.js`（战棋 `23-零件.js` 13 件全表）。
+## 零件系统（PartSystem）—— ★ 2026-10-17 按《黑流树海》原版规格全面重写（任务单 PART-1）。
 ##
-## 覆盖：13 件零件的数据查询 / 获取（`grant_part`，★ 箱满「保留新的、丢掉参考价最低的旧件」）/
-## 重算推进剂上限加成（河谷祭祈）/ 11 件主动零件的目标格枚举（`part_targets`）/
-## 使用主动零件位移（`use_part`，含 `thaw` +2 希望 +3 经验、`bagua` 探明四邻 +1 推进剂）/
-## `bloodcap` 战后估价 +2（封顶 15）/ `wave` 移动后估价在 2~8 间确定性波动（**不消耗 rng**）/
-## 黑市买卖折算（自然物按当前估价；加工品 / 概念体 `max(2, floor(价 × 0.6))`）。
+## 口径（作者拍板，施工必守）：
+##   · 目标格一律用**网格坐标 `(列, 行)` 的几何距离**判定，**无视道路连通与空格障碍**（不用 BFS 距离）；
+##   · 范围是 `1 ~ N` 格内：`adj8` = 相邻 8 格（含斜角）、`ring12` = 曼哈顿 1~2 格菱形、
+##     `line(n)` = 横竖直线 1~n 格（`LINE_ALLOW_DIAGONAL = false` = 不含斜线）、`any` = 本层任意存在格；
+##   · 默认每次位移消耗 **1 点推进剂**（`free: true` 的 spring / jet / bagua 免推进剂）；
+##   · 推进剂为 0 时 `free: false` 的零件**严禁使用**；
+##   · `bloodcap` 每场战斗（胜败都算）估价 +2、**无上限**；`wave` 每次移动独立随机 `-6 / +8`，夹在 `[0, 999]`；
+##   · `spring` / `bagua` 带 `breakOnNextFloor: true` → 进入下一层时自动损坏（`break_on_next_floor`）；
+##   · 卖价：自然物按当前估价；加工品 / 概念体**固定 1 源碳**。
 ##
-## 组织约定：零件条目的主键字段是 **`id`**（与 `RunState.parts` / `NodeResolver` 一致），
-## 读数时也接受 JS 的 `k`。原生 Godot 强类型实现：**零 `J.*`**。
+## 组织约定：零件实例的主键字段是 **`id`**（与 `RunState.parts` / `NodeResolver` 一致），读数时也接受 JS 的 `k`；
+## 实例上的估价同时写 `value`（本仓库原有字段）与 `val`（任务单里的字段名）。
+## 数据表字段名中英兼容：`free` / `免费`、`breakOnNextFloor` / `跨层损坏`、`rarity` / `稀有度`、`初值` / `估价`。
+## 原生 Godot 强类型实现：**零 `J.*`**。
 class_name PartSystem
 extends RefCounted
 
+## 直线范围是否允许斜线。★ 作者拍板 = **仅横竖 4 方向**（不含斜线）——要放开只改这一个常量。
+const LINE_ALLOW_DIAGONAL: bool = false
+
 const 零件箱初值兜底 := 8
-const 血蕈估价上限兜底 := 15
-const 非战斗节点兜底: Array = ["空", "黑市", "休整", "招募站", "事件", "瞭望站", "遗迹", "隧道"]
+## `血蕈估价上限` 已废弃（原版不封顶），保留数据键只为兼容旧读法；这里给一个「够大」的兜底。
+const 血蕈估价上限兜底 := 999
+## 非战斗节点（数据表 `非战斗节点`；`is_non_combat_cell()` 用的是「排除战斗节点」的反向判据）。
+const 非战斗节点兜底: Array = ["空", "黑市", "休整", "招募站", "事件", "瞭望站", "遗迹", "隧道",
+	"起点", "出口小径", "出口尽头"]
+## 战斗节点类型（命中 = 不是「非战斗格」）：普通战斗 / 精英战斗 / 首领 / 侵蚀源 / 出口守军。
+## 地图生成器里对应的实际类型名是 `作战` / `精英` / `出口守军` / `侵蚀源`（另把原版/古称一起收进来）。
+const 战斗节点兜底: Array = ["作战", "普通战斗", "精英", "精英战斗", "首领", "Boss", "侵蚀源", "出口守军", "守军"]
 ## 黑市打折藏品（`94-零件.js:411` 的 `f1`：`price × 0.7`）。
 const 打折藏品 := "f1"
+## 浪花波动步进计数器存在 `map_data` 的侧信道里（换层/存档都跟着走，不污染 `RunState` 的字段）。
+const 浪花步进键 := "浪花步进"
 
 # ==========================================================================================
 # 一、数据查询
@@ -44,7 +61,39 @@ static func part_key(p: Variant) -> String:
 		v = d.get("k")
 	return String(v) if v != null else ""
 
-## 能在地图上真的**用出来**的零件（`用: true`，11 件）。
+## 中英字段名兼容读一个布尔（`free` / `免费`、`breakOnNextFloor` / `跨层损坏`）。
+static func _info_flag(P: Dictionary, en: String, zh: String, dflt: bool) -> bool:
+	var v: Variant = P.get(en)
+	if v == null:
+		v = P.get(zh)
+	return bool(v) if v != null else dflt
+
+## 这一件是否免推进剂（`free: true` 的 spring / jet / bagua）。
+static func part_is_free(part_id: String) -> bool:
+	return _info_flag(part_info(part_id), "free", "免费", false)
+
+## 这一件是否「进入下一层时自动损坏」。
+static func part_breaks_on_next_floor(part_id: String) -> bool:
+	return _info_flag(part_info(part_id), "breakOnNextFloor", "跨层损坏", false)
+
+## 稀有度（`"low" | "mid" | "high"`；表里没写按 low）。
+static func part_rarity(part_id: String) -> String:
+	var P := part_info(part_id)
+	var v: Variant = P.get("rarity")
+	if v == null:
+		v = P.get("稀有度")
+	var s := String(v) if v != null else "low"
+	return s if not s.is_empty() else "low"
+
+## 稀有度的中文显示名（顶栏 / 悬停说明用）。
+static func rarity_name(r: String) -> String:
+	if r == "high":
+		return "高级"
+	if r == "mid":
+		return "中级"
+	return "普通"
+
+## 能在地图上真的**用出来**的零件（`用: true`）。
 static func active_part_ids() -> Array:
 	var out: Array = []
 	for k in part_table().keys():
@@ -52,7 +101,10 @@ static func active_part_ids() -> Array:
 			out.append(String(k))
 	return out
 
-## 能掉落 / 能买到的零件（`用` 或 `可买`，13 件）。
+## 能掉落 / 能买到的零件（`用: true` **或** `可买: true`，13 件 = 全部零件）。
+## ★ 零件数据**只有一处真源**：`data/js/94-零件.json` 的 `零件表`（本文件不重复抄数据）。
+## ★ 2026-10-17：`rite`（河谷祭祈）改成 `用: false` 被动常驻后，靠数据里的 **`可买: true`**
+##   继续留在买卖池里 → 池子仍是 **13 件**（任务单 §4 PART-1「默认 `null` 时从 13 件中等权随机」）。
 static func tradable_part_ids() -> Array:
 	var out: Array = []
 	for k in part_table().keys():
@@ -74,26 +126,66 @@ static func 零件箱上限() -> int:
 static func part_box_cap() -> int:
 	return 零件箱上限()
 
-## 血蕈估价上限（15，`94-零件.js:215`）。
+## ★ 已废弃的「血蕈估价上限」：原版**不设上限**，这个接口只为兼容旧调用保留（恒返回表里的兜底值）。
 static func 血蕈估价上限() -> int:
 	var v: Variant = Db.T.get("血蕈估价上限")
 	return int(v) if v != null else 血蕈估价上限兜底
 
-## 非战斗节点集合（`94-零件.js:306`）。
+## 非战斗节点集合（数据表 `非战斗节点`；含起点与两个出口）。
 static func non_combat_types() -> Array:
 	var v: Variant = Db.T.get("非战斗节点")
 	return (v as Array) if v is Array else 非战斗节点兜底
 
+## 这个节点类型是不是**战斗节点**（对应任务单里的 `MapGenerator.是战斗节点`；本仓库内聚在 PartSystem 一处）。
+static func is_combat_type(t: String) -> bool:
+	return 战斗节点兜底.has(t)
+
+static func 是战斗节点(t: String) -> bool:
+	return is_combat_type(t)
+
+## 取一格的类型名（兼容 `类型` 与本仓库外部的 `type`）。
+static func cell_type(cell: Dictionary) -> String:
+	var t: Variant = cell.get("类型")
+	if t == null:
+		t = cell.get("type")
+	return String(t) if t != null else ""
+
+## 这一格「存在」吗。对外口径是 `cell.get("exists", false)`；本仓库的空格 = 空字典，
+## 所以没有 `exists` 键时退化成「字典非空」。
+static func cell_exists(cell: Dictionary) -> bool:
+	if cell.is_empty():
+		return false
+	if cell.has("exists"):
+		return bool(cell.get("exists", false))
+	return true
+
+## ★ 非战斗格：存在，且不是战斗节点（含 `空` / `黑市` / `休整` / `招募站` / `事件` / `瞭望站` /
+## `遗迹` / `隧道` / `起点` / `出口小径` / `出口尽头`；排除 `普通战斗` / `精英战斗` / `首领` /
+## `侵蚀源` / `出口守军`）。
+static func is_non_combat_cell(cell: Dictionary) -> bool:
+	if not cell_exists(cell):
+		return false
+	return not is_combat_type(cell_type(cell))
+
 ## 新零件实例（战棋 `newPart`）：`{"id", "uses", "value"}`；次数 / 估价没有就是 null。
+## ★ 自然物同时写 `val`（任务单里的字段名）与 `value`（本仓库原有字段），两处永远相等。
 static func new_part(part_id: String) -> Dictionary:
 	var P := part_info(part_id)
 	if P.is_empty():
 		return {}
-	return {
+	var 次数: Variant = P.get("次数")
+	var 初值: Variant = P.get("初值")
+	if 初值 == null:
+		初值 = P.get("估价")
+	var 值: Variant = int(初值) if 初值 != null else null
+	var d := {
 		"id": part_id,
-		"uses": int(P["次数"]) if P.get("次数") != null else null,
-		"value": int(P["估价"]) if P.get("估价") != null else null,
+		"uses": int(次数) if 次数 != null else null,
+		"value": 值,
 	}
+	if 值 != null:
+		d["val"] = 值
+	return d
 
 ## 参考价（箱满时挑「最不值钱的那件」用它）：有估价用估价，没有用表里的 `价`。
 static func reference_price(p: Variant) -> int:
@@ -107,31 +199,62 @@ static func reference_price(p: Variant) -> int:
 	var 价: Variant = P.get("价")
 	return int(价) if 价 != null else 0
 
-## 这一件在表里的初始估价（自然物：血蕈 3 / 浪花 4）。
+## 这一件在表里的初始估价（自然物：血蕈 2 / 浪花 3；`初值` 优先，兼容旧的 `估价`）。
 static func _table_value(part_id: String) -> int:
-	var v: Variant = part_info(part_id).get("估价")
+	var P := part_info(part_id)
+	var v: Variant = P.get("初值")
+	if v == null:
+		v = P.get("估价")
 	return int(v) if v != null else 0
 
-## 这一件当前的有效估价（手上那件的 `value`，坏值 / null → 表里的估价）。
+## 这一件当前的有效估价：实例上的 `val` / `value` 优先（0 也是合法值），都没有才用表里的初值。
 static func current_value(p: Variant) -> int:
 	var key := part_key(p)
 	var 表 := _table_value(key)
 	if not (p is Dictionary):
 		return 表
-	var v: Variant = (p as Dictionary).get("value")
-	if v == null:
-		return 表
-	var f := float(v)
-	return int(f) if f > 0.0 else 表
+	var d: Dictionary = p
+	for k in ["val", "value", "估价"]:
+		if d.has(k) and d[k] != null:
+			return int(d[k])
+	return 表
+
+## 给一件零件写估价（`val` 与 `value` 同步写，保持两处一致）。
+static func _set_value(d: Dictionary, v: int) -> void:
+	d["value"] = v
+	d["val"] = v
 
 ## 抽一个零件（`94-零件.js:277-284`）：`种子 + 层×211 + 格号×23 + 场次×29`。
-static func draw_part(state: RunState, cell_id: int = -1) -> String:
+## ★ `weight_by_rarity`：
+##   · `null`（默认）→ **13 件等权**抽取（不读 `rarity`，旧行为逐字不变）；
+##   · 传 Dictionary（如 `{"low": 50, "mid": 35, "high": 15}`）→ 按每件的 `rarity` 查权重加权抽取
+##     （某档没写权重按 `low` 那一档算；全为 0 权重时退回等权）。
+static func draw_part(state: RunState, salt: int = -1, weight_by_rarity: Variant = null) -> String:
 	var 池 := tradable_part_ids()
 	if 池.is_empty():
 		return ""
-	var 格 := state.node_id if cell_id < 0 else cell_id
+	var 格 := state.node_id if salt < 0 else salt
 	var rng := Mulberry32.new((state.seed_val + state.floor_num * 211 + 格 * 23 + state.battles_fought * 29) & 0xFFFFFFFF)
-	return String(池[mini(池.size() - 1, floori(rng.next_float() * float(池.size())))])
+	if not (weight_by_rarity is Dictionary) or (weight_by_rarity as Dictionary).is_empty():
+		return String(池[mini(池.size() - 1, floori(rng.next_float() * float(池.size())))])
+	var 权表: Dictionary = weight_by_rarity
+	var 权们: Array = []
+	var 总 := 0
+	for k in 池:
+		var r := part_rarity(String(k))
+		var w := int(权表.get(r, 权表.get("low", 1)))
+		w = maxi(0, w)
+		权们.append(w)
+		总 += w
+	if 总 <= 0:
+		return String(池[mini(池.size() - 1, floori(rng.next_float() * float(池.size())))])
+	var 掷 := rng.next_float() * float(总)
+	var 累 := 0
+	for i in 池.size():
+		累 += int(权们[i])
+		if 掷 < float(累):
+			return String(池[i])
+	return String(池[池.size() - 1])
 
 # ==========================================================================================
 # 二、拿到 / 丢掉 / 推进剂加成
@@ -194,87 +317,175 @@ static func 零件箱满了吗(state: RunState) -> bool:
 	return state.parts.size() >= part_box_cap()
 
 # ==========================================================================================
-# 三、动态估价（★ 都不消耗 rng）
+# 三、动态估价（★ 都不消耗 rng，全部可复现）
 # ==========================================================================================
 
-## 血蕈：每次**战斗胜利后**估价 +2（封顶 15，战棋 `31-战斗.js:283`）。返回涨过价的文本。
+## 血蕈：每打完一场战斗（**胜败都算**）估价 +2，**无上限**。返回涨过价的文本。
 static func bloodcap_appreciate(state: RunState, cap: int = -1) -> Array:
-	var 顶 := 血蕈估价上限() if cap < 0 else cap
 	var 涨: Array = []
 	for p in state.parts:
 		if not (p is Dictionary) or part_key(p) != "bloodcap":
 			continue
 		var d: Dictionary = p
 		var 旧 := current_value(d)
-		var 新 := mini(顶, 旧 + 2)
-		d["value"] = 新
+		var 新 := 旧 + 2
+		if cap > 0:
+			新 = mini(cap, 新)   # 兼容旧调用：显式传了上限才封顶（默认 -1 = 不封顶）
+		_set_value(d, 新)
 		涨.append("【血蕈】%d → %d 源碳" % [旧, 新])
 	return 涨
 
-## 浪花：每次**移动成功后**在 2~8 之间波动（确定性公式，**绝不消耗 rng**）。返回变过价的文本。
-static func wave_fluctuate(state: RunState, cell_id: int) -> Array:
-	var v := ((state.seed_val + state.floor_num * 31 + cell_id * 17 + state.visited_cells.size() * 13) & 0xFFFFFFFF) % 7 + 2
+## 浪花：大地图**每移动一次**（普通移动与零件移动都算），每件浪花独立随机 `-6` 或 `+8`（各 50%），
+## 估价夹在 `[0, 999]`。随机数**带种子 + 步进计数器**（确定性可复现，不消耗全局 rng）。
+## `_cell_id` 只为兼容旧调用保留（新口径不看落点格，只看「这是第几次移动」）。
+static func wave_fluctuate(state: RunState, _cell_id: int = -1) -> Array:
+	var 步 := int(state.map_data.get(浪花步进键, state.visited_cells.size()))
+	步 += 1
+	state.map_data[浪花步进键] = 步
+	var rng := Mulberry32.new((state.seed_val + state.floor_num * 7919 + 步 * 104729) & 0xFFFFFFFF)
 	var 变: Array = []
 	for p in state.parts:
 		if not (p is Dictionary) or part_key(p) != "wave":
 			continue
 		var d: Dictionary = p
 		var 旧 := current_value(d)
-		d["value"] = v
-		if 旧 != v:
-			变.append("【浪花】%d → %d 源碳" % [旧, v])
+		var delta := -6 if rng.next_float() < 0.5 else 8
+		var 新 := clampi(旧 + delta, 0, 999)
+		_set_value(d, 新)
+		变.append("【浪花】%d → %d 源碳" % [旧, 新])
 	return 变
 
+## 进入下一层：移除所有 `breakOnNextFloor: true` 的零件（重弹簧 / 小八界）。
+## 返回被损坏移除的零件**名字**数组（没坏任何东西 = 空数组）。
+static func break_on_next_floor(state: RunState) -> Array:
+	var 坏名: Array = []
+	for i in range(state.parts.size() - 1, -1, -1):
+		var p: Variant = state.parts[i]
+		var key := part_key(p)
+		var P := part_info(key)
+		if not _info_flag(P, "breakOnNextFloor", "跨层损坏", false):
+			continue
+		state.parts.remove_at(i)
+		坏名.append(String(P.get("名", key)))
+	if not 坏名.is_empty():
+		坏名.reverse()
+		state.add_log("〔零件〕跨层损坏：%s" % "、".join(坏名))
+	return 坏名
+
 # ==========================================================================================
-# 四、目标格（照战棋 `30-移动与节点.js:6-16` 的 partTargets）
+# 四、目标格（★ 几何距离；无视连通与空格障碍）
 # ==========================================================================================
+
+## 这一件用哪种范围算子：`adj8` / `ring12` / `line2` / `line3` / `any` / `thaw` / `tentacle` / `bagua` / ""。
+## 读数顺序：`range`（新字段）→ `移动`（旧字段），并把旧写法归一化。
+static func part_range(part_id: String) -> String:
+	var P := part_info(part_id)
+	var v: Variant = P.get("range")
+	if v == null:
+		v = P.get("移动")
+	var s := String(v) if v != null else ""
+	if s.begins_with("line(") and s.ends_with(")"):
+		s = "line" + s.substr(5, s.length() - 6)
+	match s:
+		"adj8", "adj":
+			return "adj8"
+		"ring12", "ringline", "step":
+			return "ring12"
+		"line2", "line3":
+			return s
+		"any":
+			return "any"
+		"thaw", "fly":
+			return "thaw"
+		"tentacle", "shop":
+			return "tentacle"
+		"bagua":
+			return "bagua"
+		"ring":
+			return "adj8"
+	return ""
+
+## 一格的网格坐标 `(列, 行)`。本仓库的格子这两个字段一定有；坏数据退回由格号反算。
+static func cell_xy(state: RunState, k: int) -> Dictionary:
+	var cell := state.cell_at(k)
+	var cols := MapNavigator.columns(state)
+	return {
+		"x": int(cell.get("列", MapGenerator.cell_col(k, cols))),
+		"y": int(cell.get("行", MapGenerator.cell_row(k, cols))),
+	}
 
 ## 本层的黑市格号（坎诺特的触须用）；没有 → −1。
 static func black_market_cell(state: RunState) -> int:
 	for k in MapNavigator.cell_ids(state):
-		if String(state.cell_at(k).get("类型", "")) == "黑市":
+		if cell_type(state.cell_at(k)) == "黑市":
 			return k
 	return -1
+
+## 小八界（bagua）的候选池：
+##   ① 本层所有「存在 + 未探明（`not is_known`）+ 非战斗格」；非空就用它；
+##   ② 否则退回本层所有「存在 + 非战斗格」（含当前格 —— 极端情况下可能原地不动）。
+## 返回格号数组（升序；「当前格必已探明」所以①天然不含当前格）。
+static func bagua_candidates(state: RunState) -> Array:
+	var 未知: Array = []
+	var 全部: Array = []
+	for k in MapNavigator.cell_ids(state):
+		var cell := state.cell_at(k)
+		if not is_non_combat_cell(cell):
+			continue
+		全部.append(k)
+		if not MapNavigator.is_known(state, k):
+			未知.append(k)
+	return 未知 if not 未知.is_empty() else 全部
 
 ## 用某一件零件**能点哪些格**（界面靠它高亮，测试靠它验规则）。返回格号数组（升序）。
 static func part_targets(state: RunState, part_id: String) -> Array:
 	var P := part_info(part_id)
 	if P.is_empty() or not bool(P.get("用", false)):
 		return []
-	var 移动 := String(P.get("移动", ""))
-	if 移动 == "shop":
-		var s := black_market_cell(state)
-		return [s] if s >= 0 else []
-	var 距离 := MapNavigator.full_distances(state)
-	var 非战斗 := non_combat_types()
+	var 范围 := part_range(part_id)
+	if 范围 == "bagua":
+		return bagua_candidates(state)
+	if 范围.is_empty():
+		return []
+	var 当前 := cell_xy(state, state.node_id)
+	var cx := int(当前["x"])
+	var cy := int(当前["y"])
 	var out: Array = []
 	for k in MapNavigator.cell_ids(state):
-		if not MapNavigator.walkable(state, k):
+		var cell := state.cell_at(k)
+		if not cell_exists(cell):        # 只认存在的格子（空格 / 不存在的格不能落）
 			continue
-		var d: Variant = 距离.get(k)
-		var dd := int(d) if d != null else -1
-		if 移动 == "ring":
-			if k != state.node_id and dd == 1:
+		if k == state.node_id:           # 除 bagua 外，目标格不能是当前格
+			continue
+		var xy := cell_xy(state, k)
+		var dx := absi(int(xy["x"]) - cx)
+		var dy := absi(int(xy["y"]) - cy)
+		if 范围 == "adj8":
+			if maxi(dx, dy) == 1:
 				out.append(k)
-		elif 移动 == "ringline":
-			if k != state.node_id and (dd == 1 or dd == 2):
+		elif 范围 == "ring12":
+			if dx + dy >= 1 and dx + dy <= 2:
 				out.append(k)
-		elif 移动 == "line2":
-			if dd == 2:
+		elif 范围 == "line2":
+			if _in_line(dx, dy, 2):
 				out.append(k)
-		elif 移动 == "line3":
-			if dd == 2 or dd == 3:
+		elif 范围 == "line3":
+			if _in_line(dx, dy, 3):
 				out.append(k)
-		elif 移动 == "step":
-			if dd == 1 or dd == 2:
+		elif 范围 == "any":
+			out.append(k)
+		elif 范围 == "thaw":
+			if is_non_combat_cell(cell):   # 全图任意非战斗格，**不要求已探明**
 				out.append(k)
-		elif 移动 == "any":
-			if k != state.node_id:
-				out.append(k)
-		elif 移动 == "fly":
-			if k != state.node_id and 非战斗.has(String(state.cell_at(k).get("类型", ""))) and MapNavigator.is_known(state, k):
+		elif 范围 == "tentacle":
+			if cell_type(cell) == "黑市" and MapNavigator.is_known(state, k):  # 迷雾黑市不可选
 				out.append(k)
 	return out
+
+## 直线范围判据：默认只认正横 / 正竖（`LINE_ALLOW_DIAGONAL == false`），1~n 格、不可拐弯。
+static func _in_line(dx: int, dy: int, n: int) -> bool:
+	var 直线 := dx == 0 or dy == 0 or (LINE_ALLOW_DIAGONAL and dx == dy)
+	return 直线 and maxi(dx, dy) >= 1 and maxi(dx, dy) <= n
 
 # 中文别名
 static func 零件目标(state: RunState, part_id: String) -> Array:
@@ -283,67 +494,126 @@ static func 黑市格(state: RunState) -> int:
 	return black_market_cell(state)
 
 # ==========================================================================================
-# 五、用掉一件（不消耗推进剂）
+# 五、用掉一件（默认消耗 1 点推进剂；free 的三件免推进剂）
 # ==========================================================================================
 
-## 用掉这一件零件的**一次**（`94-零件.js:353-399`）：扣次数、不花推进剂、落地即「走过」。
-## 附加效果：`thaw` +2 希望 +3 经验；`bagua` 探明落点四邻格 + 回复 1 推进剂。
-static func use_part(state: RunState, part_index: int, target_id: int) -> Dictionary:
+## 小八界内部的**确定性**随机落点（候选池下标）：同种子 + 同局面 → 同结果。
+static func _bagua_index(state: RunState, n: int) -> int:
+	if n <= 0:
+		return -1
+	var rng := Mulberry32.new((state.seed_val + state.floor_num * 211 + state.battles_fought * 29
+		+ state.visited_cells.size() * 23) & 0xFFFFFFFF)
+	return mini(n - 1, floori(rng.next_float() * float(n)))
+
+## 用掉这一件零件的**一次**（核心实现）。
+##
+## 返回 `{ok, why, target, 到, key, 零件, 类型, 从, 距离, 免费, 推进剂, 揭雾, 额外, 次数剩}`：
+##   · `ok: false` → `why` 是给玩家看的原因（推进剂不足 / 目标不在范围里 / 次数用尽 …）；
+##   · `target`（= `到`，旧字段名）= **实际落点格号**（bagua 由内部随机抽出后回填在这里）；
+##   · `额外` = `{希望, 源碳, 推进剂, 探明, 经验}` 的数值明细（没有的就是 0；`经验` 只是兼容占位，恒 0）。
+##
+## 目标格规则：`target_cell_id < 0` 或不在目标里 → 非 bagua 直接拒绝；bagua 则从
+## `bagua_candidates(state)` 里确定性随机抽一个（同时兼容调用方显式传合法候选格）。
+static func use_part(state: RunState, part_index: int, target_cell_id: int = -1) -> Dictionary:
+	if state == null:
+		return {"ok": false, "why": "还没有进行中的局"}
 	if part_index < 0 or part_index >= state.parts.size():
-		return {"ok": false, "为什么": "没有这件零件"}
+		return {"ok": false, "why": "没有这件零件（下标 %d，手上有 %d 件）" % [part_index, state.parts.size()]}
 	var p: Variant = state.parts[part_index]
+	if not (p is Dictionary):
+		return {"ok": false, "why": "没有这件零件（下标 %d）" % part_index}
 	var key := part_key(p)
 	var P := part_info(key)
-	if P.is_empty() or not bool(P.get("用", false)):
-		return {"ok": false, "为什么": "【%s】这一版用不了（%s）" % [
-			String(P.get("名", key)), String(P.get("用不了", "没有实现"))]}
-	var target := int(target_id)
-	var 距离 := MapNavigator.full_distances(state)
-	var 目标 := part_targets(state, key)
-	if not 目标.has(target):
-		return {"ok": false, "为什么": "【%s】到不了那一格（这一格不在它的目标里）" % String(P["名"])}
-	var d: Variant = 距离.get(target)
-	# 扣次数（战棋 30:10：`p.uses--; if (p.uses <= 0) RUN.parts.splice(...)`）
+	if P.is_empty():
+		return {"ok": false, "why": "数据表里没有这件零件（%s）" % key, "key": key}
+	var 名 := String(P.get("名", key))
+	if not bool(P.get("用", false)):
+		var 缘由 := String(P.get("用不了", "被动常驻，不能主动使用"))
+		return {"ok": false, "why": "【%s】不能用（%s）" % [名, 缘由], "key": key, "零件": 名, "passive": true}
 	var pd: Dictionary = p
-	if pd.get("uses") != null:
-		pd["uses"] = int(pd["uses"]) - 1
-		if int(pd["uses"]) <= 0:
-			state.parts.remove_at(part_index)
+	if pd.get("uses") != null and int(pd["uses"]) <= 0:
+		return {"ok": false, "why": "【%s】的使用次数已经用尽" % 名, "key": key, "零件": 名}
+	var 免费 := part_is_free(key)
+	if not 免费 and int(state.propellant) < 1:
+		return {"ok": false, "why": "推进剂不足（需 1 点）", "key": key, "零件": 名,
+			"free": false, "推进剂": 0}
+	var target := int(target_cell_id)
+	var 范围 := part_range(key)
+	if 范围 == "bagua":
+		var 候选 := bagua_candidates(state)
+		if 候选.is_empty():
+			return {"ok": false, "why": "本层没有可以传送的非战斗格", "key": key, "零件": 名}
+		if target < 0 or not 候选.has(target):
+			var i := _bagua_index(state, 候选.size())
+			if i < 0:
+				return {"ok": false, "why": "本层没有可以传送的非战斗格", "key": key, "零件": 名}
+			target = int(候选[i])
+	else:
+		var 目标 := part_targets(state, key)
+		if not 目标.has(target):
+			return {"ok": false, "why": "【%s】到不了那一格（这一格不在它的范围内）" % 名, "key": key, "零件": 名}
+
+	# ---- 扣推进剂（免费的三件不扣；扣了就在日志里记账） ----
 	var 旧 := state.node_id
+	var 耗 := 0
+	if not 免费:
+		耗 = 1
+		var 前推 := int(state.propellant)
+		state.propellant = maxi(0, 前推 - 1)
+		state.add_log("零件【%s】位移消耗 %d 点推进剂（%d → %d）" % [名, 耗, 前推, state.propellant])
+
+	# ---- 瞬移落点：只揭开落点本身（中间格不触发事件、不揭雾）----
+	var 前格 := cell_xy(state, 旧)
 	state.node_id = target
 	state.mark_visited(target)
-	if String(P.get("移动", "")) == "shop" or String(P.get("移动", "")) == "any":
-		state.mark_revealed(target)
+	var 揭 := state.mark_revealed(target)
 	var cell := state.cell_at(target)
-	state.add_log("使用零件【%s】：(%d, %d) → (%d, %d)（%s%s），不消耗推进剂" % [
-		String(P["名"]), int(state.cell_at(旧).get("列", 0)) + 1, int(state.cell_at(旧).get("行", 0)) + 1,
-		int(cell.get("列", 0)) + 1, int(cell.get("行", 0)) + 1, String(cell.get("类型", "")),
-		"" if d == null else "，%d 步" % int(d)])
-	var 额外 := {"希望": 0, "经验": 0, "推进剂": 0, "探明": 0}
-	if key == "thaw":
-		state.hope += 2
-		额外["希望"] = 2
-		额外["经验"] = 3
-		state.gain_exp(3, "老妈的融雪")
-		state.add_log("【老妈的融雪】：飞跃到已知的非战斗格，额外获得 +2 希望（现在 %d）、+3 经验" % state.hope)
-	elif key == "bagua":
-		state.revealed_cells = state.revealed_cells if state.revealed_cells is Array else []
-		var cols := MapNavigator.columns(state)
-		var 探 := 0
-		for x in MapGenerator.neighbors_of(target, cols):
-			if not state.has_cell(x):
-				continue
-			if state.mark_revealed(x):
-				探 += 1
-		额外["探明"] = 探
-		var 上限 := MapGenerator.propellant_max(state)
-		state.propellant = mini(上限, state.propellant + 1)
-		额外["推进剂"] = 1
-		state.add_log("【小八界】：落地探明周边 %d 格，并回复 +1 推进剂（现在 %d / %d）" % [探, state.propellant, 上限])
-	return {"ok": true, "到": target, "类型": String(cell.get("类型", "")), "距离": (int(d) if d != null else -1),
-		"零件": String(P["名"]), "从": 旧, "额外": 额外}
+	var 落 := cell_xy(state, target)
+	var dx := absi(int(落["x"]) - int(前格["x"]))
+	var dy := absi(int(落["y"]) - int(前格["y"]))
 
-static func 用零件(state: RunState, part_index: int, target_id: int) -> Dictionary:
+	# ---- 大地图移动一次 → 浪花波动 ----
+	var 浪变 := wave_fluctuate(state)
+
+	# ---- 特殊奖励 ----
+	## ★ `额外` 的键固定给全（没有的就是 0）：UI 只画非 0 的项，旧调用按老键读也不会崩。
+	##   `经验` 只是**兼容占位**（原版融雪不再给经验，恒 0）。
+	var 额外 := {"希望": 0, "源碳": 0, "推进剂": 0, "探明": 0, "经验": 0}
+	if key == "thaw":
+		state.hope = int(state.hope) + 2
+		额外["希望"] = 2
+		state.add_log("【老妈的融雪】：落到非战斗格 (%d, %d)，希望 +2（现在 %d）" % [
+			int(落["x"]) + 1, int(落["y"]) + 1, state.hope])
+	elif key == "tentacle":
+		state.carbon = int(state.carbon) + 4
+		额外["源碳"] = 4
+		state.add_log("【坎诺特的触须】：直达已探明的黑市，源碳 +4（现在 %d）" % state.carbon)
+	elif key == "bagua":
+		state.add_log("【小八界】：随机传送到 (%d, %d) %s" % [
+			int(落["x"]) + 1, int(落["y"]) + 1, cell_type(cell)])
+
+	# ---- 扣次数（归 0 从手上移除）----
+	var 剩 := -1
+	if pd.get("uses") != null:
+		pd["uses"] = int(pd["uses"]) - 1
+		剩 = int(pd["uses"])
+		if 剩 <= 0:
+			剩 = 0
+			state.parts.remove_at(part_index)
+
+	state.add_log("使用零件【%s】：(%d, %d) → (%d, %d)（%s；%s）" % [
+		名, int(前格["x"]) + 1, int(前格["y"]) + 1, int(落["x"]) + 1, int(落["y"]) + 1,
+		cell_type(cell), "免推进剂" if 免费 else "耗 1 推进剂"])
+	if not 浪变.is_empty():
+		state.add_log("浪花估价波动：%s（可在黑市按新的估价卖出）" % "、".join(浪变))
+
+	return {
+		"ok": true, "why": "", "key": key, "零件": 名, "target": target, "到": target,
+		"类型": cell_type(cell), "从": 旧, "距离": dx + dy, "几何距离": maxi(dx, dy),
+		"免费": 免费, "推进剂": 耗, "揭雾": 揭, "次数剩": 剩, "额外": 额外,
+	}
+
+static func 用零件(state: RunState, part_index: int, target_id: int = -1) -> Dictionary:
 	return use_part(state, part_index, target_id)
 
 # ==========================================================================================
@@ -358,22 +628,17 @@ static func buy_price(state: RunState, part_id: String) -> int:
 	var 打折 := 0.7 if state.has_relic(打折藏品) else 1.0
 	return int(JsCompat.js_round(float(价) * 打折))
 
-## 一件零件卖掉能换多少源碳（`94-零件.js:422-432`）：
-## 自然物按**这一件自己的估价**；加工品 / 概念体 `max(2, floor(价 × 0.6))`。
+## 一件零件卖掉能换多少源碳：
+##   · 自然物 → **当前估价**（血蕈 / 浪花）；
+##   · 加工品 / 概念体 → **固定 1 源碳**。
 static func sell_price(p: Variant) -> int:
 	var key := part_key(p)
 	var P := part_info(key)
 	if P.is_empty():
 		return 0
 	if String(P.get("类", "")) == "自然物":
-		var 表 := _table_value(key)
-		var v := current_value(p)
-		if v > 0:
-			return v
-		return 表 if 表 > 0 else 0
-	var 价: Variant = P.get("价")
-	var n := int(价) if 价 != null else 4
-	return maxi(2, floori(float(n) * 0.6))
+		return maxi(0, current_value(p))
+	return 1
 
 ## 卖零件（战棋 `30:117-120`）：源碳到账、零件从手上移走、河谷祭祈要重算上限。
 static func sell_part(state: RunState, index: int) -> Dictionary:
