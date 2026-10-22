@@ -20,8 +20,8 @@
   },
   "detail": {
    "path": "协作/架构/Godot-RouteMap-明细.md",
-   "bytes": 154575,
-   "estTokens": 44789
+   "bytes": 155488,
+   "estTokens": 45058
   },
   "json": {
    "path": "协作/架构/Godot-AST依赖清单.json"
@@ -32,61 +32,61 @@
    "name": "core",
    "title": "core · 内核（纯逻辑；不许认识 session / presentation）",
    "files": 80,
-   "lines": 29284,
-   "bytes": 1367086,
-   "estTokens": 413789,
+   "lines": 29288,
+   "bytes": 1367355,
+   "estTokens": 413871,
    "commentRatio": 0.1863,
    "classNames": 80,
    "consts": 362,
-   "funcs": 2305,
+   "funcs": 2306,
    "edgesOut": 652,
-   "edgesIn": 1276,
+   "edgesIn": 1289,
    "crossLayerEdgesOut": 0
   },
   {
    "name": "session",
    "title": "session · 会话门面（界面唯一入口）",
    "files": 12,
-   "lines": 5013,
-   "bytes": 216112,
-   "estTokens": 64536,
-   "commentRatio": 0.1182,
+   "lines": 5018,
+   "bytes": 216496,
+   "estTokens": 64655,
+   "commentRatio": 0.1185,
    "classNames": 12,
    "consts": 32,
-   "funcs": 510,
+   "funcs": 511,
    "edgesOut": 112,
-   "edgesIn": 137,
+   "edgesIn": 140,
    "crossLayerEdgesOut": 93
   },
   {
    "name": "presentation",
    "title": "presentation · 表现层（只许经 GameSession 调内核）",
    "files": 25,
-   "lines": 9067,
-   "bytes": 422623,
-   "estTokens": 129196,
+   "lines": 9090,
+   "bytes": 424416,
+   "estTokens": 129755,
    "commentRatio": 0.2319,
    "classNames": 15,
    "consts": 123,
-   "funcs": 683,
-   "edgesOut": 123,
+   "funcs": 684,
+   "edgesOut": 125,
    "edgesIn": 118,
-   "crossLayerEdgesOut": 64
+   "crossLayerEdgesOut": 66
   },
   {
    "name": "tests",
    "title": "tests · 测试与黄金样例（可以认识所有层）",
-   "files": 79,
-   "lines": 27141,
-   "bytes": 1520195,
-   "estTokens": 458904,
-   "commentRatio": 0.1655,
+   "files": 81,
+   "lines": 27319,
+   "bytes": 1530628,
+   "estTokens": 462061,
+   "commentRatio": 0.1649,
    "classNames": 5,
-   "consts": 102,
-   "funcs": 1134,
-   "edgesOut": 657,
+   "consts": 103,
+   "funcs": 1143,
+   "edgesOut": 671,
    "edgesIn": 46,
-   "crossLayerEdgesOut": 622
+   "crossLayerEdgesOut": 636
   },
   {
    "name": "其他",
@@ -105,21 +105,21 @@
   }
  ],
  "summary": {
-  "files": 203,
-  "lines": 71292,
-  "bytes": 3559418,
-  "estTokens": 1076477,
-  "commentBytes": 634040,
-  "commentRatio": 0.1781,
+  "files": 205,
+  "lines": 71502,
+  "bytes": 3572297,
+  "estTokens": 1080394,
+  "commentBytes": 635411,
+  "commentRatio": 0.1779,
   "classNames": 112,
-  "consts": 637,
-  "funcs": 4660,
-  "staticFuncs": 2717,
-  "publicFuncs": 2261,
+  "consts": 638,
+  "funcs": 4672,
+  "staticFuncs": 2720,
+  "publicFuncs": 2266,
   "innerClasses": 4,
-  "edges": 1577,
-  "productionEdges": 920,
-  "productionCrossLayerEdges": 190,
+  "edges": 1593,
+  "productionEdges": 922,
+  "productionCrossLayerEdges": 192,
   "unresolvedResources": 0,
   "violations": 0,
   "coreToFactionRefs": 117,
@@ -8889,8 +8889,8 @@
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 打出精神或公有牌(ctx: Dictionary, unit_id: Variant, card_inst_id: Variant = null, target_id: Variant = null) -> Dictionary",
-     "callsOutside": 86,
-     "callsTotal": 86,
+     "callsOutside": 88,
+     "callsTotal": 88,
      "doc": ""
     },
     {
@@ -9710,6 +9710,14 @@
      ]
     },
     {
+     "from": "tests/unit/test_colonial_mooks.gd",
+     "layer": "tests",
+     "n": 2,
+     "symbols": [
+      "Btl"
+     ]
+    },
+    {
      "from": "tests/unit/test_colonial_units.gd",
      "layer": "tests",
      "n": 9,
@@ -9955,8 +9963,8 @@
      "static": true,
      "returns": "float",
      "signature": "static func buffSum(u: Variant, k: String) -> float",
-     "callsOutside": 31,
-     "callsTotal": 31,
+     "callsOutside": 34,
+     "callsTotal": 34,
      "doc": ""
     },
     {
@@ -11090,6 +11098,14 @@
      "from": "tests/unit/test_class_heavy_cmd.gd",
      "layer": "tests",
      "n": 22,
+     "symbols": [
+      "Calc"
+     ]
+    },
+    {
+     "from": "tests/unit/test_colonial_mooks.gd",
+     "layer": "tests",
+     "n": 3,
      "symbols": [
       "Calc"
      ]
@@ -16443,8 +16459,8 @@
      "static": true,
      "returns": "void",
      "signature": "static func 初始化(ctx: Dictionary) -> void",
-     "callsOutside": 8,
-     "callsTotal": 8,
+     "callsOutside": 9,
+     "callsTotal": 9,
      "doc": ""
     },
     {
@@ -16875,6 +16891,14 @@
      ]
     },
     {
+     "from": "tests/unit/test_colonial_mooks.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "ColonialDeck"
+     ]
+    },
+    {
      "from": "tests/unit/test_colonial_units.gd",
      "layer": "tests",
      "n": 1,
@@ -16904,12 +16928,12 @@
    "file": "core/battle/colonial_units.gd",
    "layer": "core",
    "lines": 696,
-   "bytes": 33987,
-   "chars": 26074,
-   "cjkChars": 3909,
-   "estTokens": 10242,
-   "commentBytes": 3593,
-   "commentRatio": 0.1057,
+   "bytes": 34089,
+   "chars": 26148,
+   "cjkChars": 3923,
+   "estTokens": 10273,
+   "commentBytes": 3616,
+   "commentRatio": 0.1061,
    "commentLines": 38,
    "trailingCommentLines": 0,
    "className": "ColonialUnits",
@@ -16917,7 +16941,7 @@
    "extends": "RefCounted",
    "extendsLine": 4,
    "innerClasses": 0,
-   "responsibility": "职责：殖民卫星军五名成员的卡池（`data/cards/殖民卫星军.json` 的「驾驶员」）与独有机制（METEOR…",
+   "responsibility": "职责：殖民卫星军七名成员的卡池（`data/cards/殖民卫星军.json` 的「驾驶员」）与独有机制（METEOR…",
    "declares": 46,
    "consts": [
     {
@@ -16928,7 +16952,7 @@
     {
      "name": "成员键",
      "line": 8,
-     "doc": "作者拍板（施工单 §1.1）：S3/S4/S5/W4/W5 退役，只有下面五人。"
+     "doc": "施工单 §1.1 的五人 + COL-MOOK-1 两名大众脸（W4 / W5 重用退役空号，没有觉醒）。"
     },
     {
      "name": "名字",
@@ -17023,8 +17047,8 @@
      "static": true,
      "returns": "Array",
      "signature": "static func 角色牌们(键名: String, 加号: bool = false) -> Array",
-     "callsOutside": 3,
-     "callsTotal": 3,
+     "callsOutside": 5,
+     "callsTotal": 5,
      "doc": "某人的全卡池（`+` 版按 `加号` 生成、名字带 `+`）。"
     },
     {
@@ -17033,8 +17057,8 @@
      "static": true,
      "returns": "Array",
      "signature": "static func 装填单位(u: Variant, 等级: int, _ctx: Variant) -> Array",
-     "callsOutside": 3,
-     "callsTotal": 3,
+     "callsOutside": 5,
+     "callsTotal": 5,
      "doc": "装填：按等级装「已经解锁」的卡（`+` 版 Lv20 起）。"
     },
     {
@@ -17508,6 +17532,14 @@
      ]
     },
     {
+     "from": "tests/unit/test_colonial_mooks.gd",
+     "layer": "tests",
+     "n": 6,
+     "symbols": [
+      "ColonialUnits"
+     ]
+    },
+    {
      "from": "tests/unit/test_colonial_units.gd",
      "layer": "tests",
      "n": 10,
@@ -17537,12 +17569,12 @@
    "file": "core/battle/colonial_v01.gd",
    "layer": "core",
    "lines": 456,
-   "bytes": 22384,
-   "chars": 16701,
+   "bytes": 22396,
+   "chars": 16713,
    "cjkChars": 2825,
-   "estTokens": 6790,
+   "estTokens": 6793,
    "commentBytes": 3535,
-   "commentRatio": 0.1579,
+   "commentRatio": 0.1578,
    "commentLines": 36,
    "trailingCommentLines": 0,
    "className": "ColonialV01",
@@ -17691,8 +17723,8 @@
      "static": true,
      "returns": "void",
      "signature": "static func 装填大招槽(ctx: Dictionary, u: Variant) -> void",
-     "callsOutside": 2,
-     "callsTotal": 2,
+     "callsOutside": 3,
+     "callsTotal": 3,
      "doc": "给三名有觉醒的成员各装一张觉醒入场牌（大招槽卡，绝不进抽牌堆）。"
     },
     {
@@ -18208,6 +18240,14 @@
      ]
     },
     {
+     "from": "tests/unit/test_colonial_mooks.gd",
+     "layer": "tests",
+     "n": 2,
+     "symbols": [
+      "ColonialV01"
+     ]
+    },
+    {
      "from": "tests/unit/test_colonial_units.gd",
      "layer": "tests",
      "n": 10,
@@ -18487,8 +18527,8 @@
      "static": true,
      "returns": "void",
      "signature": "static func 拆分单位牌(u: Dictionary, _ctx: Dictionary) -> void",
-     "callsOutside": 11,
-     "callsTotal": 11,
+     "callsOutside": 12,
+     "callsTotal": 12,
      "doc": "把一台机体的牌分进武器栏、副武器栏、大招槽、待入库与专属牌库。"
     },
     {
@@ -19476,6 +19516,14 @@
      "from": "tests/unit/test_class_heavy_cmd.gd",
      "layer": "tests",
      "n": 17,
+     "symbols": [
+      "DeckFlow"
+     ]
+    },
+    {
+     "from": "tests/unit/test_colonial_mooks.gd",
+     "layer": "tests",
+     "n": 1,
      "symbols": [
       "DeckFlow"
      ]
@@ -37369,6 +37417,14 @@
      ]
     },
     {
+     "from": "tests/unit/test_colonial_mooks.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "Db"
+     ]
+    },
+    {
      "from": "tests/unit/test_display_names.gd",
      "layer": "tests",
      "n": 6,
@@ -41823,14 +41879,14 @@
   {
    "file": "core/run/roster_manager.gd",
    "layer": "core",
-   "lines": 679,
-   "bytes": 31636,
-   "chars": 23626,
-   "cjkChars": 3953,
-   "estTokens": 9574,
-   "commentBytes": 6578,
-   "commentRatio": 0.2079,
-   "commentLines": 72,
+   "lines": 683,
+   "bytes": 31791,
+   "chars": 23727,
+   "cjkChars": 3980,
+   "estTokens": 9622,
+   "commentBytes": 6636,
+   "commentRatio": 0.2087,
+   "commentLines": 73,
    "trailingCommentLines": 1,
    "className": "RosterManager",
    "classLine": 17,
@@ -41838,7 +41894,7 @@
    "extendsLine": 18,
    "innerClasses": 0,
    "responsibility": "名册 / 招募券 / 晋升（原生 Godot，**零 `J.*`**）。",
-   "declares": 60,
+   "declares": 61,
    "consts": [
     {
      "name": "券偏移",
@@ -41963,8 +42019,8 @@
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 模板(键: Variant) -> Dictionary",
-     "callsOutside": 12,
-     "callsTotal": 12,
+     "callsOutside": 17,
+     "callsTotal": 17,
      "doc": ""
     },
     {
@@ -41973,8 +42029,8 @@
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 标签(键: Variant) -> Dictionary",
-     "callsOutside": 12,
-     "callsTotal": 12,
+     "callsOutside": 13,
+     "callsTotal": 13,
      "doc": ""
     },
     {
@@ -41983,8 +42039,8 @@
      "static": true,
      "returns": "String",
      "signature": "static func 档(键: Variant) -> String",
-     "callsOutside": 1,
-     "callsTotal": 1,
+     "callsOutside": 2,
+     "callsTotal": 2,
      "doc": ""
     },
     {
@@ -41993,8 +42049,8 @@
      "static": true,
      "returns": "String",
      "signature": "static func 档名(键: Variant) -> String",
-     "callsOutside": 1,
-     "callsTotal": 1,
+     "callsOutside": 2,
+     "callsTotal": 2,
      "doc": ""
     },
     {
@@ -42093,8 +42149,8 @@
      "static": true,
      "returns": "bool",
      "signature": "static func 券合(券: Variant, 键: Variant) -> bool",
-     "callsOutside": 7,
-     "callsTotal": 7,
+     "callsOutside": 11,
+     "callsTotal": 11,
      "doc": "这张券能不能招 / 晋升这台机体（照 `券合()` = 战棋的 `ticketOk`）。"
     },
     {
@@ -42103,8 +42159,8 @@
      "static": true,
      "returns": "Array",
      "signature": "static func 名册键们() -> Array",
-     "callsOutside": 5,
-     "callsTotal": 5,
+     "callsOutside": 6,
+     "callsTotal": 6,
      "doc": "168 场战斗黄金的编成里还有它们，只是不再是 ATX 名册 / 招募候选）。"
     },
     {
@@ -42113,8 +42169,8 @@
      "static": true,
      "returns": "Array",
      "signature": "static func 券合机师们(券: Variant) -> Array",
-     "callsOutside": 4,
-     "callsTotal": 4,
+     "callsOutside": 5,
+     "callsTotal": 5,
      "doc": ""
     },
     {
@@ -42123,8 +42179,8 @@
      "static": true,
      "returns": "Variant",
      "signature": "static func 发券(state: RunState, 类: String, 来源: String, 名: Variant = null, 偏移: Variant = null) -> Variant",
-     "callsOutside": 0,
-     "callsTotal": 0,
+     "callsOutside": 2,
+     "callsTotal": 2,
      "doc": "发一张券（唯一往 `state.tickets` 里推的口子）。"
     },
     {
@@ -42233,13 +42289,23 @@
      "static": true,
      "returns": "Dictionary",
      "signature": "static func recruit(state: RunState, 键: String, 券下标: int = -1) -> Dictionary",
-     "callsOutside": 7,
-     "callsTotal": 7,
+     "callsOutside": 8,
+     "callsTotal": 8,
      "doc": "返回 `{ok, ...}` 或 `{ok:false, why}`。"
     },
     {
-     "name": "丢券",
+     "name": "券留存上限",
      "line": 387,
+     "static": true,
+     "returns": "int",
+     "signature": "static func 券留存上限() -> int",
+     "callsOutside": 8,
+     "callsTotal": 8,
+     "doc": "手上最多留几张券（作者 10-22 定 3 张）。"
+    },
+    {
+     "name": "丢券",
+     "line": 391,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 丢券(state: RunState, 券下标: int) -> Dictionary",
@@ -42249,7 +42315,7 @@
     },
     {
      "name": "招募站领券",
-     "line": 398,
+     "line": 402,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 招募站领券(state: RunState) -> Dictionary",
@@ -42259,7 +42325,7 @@
     },
     {
      "name": "晋升目标",
-     "line": 412,
+     "line": 416,
      "static": true,
      "returns": "int",
      "signature": "static func 晋升目标(lv: int) -> int",
@@ -42269,7 +42335,7 @@
     },
     {
      "name": "晋升要多少",
-     "line": 420,
+     "line": 424,
      "static": true,
      "returns": "int",
      "signature": "static func 晋升要多少(键: String, 到: int, state: RunState = null) -> int",
@@ -42279,7 +42345,7 @@
     },
     {
      "name": "五维",
-     "line": 426,
+     "line": 430,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 五维(u: Dictionary) -> Dictionary",
@@ -42289,7 +42355,7 @@
     },
     {
      "name": "晋升预览",
-     "line": 439,
+     "line": 443,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 晋升预览(键: String, 等级: int) -> Dictionary",
@@ -42299,7 +42365,7 @@
     },
     {
      "name": "promote",
-     "line": 451,
+     "line": 455,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func promote(state: RunState, 键: String) -> Dictionary",
@@ -42309,7 +42375,7 @@
     },
     {
      "name": "晋升清单",
-     "line": 493,
+     "line": 497,
      "static": true,
      "returns": "Array",
      "signature": "static func 晋升清单(state: RunState) -> Array",
@@ -42319,7 +42385,7 @@
     },
     {
      "name": "deploy_limit_bonus",
-     "line": 518,
+     "line": 522,
      "static": true,
      "returns": "int",
      "signature": "static func deploy_limit_bonus(state: RunState) -> int",
@@ -42329,7 +42395,7 @@
     },
     {
      "name": "deploy_limit",
-     "line": 530,
+     "line": 534,
      "static": true,
      "returns": "int",
      "signature": "static func deploy_limit(state: RunState) -> int",
@@ -42339,7 +42405,7 @@
     },
     {
      "name": "升级门槛",
-     "line": 541,
+     "line": 545,
      "static": true,
      "returns": "Variant",
      "signature": "static func 升级门槛(等级: int) -> Variant",
@@ -42349,7 +42415,7 @@
     },
     {
      "name": "升到这一级给多少希望",
-     "line": 546,
+     "line": 550,
      "static": true,
      "returns": "int",
      "signature": "static func 升到这一级给多少希望(等级: int) -> int",
@@ -42359,7 +42425,7 @@
     },
     {
      "name": "加经验",
-     "line": 555,
+     "line": 559,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 加经验(state: RunState, x: int, 来源: String = \"作战\") -> Dictionary",
@@ -42369,7 +42435,7 @@
     },
     {
      "name": "记战斗HP",
-     "line": 569,
+     "line": 573,
      "static": true,
      "returns": "int",
      "signature": "static func 记战斗HP(state: RunState, 战报: Variant) -> int",
@@ -42379,7 +42445,7 @@
     },
     {
      "name": "战后回血",
-     "line": 590,
+     "line": 594,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 战后回血(state: RunState) -> Dictionary",
@@ -42389,17 +42455,17 @@
     },
     {
      "name": "new_run",
-     "line": 614,
+     "line": 618,
      "static": true,
      "returns": "RunState",
      "signature": "static func new_run(种子: int, 分队: String = \"无\", 分队类型: String = \"混编\") -> RunState",
-     "callsOutside": 35,
-     "callsTotal": 35,
+     "callsOutside": 36,
+     "callsTotal": 36,
      "doc": "开局（选分队 → 名册空 → 发 3 张券）。返回 state。"
     },
     {
      "name": "全局脚本",
-     "line": 646,
+     "line": 650,
      "static": true,
      "returns": "Variant",
      "signature": "static func 全局脚本(类名: String) -> Variant",
@@ -42409,7 +42475,7 @@
     },
     {
      "name": "_进层",
-     "line": 654,
+     "line": 658,
      "static": true,
      "returns": "void",
      "signature": "static func _进层(state: RunState, n: int) -> void",
@@ -42544,7 +42610,7 @@
     {
      "from": "presentation/menus/roster_view.gd",
      "layer": "presentation",
-     "n": 7,
+     "n": 8,
      "symbols": [
       "RosterManager"
      ]
@@ -42553,6 +42619,22 @@
      "from": "presentation/run_map/formation_view.gd",
      "layer": "presentation",
      "n": 3,
+     "symbols": [
+      "RosterManager"
+     ]
+    },
+    {
+     "from": "presentation/run_map/map_view.gd",
+     "layer": "presentation",
+     "n": 1,
+     "symbols": [
+      "RosterManager"
+     ]
+    },
+    {
+     "from": "presentation/widgets/modal_layer.gd",
+     "layer": "presentation",
+     "n": 2,
      "symbols": [
       "RosterManager"
      ]
@@ -42592,7 +42674,7 @@
     {
      "from": "session/roster_facade.gd",
      "layer": "session",
-     "n": 25,
+     "n": 26,
      "symbols": [
       "RosterManager"
      ]
@@ -42600,7 +42682,7 @@
     {
      "from": "session/run_facade.gd",
      "layer": "session",
-     "n": 1,
+     "n": 2,
      "symbols": [
       "RosterManager"
      ]
@@ -42633,6 +42715,14 @@
      "from": "tests/unit/test_class_heavy_cmd.gd",
      "layer": "tests",
      "n": 3,
+     "symbols": [
+      "RosterManager"
+     ]
+    },
+    {
+     "from": "tests/unit/test_colonial_mooks.gd",
+     "layer": "tests",
+     "n": 16,
      "symbols": [
       "RosterManager"
      ]
@@ -42697,6 +42787,14 @@
      "from": "tests/unit/test_session_run.gd",
      "layer": "tests",
      "n": 1,
+     "symbols": [
+      "RosterManager"
+     ]
+    },
+    {
+     "from": "tests/unit/test_ticket_keep.gd",
+     "layer": "tests",
+     "n": 4,
      "symbols": [
       "RosterManager"
      ]
@@ -43240,8 +43338,8 @@
      "static": true,
      "returns": "bool",
      "signature": "static func truthy(v: Variant) -> bool",
-     "callsOutside": 1021,
-     "callsTotal": 1021,
+     "callsOutside": 1023,
+     "callsTotal": 1023,
      "doc": "JS ToBoolean"
     },
     {
@@ -43320,8 +43418,8 @@
      "static": true,
      "returns": "String",
      "signature": "static func s(v: Variant) -> String",
-     "callsOutside": 582,
-     "callsTotal": 582,
+     "callsOutside": 586,
+     "callsTotal": 586,
      "doc": "String(v)：数字按 JS 的格式（整数不带小数点）"
     },
     {
@@ -44262,6 +44360,14 @@
      ]
     },
     {
+     "from": "tests/unit/test_colonial_mooks.gd",
+     "layer": "tests",
+     "n": 6,
+     "symbols": [
+      "J"
+     ]
+    },
+    {
      "from": "tests/unit/test_colonial_units.gd",
      "layer": "tests",
      "n": 13,
@@ -44965,6 +45071,14 @@
      "from": "tests/unit/test_class_heavy_cmd.gd",
      "layer": "tests",
      "n": 2,
+     "symbols": [
+      "Mulberry32"
+     ]
+    },
+    {
+     "from": "tests/unit/test_colonial_mooks.gd",
+     "layer": "tests",
+     "n": 1,
      "symbols": [
       "Mulberry32"
      ]
@@ -51295,14 +51409,14 @@
   {
    "file": "presentation/menus/menu_view.gd",
    "layer": "presentation",
-   "lines": 235,
-   "bytes": 12163,
-   "chars": 7693,
-   "cjkChars": 2198,
-   "estTokens": 3768,
-   "commentBytes": 3308,
-   "commentRatio": 0.272,
-   "commentLines": 37,
+   "lines": 241,
+   "bytes": 12470,
+   "chars": 7878,
+   "cjkChars": 2258,
+   "estTokens": 3864,
+   "commentBytes": 3462,
+   "commentRatio": 0.2776,
+   "commentLines": 38,
    "trailingCommentLines": 0,
    "className": "MenuView",
    "classLine": 12,
@@ -51310,7 +51424,7 @@
    "extendsLine": 13,
    "innerClasses": 0,
    "responsibility": "主菜单 + 分队选择屏（Stage M4-2；`session.screen` 为 `\"menu\" | \"squad\"…",
-   "declares": 17,
+   "declares": 18,
    "consts": [],
    "funcs": [
     {
@@ -51345,7 +51459,7 @@
     },
     {
      "name": "_点继续",
-     "line": 136,
+     "line": 137,
      "static": false,
      "returns": "void",
      "signature": "func _点继续() -> void",
@@ -51355,7 +51469,7 @@
     },
     {
      "name": "_点开始新",
-     "line": 141,
+     "line": 142,
      "static": false,
      "returns": "void",
      "signature": "func _点开始新() -> void",
@@ -51365,7 +51479,7 @@
     },
     {
      "name": "_点快速战斗",
-     "line": 144,
+     "line": 145,
      "static": false,
      "returns": "void",
      "signature": "func _点快速战斗() -> void",
@@ -51375,7 +51489,7 @@
     },
     {
      "name": "_点快速秘银",
-     "line": 148,
+     "line": 149,
      "static": false,
      "returns": "void",
      "signature": "func _点快速秘银() -> void",
@@ -51385,7 +51499,7 @@
     },
     {
      "name": "_点快速ATX",
-     "line": 154,
+     "line": 155,
      "static": false,
      "returns": "void",
      "signature": "func _点快速ATX() -> void",
@@ -51395,7 +51509,7 @@
     },
     {
      "name": "_点快速天人",
-     "line": 160,
+     "line": 161,
      "static": false,
      "returns": "void",
      "signature": "func _点快速天人() -> void",
@@ -51405,7 +51519,7 @@
     },
     {
      "name": "_点快速殖民卫星军",
-     "line": 166,
+     "line": 167,
      "static": false,
      "returns": "void",
      "signature": "func _点快速殖民卫星军() -> void",
@@ -51415,7 +51529,7 @@
     },
     {
      "name": "_点快速月球王国",
-     "line": 171,
+     "line": 172,
      "static": false,
      "returns": "void",
      "signature": "func _点快速月球王国() -> void",
@@ -51425,7 +51539,7 @@
     },
     {
      "name": "_点快速影世界",
-     "line": 176,
+     "line": 177,
      "static": false,
      "returns": "void",
      "signature": "func _点快速影世界() -> void",
@@ -51435,7 +51549,7 @@
     },
     {
      "name": "_点开局",
-     "line": 181,
+     "line": 182,
      "static": false,
      "returns": "void",
      "signature": "func _点开局() -> void",
@@ -51445,7 +51559,7 @@
     },
     {
      "name": "_读种子",
-     "line": 195,
+     "line": 196,
      "static": false,
      "returns": "int",
      "signature": "func _读种子() -> int",
@@ -51454,8 +51568,18 @@
      "doc": ""
     },
     {
+     "name": "随机种子",
+     "line": 202,
+     "static": true,
+     "returns": "int",
+     "signature": "static func 随机种子() -> int",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
      "name": "_选中的分队",
-     "line": 201,
+     "line": 207,
      "static": false,
      "returns": "String",
      "signature": "func _选中的分队() -> String",
@@ -51465,7 +51589,7 @@
     },
     {
      "name": "_候选分队",
-     "line": 210,
+     "line": 216,
      "static": false,
      "returns": "Array",
      "signature": "func _候选分队() -> Array",
@@ -51475,7 +51599,7 @@
     },
     {
      "name": "_刷新分队列表",
-     "line": 222,
+     "line": 228,
      "static": false,
      "returns": "void",
      "signature": "func _刷新分队列表() -> void",
@@ -51931,14 +52055,14 @@
   {
    "file": "presentation/menus/roster_view.gd",
    "layer": "presentation",
-   "lines": 326,
-   "bytes": 16580,
-   "chars": 11554,
-   "cjkChars": 2450,
-   "estTokens": 5051,
-   "commentBytes": 3567,
-   "commentRatio": 0.2151,
-   "commentLines": 41,
+   "lines": 341,
+   "bytes": 17766,
+   "chars": 12237,
+   "cjkChars": 2693,
+   "estTokens": 5420,
+   "commentBytes": 3844,
+   "commentRatio": 0.2164,
+   "commentLines": 43,
    "trailingCommentLines": 0,
    "className": "RosterView",
    "classLine": 8,
@@ -51977,11 +52101,11 @@
      "signature": "func _刷决定行(s: RunState) -> void",
      "callsOutside": 0,
      "callsTotal": 0,
-     "doc": "还有券时它藏起来（继续走【去编队出击】那条不关窗的路）。"
+     "doc": "★ 10-22：券可以留（最多 3 张），≤3 张时同一颗按钮显示【暂不招募 · …（留着 N 张券）】。"
     },
     {
      "name": "_build",
-     "line": 97,
+     "line": 109,
      "static": false,
      "returns": "void",
      "signature": "func _build() -> void",
@@ -51991,7 +52115,7 @@
     },
     {
      "name": "_建券列表",
-     "line": 146,
+     "line": 161,
      "static": false,
      "returns": "void",
      "signature": "func _建券列表(s: RunState) -> void",
@@ -52001,7 +52125,7 @@
     },
     {
      "name": "_点券",
-     "line": 161,
+     "line": 176,
      "static": false,
      "returns": "void",
      "signature": "func _点券(下标: int) -> void",
@@ -52011,7 +52135,7 @@
     },
     {
      "name": "_建候选列表",
-     "line": 169,
+     "line": 184,
      "static": false,
      "returns": "void",
      "signature": "func _建候选列表(s: RunState) -> void",
@@ -52021,7 +52145,7 @@
     },
     {
      "name": "_点招募",
-     "line": 199,
+     "line": 214,
      "static": false,
      "returns": "void",
      "signature": "func _点招募(键: String) -> void",
@@ -52031,7 +52155,7 @@
     },
     {
      "name": "_点放弃券",
-     "line": 206,
+     "line": 221,
      "static": false,
      "returns": "void",
      "signature": "func _点放弃券() -> void",
@@ -52041,7 +52165,7 @@
     },
     {
      "name": "_点去编队",
-     "line": 213,
+     "line": 228,
      "static": false,
      "returns": "void",
      "signature": "func _点去编队() -> void",
@@ -52051,7 +52175,7 @@
     },
     {
      "name": "_点完成",
-     "line": 219,
+     "line": 234,
      "static": false,
      "returns": "void",
      "signature": "func _点完成() -> void",
@@ -52061,7 +52185,7 @@
     },
     {
      "name": "_建名册列表",
-     "line": 230,
+     "line": 245,
      "static": false,
      "returns": "void",
      "signature": "func _建名册列表(s: RunState) -> void",
@@ -52071,7 +52195,7 @@
     },
     {
      "name": "_点晋升",
-     "line": 280,
+     "line": 295,
      "static": false,
      "returns": "void",
      "signature": "func _点晋升(键: String) -> void",
@@ -52081,7 +52205,7 @@
     },
     {
      "name": "_五维文字",
-     "line": 289,
+     "line": 304,
      "static": false,
      "returns": "String",
      "signature": "func _五维文字(v: Dictionary) -> String",
@@ -52091,7 +52215,7 @@
     },
     {
      "name": "_结果文字",
-     "line": 297,
+     "line": 312,
      "static": false,
      "returns": "String",
      "signature": "func _结果文字() -> String",
@@ -52101,7 +52225,7 @@
     },
     {
      "name": "_清空",
-     "line": 321,
+     "line": 336,
      "static": false,
      "returns": "void",
      "signature": "func _清空(节点: Node) -> void",
@@ -52114,7 +52238,7 @@
     {
      "to": "core/run/roster_manager.gd",
      "layer": "core",
-     "n": 7,
+     "n": 8,
      "symbols": [
       "RosterManager"
      ],
@@ -52147,7 +52271,7 @@
     {
      "to": "presentation/theme/ui_theme.gd",
      "layer": "presentation",
-     "n": 101,
+     "n": 102,
      "symbols": [
       "UiTheme"
      ],
@@ -52817,12 +52941,12 @@
    "file": "presentation/run_map/map_view.gd",
    "layer": "presentation",
    "lines": 711,
-   "bytes": 38443,
-   "chars": 24946,
-   "cjkChars": 6636,
-   "estTokens": 11867,
+   "bytes": 38478,
+   "chars": 24975,
+   "cjkChars": 6639,
+   "estTokens": 11878,
    "commentBytes": 14416,
-   "commentRatio": 0.375,
+   "commentRatio": 0.3747,
    "commentLines": 149,
    "trailingCommentLines": 0,
    "className": "MapView",
@@ -53114,6 +53238,17 @@
      "n": 11,
      "symbols": [
       "MapNavigator"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/run/roster_manager.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "RosterManager"
      ],
      "kinds": [
       "类引用"
@@ -53845,7 +53980,7 @@
     {
      "from": "presentation/menus/roster_view.gd",
      "layer": "presentation",
-     "n": 101,
+     "n": 102,
      "symbols": [
       "UiTheme"
      ]
@@ -54309,12 +54444,12 @@
    "file": "presentation/widgets/modal_layer.gd",
    "layer": "presentation",
    "lines": 268,
-   "bytes": 10484,
-   "chars": 7159,
-   "cjkChars": 1637,
-   "estTokens": 3215,
+   "bytes": 10577,
+   "chars": 7206,
+   "cjkChars": 1660,
+   "estTokens": 3245,
    "commentBytes": 3375,
-   "commentRatio": 0.3219,
+   "commentRatio": 0.3191,
    "commentLines": 37,
    "trailingCommentLines": 0,
    "className": "ModalLayer",
@@ -54500,6 +54635,17 @@
      ]
     },
     {
+     "to": "core/run/roster_manager.gd",
+     "layer": "core",
+     "n": 2,
+     "symbols": [
+      "RosterManager"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
      "to": "presentation/battle/result_view.gd",
      "layer": "presentation",
      "n": 1,
@@ -54621,13 +54767,13 @@
   {
    "file": "presentation/widgets/top_bar.gd",
    "layer": "presentation",
-   "lines": 370,
-   "bytes": 20061,
-   "chars": 13429,
-   "cjkChars": 3235,
-   "estTokens": 6148,
+   "lines": 372,
+   "bytes": 20233,
+   "chars": 13543,
+   "cjkChars": 3264,
+   "estTokens": 6201,
    "commentBytes": 6840,
-   "commentRatio": 0.341,
+   "commentRatio": 0.3381,
    "commentLines": 76,
    "trailingCommentLines": 0,
    "className": "TopBar",
@@ -54661,7 +54807,7 @@
     },
     {
      "name": "_刷按钮可用性",
-     "line": 87,
+     "line": 89,
      "static": false,
      "returns": "void",
      "signature": "func _刷按钮可用性(d: Dictionary) -> void",
@@ -54671,7 +54817,7 @@
     },
     {
      "name": "_build",
-     "line": 121,
+     "line": 123,
      "static": false,
      "returns": "void",
      "signature": "func _build() -> void",
@@ -54681,7 +54827,7 @@
     },
     {
      "name": "_建窄栏",
-     "line": 197,
+     "line": 199,
      "static": false,
      "returns": "HBoxContainer",
      "signature": "func _建窄栏(父: Node, 滚动名: String, 盒名: String) -> HBoxContainer",
@@ -54691,7 +54837,7 @@
     },
     {
      "name": "_建藏品栏",
-     "line": 220,
+     "line": 222,
      "static": false,
      "returns": "void",
      "signature": "func _建藏品栏(d: Dictionary) -> void",
@@ -54701,7 +54847,7 @@
     },
     {
      "name": "_建零件栏",
-     "line": 250,
+     "line": 252,
      "static": false,
      "returns": "void",
      "signature": "func _建零件栏(d: Dictionary) -> void",
@@ -54711,7 +54857,7 @@
     },
     {
      "name": "_点招募",
-     "line": 301,
+     "line": 303,
      "static": false,
      "returns": "void",
      "signature": "func _点招募() -> void",
@@ -54721,7 +54867,7 @@
     },
     {
      "name": "_点编队",
-     "line": 304,
+     "line": 306,
      "static": false,
      "returns": "void",
      "signature": "func _点编队() -> void",
@@ -54731,7 +54877,7 @@
     },
     {
      "name": "_点牌库",
-     "line": 307,
+     "line": 309,
      "static": false,
      "returns": "void",
      "signature": "func _点牌库() -> void",
@@ -54741,7 +54887,7 @@
     },
     {
      "name": "_点QTE模式",
-     "line": 311,
+     "line": 313,
      "static": false,
      "returns": "void",
      "signature": "func _点QTE模式() -> void",
@@ -54751,7 +54897,7 @@
     },
     {
      "name": "_点保存回菜单",
-     "line": 317,
+     "line": 319,
      "static": false,
      "returns": "void",
      "signature": "func _点保存回菜单() -> void",
@@ -54761,7 +54907,7 @@
     },
     {
      "name": "_点零件",
-     "line": 329,
+     "line": 331,
      "static": false,
      "returns": "void",
      "signature": "func _点零件(下标: int, 键: String, 目标: Array) -> void",
@@ -54771,7 +54917,7 @@
     },
     {
      "name": "_清空局态",
-     "line": 336,
+     "line": 338,
      "static": false,
      "returns": "void",
      "signature": "func _清空局态() -> void",
@@ -54781,7 +54927,7 @@
     },
     {
      "name": "_清空",
-     "line": 354,
+     "line": 356,
      "static": false,
      "returns": "void",
      "signature": "func _清空(节点: Node) -> void",
@@ -54791,7 +54937,7 @@
     },
     {
      "name": "_推进剂明细文字",
-     "line": 362,
+     "line": 364,
      "static": false,
      "returns": "String",
      "signature": "func _推进剂明细文字(d: Dictionary) -> String",
@@ -57181,8 +57327,8 @@
      "static": true,
      "returns": "bool",
      "signature": "static func install(errors: Array = []) -> bool",
-     "callsOutside": 65,
-     "callsTotal": 65,
+     "callsOutside": 67,
+     "callsTotal": 67,
      "doc": "读入并装进 Db（会话启动与测试共用）；失败返回 false，原因写进 errors"
     },
     {
@@ -57471,6 +57617,14 @@
      ]
     },
     {
+     "from": "tests/unit/test_colonial_mooks.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ]
+    },
+    {
      "from": "tests/unit/test_colonial_presentation.gd",
      "layer": "tests",
      "n": 1,
@@ -57744,6 +57898,14 @@
     },
     {
      "from": "tests/unit/test_swap.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ]
+    },
+    {
+     "from": "tests/unit/test_ticket_keep.gd",
      "layer": "tests",
      "n": 1,
      "symbols": [
@@ -58320,12 +58482,12 @@
    "file": "session/game_session.gd",
    "layer": "session",
    "lines": 1320,
-   "bytes": 49675,
-   "chars": 41176,
-   "cjkChars": 4194,
-   "estTokens": 14760,
+   "bytes": 49698,
+   "chars": 41189,
+   "cjkChars": 4199,
+   "estTokens": 14768,
    "commentBytes": 5631,
-   "commentRatio": 0.1134,
+   "commentRatio": 0.1133,
    "commentLines": 64,
    "trailingCommentLines": 0,
    "className": "GameSession",
@@ -61453,7 +61615,7 @@
     {
      "to": "session/roster_facade.gd",
      "layer": "session",
-     "n": 24,
+     "n": 25,
      "symbols": [
       "SessionRosterFacade"
      ],
@@ -61659,7 +61821,7 @@
     {
      "from": "session/roster_facade.gd",
      "layer": "session",
-     "n": 24,
+     "n": 25,
      "symbols": [
       "GameSession"
      ]
@@ -61892,6 +62054,14 @@
      "from": "tests/unit/test_session_run.gd",
      "layer": "tests",
      "n": 7,
+     "symbols": [
+      "GameSession"
+     ]
+    },
+    {
+     "from": "tests/unit/test_ticket_keep.gd",
+     "layer": "tests",
+     "n": 1,
      "symbols": [
       "GameSession"
      ]
@@ -62166,14 +62336,14 @@
   {
    "file": "session/roster_facade.gd",
    "layer": "session",
-   "lines": 311,
-   "bytes": 14419,
-   "chars": 11951,
-   "cjkChars": 1221,
-   "estTokens": 4287,
-   "commentBytes": 1075,
-   "commentRatio": 0.0746,
-   "commentLines": 10,
+   "lines": 316,
+   "bytes": 14717,
+   "chars": 12161,
+   "cjkChars": 1265,
+   "estTokens": 4378,
+   "commentBytes": 1192,
+   "commentRatio": 0.081,
+   "commentLines": 11,
    "trailingCommentLines": 0,
    "className": "SessionRosterFacade",
    "classLine": 3,
@@ -62181,7 +62351,7 @@
    "extendsLine": 4,
    "innerClasses": 0,
    "responsibility": "会话门面的「三 名册 / 招募 / 晋升 / 三选一 / 编队」子模块。",
-   "declares": 24,
+   "declares": 25,
    "consts": [],
    "funcs": [
     {
@@ -62205,8 +62375,18 @@
      "doc": ""
     },
     {
+     "name": "有未决的券",
+     "line": 37,
+     "static": true,
+     "returns": "bool",
+     "signature": "static func 有未决的券(session: GameSession) -> bool",
+     "callsOutside": 1,
+     "callsTotal": 1,
+     "doc": "10-22 作者定：券最多留 3 张；超出才算「必须先决定」，名册空时照旧必须先招 1 台。"
+    },
+    {
      "name": "discard_ticket",
-     "line": 36,
+     "line": 41,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func discard_ticket(session: GameSession, ticket_idx: int = 0) -> Dictionary",
@@ -62216,7 +62396,7 @@
     },
     {
      "name": "_丢券",
-     "line": 39,
+     "line": 44,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func _丢券(session: GameSession, ticket_idx: int = 0) -> Dictionary",
@@ -62226,7 +62406,7 @@
     },
     {
      "name": "promote_unit",
-     "line": 59,
+     "line": 64,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func promote_unit(session: GameSession, unit_key: String) -> Dictionary",
@@ -62236,7 +62416,7 @@
     },
     {
      "name": "_晋升",
-     "line": 62,
+     "line": 67,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func _晋升(session: GameSession, unit_key: String) -> Dictionary",
@@ -62246,7 +62426,7 @@
     },
     {
      "name": "pick_tactical_card",
-     "line": 76,
+     "line": 81,
      "static": true,
      "returns": "bool",
      "signature": "static func pick_tactical_card(session: GameSession, card_id: String) -> bool",
@@ -62256,7 +62436,7 @@
     },
     {
      "name": "_选战术牌",
-     "line": 79,
+     "line": 84,
      "static": true,
      "returns": "bool",
      "signature": "static func _选战术牌(session: GameSession, card_id: String) -> bool",
@@ -62266,7 +62446,7 @@
     },
     {
      "name": "refresh_card_offers",
-     "line": 104,
+     "line": 109,
      "static": true,
      "returns": "Array",
      "signature": "static func refresh_card_offers(session: GameSession, unit_key: String = \"\") -> Array",
@@ -62276,7 +62456,7 @@
     },
     {
      "name": "_刷新候选",
-     "line": 107,
+     "line": 112,
      "static": true,
      "returns": "Array",
      "signature": "static func _刷新候选(session: GameSession, unit_key: String = \"\") -> Array",
@@ -62286,7 +62466,7 @@
     },
     {
      "name": "lineup_slots",
-     "line": 125,
+     "line": 130,
      "static": true,
      "returns": "Array",
      "signature": "static func lineup_slots(session: GameSession) -> Array",
@@ -62296,7 +62476,7 @@
     },
     {
      "name": "normalize_lineup_slots",
-     "line": 147,
+     "line": 152,
      "static": true,
      "returns": "bool",
      "signature": "static func normalize_lineup_slots(session: GameSession) -> bool",
@@ -62306,7 +62486,7 @@
     },
     {
      "name": "规范编队槽位",
-     "line": 151,
+     "line": 156,
      "static": true,
      "returns": "bool",
      "signature": "static func 规范编队槽位(session: GameSession) -> bool",
@@ -62316,7 +62496,7 @@
     },
     {
      "name": "_标记编队已调整",
-     "line": 155,
+     "line": 160,
      "static": true,
      "returns": "void",
      "signature": "static func _标记编队已调整(session: GameSession, s: RunState) -> void",
@@ -62326,7 +62506,7 @@
     },
     {
      "name": "set_lineup_slot",
-     "line": 162,
+     "line": 167,
      "static": true,
      "returns": "bool",
      "signature": "static func set_lineup_slot(session: GameSession, unit_key: String, slot_name: String) -> bool",
@@ -62336,7 +62516,7 @@
     },
     {
      "name": "deploy_unit",
-     "line": 165,
+     "line": 170,
      "static": true,
      "returns": "bool",
      "signature": "static func deploy_unit(session: GameSession, unit_key: String, slot_name: String) -> bool",
@@ -62346,7 +62526,7 @@
     },
     {
      "name": "_摆上阵",
-     "line": 168,
+     "line": 173,
      "static": true,
      "returns": "bool",
      "signature": "static func _摆上阵(session: GameSession, unit_key: String, slot_name: String) -> bool",
@@ -62356,7 +62536,7 @@
     },
     {
      "name": "remove_from_lineup",
-     "line": 216,
+     "line": 221,
      "static": true,
      "returns": "bool",
      "signature": "static func remove_from_lineup(session: GameSession, unit_key: String) -> bool",
@@ -62366,7 +62546,7 @@
     },
     {
      "name": "undeploy_unit",
-     "line": 219,
+     "line": 224,
      "static": true,
      "returns": "bool",
      "signature": "static func undeploy_unit(session: GameSession, unit_key: String) -> bool",
@@ -62376,7 +62556,7 @@
     },
     {
      "name": "_撤下来",
-     "line": 222,
+     "line": 227,
      "static": true,
      "returns": "bool",
      "signature": "static func _撤下来(session: GameSession, unit_key: String) -> bool",
@@ -62386,7 +62566,7 @@
     },
     {
      "name": "clear_lineup",
-     "line": 244,
+     "line": 249,
      "static": true,
      "returns": "bool",
      "signature": "static func clear_lineup(session: GameSession) -> bool",
@@ -62396,7 +62576,7 @@
     },
     {
      "name": "_清空编队",
-     "line": 247,
+     "line": 252,
      "static": true,
      "returns": "bool",
      "signature": "static func _清空编队(session: GameSession) -> bool",
@@ -62406,7 +62586,7 @@
     },
     {
      "name": "available_recruit_targets",
-     "line": 262,
+     "line": 267,
      "static": true,
      "returns": "Array",
      "signature": "static func available_recruit_targets(session: GameSession, ticket_idx: int = -1) -> Array",
@@ -62416,7 +62596,7 @@
     },
     {
      "name": "promotion_preview",
-     "line": 293,
+     "line": 298,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func promotion_preview(session: GameSession, unit_key: String) -> Dictionary",
@@ -62462,7 +62642,7 @@
     {
      "to": "core/run/roster_manager.gd",
      "layer": "core",
-     "n": 25,
+     "n": 26,
      "symbols": [
       "RosterManager"
      ],
@@ -62484,7 +62664,7 @@
     {
      "to": "session/game_session.gd",
      "layer": "session",
-     "n": 24,
+     "n": 25,
      "symbols": [
       "GameSession"
      ],
@@ -62497,7 +62677,7 @@
     {
      "from": "session/game_session.gd",
      "layer": "session",
-     "n": 24,
+     "n": 25,
      "symbols": [
       "SessionRosterFacade"
      ]
@@ -62508,12 +62688,12 @@
    "file": "session/run_facade.gd",
    "layer": "session",
    "lines": 437,
-   "bytes": 22097,
-   "chars": 17627,
-   "cjkChars": 2207,
-   "estTokens": 6613,
+   "bytes": 22160,
+   "chars": 17664,
+   "cjkChars": 2220,
+   "estTokens": 6633,
    "commentBytes": 2514,
-   "commentRatio": 0.1138,
+   "commentRatio": 0.1134,
    "commentLines": 22,
    "trailingCommentLines": 0,
    "className": "SessionRunFacade",
@@ -62935,7 +63115,7 @@
     {
      "to": "core/run/roster_manager.gd",
      "layer": "core",
-     "n": 1,
+     "n": 2,
      "symbols": [
       "RosterManager"
      ],
@@ -71331,12 +71511,12 @@
    "file": "tests/unit/test_class_heavy_cmd.gd",
    "layer": "tests",
    "lines": 712,
-   "bytes": 41496,
-   "chars": 29932,
+   "bytes": 41510,
+   "chars": 29946,
    "cjkChars": 5551,
-   "estTokens": 12517,
+   "estTokens": 12521,
    "commentBytes": 8232,
-   "commentRatio": 0.1984,
+   "commentRatio": 0.1983,
    "commentLines": 91,
    "trailingCommentLines": 3,
    "className": null,
@@ -71894,6 +72074,239 @@
    "dependsBy": []
   },
   {
+   "file": "tests/unit/test_colonial_mooks.gd",
+   "layer": "tests",
+   "lines": 145,
+   "bytes": 8465,
+   "chars": 6255,
+   "cjkChars": 1084,
+   "estTokens": 2561,
+   "commentBytes": 522,
+   "commentRatio": 0.0617,
+   "commentLines": 6,
+   "trailingCommentLines": 0,
+   "className": null,
+   "classLine": null,
+   "extends": "RefCounted",
+   "extendsLine": 4,
+   "innerClasses": 0,
+   "responsibility": "★ COL-MOOK-1：殖民卫星军两名大众脸（卡特尔 W4 尖兵 / 五飞 W5 特种）——",
+   "declares": 9,
+   "consts": [
+    {
+     "name": "新人",
+     "line": 6,
+     "doc": ""
+    }
+   ],
+   "funcs": [
+    {
+     "name": "run",
+     "line": 8,
+     "static": false,
+     "returns": "void",
+     "signature": "func run(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_段1_模板与档位",
+     "line": 16,
+     "static": false,
+     "returns": "void",
+     "signature": "func _段1_模板与档位(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_段2_招募券",
+     "line": 40,
+     "static": false,
+     "returns": "void",
+     "signature": "func _段2_招募券(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_段3_卡牌",
+     "line": 58,
+     "static": false,
+     "returns": "void",
+     "signature": "func _段3_卡牌(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_段4_精神牌",
+     "line": 88,
+     "static": false,
+     "returns": "void",
+     "signature": "func _段4_精神牌(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_卡",
+     "line": 108,
+     "static": false,
+     "returns": "Dictionary",
+     "signature": "func _卡(键: String, id: String) -> Dictionary",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_单位",
+     "line": 114,
+     "static": false,
+     "returns": "Dictionary",
+     "signature": "func _单位(键: String, 职业: String) -> Dictionary",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_场",
+     "line": 129,
+     "static": false,
+     "returns": "Dictionary",
+     "signature": "func _场(我方: Array) -> Dictionary",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    }
+   ],
+   "dependsOn": [
+    {
+     "to": "core/battle/btl.gd",
+     "layer": "core",
+     "n": 2,
+     "symbols": [
+      "Btl"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/calc.gd",
+     "layer": "core",
+     "n": 3,
+     "symbols": [
+      "Calc"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/colonial_deck.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "ColonialDeck"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/colonial_units.gd",
+     "layer": "core",
+     "n": 6,
+     "symbols": [
+      "ColonialUnits"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/colonial_v01.gd",
+     "layer": "core",
+     "n": 2,
+     "symbols": [
+      "ColonialV01"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/deck_flow.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "DeckFlow"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/data/db.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "Db"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/run/roster_manager.gd",
+     "layer": "core",
+     "n": 16,
+     "symbols": [
+      "RosterManager"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/util/js.gd",
+     "layer": "core",
+     "n": 6,
+     "symbols": [
+      "J"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/util/rng.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "Mulberry32"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "session/data_loader.gd",
+     "layer": "session",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    }
+   ],
+   "dependsBy": []
+  },
+  {
    "file": "tests/unit/test_colonial_presentation.gd",
    "layer": "tests",
    "lines": 217,
@@ -72069,12 +72482,12 @@
    "file": "tests/unit/test_colonial_units.gd",
    "layer": "tests",
    "lines": 355,
-   "bytes": 18395,
-   "chars": 13834,
-   "cjkChars": 2206,
-   "estTokens": 5528,
+   "bytes": 18433,
+   "chars": 13868,
+   "cjkChars": 2208,
+   "estTokens": 5539,
    "commentBytes": 3089,
-   "commentRatio": 0.1679,
+   "commentRatio": 0.1676,
    "commentLines": 42,
    "trailingCommentLines": 0,
    "className": null,
@@ -72417,12 +72830,12 @@
    "file": "tests/unit/test_colonial_v01.gd",
    "layer": "tests",
    "lines": 497,
-   "bytes": 27908,
-   "chars": 20315,
-   "cjkChars": 3637,
-   "estTokens": 8402,
+   "bytes": 27974,
+   "chars": 20371,
+   "cjkChars": 3642,
+   "estTokens": 8422,
    "commentBytes": 3944,
-   "commentRatio": 0.1413,
+   "commentRatio": 0.141,
    "commentLines": 58,
    "trailingCommentLines": 0,
    "className": null,
@@ -75282,15 +75695,15 @@
   {
    "file": "tests/unit/test_layout_flow.gd",
    "layer": "tests",
-   "lines": 493,
-   "bytes": 26391,
-   "chars": 18284,
-   "cjkChars": 3869,
-   "estTokens": 7988,
-   "commentBytes": 3660,
-   "commentRatio": 0.1387,
+   "lines": 496,
+   "bytes": 26591,
+   "chars": 18418,
+   "cjkChars": 3902,
+   "estTokens": 8049,
+   "commentBytes": 3727,
+   "commentRatio": 0.1402,
    "commentLines": 40,
-   "trailingCommentLines": 0,
+   "trailingCommentLines": 1,
    "className": null,
    "classLine": null,
    "extends": "func",
@@ -75342,7 +75755,7 @@
     },
     {
      "name": "_段4c_悬停在鼠标右侧",
-     "line": 176,
+     "line": 179,
      "static": false,
      "returns": "void",
      "signature": "func _段4c_悬停在鼠标右侧(t, 树根: Node) -> void",
@@ -75352,7 +75765,7 @@
     },
     {
      "name": "_段6_战前编队确认与顶栏锁",
-     "line": 224,
+     "line": 227,
      "static": false,
      "returns": "void",
      "signature": "func _段6_战前编队确认与顶栏锁(t, 树根: Node) -> void",
@@ -75362,7 +75775,7 @@
     },
     {
      "name": "_段7_幂等休整与战后九十概率",
-     "line": 332,
+     "line": 335,
      "static": false,
      "returns": "void",
      "signature": "func _段7_幂等休整与战后九十概率(t, 树根: Node) -> void",
@@ -75372,7 +75785,7 @@
     },
     {
      "name": "_找一格带休整的局",
-     "line": 337,
+     "line": 340,
      "static": false,
      "returns": "int",
      "signature": "func _找一格带休整的局(s: GameSession) -> int",
@@ -75382,7 +75795,7 @@
     },
     {
      "name": "_段7a_同一休整格只结算一次",
-     "line": 356,
+     "line": 359,
      "static": false,
      "returns": "void",
      "signature": "func _段7a_同一休整格只结算一次(t) -> void",
@@ -75392,7 +75805,7 @@
     },
     {
      "name": "_段7b_战后九十概率给券",
-     "line": 396,
+     "line": 399,
      "static": false,
      "returns": "void",
      "signature": "func _段7b_战后九十概率给券(t) -> void",
@@ -75402,7 +75815,7 @@
     },
     {
      "name": "_跑一场数券",
-     "line": 421,
+     "line": 424,
      "static": false,
      "returns": "Dictionary",
      "signature": "func _跑一场数券(种子: int) -> Dictionary",
@@ -75412,7 +75825,7 @@
     },
     {
      "name": "_找可达的格",
-     "line": 477,
+     "line": 480,
      "static": false,
      "returns": "int",
      "signature": "func _找可达的格(s: GameSession, 类型们: Array) -> int",
@@ -75422,7 +75835,7 @@
     },
     {
      "name": "_找一个类型格",
-     "line": 487,
+     "line": 490,
      "static": false,
      "returns": "int",
      "signature": "func _找一个类型格(s: GameSession, 类型们: Array) -> int",
@@ -83802,6 +84215,75 @@
    "dependsBy": []
   },
   {
+   "file": "tests/unit/test_ticket_keep.gd",
+   "layer": "tests",
+   "lines": 30,
+   "bytes": 1650,
+   "chars": 1242,
+   "cjkChars": 203,
+   "estTokens": 500,
+   "commentBytes": 153,
+   "commentRatio": 0.0927,
+   "commentLines": 1,
+   "trailingCommentLines": 0,
+   "className": null,
+   "classLine": null,
+   "extends": "RefCounted",
+   "extendsLine": 2,
+   "innerClasses": 0,
+   "responsibility": "职责：招募券留存（作者 10-22 试玩反馈）：最多留 3 张；≤3 张且名册非空可以不招直接走；>3 张或名册空才拦。",
+   "declares": 1,
+   "consts": [],
+   "funcs": [
+    {
+     "name": "run",
+     "line": 4,
+     "static": false,
+     "returns": "void",
+     "signature": "func run(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    }
+   ],
+   "dependsOn": [
+    {
+     "to": "core/run/roster_manager.gd",
+     "layer": "core",
+     "n": 4,
+     "symbols": [
+      "RosterManager"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "session/data_loader.gd",
+     "layer": "session",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "session/game_session.gd",
+     "layer": "session",
+     "n": 1,
+     "symbols": [
+      "GameSession"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    }
+   ],
+   "dependsBy": []
+  },
+  {
    "file": "tests/unit/test_unit_deck_system.gd",
    "layer": "tests",
    "lines": 923,
@@ -86459,6 +86941,24 @@
     "n": 1
    },
    {
+    "调用方": "presentation/menus/roster_view.gd",
+    "目标": "core/run/roster_manager.gd",
+    "符号": "RosterManager.券留存上限",
+    "n": 1
+   },
+   {
+    "调用方": "presentation/run_map/map_view.gd",
+    "目标": "core/run/roster_manager.gd",
+    "符号": "RosterManager.券留存上限",
+    "n": 1
+   },
+   {
+    "调用方": "presentation/widgets/modal_layer.gd",
+    "目标": "core/run/roster_manager.gd",
+    "符号": "RosterManager.券留存上限",
+    "n": 2
+   },
+   {
     "调用方": "presentation/menus/menu_view.gd",
     "目标": "core/run/roster_manager.gd",
     "符号": "RosterManager.势力们",
@@ -87894,9 +88394,9 @@
     {
      "路径": "session/game_session.gd",
      "上限": 14782,
-     "当前": 14760,
+     "当前": 14768,
      "行数": 1320,
-     "余量": 22,
+     "余量": 14,
      "超": false
     },
     {
@@ -87934,9 +88434,9 @@
     {
      "路径": "tests/unit/test_class_heavy_cmd.gd",
      "上限": 12896,
-     "当前": 12517,
+     "当前": 12521,
      "行数": 712,
-     "余量": 379,
+     "余量": 375,
      "超": false
     },
     {
@@ -88108,10 +88608,10 @@
      "路径": "tests/unit/test_class_heavy_cmd.gd",
      "层": "tests",
      "阈值": 0.2,
-     "占比": 0.19838056680161945,
+     "占比": 0.19831365935919057,
      "注释字节": 8232,
      "行数": 712,
-     "余量字节": 67,
+     "余量字节": 70,
      "超": false
     },
     {
@@ -88375,6 +88875,16 @@
      "超": false
     },
     {
+     "路径": "tests/unit/test_layout_flow.gd",
+     "层": "tests",
+     "阈值": 0.2,
+     "占比": 0.14016020458049716,
+     "注释字节": 3727,
+     "行数": 496,
+     "余量字节": 1591,
+     "超": false
+    },
+    {
      "路径": "session/live_monitor.gd",
      "层": "session",
      "阈值": 0.15,
@@ -88392,16 +88902,6 @@
      "注释字节": 1027,
      "行数": 186,
      "余量字节": 80,
-     "超": false
-    },
-    {
-     "路径": "tests/unit/test_layout_flow.gd",
-     "层": "tests",
-     "阈值": 0.2,
-     "占比": 0.1386836421507332,
-     "注释字节": 3660,
-     "行数": 493,
-     "余量字节": 1618,
      "超": false
     },
     {
@@ -88638,20 +89138,20 @@
      "路径": "session/run_facade.gd",
      "层": "session",
      "阈值": 0.15,
-     "占比": 0.11377110014934154,
+     "占比": 0.11344765342960289,
      "注释字节": 2514,
      "行数": 437,
-     "余量字节": 800,
+     "余量字节": 810,
      "超": false
     },
     {
      "路径": "session/game_session.gd",
      "层": "session",
      "阈值": 0.15,
-     "占比": 0.1133568193256165,
+     "占比": 0.11330435832427864,
      "注释字节": 5631,
      "行数": 1320,
-     "余量字节": 1820,
+     "余量字节": 1823,
      "超": false
     },
     {
@@ -88728,10 +89228,10 @@
      "路径": "session/roster_facade.gd",
      "层": "session",
      "阈值": 0.15,
-     "占比": 0.0745544073791525,
-     "注释字节": 1075,
-     "行数": 311,
-     "余量字节": 1087,
+     "占比": 0.08099476795542569,
+     "注释字节": 1192,
+     "行数": 316,
+     "余量字节": 1015,
      "超": false
     },
     {
@@ -89007,7 +89507,7 @@
      "路径": "presentation/run_map/map_view.gd",
      "层": "presentation",
      "阈值": 0.15,
-     "占比": 0.3749967484327446,
+     "占比": 0.3746556473829201,
      "注释字节": 14416,
      "行数": 711
     },
@@ -89068,20 +89568,20 @@
      "行数": 22
     },
     {
-     "路径": "presentation/widgets/top_bar.gd",
-     "层": "presentation",
-     "阈值": 0.15,
-     "占比": 0.34096007178106774,
-     "注释字节": 6840,
-     "行数": 370
-    },
-    {
      "路径": "tests/unit/test_armor_pool.gd",
      "层": "tests",
      "阈值": 0.2,
      "占比": 0.3399291814205374,
      "注释字节": 3264,
      "行数": 187
+    },
+    {
+     "路径": "presentation/widgets/top_bar.gd",
+     "层": "presentation",
+     "阈值": 0.15,
+     "占比": 0.33806158256313945,
+     "注释字节": 6840,
+     "行数": 372
     },
     {
      "路径": "core/battle/atx_duo.gd",
@@ -89116,20 +89616,20 @@
      "行数": 222
     },
     {
-     "路径": "presentation/widgets/modal_layer.gd",
-     "层": "presentation",
-     "阈值": 0.15,
-     "占比": 0.32191911484166347,
-     "注释字节": 3375,
-     "行数": 268
-    },
-    {
      "路径": "presentation/menus/rest_view.gd",
      "层": "presentation",
      "阈值": 0.15,
      "占比": 0.32140829074389554,
      "注释字节": 2264,
      "行数": 143
+    },
+    {
+     "路径": "presentation/widgets/modal_layer.gd",
+     "层": "presentation",
+     "阈值": 0.15,
+     "占比": 0.31908858844662946,
+     "注释字节": 3375,
+     "行数": 268
     },
     {
      "路径": "tests/unit/test_atx_nine_lives.gd",
@@ -89204,20 +89704,20 @@
      "行数": 303
     },
     {
+     "路径": "presentation/menus/menu_view.gd",
+     "层": "presentation",
+     "阈值": 0.15,
+     "占比": 0.277626303127506,
+     "注释字节": 3462,
+     "行数": 241
+    },
+    {
      "路径": "presentation/menus/pick_card_view.gd",
      "层": "presentation",
      "阈值": 0.15,
      "占比": 0.2773604359994108,
      "注释字节": 1883,
      "行数": 137
-    },
-    {
-     "路径": "presentation/menus/menu_view.gd",
-     "层": "presentation",
-     "阈值": 0.15,
-     "占比": 0.27197237523637263,
-     "注释字节": 3308,
-     "行数": 235
     },
     {
      "路径": "tests/golden_io.gd",
@@ -89391,17 +89891,17 @@
      "路径": "presentation/menus/roster_view.gd",
      "层": "presentation",
      "阈值": 0.15,
-     "占比": 0.21513872135102532,
-     "注释字节": 3567,
-     "行数": 326
+     "占比": 0.2163683440279185,
+     "注释字节": 3844,
+     "行数": 341
     },
     {
      "路径": "core/run/roster_manager.gd",
      "层": "core",
      "阈值": 0.15,
-     "占比": 0.20792767732962447,
-     "注释字节": 6578,
-     "行数": 679
+     "占比": 0.20873832216665095,
+     "注释字节": 6636,
+     "行数": 683
     },
     {
      "路径": "tests/unit/test_swap.gd",
@@ -89479,7 +89979,7 @@
      "路径": "core/battle/colonial_v01.gd",
      "层": "core",
      "阈值": 0.15,
-     "占比": 0.1579253037884203,
+     "占比": 0.15784068583675656,
      "注释字节": 3535,
      "行数": 456
     },

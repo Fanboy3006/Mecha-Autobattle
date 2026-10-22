@@ -132,7 +132,7 @@ func _段2_名册(t) -> void:
 		"② 塔斯克（A6）/ 雷欧娜（A7）**在名册**（名册共 %d 人）" % 名册.size())
 	t.ok(not 名册.has("A4") and not 名册.has("A5"),
 		"② 库斯哈（A5）/ 布鲁克林（A4）**不在名册**")
-	t.ok(名册.size() == 29, "② 名册 **29 人**（COL-1 退役五人：34 − 5）")
+	t.ok(名册.size() == 31, "② 名册 **31 人**（COL-1 退役五人 34 − 5；COL-MOOK-1 +2）")
 	var 塔 := Units.makeUnit(AtxDuo.塔斯克, "ally", 0.0, 10.0)
 	var 雷 := Units.makeUnit(AtxDuo.雷欧娜, "ally", 4.0, 10.0)
 	t.ok(Units.势力们(塔) == ["ATX"] and Units.势力们(雷) == ["ATX"],

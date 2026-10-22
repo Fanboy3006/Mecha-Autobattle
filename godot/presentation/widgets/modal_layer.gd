@@ -45,7 +45,7 @@ func refresh() -> void:
 	_必须决定 = _是必须做决定的(类型)
 	_关闭.visible = 类型 != "三选一" and not _必须决定
 	if _必须决定:
-		_标题.tooltip_text = "先招募至少 1 台机体（或按【放弃此券】把券消费掉）才能离开这个面板"
+		_标题.tooltip_text = "名册是空的、或手上券超过 %d 张：先招募或按【放弃此券】才能离开这个面板" % RosterManager.券留存上限()
 	else:
 		_标题.tooltip_text = ""
 	if 类型 != _当前类型:
@@ -239,7 +239,7 @@ func _收起() -> void:
 func _是必须做决定的(类型: String) -> bool:
 	if 类型 == "三选一":
 		return true
-	if 类型 == "招募" and session != null and session.ticket_count() > 0:
+	if 类型 == "招募" and session != null and session.有未决的招募券():
 		return true
 	return false
 
@@ -247,7 +247,7 @@ func _点关闭() -> void:
 	# 按钮在「必须决定」时是隐藏的；这里再兜一道（键盘 / 程序直接调也不许绕过去）。
 	if _必须决定:
 		_标题.text = 标题Of(_当前类型) + ("（必须先选 1 张牌）" if _当前类型 == "三选一"
-			else "（先招募 1 台，或按【放弃此券】）")
+			else "（最多留 %d 张券：先招募或按【放弃此券】）" % RosterManager.券留存上限())
 		return
 	请求关闭弹窗.emit()
 

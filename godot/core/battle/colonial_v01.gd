@@ -4,7 +4,7 @@ class_name ColonialV01
 extends RefCounted
 
 const 势力 := "殖民卫星军"
-const 成员键: Array = ["S1", "S2", "W1", "W2", "W3"]
+const 成员键: Array = ["S1", "S2", "W1", "W2", "W3", "W4", "W5"]
 const 处理者名 := "ColonialV01"
 const 入场ID前缀 := "COL_"
 

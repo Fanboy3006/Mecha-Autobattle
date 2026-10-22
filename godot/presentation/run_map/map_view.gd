@@ -591,7 +591,7 @@ func _点格(id: int) -> void:
 	#   直接把招募弹窗弹出来，先把这张券处理掉（招一台，或者按【放弃此券】）。
 	if session.有未决的招募券():
 		_清空(_预告面板)
-		UiTheme.建说明(_预告面板, "手上还有 %d 张招募券没决定 —— 先把它们处理掉（招募一台，或者按【放弃此券】）再走格子。" % session.ticket_count(),
+		UiTheme.建说明(_预告面板, "手上 %d 张招募券，最多留 %d 张（名册空时要先招 1 台）—— 先招募或按【放弃此券】再走格子。" % [session.ticket_count(), RosterManager.券留存上限()],
 			UiTheme.字号_小, UiTheme.高亮)
 		请求弹窗.emit("招募", {})
 		return

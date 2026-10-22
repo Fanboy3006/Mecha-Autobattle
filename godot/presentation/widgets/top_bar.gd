@@ -51,6 +51,8 @@ func refresh() -> void:
 		_清空局态()
 		return
 	_层数.text = "第 %s 层 · %s" % [UiTheme.文本(d.get("层", 1)), UiTheme.节点全名(str(d.get("节点类型", "")))]
+	if session.run_state != null:
+		_层数.tooltip_text = "本局种子 %d（想重打同一局：开局时把这个号码填进「种子」）" % session.run_state.seed_val
 	_推进剂.text = "推进剂 %s" % UiTheme.比值(d.get("推进剂", 0), d.get("推进剂上限", 0))
 	_推进剂.add_theme_color_override("font_color", UiTheme.推进剂色)
 	_推进剂.tooltip_text = _推进剂明细文字(d)

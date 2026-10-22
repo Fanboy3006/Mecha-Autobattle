@@ -383,6 +383,10 @@ static func recruit(state: RunState, 键: String, 券下标: int = -1) -> Dictio
 	return {"ok": true, "费": 费, "键": 键, "券": 用券, "券名": 券名(用券), "券下标": 券下标,
 		"用券": true, "带队核心": 是核, "等级": 入队等级}
 
+## 手上最多留几张券（作者 10-22 定 3 张）。
+static func 券留存上限() -> int:
+	return maxi(0, 整数(cfg().get("券留存上限"), 3))
+
 ## 丢一张券（只写日志，不退不换）。
 static func 丢券(state: RunState, 券下标: int) -> Dictionary:
 	if state == null:

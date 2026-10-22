@@ -86,6 +86,9 @@ func _段4b_开局直达招募与券闭环(t, 树根: Node) -> void:
 	if 开局 == null:
 		_拆boot(树根, 舱)
 		return
+	var 种子框 = mv.find_child("种子输入", true, false)
+	if 种子框 is LineEdit:
+		(种子框 as LineEdit).text = "20261016"  # 菜单默认随机种子（10-22），这里钉住保证可复现
 	开局.pressed.emit()
 	await _等帧(3)
 	t.ok(s.screen == "map" and s.run_state != null,

@@ -3309,6 +3309,191 @@
     }
    ],
    "awaken": 100
+  },
+  {
+   "pilot": "卡特尔",
+   "mech": "W4",
+   "short": "W4",
+   "mechName": "沙岩",
+   "tags": {
+    "势力": "殖民卫星军",
+    "远近分类": "远程",
+    "战斗分类": "尖兵"
+   },
+   "hp": 4400,
+   "armor": 500,
+   "eva": 30,
+   "mov": 7,
+   "melee": 140,
+   "shoot": 135,
+   "defense": 75,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [
+    "zocFree",
+    "relay"
+   ],
+   "weapons": [
+    {
+     "range": [
+      1,
+      4
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "光束",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1400,
+     "desc": "",
+     "name": "光束机枪",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1900,
+     "desc": "",
+     "name": "热能弯刀",
+     "v37": true
+    },
+    {
+     "range": [
+      2,
+      5
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "indirect",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": 2,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1700,
+     "desc": "",
+     "name": "追踪导弹",
+     "v37": true
+    }
+   ],
+   "awaken": 100
+  },
+  {
+   "pilot": "五飞",
+   "mech": "W5",
+   "short": "W5",
+   "mechName": "神龙",
+   "tags": {
+    "势力": "殖民卫星军",
+    "远近分类": "近战",
+    "战斗分类": "特种"
+   },
+   "hp": 4800,
+   "armor": 600,
+   "eva": 25,
+   "mov": 6,
+   "melee": 150,
+   "shoot": 110,
+   "defense": 85,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      1,
+      2
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "光束",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 2000,
+     "desc": "",
+     "name": "光束青龙刀",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      3
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1600,
+     "desc": "",
+     "name": "龙爪",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      2
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1200,
+     "desc": "",
+     "name": "喷火器",
+     "v37": true
+    }
+   ],
+   "awaken": 100
   }
  ],
  "PROMO_WEAPONS": {

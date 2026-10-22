@@ -26,11 +26,11 @@ func run(t) -> void:
 # ① 成员识别 / 卡表张数
 # ==========================================================================================
 func _段1_识别与张数(t) -> void:
-	t.ok(ColonialV01.势力 == "殖民卫星军" and ColonialUnits.成员键.size() == 5,
-		"① 殖民卫星军 5 人：%s" % str(ColonialUnits.成员键))
-	t.ok(ColonialUnits.成员键 == ["S1", "S2", "W1", "W2", "W3"], "① S3/S4/S5/W4/W5 已退役（只有这五个键）")
-	t.ok(ColonialUnits.职业 == {"S1": "特种", "S2": "指挥", "W1": "狙击", "W2": "近卫", "W3": "重装"},
-		"① 战斗分类按作者拍板：S1 特种 / S2 指挥 / W1 狙击 / W2 近卫 / W3 重装")
+	t.ok(ColonialV01.势力 == "殖民卫星军" and ColonialUnits.成员键.size() == 7,
+		"① 殖民卫星军 7 人：%s" % str(ColonialUnits.成员键))
+	t.ok(ColonialUnits.成员键 == ["S1", "S2", "W1", "W2", "W3", "W4", "W5"], "① 五人 + COL-MOOK-1 两名大众脸（W4 / W5 重用空号）")
+	t.ok(ColonialUnits.职业 == {"S1": "特种", "S2": "指挥", "W1": "狙击", "W2": "近卫", "W3": "重装", "W4": "尖兵", "W5": "特种"},
+		"① 战斗分类：S1 特种 / S2 指挥 / W1 狙击 / W2 近卫 / W3 重装 / W4 尖兵 / W5 特种")
 	t.ok(ColonialUnits.觉醒.keys().size() == 3, "① 只有三个人有觉醒（%s）" % str(ColonialUnits.觉醒.keys()))
 
 	var 拉 := _单位("S1", "ally", 0.0, "特种")

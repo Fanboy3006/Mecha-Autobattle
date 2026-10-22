@@ -119,9 +119,10 @@ func _build() -> void:
 	UiTheme.建标签(种子行, "种子：", UiTheme.字号_正文, UiTheme.次要文字)
 	_种子输入 = LineEdit.new()
 	_种子输入.name = "种子输入"
-	_种子输入.text = "20261016"
+	# ★ 10-22 作者：开局种子默认随机；想重打同一局就记下号码填回来（大地图左上「第 N 层」悬停可看本局种子）。
+	_种子输入.text = str(随机种子())
 	_种子输入.custom_minimum_size = Vector2(180, 0)
-	_种子输入.tooltip_text = "同一个种子 + 同一个分队 = 同一局（确定性）；留空或乱填就用默认种子"
+	_种子输入.tooltip_text = "每次打开随机给一个号码；同一个种子 + 同一个分队 = 同一局。留空也会随机"
 	种子行.add_child(_种子输入)
 	var 开局键 := UiTheme.建按钮(分队列, "开这一局", _点开局)
 	开局键.name = "开局按钮"
@@ -196,7 +197,12 @@ func _读种子() -> int:
 	var 文 := _种子输入.text.strip_edges()
 	if 文.is_valid_int():
 		return int(文.to_int())
-	return 20261016
+	return 随机种子()
+
+static func 随机种子() -> int:
+	var r := RandomNumberGenerator.new()
+	r.randomize()
+	return r.randi_range(10000000, 99999999)
 
 func _选中的分队() -> String:
 	if _分队列表.item_count <= 0:

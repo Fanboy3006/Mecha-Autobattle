@@ -33,6 +33,11 @@ static func _招募(session: GameSession, unit_key: String, ticket_idx: int = -1
 	session._emit()
 	return r
 
+## 10-22 作者定：券最多留 3 张；超出才算「必须先决定」，名册空时照旧必须先招 1 台。
+static func 有未决的券(session: GameSession) -> bool:
+	var n := session.ticket_count()
+	return n > RosterManager.券留存上限() or (n > 0 and session.roster_count() == 0)
+
 static func discard_ticket(session: GameSession, ticket_idx: int = 0) -> Dictionary:
 	return session._record_action("discard_ticket", {"ticket_idx": ticket_idx}, _丢券(session, ticket_idx))
 

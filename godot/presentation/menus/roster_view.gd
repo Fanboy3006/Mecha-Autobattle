@@ -58,18 +58,27 @@ func refresh() -> void:
 ##   有券时醒目提示「必须做出决定」，并把【放弃此券】放开；
 ##   ★ 2026-10-18：券全部决定完 + 没有待选牌之后，把
 ##   【完成 · 返回大地图】（刚开局 0 场战斗时是【完成招募 · 去编队】）换成**唯一**现身的那颗醒目按钮；
-##   还有券时它藏起来（继续走【去编队出击】那条不关窗的路）。
+##   ★ 10-22：券可以留（最多 3 张），≤3 张时同一颗按钮显示【暂不招募 · …（留着 N 张券）】。
 func _刷决定行(s: RunState) -> void:
 	var 券数 := s.tickets.size()
 	var 待选 := s.pending_card_picks.size()
-	var 完事 := 券数 == 0 and 待选 == 0
+	# ★ 10-22 作者定：券最多留 3 张；≤3 张且名册非空时可以「暂不招募」直接关窗（券留着）。
+	var 必须 := session != null and session.有未决的招募券()
+	var 上限 := RosterManager.券留存上限()
+	var 可收尾 := 待选 == 0 and not 必须
 	if _决定提示 != null:
-		if 券数 > 0:
-			_决定提示.text = "★ 当前有 %d 张招募券待决定：请点击下方候选机体招募，或点击【放弃此券】。" % 券数
+		if 必须 and s.roster.is_empty():
+			_决定提示.text = "★ 名册还是空的：先用券招一台（不想要这张券就点【放弃此券】换下一张）。"
+			_决定提示.add_theme_color_override("font_color", UiTheme.高亮)
+		elif 必须:
+			_决定提示.text = "★ 招募券最多留 %d 张，现在 %d 张：先招募或【放弃此券】丢掉 %d 张。" % [上限, 券数, 券数 - 上限]
 			_决定提示.add_theme_color_override("font_color", UiTheme.高亮)
 		elif 待选 > 0:
 			_决定提示.text = "★ 还有 %d 次「三选一」没选完 —— 先把它选掉。" % 待选
 			_决定提示.add_theme_color_override("font_color", UiTheme.高亮)
+		elif 券数 > 0:
+			_决定提示.text = "手上 %d 张招募券（最多留 %d 张）：可以现在招募，也可以【暂不招募】留着以后用（希望不够时就先留着）。" % [券数, 上限]
+			_决定提示.add_theme_color_override("font_color", UiTheme.正面)
 		else:
 			_决定提示.text = "★ 招募券已经全部决定完 —— 点下面的按钮收尾，再去大地图开打。"
 			_决定提示.add_theme_color_override("font_color", UiTheme.正面)
@@ -78,17 +87,20 @@ func _刷决定行(s: RunState) -> void:
 		_放弃券按钮.tooltip_text = "丢掉当前选中的这张招募券（只写一条日志，不退不换）%s" % \
 			("" if 券数 > 0 else "（现在手上没有券）")
 	if _去编队按钮 != null:
-		_去编队按钮.visible = 券数 > 0
-		_去编队按钮.add_theme_color_override("font_color", UiTheme.高亮 if 券数 == 0 else UiTheme.次要文字)
-		_去编队按钮.tooltip_text = ("券都决定完了：关掉招募窗并切到编队屏摆出击位%s"
-			% "（推荐走这一步）") if 券数 == 0 else "手上还有 %d 张券没决定；也可以先去编队屏看看" % 券数
+		_去编队按钮.visible = 必须 and not s.roster.is_empty()
+		_去编队按钮.add_theme_color_override("font_color", UiTheme.次要文字)
+		_去编队按钮.tooltip_text = "手上还有 %d 张券没决定；也可以先去编队屏看看" % 券数
 	if _完成按钮 != null:
-		_完成按钮.visible = 完事
-		if 完事:
+		_完成按钮.visible = 可收尾
+		if 可收尾:
 			var 刚开局 := session != null and session.还没走过格()
-			_完成按钮.text = "完成招募 · 去编队" if 刚开局 else "完成 · 返回大地图"
-			_完成按钮.tooltip_text = ("刚开局、还没打过一场：去编队屏把出击位摆好%s" % "（推荐走这一步）") if 刚开局 \
-				else "这一轮的招募处理完了，关掉面板回大地图继续走"
+			if 券数 > 0:
+				_完成按钮.text = ("暂不招募 · 去编队（留着 %d 张券）" if 刚开局 else "暂不招募 · 返回大地图（留着 %d 张券）") % 券数
+				_完成按钮.tooltip_text = "券留着以后再用（最多 %d 张）；希望凑够了从顶栏【招募】再招" % 上限
+			else:
+				_完成按钮.text = "完成招募 · 去编队" if 刚开局 else "完成 · 返回大地图"
+				_完成按钮.tooltip_text = ("刚开局、还没打过一场：去编队屏把出击位摆好%s" % "（推荐走这一步）") if 刚开局 \
+					else "这一轮的招募处理完了，关掉面板回大地图继续走"
 
 # ==========================================================================================
 # 建节点树
@@ -135,6 +147,9 @@ func _build() -> void:
 	_完成按钮.name = "完成返回地图按钮"
 	_完成按钮.visible = false
 	_完成按钮.add_theme_color_override("font_color", UiTheme.正面)
+	# ★ 10-22 试玩反馈：决定行挪到最上面（说明下方），小窗口也不会被挤出屏幕。
+	列.move_child(_决定提示, 1)
+	列.move_child(决定行, 2)
 
 	_结果 = UiTheme.建说明(列, "", UiTheme.字号_小, UiTheme.正面)
 	_结果.name = "招募结果行"

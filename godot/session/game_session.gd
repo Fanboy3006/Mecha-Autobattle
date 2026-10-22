@@ -217,7 +217,7 @@ func 还没走过格() -> bool:
 	return run_state.nodes_cleared == 0 and run_state.battles_fought == 0
 
 func 有未决的招募券() -> bool:
-	return ticket_count() > 0
+	return SessionRosterFacade.有未决的券(self)
 
 func 战前编队确认中() -> bool:
 	return pending_battle_confirm

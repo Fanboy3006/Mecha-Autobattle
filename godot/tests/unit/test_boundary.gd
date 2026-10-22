@@ -103,7 +103,7 @@ func _检查领域目录(t) -> void:
 		return
 	t.ok(Db.T.size() > 0, "向后兼容的 Db.T 还在（%d 个常量）" % Db.T.size())
 
-	t.ok(c.characters() is Dictionary and c.characters().size() == 29, "catalog.characters() = 29 名机师")
+	t.ok(c.characters() is Dictionary and c.characters().size() == 31, "catalog.characters() = 31 名机师")
 	t.ok(String(c.character("B1").get("mech")) == "B1", "catalog.character(\"B1\") 查得到")
 	t.ok(c.character("不存在的键").is_empty(), "catalog.character(查不到) 给空字典，不报错")
 	t.ok(c.enemies() is Dictionary and c.enemies().size() >= 20, "catalog.enemies() = %d 个敌机模板" % c.enemies().size())

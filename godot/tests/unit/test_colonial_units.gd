@@ -26,8 +26,8 @@ func _段1_卡池与获取(t) -> void:
 	var 数 := {}
 	for 键 in ColonialUnits.成员键:
 		数[键] = ColonialUnits.角色牌们(键).size()
-	t.ok(数["S1"] == 18 and 数["W1"] == 18 and 数["W2"] == 17 and 数["S2"] == 7 and 数["W3"] == 7,
-		"① 五人卡池张数：%s" % str(数))
+	t.ok(数["S1"] == 18 and 数["W1"] == 18 and 数["W2"] == 17 and 数["S2"] == 7 and 数["W3"] == 7
+		and 数["W4"] == 7 and 数["W5"] == 7, "① 七人卡池张数：%s" % str(数))
 	var 缺获取: Array = []
 	var 类计 := {}
 	for c in ColonialUnits.卡表():
@@ -36,8 +36,8 @@ func _段1_卡池与获取(t) -> void:
 		var 类 := str(c.get("卡类", ""))
 		类计[类] = int(类计.get(类, 0)) + 1
 	t.ok(缺获取.is_empty(), "① 每张牌都带 `获取` 字段%s" % ("" if 缺获取.is_empty() else "：" + "、".join(缺获取)))
-	t.ok(int(类计.get("主武器卡", 0)) == 18 and int(类计.get("副武器卡", 0)) == 2 and int(类计.get("大招槽卡", 0)) == 11
-		and int(类计.get("专属精神牌", 0)) == 36, "① 卡类分布：%s" % str(类计))
+	t.ok(int(类计.get("主武器卡", 0)) == 24 and int(类计.get("副武器卡", 0)) == 2 and int(类计.get("大招槽卡", 0)) == 13
+		and int(类计.get("专属精神牌", 0)) == 42, "① 卡类分布：%s" % str(类计))
 	var 双 := _卡("W1", "COL_W1_ULT_TWIN")
 	var 双武: Dictionary = 双.get("武器")
 	t.ok(J.num0(双武.get("power")) == 3500.0 and str(双武.get("area")) == "pierce"

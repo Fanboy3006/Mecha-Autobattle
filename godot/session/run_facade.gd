@@ -136,7 +136,7 @@ static func _打追击战(session: GameSession) -> bool:
 		return false
 # ★ 2026-10-18（作者试玩反馈第 2 条）：手上还有没决定的招募券 → 不许**手动**开新战斗，
 	if session.有未决的招募券():
-		session._fail("手上还有 %d 张招募券没决定（先招募一台，或者按【放弃此券】）" % session.ticket_count(), {"ok": false})
+		session._fail("手上 %d 张招募券，超过留存上限 %d 张或名册为空（先招募一台，或者按【放弃此券】）" % [session.ticket_count(), RosterManager.券留存上限()], {"ok": false})
 		return false
 	if not MapNavigator.exit_chase_pending(s):
 		session._fail("现在不是追击战的时机（推进剂 %d、本层已追击过 = %s）" % [s.propellant, str(s.chased)], {"ok": false})
