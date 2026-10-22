@@ -13,7 +13,7 @@ func run(t) -> void:
 	t.ok(data.names().size() >= 100, "常量数 %d" % data.names().size())
 
 	# 规模核对（COL-1：退役五人 + 两张旧势力战术牌之后同步）
-	var sizes := {"ALLY_T": 29, "编成表": 47, "战术卡牌表": 28, "零件表": 13}
+	var sizes := {"ALLY_T": 29, "编成表": 93, "战术卡牌表": 28, "零件表": 13}
 	for name in sizes.keys():
 		var v = data.get_const(name)
 		var n: int = v.size() if (v is Array or v is Dictionary) else -1

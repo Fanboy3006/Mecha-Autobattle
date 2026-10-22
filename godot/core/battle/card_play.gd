@@ -248,10 +248,14 @@ static func _无合法目标原因(ctx: Dictionary, u: Dictionary, card: Diction
 	var w = (card as Dictionary).get("武器")
 	if not (w is Dictionary) or (w as Dictionary).is_empty():
 		return ""
+	var 封 := ""
 	for e in 活敌:
-		if J.truthy(Reach.武器可达吗(ctx, u, w, e).get("ok")):
+		var r := Reach.武器可达吗(ctx, u, w, e)
+		if J.truthy(r.get("ok")):
 			return ""
-	return "射程内没有能打的敌机"
+		if str(r.get("why", "")).begins_with("封锁线"):
+			封 = str(r.why)
+	return 封 if not 封.is_empty() else "射程内没有能打的敌机"
 
 # ---- 六、4) 通用收尾 ----
 static func _收尾(ctx: Dictionary, u: Dictionary, card: Dictionary, 区: String, 从公有: bool) -> String:
@@ -273,6 +277,8 @@ static func _实际费(ctx: Dictionary, u: Dictionary, card: Dictionary, 区: St
 				费 = maxf(0.0, 费 - float(int((ctx as Dictionary).get("下张ATX角色牌降费", 0))))
 	if 从公有 and str(Units.unit_class(u, ctx)) == "指挥":
 		费 = maxf(0.0, 费 - Params.指挥公有减费())
+	if 区 == 区_精神 and BattleMorale.抑制层数(ctx, u) > 0:
+		费 += 1.0
 	return 费
 
 # ---- 七、小工具（纯读） ----

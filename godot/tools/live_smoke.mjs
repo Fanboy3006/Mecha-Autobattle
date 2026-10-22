@@ -29,7 +29,7 @@ const check = (c, m) => { console.log(`${c ? '✓' : '✗'} ${m}`); if (!c) fail
   check(!!got, `线上 /godot/ 启动（${Date.now() - t0} ms）`);
   check(got && got.checksum === EXPECTED, `浏览器内确定性校验和 = ${got && got.checksum}（期望 ${EXPECTED}）`);
   const d = (got && got.data) || {};
-  check(d.ALLY_T === 34 && d['编成表'] === 47 && d['战术卡牌表'] === 32,
+  check(d.ALLY_T === 34 && d['编成表'] === 93 && d['战术卡牌表'] === 32,
     `线上包里带上了数据（机师 ${d.ALLY_T} · 编成 ${d['编成表']} · 战术牌 ${d['战术卡牌表']}）`);
   const errs = logs.filter(l => /PAGEERROR|USER ERROR|SCRIPT ERROR/.test(l));
   check(errs.length === 0, `无脚本错误${errs.length ? '：' + errs.slice(0, 3).join(' | ') : ''}`);

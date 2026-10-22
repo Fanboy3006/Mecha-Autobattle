@@ -72,7 +72,8 @@ static func 编成种子(state: RunState, 层: int) -> int:
 static func 选编成(层: int, 类型: String) -> Array:
 	var 出 := []
 	for e in Db.catalog.stages():
-		if e is Dictionary and int(e.get("层", 0)) == 层 and str(e.get("类型")) == 类型:
+		# 「退役」的编成只留数据（旧样例还要按规格对上），不再进抽取池（作者 10-21：具名 Boss 全面替换守军）
+		if e is Dictionary and int(e.get("层", 0)) == 层 and str(e.get("类型")) == 类型 and e.get("退役") != true:
 			出.append(e)
 	return 出
 
@@ -145,7 +146,8 @@ static func 词条作用在(t: Dictionary, 位: float) -> bool:
 	var v: Variant = t.get("位")
 	if v == null:
 		return false
-	return float(v) == 位
+	# 位名（"前2" / "后1"）要先查槽位表；直接 float("前2") 会得 0，只有「前1」碰巧对上
+	return float(_解析槽位(v)) == 位
 
 ## 这一台实际吃到的词条（按位过滤）。
 static func 词条汇总(条目: Dictionary, 位: float) -> Array:
@@ -378,9 +380,7 @@ static func 开战(state: RunState, 条目: Dictionary, 覆盖类型: String = "
 	var 种子 := state.seed_val + state.floor_num * 131 + state.battles_fought * 17 + state.node_id * 7
 	return Setup.开局(我方, 敌方, 种子, null, 选项)
 
-## ★ IT-3（作者 10-21 试玩：开局 3 台对 5 台 + 两波增援，12 回合超时输掉）：第一层**减负**。
-##   只动第 1 层的编成条目（副本），按类型截：开场前排 / 后排各留几台、增援留几波、每波几台。
-##   第 2 层起原样不动；Boss / 守军不在表里也原样不动（出口守军是第一层的考试）。
+## IT-3 第一层减负：只截第 1 层普通 / 精英编成（副本）的开场台数与增援波次；守军 / Boss 不动。
 const 第一层减负表 := {
 	"普通": {"前": 2, "后": 1, "波次": 1, "每波": 1},
 	"精英": {"前": 3, "后": 1, "波次": 2, "每波": 2},
@@ -442,8 +442,7 @@ static func resolve_battle(state: RunState, ctx: Dictionary, 格类型: String =
 	var 是胜: bool = str(ctx.result.get("结果")) == "胜"
 	state.battles_fought += 1
 	state.battles_won += 1 if 是胜 else 0
-	# ★ 任务单 PART-2 · 2：每打完一场战斗（**胜败都算**、且一场只记一次）→ 血蕈估价 +2（无上限）。
-	#   放在最前面：下面两条返回路径（含「耐久耗尽、本局结束」）都会经过这里，只调一次。
+	# PART-2：每场（胜败都算、只记一次）血蕈估价 +2，放最前面让两条返回路径都经过。
 	var 血蕈涨 := PartSystem.bloodcap_appreciate(state)
 	if not 血蕈涨.is_empty():
 		state.add_log("血蕈估价上涨：%s" % "、".join(血蕈涨))
@@ -468,16 +467,20 @@ static func resolve_battle(state: RunState, ctx: Dictionary, 格类型: String =
 	var 奖 := 本场奖励档(state, 类型)
 	var 希望加: int = Boss希望() if 奖 == "Boss" else (精英希望() if 奖 == "精英" else 胜利希望())
 	var 源碳加: int = 胜利源碳()
+	var 撤: bool = ctx.result.get("撤退") == true    # N9 撤离：减半、不发零件
+	if 撤:
+		希望加 = floori(希望加 / 2.0)
+		源碳加 = floori(源碳加 / 2.0)
 	state.hope += 希望加
 	state.carbon += 源碳加
 	RosterManager.记希望来源(state, "战斗", 希望加)
-	state.add_log("%s胜利：希望 +%d、源碳 +%d" % [类型, 希望加, 源碳加])
+	state.add_log("%s胜利%s：希望 +%d、源碳 +%d" % [类型, "（敌方撤离，减半）" if 撤 else "", 希望加, 源碳加])
 	var 战后券: Variant = RosterManager.掷战后券(state, 类型)
 	if 战后券 != null:
 		state.add_log("战斗结束：获得【%s】（战后那一档给到了，胜败都给）" % RosterManager.券名(战后券))
 	var 藏品 := RelicSystem.战斗胜利发藏品(state, 奖, state.node_id)
 	var 额外编制 := RelicSystem.编制类额外掉落(state, 类型, state.node_id)
-	var 零件获: Variant = 发零件(state, 奖, "%s战利品" % 奖)
+	var 零件获: Variant = null if 撤 else 发零件(state, 奖, "%s战利品" % 奖)
 	var 拦路: Dictionary = {}
 	if 类型 == "出口守军":
 		var 关口 := 整数(Db.T.get("守军奖励", {}).get("额外源碳") if Db.T.get("守军奖励") is Dictionary else null, 4)
@@ -495,8 +498,11 @@ static func resolve_battle(state: RunState, ctx: Dictionary, 格类型: String =
 		state.add_log("侵蚀源：额外奖励 源碳 +%d" % 侵蚀)
 		拦路 = {"侵蚀源源碳": 侵蚀}
 	state.nodes_cleared += 1
-	return {"胜": true, "希望": 希望加, "源碳": 源碳加, "券": 战后券, "藏品": 藏品, "额外编制": 额外编制,
+	var 出 := {"胜": true, "希望": 希望加, "源碳": 源碳加, "券": 战后券, "藏品": 藏品, "额外编制": 额外编制,
 		"零件": 零件获, "带伤": 带伤, "回血": 回血, "倒下": 倒下, "奖励档": 奖, "额外": 拦路}
+	if 撤:
+		出["撤退"] = true
+	return 出
 
 # ======================== 奖励参数 ========================
 static func 胜利希望() -> int:

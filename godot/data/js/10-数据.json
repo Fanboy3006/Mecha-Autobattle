@@ -5655,6 +5655,3928 @@
    "key": "venom",
    "defense": 80,
    "awaken": 100
+  },
+  "lr_miner": {
+   "pilot": "敌兵",
+   "mech": "掘进机",
+   "short": "掘",
+   "weak": {
+    "光束": 20
+   },
+   "hp": 3200,
+   "armor": 350,
+   "eva": 10,
+   "mov": 5,
+   "melee": 110,
+   "shoot": 100,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1700,
+     "desc": "",
+     "name": "矿用钻头",
+     "v37": true
+    }
+   ],
+   "key": "lr_miner",
+   "defense": 50,
+   "awaken": 100
+  },
+  "lr_lancer": {
+   "pilot": "敌兵",
+   "mech": "外环枪骑",
+   "short": "枪",
+   "weak": {
+    "多段": 30
+   },
+   "hp": 3000,
+   "armor": 300,
+   "eva": 10,
+   "mov": 7,
+   "melee": 110,
+   "shoot": 90,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1600,
+     "desc": "",
+     "name": "骑枪冲锋",
+     "v37": true
+    }
+   ],
+   "key": "lr_lancer",
+   "defense": 50,
+   "awaken": 100
+  },
+  "lr_guard": {
+   "pilot": "敌兵",
+   "mech": "王都卫兵",
+   "short": "卫",
+   "weak": {
+    "背面": 30
+   },
+   "hp": 4200,
+   "armor": 450,
+   "eva": 5,
+   "mov": 3,
+   "melee": 110,
+   "shoot": 80,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1461,
+     "desc": "",
+     "name": "盾击",
+     "v37": true
+    }
+   ],
+   "key": "lr_guard",
+   "defense": 50,
+   "awaken": 100
+  },
+  "lr_catapult": {
+   "pilot": "敌兵",
+   "mech": "矿区投射车",
+   "short": "投",
+   "weak": {
+    "近战": 30,
+    "光束": 30
+   },
+   "noEvade": true,
+   "hp": 3500,
+   "armor": 400,
+   "eva": 0,
+   "mov": 0,
+   "melee": 60,
+   "shoot": 110,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      3,
+      7
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "indirect",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1461,
+     "desc": "",
+     "name": "质量投石",
+     "v37": true
+    }
+   ],
+   "key": "lr_catapult",
+   "defense": 50,
+   "awaken": 100
+  },
+  "lr_knight": {
+   "pilot": "敌兵",
+   "mech": "银甲重骑士",
+   "short": "骑",
+   "weak": {
+    "背面": 30
+   },
+   "hp": 7500,
+   "armor": 800,
+   "eva": 5,
+   "mov": 3,
+   "melee": 110,
+   "shoot": 80,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1461,
+     "desc": "",
+     "name": "盾击",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "map",
+     "dmgType": "物理",
+     "cd": 5,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 3400,
+     "desc": "（初稿）重骑士整列冲锋：范围必中，但看意图错开站位就能躲。",
+     "name": "骑士团冲锋",
+     "大招": true,
+     "startCd": 3,
+     "area": "col"
+    }
+   ],
+   "key": "lr_knight",
+   "defense": 65,
+   "awaken": 100
+  },
+  "lr_ballista": {
+   "pilot": "敌兵",
+   "mech": "外环弩炮骑",
+   "short": "弩",
+   "weak": {
+    "近战": 50
+   },
+   "hp": 3200,
+   "armor": 200,
+   "eva": 10,
+   "mov": 4,
+   "melee": 70,
+   "shoot": 130,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      4,
+      9
+     ],
+     "hit": 110,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": false,
+     "ignoreDef": false,
+     "special": null,
+     "power": 2200,
+     "desc": "",
+     "name": "重弩",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 115,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 5,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 4000,
+     "desc": "（初稿）弩炮骑压满弦的一箭。",
+     "name": "穿城弩",
+     "大招": true,
+     "startCd": 3
+    }
+   ],
+   "key": "lr_ballista",
+   "defense": 65,
+   "awaken": 100
+  },
+  "g1a": {
+   "pilot": "守关·1甲",
+   "mech": "武装浮台",
+   "short": "甲",
+   "weak": {
+    "背面": 40,
+    "范围": -50
+   },
+   "hp": 7000,
+   "armor": 450,
+   "eva": 10,
+   "mov": 5,
+   "melee": 120,
+   "shoot": 125,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [
+    "commandAura"
+   ],
+   "weapons": [
+    {
+     "range": [
+      1,
+      4
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "光束",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1832,
+     "desc": "",
+     "name": "光束步枪",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "光束",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1992,
+     "desc": "",
+     "name": "光束军刀",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 3400,
+     "desc": "（初稿·Boss 大技能）直射单体重击。",
+     "name": "落锤",
+     "startCd": 3
+    }
+   ],
+   "key": "g1a",
+   "defense": 80,
+   "awaken": 100,
+   "shield": 3000,
+   "shieldName": "拍品保全",
+   "宿敌": [
+    {
+     "条件": {
+      "在场": [
+       "M1"
+      ]
+     },
+     "猎杀": [
+      "M1"
+     ]
+    },
+    {
+     "条件": {
+      "在场": [
+       "B1"
+      ]
+     },
+     "词条": [
+      {
+       "作用": "单台",
+       "键": "装甲",
+       "方式": "比例",
+       "值": -30
+      }
+     ]
+    }
+   ]
+  },
+  "g1b": {
+   "pilot": "守关·1乙",
+   "mech": "重装骑士机",
+   "short": "乙",
+   "weak": {
+    "背面": 30
+   },
+   "hp": 8000,
+   "armor": 700,
+   "eva": 5,
+   "mov": 3,
+   "melee": 125,
+   "shoot": 80,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1461,
+     "desc": "",
+     "name": "盾击",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "map",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 3800,
+     "desc": "（初稿·Boss 大技能）整列阻挡束冲锋，看意图错开站位。",
+     "name": "骑士冲锋",
+     "area": "col",
+     "startCd": 2
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "map",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 3200,
+     "desc": "（初稿·Boss 大技能）困兽阶段的十字乱冲。",
+     "name": "骑士冲锋·乱",
+     "area": "cross"
+    }
+   ],
+   "key": "g1b",
+   "defense": 85,
+   "awaken": 100,
+   "shield": 4000,
+   "shieldName": "塔盾",
+   "宿敌": [
+    {
+     "条件": {
+      "在场": [
+       "M2"
+      ]
+     },
+     "猎杀": [
+      "M2"
+     ],
+     "增伤": {
+      "M2": 20
+     }
+    },
+    {
+     "条件": {
+      "在场全部": [
+       "B2",
+       "M2"
+      ]
+     },
+     "开场HP比": 0.85
+    }
+   ]
+  },
+  "g1c": {
+   "pilot": "守关·1丙",
+   "mech": "仪仗要塞",
+   "short": "丙",
+   "weak": {
+    "光束": 30,
+    "物理": -20
+   },
+   "hp": 9000,
+   "armor": 600,
+   "eva": 0,
+   "mov": 3,
+   "melee": 130,
+   "shoot": 120,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [
+    "barrier"
+   ],
+   "weapons": [
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 2296,
+     "desc": "",
+     "name": "重拳",
+     "v37": true
+    },
+    {
+     "range": [
+      2,
+      6
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 1,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 2519,
+     "desc": "",
+     "name": "主炮",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "map",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 2600,
+     "desc": "（初稿·Boss 大技能）整排齐射：前后排分开站。",
+     "name": "私兵齐射",
+     "area": "row",
+     "startCd": 3
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "heal",
+     "dmgType": "—",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 600,
+     "desc": "（初稿）给受伤友军回复 HP。",
+     "name": "走私氦三"
+    }
+   ],
+   "key": "g1c",
+   "defense": 90,
+   "awaken": 100,
+   "宿敌": [
+    {
+     "条件": {
+      "在场": [
+       "M1"
+      ]
+     },
+     "增伤": {
+      "M1": 25
+     }
+    },
+    {
+     "条件": {
+      "在场": [
+       "B1"
+      ]
+     },
+     "斩杀线": {
+      "B1": 20
+     }
+    }
+   ]
+  },
+  "h1": {
+   "pilot": "头目·1",
+   "mech": "宣传母车",
+   "short": "宣",
+   "weak": {
+    "光束": 30
+   },
+   "hp": 4500,
+   "armor": 250,
+   "eva": 20,
+   "mov": 5,
+   "melee": 70,
+   "shoot": 100,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [
+    "stealth"
+   ],
+   "weapons": [
+    {
+     "range": [
+      1,
+      3
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1400,
+     "desc": "",
+     "name": "电磁脉冲",
+     "v37": true
+    }
+   ],
+   "key": "h1",
+   "defense": 80,
+   "awaken": 100,
+   "撤退": {
+    "回合": 3,
+    "条件": {
+     "在场": [
+      "S1"
+     ]
+    }
+   }
+  },
+  "g2a": {
+   "pilot": "守关·2甲",
+   "mech": "要塞防卫机",
+   "short": "甲",
+   "weak": {
+    "光束": 30,
+    "物理": -20
+   },
+   "hp": 9500,
+   "armor": 1200,
+   "eva": 0,
+   "mov": 3,
+   "melee": 130,
+   "shoot": 130,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [
+    "barrier"
+   ],
+   "weapons": [
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 2296,
+     "desc": "",
+     "name": "重拳",
+     "v37": true
+    },
+    {
+     "range": [
+      2,
+      6
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 1,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 2519,
+     "desc": "",
+     "name": "主炮",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "map",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 3600,
+     "desc": "（初稿·Boss 大技能）整排炮击。",
+     "name": "驱散炮击",
+     "area": "row",
+     "startCd": 3
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "map",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1600,
+     "desc": "（初稿·Boss 大技能）全场覆盖。",
+     "name": "封锁全开",
+     "area": "all"
+    }
+   ],
+   "key": "g2a",
+   "defense": 95,
+   "awaken": 100,
+   "宿敌": [
+    {
+     "条件": {
+      "在场": [
+       "S2"
+      ]
+     },
+     "猎杀": [
+      "S2"
+     ]
+    }
+   ]
+  },
+  "g2b": {
+   "pilot": "守关·2乙",
+   "mech": "重装猎杀机",
+   "short": "乙",
+   "weak": {
+    "反击": 50,
+    "范围": -50
+   },
+   "hp": 8000,
+   "armor": 450,
+   "eva": 15,
+   "mov": 6,
+   "melee": 140,
+   "shoot": 80,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [
+    "berserk"
+   ],
+   "weapons": [
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 2148,
+     "desc": "",
+     "name": "双斧",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 4000,
+     "desc": "（初稿·Boss 大技能）近战重咬。",
+     "name": "嗜血撕咬",
+     "startCd": 3
+    }
+   ],
+   "key": "g2b",
+   "defense": 80,
+   "awaken": 100,
+   "宿敌": [
+    {
+     "条件": {
+      "在场": [
+       "W1",
+       "W2",
+       "W3"
+      ]
+     },
+     "猎杀": [
+      "W1",
+      "W2",
+      "W3"
+     ]
+    },
+    {
+     "条件": {
+      "在场至少": {
+       "键们": [
+        "W1",
+        "W2",
+        "W3"
+       ],
+       "数": 2
+      }
+     },
+     "词条": [
+      {
+       "作用": "单台",
+       "键": "速度",
+       "值": -2
+      }
+     ]
+    }
+   ]
+  },
+  "g2c": {
+   "pilot": "守关·2丙",
+   "mech": "传媒指挥舰",
+   "short": "丙",
+   "weak": {
+    "直射": 30,
+    "曲射": -50
+   },
+   "shield": 4000,
+   "shieldName": "力场护盾",
+   "noEvade": false,
+   "hp": 9500,
+   "armor": 600,
+   "eva": 15,
+   "mov": 3,
+   "melee": 80,
+   "shoot": 130,
+   "flying": true,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      2,
+      7
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "光束",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 2490,
+     "desc": "",
+     "name": "光束炮",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      3
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1524,
+     "desc": "",
+     "name": "对空机枪",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "map",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1200,
+     "desc": "（初稿·Boss 大技能）全场轰炸，命中后压命中。",
+     "name": "头版头条",
+     "area": "all",
+     "startCd": 2
+    }
+   ],
+   "key": "g2c",
+   "defense": 85,
+   "awaken": 100,
+   "宿敌": [
+    {
+     "条件": {
+      "在场": [
+       "M1"
+      ]
+     },
+     "猎杀": [
+      "M1"
+     ]
+    }
+   ]
+  },
+  "h2": {
+   "pilot": "头目·2",
+   "mech": "紧急指挥舰",
+   "short": "紧",
+   "weak": {
+    "背面": 40,
+    "范围": -50
+   },
+   "hp": 7200,
+   "armor": 600,
+   "eva": 15,
+   "mov": 5,
+   "melee": 120,
+   "shoot": 120,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [
+    "commandAura"
+   ],
+   "weapons": [
+    {
+     "range": [
+      1,
+      4
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "光束",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1832,
+     "desc": "",
+     "name": "光束步枪",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "光束",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1992,
+     "desc": "",
+     "name": "光束军刀",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "support",
+     "dmgType": "—",
+     "cd": 2,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 0,
+     "desc": "（初稿）让一台已行动的友军再行动一次。",
+     "name": "紧急状态令",
+     "grant": true
+    }
+   ],
+   "key": "h2",
+   "defense": 80,
+   "awaken": 100
+  },
+  "g3a": {
+   "pilot": "守关·3甲",
+   "mech": "鹰派指挥重装",
+   "short": "甲",
+   "weak": {
+    "曲射": 50,
+    "背面": 20,
+    "直射": -30
+   },
+   "noEvade": false,
+   "hp": 9500,
+   "armor": 800,
+   "eva": 0,
+   "mov": 3,
+   "melee": 100,
+   "shoot": 140,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      2,
+      7
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 1,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 2444,
+     "desc": "",
+     "name": "主炮",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      2
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1407,
+     "desc": "",
+     "name": "同轴机枪",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "map",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": true,
+     "special": null,
+     "power": 900,
+     "desc": "（初稿·Boss 大技能）无视防御的全场轰炸。",
+     "name": "戒律轰炸",
+     "area": "all",
+     "startCd": 2
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "map",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 4200,
+     "desc": "（初稿·Boss 大技能）焦土阶段的整列轰炸。",
+     "name": "焦土",
+     "area": "col"
+    }
+   ],
+   "key": "g3a",
+   "defense": 95,
+   "awaken": 100,
+   "宿敌": [
+    {
+     "条件": {
+      "在场": [
+       "W1",
+       "W2",
+       "W3"
+      ]
+     },
+     "猎杀": [
+      "W1",
+      "W2",
+      "W3"
+     ],
+     "增伤": {
+      "W1": 15,
+      "W2": 15,
+      "W3": 15
+     }
+    }
+   ]
+  },
+  "g3b": {
+   "pilot": "守关·3乙",
+   "mech": "λ 试作机·改",
+   "short": "乙",
+   "weak": {
+    "多段": 30,
+    "范围": -50
+   },
+   "hp": 8000,
+   "armor": 500,
+   "eva": 25,
+   "mov": 6,
+   "melee": 150,
+   "shoot": 150,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [
+    "lambdaShield"
+   ],
+   "weapons": [
+    {
+     "range": [
+      2,
+      5
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "特殊",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1266,
+     "desc": "",
+     "name": "λ 加农炮",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 2076,
+     "desc": "",
+     "name": "单分子刀",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "特殊",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 3800,
+     "desc": "（初稿·Boss 大技能）特殊伤害，不吃装甲。",
+     "name": "λ 加农炮·过载",
+     "startCd": 3
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "indirect",
+     "dmgType": "特殊",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1100,
+     "desc": "（初稿·Boss 大技能）疯犬阶段的 3 段曲射。",
+     "name": "疯犬乱射",
+     "hits": 3
+    }
+   ],
+   "key": "g3b",
+   "defense": 85,
+   "awaken": 100,
+   "宿敌": [
+    {
+     "条件": {
+      "在场": [
+       "U7"
+      ]
+     },
+     "猎杀": [
+      "U7"
+     ],
+     "无视力场": [
+      "U7"
+     ]
+    },
+    {
+     "条件": {
+      "在场": [
+       "U6"
+      ]
+     },
+     "增伤": {
+      "U6": 20
+     }
+    }
+   ]
+  },
+  "g3c": {
+   "pilot": "守关·3丙",
+   "mech": "研究型重机",
+   "short": "丙",
+   "weak": {
+    "近战": 60,
+    "直射": -30,
+    "范围": -50
+   },
+   "hp": 9000,
+   "armor": 500,
+   "eva": 20,
+   "mov": 4,
+   "melee": 120,
+   "shoot": 145,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      3,
+      8
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "indirect",
+     "dmgType": "光束",
+     "cd": 1,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": "funnel",
+     "power": 392,
+     "desc": "",
+     "name": "浮游炮",
+     "hits": 3,
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "indirect",
+     "dmgType": "光束",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 800,
+     "desc": "（初稿·Boss 大技能）5 段曲射。",
+     "name": "标本采集",
+     "hits": 5,
+     "startCd": 2
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 4200,
+     "desc": "（初稿·Boss 大技能）狂躁阶段的近战重击。",
+     "name": "狂躁爪"
+    }
+   ],
+   "key": "g3c",
+   "defense": 85,
+   "awaken": 100,
+   "宿敌": [
+    {
+     "条件": {
+      "在场": [
+       "B1"
+      ]
+     },
+     "猎杀": [
+      "B1"
+     ]
+    }
+   ]
+  },
+  "h3": {
+   "pilot": "头目·3",
+   "mech": "学术白手套",
+   "short": "白",
+   "weak": {
+    "近战": 40
+   },
+   "hp": 7000,
+   "armor": 500,
+   "eva": 10,
+   "mov": 4,
+   "melee": 110,
+   "shoot": 110,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [
+    "beamReflect"
+   ],
+   "weapons": [
+    {
+     "range": [
+      1,
+      5
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1896,
+     "desc": "",
+     "name": "实弹炮",
+     "v37": true
+    }
+   ],
+   "key": "h3",
+   "defense": 80,
+   "awaken": 100,
+   "宿敌": [
+    {
+     "条件": {
+      "在场": [
+       "B1"
+      ]
+     },
+     "增伤": {
+      "B1": 30
+     }
+    }
+   ]
+  },
+  "g4a": {
+   "pilot": "终点·4甲",
+   "mech": "拟太阳炉猎杀机",
+   "short": "甲",
+   "weak": {
+    "近战": 60,
+    "直射": -30,
+    "范围": -50
+   },
+   "hp": 20000,
+   "armor": 700,
+   "eva": 20,
+   "mov": 6,
+   "melee": 150,
+   "shoot": 150,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      3,
+      8
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "indirect",
+     "dmgType": "光束",
+     "cd": 1,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": "funnel",
+     "power": 392,
+     "desc": "",
+     "name": "浮游炮",
+     "hits": 3,
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 2400,
+     "desc": "",
+     "name": "斩击"
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "indirect",
+     "dmgType": "光束",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1100,
+     "desc": "（初稿·Boss 大技能）5 段曲射：高装甲的人去吃。",
+     "name": "浮游牙·处刑",
+     "hits": 5,
+     "startCd": 2
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 4500,
+     "desc": "（初稿·Boss 大技能）过载阶段的近战斩首。",
+     "name": "斩首"
+    }
+   ],
+   "key": "g4a",
+   "defense": 95,
+   "awaken": 100,
+   "宿敌": [
+    {
+     "条件": {},
+     "猎杀档": "S"
+    },
+    {
+     "条件": {
+      "在场全部": [
+       "CB1",
+       "CB2",
+       "CB3"
+      ]
+     },
+     "伤害倍率": 0.8,
+     "增伤": {
+      "CB1": 20,
+      "CB2": 20,
+      "CB3": 20
+     }
+    }
+   ]
+  },
+  "g4b": {
+   "pilot": "终点·4乙",
+   "mech": "斩舰刀重装",
+   "short": "乙",
+   "weak": {
+    "光束": 30,
+    "物理": -20
+   },
+   "hp": 19800,
+   "armor": 1000,
+   "eva": 0,
+   "mov": 3,
+   "melee": 160,
+   "shoot": 130,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 2296,
+     "desc": "",
+     "name": "重拳",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "map",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 4500,
+     "desc": "（初稿·Boss 大技能）整排斩：意图提前画出整排红线。",
+     "name": "斩舰刀·一闪",
+     "area": "row",
+     "startCd": 3
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "map",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 4800,
+     "desc": "（初稿·Boss 大技能）真打阶段的十字斩。",
+     "name": "斩舰刀·真打",
+     "area": "cross"
+    }
+   ],
+   "key": "g4b",
+   "defense": 100,
+   "awaken": 100,
+   "宿敌": [
+    {
+     "条件": {
+      "在场": [
+       "B3",
+       "B4"
+      ]
+     },
+     "猎杀": [
+      "B3",
+      "B4"
+     ]
+    }
+   ]
+  },
+  "g4c": {
+   "pilot": "终点·4丙",
+   "mech": "生化指挥机",
+   "short": "丙",
+   "weak": {
+    "直射": 30,
+    "曲射": -50
+   },
+   "shield": 5000,
+   "shieldName": "力场护盾",
+   "noEvade": false,
+   "hp": 18000,
+   "armor": 600,
+   "eva": 0,
+   "mov": 3,
+   "melee": 80,
+   "shoot": 140,
+   "flying": true,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      2,
+      7
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "光束",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 2490,
+     "desc": "",
+     "name": "光束炮",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "map",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 3000,
+     "desc": "（初稿·Boss 大技能）整排毒雾轰炸（替代原案的「强制改造」，见回执）。",
+     "name": "生化毒雾",
+     "area": "row",
+     "startCd": 2
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "heal",
+     "dmgType": "—",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 2400,
+     "desc": "（初稿）给受伤友军回复 HP。",
+     "name": "生化修复"
+    }
+   ],
+   "key": "g4c",
+   "defense": 90,
+   "awaken": 100,
+   "宿敌": [
+    {
+     "条件": {
+      "在场": [
+       "A2"
+      ]
+     },
+     "词条": [
+      {
+       "作用": "单台",
+       "键": "命中",
+       "值": -15
+      }
+     ]
+    },
+    {
+     "条件": {
+      "在场": [
+       "A3"
+      ]
+     },
+     "增伤": {
+      "A3": 25
+     }
+    }
+   ]
+  },
+  "g4d": {
+   "pilot": "终点·4丁",
+   "mech": "重装旗舰",
+   "short": "丁",
+   "weak": {
+    "近战": 30,
+    "曲射": -30
+   },
+   "noEvade": true,
+   "hp": 22000,
+   "armor": 1200,
+   "eva": 0,
+   "mov": 3,
+   "melee": 100,
+   "shoot": 150,
+   "flying": true,
+   "w": 1,
+   "h": 1,
+   "abilities": [
+    "barrier"
+   ],
+   "weapons": [
+    {
+     "range": [
+      2,
+      8
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "光束",
+     "cd": 1,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 2658,
+     "desc": "",
+     "name": "主炮",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      3
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1755,
+     "desc": "",
+     "name": "对空机枪",
+     "v37": true
+    },
+    {
+     "range": [
+      3,
+      9
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "indirect",
+     "dmgType": "物理",
+     "cd": 2,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 2142,
+     "desc": "",
+     "name": "舰载导弹",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "map",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 4800,
+     "desc": "（初稿·Boss 大技能）整列阻挡束：靠站位躲。",
+     "name": "质量加速炮",
+     "area": "col",
+     "startCd": 3
+    }
+   ],
+   "key": "g4d",
+   "defense": 95,
+   "awaken": 100,
+   "宿敌": [
+    {
+     "条件": {
+      "在场": [
+       "M1"
+      ]
+     },
+     "增伤": {
+      "M1": 30
+     }
+    },
+    {
+     "条件": {
+      "势力至少": {
+       "月球王国": 3
+      }
+     },
+     "清屏障": true
+    }
+   ]
+  },
+  "h4": {
+   "pilot": "头目·4",
+   "mech": "情报支点机",
+   "short": "情",
+   "weak": {
+    "范围": 50
+   },
+   "hp": 9600,
+   "armor": 300,
+   "eva": 30,
+   "mov": 6,
+   "melee": 80,
+   "shoot": 120,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [
+    "stealth"
+   ],
+   "weapons": [
+    {
+     "range": [
+      2,
+      6
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1832,
+     "desc": "",
+     "name": "狙击枪",
+     "v37": true
+    }
+   ],
+   "key": "h4",
+   "defense": 80,
+   "awaken": 100,
+   "撤退": {
+    "HP线": 50
+   }
+  },
+  "cw_police": {
+   "pilot": "敌兵",
+   "mech": "警备机",
+   "short": "警",
+   "weak": {},
+   "hp": 3600,
+   "armor": 350,
+   "eva": 10,
+   "mov": 5,
+   "melee": 110,
+   "shoot": 100,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1809,
+     "desc": "",
+     "name": "格斗斧",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      4
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1686,
+     "desc": "",
+     "name": "突击步枪",
+     "v37": true
+    }
+   ],
+   "key": "cw_police",
+   "defense": 50,
+   "awaken": 100,
+   "封锁线": true
+  },
+  "cw_riot": {
+   "pilot": "敌兵",
+   "mech": "防暴盾车",
+   "short": "暴",
+   "weak": {
+    "背面": 30
+   },
+   "hp": 4500,
+   "armor": 500,
+   "eva": 5,
+   "mov": 3,
+   "melee": 110,
+   "shoot": 80,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1461,
+     "desc": "",
+     "name": "盾击",
+     "v37": true
+    }
+   ],
+   "key": "cw_riot",
+   "defense": 50,
+   "awaken": 100,
+   "封锁线": true
+  },
+  "cw_welder": {
+   "pilot": "敌兵",
+   "mech": "船坞焊修机",
+   "short": "焊",
+   "weak": {
+    "范围": 50
+   },
+   "hp": 2000,
+   "armor": 100,
+   "eva": 25,
+   "mov": 7,
+   "melee": 60,
+   "shoot": 90,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      1,
+      2
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 958,
+     "desc": "",
+     "name": "机枪",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      3
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "heal",
+     "dmgType": "—",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1200,
+     "desc": "（初稿）给受伤友军回复 1200 × 射击÷100 的 HP。",
+     "name": "焊接修补"
+    }
+   ],
+   "key": "cw_welder",
+   "defense": 50,
+   "awaken": 100,
+   "封锁线": true
+  },
+  "cw_turret": {
+   "pilot": "敌兵",
+   "mech": "环壁炮台",
+   "short": "壁",
+   "weak": {
+    "光束": 30,
+    "曲射": 30
+   },
+   "noEvade": true,
+   "hp": 3000,
+   "armor": 400,
+   "eva": 0,
+   "mov": 0,
+   "melee": 60,
+   "shoot": 110,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      3,
+      7
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "indirect",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1461,
+     "desc": "",
+     "name": "迫击炮",
+     "v37": true
+    }
+   ],
+   "key": "cw_turret",
+   "defense": 50,
+   "awaken": 100,
+   "封锁线": true
+  },
+  "cw_fortress": {
+   "pilot": "敌兵",
+   "mech": "环壁要塞机",
+   "short": "塞",
+   "weak": {
+    "光束": 30,
+    "物理": -20
+   },
+   "hp": 7500,
+   "armor": 700,
+   "eva": 0,
+   "mov": 3,
+   "melee": 130,
+   "shoot": 130,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [
+    "barrier"
+   ],
+   "weapons": [
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 2296,
+     "desc": "",
+     "name": "重拳",
+     "v37": true
+    },
+    {
+     "range": [
+      2,
+      6
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 1,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 2519,
+     "desc": "",
+     "name": "主炮",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 5,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 3800,
+     "desc": "（新项目新增·初稿）重装要塞的全力一击。",
+     "name": "要塞重拳",
+     "大招": true,
+     "startCd": 3
+    }
+   ],
+   "key": "cw_fortress",
+   "defense": 65,
+   "awaken": 100,
+   "封锁线": true
+  },
+  "cw_jammer": {
+   "pilot": "敌兵",
+   "mech": "舆论干扰艇",
+   "short": "扰",
+   "weak": {
+    "光束": 30
+   },
+   "hp": 2800,
+   "armor": 150,
+   "eva": 20,
+   "mov": 5,
+   "melee": 70,
+   "shoot": 100,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [
+    "jamAura"
+   ],
+   "weapons": [
+    {
+     "range": [
+      1,
+      3
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1400,
+     "desc": "",
+     "name": "电磁脉冲",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "indirect",
+     "dmgType": "物理",
+     "cd": 5,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1800,
+     "desc": "（初稿）十字范围干扰弹，命中后压命中。",
+     "name": "全频干扰弹",
+     "大招": true,
+     "startCd": 3,
+     "area": "cross"
+    }
+   ],
+   "key": "cw_jammer",
+   "defense": 65,
+   "awaken": 100,
+   "封锁线": true
+  },
+  "ok_trooper": {
+   "pilot": "敌兵",
+   "mech": "私兵机",
+   "short": "私",
+   "weak": {},
+   "hp": 3600,
+   "armor": 350,
+   "eva": 10,
+   "mov": 5,
+   "melee": 110,
+   "shoot": 100,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1809,
+     "desc": "",
+     "name": "格斗斧",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      4
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1686,
+     "desc": "",
+     "name": "突击步枪",
+     "v37": true
+    }
+   ],
+   "key": "ok_trooper",
+   "defense": 50,
+   "awaken": 100,
+   "悬赏令": true
+  },
+  "ok_hound": {
+   "pilot": "敌兵",
+   "mech": "雇佣猎犬",
+   "short": "雇",
+   "weak": {
+    "光束": 30
+   },
+   "hp": 3000,
+   "armor": 200,
+   "eva": 10,
+   "mov": 5,
+   "melee": 90,
+   "shoot": 100,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      1,
+      3
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1200,
+     "desc": "",
+     "name": "猎枪",
+     "v37": true
+    }
+   ],
+   "key": "ok_hound",
+   "defense": 50,
+   "awaken": 100,
+   "悬赏令": true
+  },
+  "ok_drone": {
+   "pilot": "敌兵",
+   "mech": "宣传无人机",
+   "short": "宣",
+   "weak": {
+    "范围": 50
+   },
+   "hp": 2000,
+   "armor": 100,
+   "eva": 25,
+   "mov": 7,
+   "melee": 60,
+   "shoot": 90,
+   "flying": true,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      1,
+      2
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 958,
+     "desc": "",
+     "name": "抹黑弹",
+     "v37": true
+    }
+   ],
+   "key": "ok_drone",
+   "defense": 50,
+   "awaken": 100,
+   "悬赏令": true
+  },
+  "ok_mortar": {
+   "pilot": "敌兵",
+   "mech": "燃料迫击车",
+   "short": "迫",
+   "weak": {
+    "光束": 30
+   },
+   "noEvade": true,
+   "hp": 3500,
+   "armor": 400,
+   "eva": 0,
+   "mov": 0,
+   "melee": 60,
+   "shoot": 110,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      3,
+      7
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "indirect",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1550,
+     "desc": "",
+     "name": "燃料榴弹",
+     "v37": true
+    }
+   ],
+   "key": "ok_mortar",
+   "defense": 50,
+   "awaken": 100,
+   "悬赏令": true
+  },
+  "ok_tank": {
+   "pilot": "敌兵",
+   "mech": "燃料重坦",
+   "short": "坦",
+   "weak": {
+    "曲射": 50,
+    "背面": 20,
+    "直射": -30
+   },
+   "noEvade": true,
+   "hp": 8000,
+   "armor": 1200,
+   "eva": 0,
+   "mov": 3,
+   "melee": 100,
+   "shoot": 130,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      2,
+      7
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 1,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 2444,
+     "desc": "",
+     "name": "主炮",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      2
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1407,
+     "desc": "",
+     "name": "同轴机枪",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 5,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 3600,
+     "desc": "（新项目新增·初稿）重型坦克的穿甲弹。",
+     "name": "穿甲主炮",
+     "大招": true,
+     "startCd": 3
+    }
+   ],
+   "key": "ok_tank",
+   "defense": 65,
+   "awaken": 100,
+   "悬赏令": true
+  },
+  "ok_herald": {
+   "pilot": "敌兵",
+   "mech": "宣传指挥车",
+   "short": "播",
+   "weak": {
+    "背面": 40,
+    "范围": -50
+   },
+   "hp": 5000,
+   "armor": 600,
+   "eva": 15,
+   "mov": 5,
+   "melee": 120,
+   "shoot": 120,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [
+    "commandAura"
+   ],
+   "weapons": [
+    {
+     "range": [
+      1,
+      4
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "光束",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1832,
+     "desc": "",
+     "name": "光束步枪",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "光束",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1992,
+     "desc": "",
+     "name": "光束军刀",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      9
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "support",
+     "dmgType": "—",
+     "cd": 2,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 0,
+     "grant": true,
+     "desc": "（初稿）让一台已行动的友军再行动一次。",
+     "name": "全频报道"
+    }
+   ],
+   "key": "ok_herald",
+   "defense": 65,
+   "awaken": 100,
+   "悬赏令": true
+  },
+  "hg_trooper": {
+   "pilot": "敌兵",
+   "mech": "汞合金突击机",
+   "short": "汞",
+   "weak": {
+    "多段": 30
+   },
+   "hp": 3000,
+   "armor": 300,
+   "eva": 10,
+   "mov": 6,
+   "melee": 110,
+   "shoot": 90,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1500,
+     "desc": "",
+     "name": "单分子刀",
+     "v37": true
+    }
+   ],
+   "key": "hg_trooper",
+   "defense": 50,
+   "awaken": 100
+  },
+  "hg_ghost": {
+   "pilot": "敌兵",
+   "mech": "无声迷彩机",
+   "short": "影",
+   "weak": {
+    "范围": 50
+   },
+   "hp": 2200,
+   "armor": 100,
+   "eva": 30,
+   "mov": 6,
+   "melee": 80,
+   "shoot": 120,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [
+    "stealth"
+   ],
+   "weapons": [
+    {
+     "range": [
+      2,
+      6
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1832,
+     "desc": "",
+     "name": "狙击枪",
+     "v37": true
+    }
+   ],
+   "key": "hg_ghost",
+   "defense": 65,
+   "awaken": 100
+  },
+  "hg_lambda_lite": {
+   "pilot": "敌兵",
+   "mech": "λ 劣化试作机",
+   "short": "劣",
+   "weak": {
+    "多段": 30,
+    "范围": -50
+   },
+   "hp": 2800,
+   "armor": 250,
+   "eva": 25,
+   "mov": 6,
+   "melee": 140,
+   "shoot": 140,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [
+    "lambdaShield"
+   ],
+   "weapons": [
+    {
+     "range": [
+      2,
+      5
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "特殊",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1266,
+     "desc": "",
+     "name": "λ 加农炮",
+     "v37": true
+    }
+   ],
+   "key": "hg_lambda_lite",
+   "defense": 50,
+   "awaken": 100,
+   "λ共振": true,
+   "λ减免": 1200
+  },
+  "hg_drone": {
+   "pilot": "敌兵",
+   "mech": "回收无人机",
+   "short": "回",
+   "weak": {
+    "范围": 50
+   },
+   "hp": 2000,
+   "armor": 100,
+   "eva": 25,
+   "mov": 7,
+   "melee": 60,
+   "shoot": 90,
+   "flying": true,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      1,
+      2
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 958,
+     "desc": "",
+     "name": "机枪",
+     "v37": true
+    }
+   ],
+   "key": "hg_drone",
+   "defense": 50,
+   "awaken": 100
+  },
+  "hg_venom": {
+   "pilot": "敌兵",
+   "mech": "毒液复刻机",
+   "short": "毒",
+   "weak": {
+    "多段": 30,
+    "范围": -50
+   },
+   "hp": 6000,
+   "armor": 500,
+   "eva": 25,
+   "mov": 6,
+   "melee": 140,
+   "shoot": 140,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [
+    "lambdaShield"
+   ],
+   "weapons": [
+    {
+     "range": [
+      2,
+      5
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "特殊",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1266,
+     "desc": "",
+     "name": "λ 加农炮",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 2076,
+     "desc": "",
+     "name": "单分子刀",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "特殊",
+     "cd": 5,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 3600,
+     "desc": "（新项目新增·初稿）λ 试作机解除限制的一炮（特殊伤害，不吃装甲）。",
+     "name": "λ 加农炮·全开",
+     "大招": true,
+     "startCd": 3
+    }
+   ],
+   "key": "hg_venom",
+   "defense": 80,
+   "awaken": 100,
+   "λ共振": true,
+   "λ减免": 3000
+  },
+  "hg_mirror": {
+   "pilot": "敌兵",
+   "mech": "拍卖行镜卫",
+   "short": "镜",
+   "weak": {
+    "近战": 40
+   },
+   "hp": 4500,
+   "armor": 500,
+   "eva": 10,
+   "mov": 4,
+   "melee": 110,
+   "shoot": 110,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [
+    "beamReflect",
+    "lambdaShield"
+   ],
+   "weapons": [
+    {
+     "range": [
+      1,
+      5
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1896,
+     "desc": "",
+     "name": "实弹炮",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 5,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 3300,
+     "desc": "（新项目新增·初稿）镜面装甲把光原样打回来。",
+     "name": "镜面反射炮",
+     "大招": true,
+     "startCd": 3
+    }
+   ],
+   "key": "hg_mirror",
+   "defense": 65,
+   "awaken": 100,
+   "λ共振": true,
+   "λ减免": 1200
+  },
+  "tr_pseudo": {
+   "pilot": "敌兵",
+   "mech": "拟炉量产机",
+   "short": "拟",
+   "weak": {
+    "光束": -30
+   },
+   "hp": 3600,
+   "armor": 350,
+   "eva": 10,
+   "mov": 5,
+   "melee": 110,
+   "shoot": 100,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "光束",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1809,
+     "desc": "",
+     "name": "格斗斧",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      4
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "光束",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1686,
+     "desc": "",
+     "name": "突击步枪",
+     "v37": true
+    }
+   ],
+   "key": "tr_pseudo",
+   "defense": 50,
+   "awaken": 100
+  },
+  "tr_guard": {
+   "pilot": "敌兵",
+   "mech": "王家私兵",
+   "short": "王",
+   "weak": {
+    "光束": 30
+   },
+   "hp": 3000,
+   "armor": 200,
+   "eva": 10,
+   "mov": 5,
+   "melee": 90,
+   "shoot": 100,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      1,
+      3
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1019,
+     "desc": "",
+     "name": "猎枪",
+     "v37": true
+    }
+   ],
+   "key": "tr_guard",
+   "defense": 50,
+   "awaken": 100
+  },
+  "tr_spreader": {
+   "pilot": "敌兵",
+   "mech": "粒子散布机",
+   "short": "散",
+   "weak": {
+    "光束": 30
+   },
+   "hp": 2200,
+   "armor": 150,
+   "eva": 20,
+   "mov": 5,
+   "melee": 70,
+   "shoot": 100,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [
+    "jamAura"
+   ],
+   "weapons": [
+    {
+     "range": [
+      1,
+      3
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1400,
+     "desc": "",
+     "name": "电磁脉冲",
+     "v37": true
+    }
+   ],
+   "key": "tr_spreader",
+   "defense": 65,
+   "awaken": 100,
+   "粒子散布": true
+  },
+  "tr_lancer": {
+   "pilot": "敌兵",
+   "mech": "拟炉突击机",
+   "short": "突",
+   "weak": {
+    "多段": 30
+   },
+   "hp": 3000,
+   "armor": 300,
+   "eva": 10,
+   "mov": 7,
+   "melee": 110,
+   "shoot": 90,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "光束",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1800,
+     "desc": "",
+     "name": "光束军刀",
+     "v37": true
+    }
+   ],
+   "key": "tr_lancer",
+   "defense": 50,
+   "awaken": 100
+  },
+  "tr_hunter": {
+   "pilot": "敌兵",
+   "mech": "猎杀机·赤牙",
+   "short": "牙",
+   "weak": {
+    "近战": 60,
+    "直射": -30,
+    "范围": -50
+   },
+   "hp": 5500,
+   "armor": 300,
+   "eva": 20,
+   "mov": 4,
+   "melee": 70,
+   "shoot": 130,
+   "flying": true,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      3,
+      8
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "indirect",
+     "dmgType": "光束",
+     "cd": 1,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": "funnel",
+     "power": 392,
+     "desc": "",
+     "name": "牙状遥控刃",
+     "hits": 3,
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "indirect",
+     "dmgType": "光束",
+     "cd": 5,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 900,
+     "desc": "（新项目新增·初稿）五段齐射。",
+     "name": "浮游炮·齐射",
+     "大招": true,
+     "startCd": 3,
+     "hits": 5
+    }
+   ],
+   "key": "tr_hunter",
+   "defense": 80,
+   "awaken": 100
+  },
+  "tr_terminal": {
+   "pilot": "敌兵",
+   "mech": "篡改终端艇",
+   "short": "端",
+   "weak": {
+    "背面": 40,
+    "范围": -50
+   },
+   "hp": 5000,
+   "armor": 600,
+   "eva": 15,
+   "mov": 5,
+   "melee": 120,
+   "shoot": 120,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      1,
+      9
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "support",
+     "dmgType": "—",
+     "cd": 1,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 0,
+     "buff": {
+      "hit": 15,
+      "crit": 10
+     },
+     "desc": "（初稿）全体友军命中 +15、暴击 +10（到本回合结束）。",
+     "name": "数据改写"
+    }
+   ],
+   "key": "tr_terminal",
+   "defense": 80,
+   "awaken": 100
+  },
+  "sw_soldier": {
+   "pilot": "敌兵",
+   "mech": "影界正规兵",
+   "short": "界",
+   "weak": {},
+   "hp": 3600,
+   "armor": 350,
+   "eva": 10,
+   "mov": 5,
+   "melee": 110,
+   "shoot": 100,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1809,
+     "desc": "",
+     "name": "格斗斧",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      4
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1686,
+     "desc": "",
+     "name": "突击步枪",
+     "v37": true
+    }
+   ],
+   "key": "sw_soldier",
+   "defense": 50,
+   "awaken": 100
+  },
+  "sw_sower": {
+   "pilot": "敌兵",
+   "mech": "影种播撒机",
+   "short": "种",
+   "weak": {
+    "范围": 50
+   },
+   "hp": 2000,
+   "armor": 100,
+   "eva": 25,
+   "mov": 7,
+   "melee": 60,
+   "shoot": 90,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      1,
+      6
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "indirect",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1000,
+     "desc": "",
+     "name": "播种弹",
+     "v37": true
+    }
+   ],
+   "key": "sw_sower",
+   "defense": 50,
+   "awaken": 100
+  },
+  "sw_wtype": {
+   "pilot": "敌兵",
+   "mech": "W 型人造人机",
+   "short": "W",
+   "weak": {
+    "直射": 20,
+    "曲射": -30
+   },
+   "hp": 2600,
+   "armor": 150,
+   "eva": 35,
+   "mov": 6,
+   "melee": 90,
+   "shoot": 110,
+   "flying": true,
+   "w": 1,
+   "h": 1,
+   "abilities": [],
+   "weapons": [
+    {
+     "range": [
+      1,
+      2
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1635,
+     "desc": "",
+     "name": "机炮",
+     "v37": true
+    },
+    {
+     "range": [
+      2,
+      4
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "射击",
+     "fire": "indirect",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": 4,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1896,
+     "desc": "",
+     "name": "空对地导弹",
+     "v37": true
+    }
+   ],
+   "key": "sw_wtype",
+   "defense": 50,
+   "awaken": 100
+  },
+  "sw_mutant": {
+   "pilot": "敌兵",
+   "mech": "生化变异体",
+   "short": "变",
+   "weak": {
+    "曲射": 30
+   },
+   "hp": 3600,
+   "armor": 200,
+   "eva": 15,
+   "mov": 6,
+   "melee": 100,
+   "shoot": 80,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [
+    "selfDestruct"
+   ],
+   "weapons": [
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1500,
+     "desc": "",
+     "name": "撞击",
+     "v37": true
+    }
+   ],
+   "key": "sw_mutant",
+   "defense": 50,
+   "awaken": 100
+  },
+  "sw_chain": {
+   "pilot": "敌兵",
+   "mech": "锁链抓投机",
+   "short": "锁",
+   "weak": {
+    "背面": 40
+   },
+   "noEvade": true,
+   "hp": 6500,
+   "armor": 700,
+   "eva": 0,
+   "mov": 4,
+   "melee": 130,
+   "shoot": 80,
+   "flying": false,
+   "w": 1,
+   "h": 1,
+   "abilities": [
+    "frontArmor"
+   ],
+   "weapons": [
+    {
+     "range": [
+      1,
+      6
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "direct",
+     "dmgType": "物理",
+     "cd": 0,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 1600,
+     "desc": "（初稿）锁链射击：打中我方后排时把它拽到同列前排（N5）。",
+     "name": "影锁",
+     "v37": true
+    },
+    {
+     "range": [
+      1,
+      1
+     ],
+     "hit": 100,
+     "critMod": 0,
+     "stat": "格斗",
+     "fire": "melee",
+     "dmgType": "物理",
+     "cd": 5,
+     "uses": null,
+     "unlock": 1,
+     "upgrades": [],
+     "afterMove": true,
+     "ignoreDef": false,
+     "special": null,
+     "power": 4000,
+     "desc": "（初稿）锁链机的近战绞杀。",
+     "name": "锁链绞杀",
+     "大招": true,
+     "startCd": 3
+    }
+   ],
+   "key": "sw_chain",
+   "defense": 65,
+   "awaken": 100,
+   "影锁武器": "影锁"
   }
  },
  "ENEMY_POOL": [
@@ -5683,6 +9605,10 @@
  "ENEMY_BOSS": [
   "fortress",
   "tank",
-  "skyfort"
+  "skyfort",
+  "g4a",
+  "g4b",
+  "g4c",
+  "g4d"
  ]
 }

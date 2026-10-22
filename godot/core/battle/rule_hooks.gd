@@ -5,7 +5,7 @@ extends RefCounted
 
 # 一、顺序表（次序 = 调用次序，不许重排）。
 static var 顺序: Dictionary = {
-	"开局初始化": [ColonialV01, MoonV02, ShadowV02, FactionIdentity],
+	"开局初始化": [ColonialV01, MoonV02, ShadowV02, FactionIdentity, Rival],
 	"装填单位": [ColonialV01, MoonV02, ShadowV02],
 	"装填大招槽": [ColonialV01, MoonV02, ShadowV02],
 	"公有扩展牌": [ColonialV01, MoonV02, ShadowV02],
@@ -17,11 +17,11 @@ static var 顺序: Dictionary = {
 	"暴击修正": [AtxThree, ColonialV01, ShadowV02],
 	"受击前": [AtxChips, AtxDuo, AtxThree, ColonialV01, MoonV02],
 	"受击后": [ColonialV01, MoonV02],
-	"攻方伤害倍率": [ClassCards, CelestialV01, ColonialV01, MoonV02, ShadowV02, FactionIdentity, FocusFire],
+	"攻方伤害倍率": [ClassCards, CelestialV01, ColonialV01, MoonV02, ShadowV02, FactionIdentity, FocusFire, EnemyMech, Rival],
 	"受方伤害倍率": [CelestialV01, AtxDuo, ColonialV01, MoonV02],
 	"致命保留_前": [AtxChips],
 	"致命保留_后": [ClassCards, ColonialV01, RepairCards],
-	"武器攻击后": [ClassCards, RepairCards, AtxDuo, AtxThree, ColonialV01, MoonV02, ShadowV02, FactionIdentity, FocusFire],
+	"武器攻击后": [ClassCards, RepairCards, AtxDuo, AtxThree, ColonialV01, MoonV02, ShadowV02, FactionIdentity, FocusFire, EnemyMech],
 	"我方阶段初_前": [FacAtx, AtxChips, AtxGodsbet, AtxSmoke],
 	"我方阶段初_增援": [Flow],
 	"我方阶段初_自爆": [BattleGuard],
@@ -29,7 +29,7 @@ static var 顺序: Dictionary = {
 	"我方阶段初_势力": [Fac],
 	"我方阶段初_指挥": [Flow],
 	"我方阶段初_后": [ClassCards, RepairCards, AtxDuo, AtxThree, CelestialV01, ColonialV01, MoonV02, ShadowV02],
-	"敌方阶段初": [AtxDuo, AtxThree, CelestialV01],
+	"敌方阶段初": [AtxDuo, AtxThree, CelestialV01, EnemyMech],
 	"我方阶段末": [CelestialV01, ColonialV01],
 	"换位后": [MoonV02, ShadowV02],
 	"卡不可打原因": [AtxGodsbet, AtxThree, AtxChips, CelestialV01, AtxFaction, ClassCards, RepairCards, MithrilV03Cards, ColonialV01, MoonV02, ShadowV02],
@@ -54,9 +54,9 @@ static var 顺序: Dictionary = {
 	"副武器攻击后": [AtxThree],
 	"副武器记账后": [CelestialV01],
 	"条件值": [AtxSmoke, AtxDuo, CelestialV01, ColonialV01, MoonV02, ShadowV02],
-	"可选目标": [ColonialV01],
+	"可选目标": [ColonialV01, EnemyMech, Rival],
 	"AI自动出牌跳过": [ColonialV01, MoonV02, ShadowV02],
-	"牌打出后": [ColonialV01, MoonV02, ShadowV02],
+	"牌打出后": [ColonialV01, MoonV02, ShadowV02, EnemyMech],
 }
 
 # 二、迭代

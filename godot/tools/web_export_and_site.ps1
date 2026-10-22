@@ -49,11 +49,14 @@ Get-ChildItem "$Proj\build\web" | Sort-Object Name |
 # ── 3. 组装站点（照 .github/workflows/pages.yml） ─────────────────────────
 Remove-Item $Site -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $Site | Out-Null
-robocopy $Repo $Site /E /XD .git .github godot _site node_modules /NFL /NDL /NJH /NJS /NP | Out-Null
+robocopy $Repo $Site /E /XD .git .github godot _site node_modules 私密 /NFL /NDL /NJH /NJS /NP | Out-Null
 New-Item -ItemType Directory -Force -Path "$Site\godot" | Out-Null
 Copy-Item "$Proj\build\web\*" "$Site\godot\" -Recurse -Force
 New-Item -ItemType File -Force -Path "$Site\.nojekyll" | Out-Null
 Write-Host "站点已组装: $Site"
+# 剧-10：公开包不许带 协作/私密/（剧本、设定、敌方设计）
+node "$Proj\tools\check_public_bundle.mjs" $Site
+if ($LASTEXITCODE -ne 0) { throw "站点里带了私密内容，停止" }
 
 # ── 4. 冒烟（本沙箱必失败，见文末） ───────────────────────────────────────
 if ($SkipSmoke) { return }

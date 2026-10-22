@@ -48,7 +48,7 @@ const check = (cond, msg) => { console.log(`${cond ? '✓' : '✗'} ${msg}`); if
   const d = (got && got.data) || {};
   // ★ 2026-10-20：这三个数跟着数据走（旧卫星国防军 / 流星小队退役后 34/32 → 29/28），
   //   改名册 / 卡表时一起改这里，别让它再拦发布；口径 = test_boundary 断言的那三个数。
-  check(d.ALLY_T === 29 && d['编成表'] === 47 && d['战术卡牌表'] === 28,
+  check(d.ALLY_T === 29 && d['编成表'] === 93 && d['战术卡牌表'] === 28,
     `Web 包里带上了数据（机师 ${d.ALLY_T} · 编成 ${d['编成表']} · 战术牌 ${d['战术卡牌表']}）`);
   const errors = logs.filter(l => /PAGEERROR|USER ERROR|SCRIPT ERROR/.test(l));
   check(errors.length === 0, `无脚本错误${errors.length ? '：' + errors.slice(0, 3).join(' | ') : ''}`);

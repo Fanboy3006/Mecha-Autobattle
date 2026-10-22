@@ -282,16 +282,21 @@ static func _敌意(宿主, 位号: int) -> Array:
 		var 间隔 := float(p.get("大技能间隔", 0.0))
 		var 武器: Variant = p.get("大技能武器")
 		if 间隔 > 0.0 and 武器 != null:
-			if Boss.Boss本回合放大技能(u, ctx):
+			var 下: Variant = Boss.大技能预告回合(u, ctx)
+			if 下 != null and float(下) == float(ctx.get("turn", 0.0)):
 				文 += " · 这一拍放【%s】" % str(武器)
 			else:
-				var 下: Variant = Boss.Boss下次技能回合(u, ctx)
 				if 下 != null:
 					文 += " · 第 %s 回合放【%s】" % [UiTheme.文本(int(float(下))), str(武器)]
 				else:
 					文 += " · 蓄力中"
 		条.append(文)
+	条.append_array(_机制提示(u, ctx))
 	return 条
+
+## 阵营机制提示：内核 `EnemyMech.机制提示` 现算（只读）。
+static func _机制提示(u: Dictionary, ctx: Dictionary) -> Array:
+	return EnemyMech.机制提示(u, ctx)
 
 ## 写播报条（文本为空时**保留上一拍**，不清成空白）。
 static func _写播报条(宿主, 文: String, 色: Color = UiTheme.高亮) -> void:

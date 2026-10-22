@@ -228,11 +228,35 @@ static func 武器可达吗(ctx: Variant, u: Variant, w: Variant, t: Variant) ->
 			return {"ok": false, "dist": 距, "why": "近战要先站到前排（或在顶位）"}
 		if not 前排资格(ctx, t) and not 无视拦:
 			return {"ok": false, "dist": 距, "why": "近战打不到敌方后排（前排还有人挡着）"}
+	if kind == KIND_DIRECT() and Fm.rowOfSlot(float(t.slot)) == Fm.ROW_BACK and not 无视遮挡(w) \
+			and 封锁线成立(ctx, str(t.get("side", ""))):
+		return {"ok": false, "dist": 距, "why": "封锁线：敌方前排 4 格塞满，直射打不到后排"}
 	if 距 < 界.x:
 		return {"ok": false, "dist": 距, "why": "太近了（距离 %d < 下限 %d）" % [距, 界.x]}
 	if 距 > 界.y:
 		return {"ok": false, "dist": 距, "why": "太远了（距离 %d > 上限 %d）" % [距, 界.y]}
 	return {"ok": true, "dist": 距, "why": ""}
+
+## N1【封锁线】：这一方前排 4 格都被占（活机体或掩体），且还有活着的带 `封锁线` 的机体。
+static func 封锁线成立(ctx: Variant, side: String) -> bool:
+	if not (ctx is Dictionary) or side.is_empty():
+		return false
+	var 们: Array = J.or_(ctx.get("enemies") if side == "enemy" else ctx.get("allies"), [])
+	var 有 := false
+	for u in 们:
+		if u is Dictionary and float(u.get("hp", 0.0)) > 0.0 and J.truthy(u.get("封锁线")):
+			有 = true
+			break
+	if not 有:
+		return false
+	for i in int(Fm.行列数(Fm.ROW_FRONT)):
+		if not Fm.格被占(ctx, side, int(Fm.slotOf(Fm.ROW_FRONT, float(i)))):
+			return false
+	return true
+
+## 界面用：「完整」/ 空串（这一方没有封锁线机体，或前排有缺口）。
+static func 封锁线状态(ctx: Variant, side: String) -> String:
+	return "完整" if 封锁线成立(ctx, side) else ""
 
 ## 便捷读法：只问能不能打。
 static func 够得着吗(ctx: Variant, u: Variant, w: Variant, t: Variant) -> bool:

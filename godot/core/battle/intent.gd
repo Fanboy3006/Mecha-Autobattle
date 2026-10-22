@@ -47,9 +47,10 @@ static func 算意图(ctx: Dictionary) -> Array:
 		var t = 动作.get("target") if 动作 is Dictionary else null
 		if bp != null:
 			条["Boss阶段"] = bp.get("第几阶段")
+			条["大技能回合"] = Boss.大技能预告回合(e, ctx)
 		if w is Dictionary:
 			var 期望 := J.round(J.num0(动作.get("expected")))
-			条["动作类型"] = "攻击"
+			条["动作类型"] = {"heal": "修理", "grant": "再动", "buff": "增益"}.get(str(动作.get("kind")), "攻击")
 			条["武器"] = str(w.get("name", ""))
 			条["武器名"] = str(w.get("name", ""))
 			条["期望"] = 期望
@@ -66,7 +67,7 @@ static func 算意图(ctx: Dictionary) -> Array:
 		var 终目标: Dictionary = t if t is Dictionary else {}
 		if t is Dictionary:
 			# 只问 `Btl.嘲讽(..., 预览 = true)` 这一处；`预览` 只读，绝不扣次数、绝不掷随机数。
-			if w is Dictionary and not Reach.isAreaKind(Reach.rangeKindOf(w)):
+			if w is Dictionary and 条.动作类型 == "攻击" and not Reach.isAreaKind(Reach.rangeKindOf(w)):
 				var 嘲 = Btl.嘲讽(ctx, e, t, true)
 				if 嘲 is Dictionary:
 					终目标 = 嘲

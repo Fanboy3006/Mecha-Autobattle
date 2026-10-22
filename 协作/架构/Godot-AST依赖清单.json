@@ -13,15 +13,15 @@
  "outputs": {
   "index": {
    "path": "协作/架构/Godot-RouteMap.md",
-   "bytes": 25754,
-   "estTokens": 7849,
+   "bytes": 25796,
+   "estTokens": 7861,
    "limit": 8000,
    "overLimit": false
   },
   "detail": {
    "path": "协作/架构/Godot-RouteMap-明细.md",
-   "bytes": 149998,
-   "estTokens": 43437
+   "bytes": 154575,
+   "estTokens": 44789
   },
   "json": {
    "path": "协作/架构/Godot-AST依赖清单.json"
@@ -31,16 +31,16 @@
   {
    "name": "core",
    "title": "core · 内核（纯逻辑；不许认识 session / presentation）",
-   "files": 78,
-   "lines": 28877,
-   "bytes": 1346419,
-   "estTokens": 407546,
-   "commentRatio": 0.1865,
-   "classNames": 78,
+   "files": 80,
+   "lines": 29284,
+   "bytes": 1367086,
+   "estTokens": 413789,
+   "commentRatio": 0.1863,
+   "classNames": 80,
    "consts": 362,
-   "funcs": 2277,
-   "edgesOut": 628,
-   "edgesIn": 1191,
+   "funcs": 2305,
+   "edgesOut": 652,
+   "edgesIn": 1276,
    "crossLayerEdgesOut": 0
   },
   {
@@ -55,38 +55,38 @@
    "consts": 32,
    "funcs": 510,
    "edgesOut": 112,
-   "edgesIn": 126,
+   "edgesIn": 137,
    "crossLayerEdgesOut": 93
   },
   {
    "name": "presentation",
    "title": "presentation · 表现层（只许经 GameSession 调内核）",
    "files": 25,
-   "lines": 9062,
-   "bytes": 422379,
-   "estTokens": 129123,
-   "commentRatio": 0.2318,
+   "lines": 9067,
+   "bytes": 422623,
+   "estTokens": 129196,
+   "commentRatio": 0.2319,
    "classNames": 15,
    "consts": 123,
-   "funcs": 682,
-   "edgesOut": 122,
-   "edgesIn": 117,
-   "crossLayerEdgesOut": 63
+   "funcs": 683,
+   "edgesOut": 123,
+   "edgesIn": 118,
+   "crossLayerEdgesOut": 64
   },
   {
    "name": "tests",
    "title": "tests · 测试与黄金样例（可以认识所有层）",
-   "files": 68,
-   "lines": 26410,
-   "bytes": 1479293,
-   "estTokens": 446579,
-   "commentRatio": 0.1676,
+   "files": 79,
+   "lines": 27141,
+   "bytes": 1520195,
+   "estTokens": 458904,
+   "commentRatio": 0.1655,
    "classNames": 5,
-   "consts": 96,
-   "funcs": 1090,
-   "edgesOut": 585,
+   "consts": 102,
+   "funcs": 1134,
+   "edgesOut": 657,
    "edgesIn": 46,
-   "crossLayerEdgesOut": 550
+   "crossLayerEdgesOut": 622
   },
   {
    "name": "其他",
@@ -105,21 +105,21 @@
   }
  ],
  "summary": {
-  "files": 190,
-  "lines": 70149,
-  "bytes": 3497605,
-  "estTokens": 1057836,
-  "commentBytes": 626703,
-  "commentRatio": 0.1792,
-  "classNames": 110,
-  "consts": 631,
-  "funcs": 4587,
-  "staticFuncs": 2688,
-  "publicFuncs": 2225,
+  "files": 203,
+  "lines": 71292,
+  "bytes": 3559418,
+  "estTokens": 1076477,
+  "commentBytes": 634040,
+  "commentRatio": 0.1781,
+  "classNames": 112,
+  "consts": 637,
+  "funcs": 4660,
+  "staticFuncs": 2717,
+  "publicFuncs": 2261,
   "innerClasses": 4,
-  "edges": 1480,
-  "productionEdges": 895,
-  "productionCrossLayerEdges": 189,
+  "edges": 1577,
+  "productionEdges": 920,
+  "productionCrossLayerEdges": 190,
   "unresolvedResources": 0,
   "violations": 0,
   "coreToFactionRefs": 117,
@@ -133,7 +133,7 @@
   "sizeRatchetFiles": 21,
   "sizeRatchetOverLimit": 0,
   "sizeWarnings": 0,
-  "indexEstTokens": 7849,
+  "indexEstTokens": 7861,
   "indexTokenLimit": 8000
  },
  "classIndex": {
@@ -326,6 +326,11 @@
    "file": "core/data/display_names.gd",
    "layer": "core",
    "line": 3
+  },
+  "EnemyMech": {
+   "file": "core/battle/enemy_mech.gd",
+   "layer": "core",
+   "line": 2
   },
   "EventView": {
    "file": "presentation/menus/event_view.gd",
@@ -556,6 +561,11 @@
    "file": "presentation/battle/result_view.gd",
    "layer": "presentation",
    "line": 17
+  },
+  "Rival": {
+   "file": "core/battle/rival.gd",
+   "layer": "core",
+   "line": 3
   },
   "RosterManager": {
    "file": "core/run/roster_manager.gd",
@@ -832,8 +842,8 @@
      "static": true,
      "returns": "Variant",
      "signature": "static func chooseHeal(actor: Dictionary, ctx: Dictionary) -> Variant",
-     "callsOutside": 0,
-     "callsTotal": 0,
+     "callsOutside": 1,
+     "callsTotal": 1,
      "doc": ""
     },
     {
@@ -852,8 +862,8 @@
      "static": true,
      "returns": "Variant",
      "signature": "static func chooseSupport(actor: Dictionary, ctx: Dictionary) -> Variant",
-     "callsOutside": 0,
-     "callsTotal": 0,
+     "callsOutside": 1,
+     "callsTotal": 1,
      "doc": ""
     },
     {
@@ -862,8 +872,8 @@
      "static": true,
      "returns": "Variant",
      "signature": "static func aiAction(actor: Dictionary, ctx: Dictionary) -> Variant",
-     "callsOutside": 2,
-     "callsTotal": 2,
+     "callsOutside": 3,
+     "callsTotal": 3,
      "doc": ""
     },
     {
@@ -1086,7 +1096,7 @@
     {
      "from": "core/battle/boss.gd",
      "layer": "core",
-     "n": 4,
+     "n": 6,
      "symbols": [
       "Ai"
      ]
@@ -1165,6 +1175,14 @@
     },
     {
      "from": "tests/unit/test_fac_turn_start.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "Ai"
+     ]
+    },
+    {
+     "from": "tests/unit/test_faction_layers.gd",
      "layer": "tests",
      "n": 1,
      "symbols": [
@@ -7484,14 +7502,14 @@
   {
    "file": "core/battle/boss.gd",
    "layer": "core",
-   "lines": 146,
-   "bytes": 7062,
-   "chars": 5534,
-   "cjkChars": 758,
-   "estTokens": 2123,
-   "commentBytes": 742,
-   "commentRatio": 0.1051,
-   "commentLines": 7,
+   "lines": 251,
+   "bytes": 12712,
+   "chars": 9774,
+   "cjkChars": 1457,
+   "estTokens": 3833,
+   "commentBytes": 1761,
+   "commentRatio": 0.1385,
+   "commentLines": 16,
    "trailingCommentLines": 0,
    "className": "Boss",
    "classLine": 2,
@@ -7499,7 +7517,7 @@
    "extendsLine": 3,
    "innerClasses": 0,
    "responsibility": "61-Boss.js：站桩 Boss 脚本（阶段 / 大技能间隔 / 伤害倍率）。",
-   "declares": 12,
+   "declares": 18,
    "consts": [],
    "funcs": [
     {
@@ -7508,8 +7526,8 @@
      "static": true,
      "returns": "Variant",
      "signature": "static func 取Boss脚本(u: Variant) -> Variant",
-     "callsOutside": 1,
-     "callsTotal": 1,
+     "callsOutside": 3,
+     "callsTotal": 3,
      "doc": ""
     },
     {
@@ -7548,8 +7566,8 @@
      "static": true,
      "returns": "bool",
      "signature": "static func Boss本回合放大技能(u: Variant, ctx: Variant) -> bool",
-     "callsOutside": 1,
-     "callsTotal": 1,
+     "callsOutside": 0,
+     "callsTotal": 0,
      "doc": ""
     },
     {
@@ -7558,23 +7576,43 @@
      "static": true,
      "returns": "Variant",
      "signature": "static func Boss下次技能回合(u: Variant, ctx: Variant) -> Variant",
-     "callsOutside": 1,
-     "callsTotal": 1,
+     "callsOutside": 0,
+     "callsTotal": 0,
      "doc": ""
     },
     {
+     "name": "脚本大技能武器们",
+     "line": 60,
+     "static": true,
+     "returns": "Array",
+     "signature": "static func 脚本大技能武器们(s: Variant) -> Array",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": "脚本里出现过的所有大技能武器名（顶层 + 各阶段）。"
+    },
+    {
+     "name": "大技能预告回合",
+     "line": 73,
+     "static": true,
+     "returns": "Variant",
+     "signature": "static func 大技能预告回合(u: Variant, ctx: Variant) -> Variant",
+     "callsOutside": 5,
+     "callsTotal": 5,
+     "doc": "没配大技能 → null。只读，不改任何状态。"
+    },
+    {
      "name": "Boss本回合禁用",
-     "line": 59,
+     "line": 85,
      "static": true,
      "returns": "bool",
      "signature": "static func Boss本回合禁用(u: Variant, ctx: Variant, w: Variant) -> bool",
-     "callsOutside": 1,
-     "callsTotal": 1,
+     "callsOutside": 7,
+     "callsTotal": 7,
      "doc": ""
     },
     {
      "name": "Boss伤害倍率",
-     "line": 69,
+     "line": 98,
      "static": true,
      "returns": "float",
      "signature": "static func Boss伤害倍率(u: Variant) -> float",
@@ -7584,7 +7622,7 @@
     },
     {
      "name": "Boss大技能条目",
-     "line": 74,
+     "line": 103,
      "static": true,
      "returns": "Variant",
      "signature": "static func Boss大技能条目(u: Dictionary, ctx: Dictionary) -> Variant",
@@ -7594,7 +7632,7 @@
     },
     {
      "name": "单武器动作",
-     "line": 80,
+     "line": 109,
      "static": true,
      "returns": "Variant",
      "signature": "static func 单武器动作(u: Dictionary, 条目: Variant, ctx: Dictionary) -> Variant",
@@ -7604,30 +7642,70 @@
     },
     {
      "name": "bossAction",
-     "line": 100,
+     "line": 129,
      "static": true,
      "returns": "Variant",
      "signature": "static func bossAction(u: Dictionary, ctx: Dictionary) -> Variant",
-     "callsOutside": 4,
-     "callsTotal": 4,
+     "callsOutside": 6,
+     "callsTotal": 6,
      "doc": "（`Boss.bossTurn`）都走 `bossAction`，所以换位重算出来的意图两边逐次相同。"
     },
     {
+     "name": "敌方辅助动作",
+     "line": 147,
+     "static": true,
+     "returns": "Variant",
+     "signature": "static func 敌方辅助动作(u: Dictionary, ctx: Dictionary) -> Variant",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": "预告（`Btl.算意图`）与实战都经 `bossAction`，所以同源。没有这类武器的敌机一律返回 null。"
+    },
+    {
      "name": "bossTurn",
-     "line": 115,
+     "line": 163,
      "static": true,
      "returns": "Variant",
      "signature": "static func bossTurn(u: Dictionary, ctx: Dictionary) -> Variant",
+     "callsOutside": 14,
+     "callsTotal": 14,
+     "doc": "[换位意图锁定] 待机的锁定在这里收口：预告与实战都写同一条〔待机〕战报、都返回 `none`。"
+    },
+    {
+     "name": "阶段进场",
+     "line": 199,
+     "static": true,
+     "returns": "void",
+     "signature": "static func 阶段进场(u: Dictionary, ctx: Dictionary, n: int) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": "N4 进入第 n 阶段：执行 `阶段[n-2].进场`（战报 → 词条 → 增援）。只由 `bossTurn` 调，每阶段一次。"
+    },
+    {
+     "name": "撤离检查",
+     "line": 226,
+     "static": true,
+     "returns": "Variant",
+     "signature": "static func 撤离检查(ctx: Dictionary) -> Variant",
      "callsOutside": 2,
      "callsTotal": 2,
-     "doc": "[换位意图锁定] 待机的锁定在这里收口：预告与实战都写同一条〔待机〕战报、都返回 `none`。"
+     "doc": "N9 中途撤离：带 `撤退 {HP线, 回合, 条件}` 的敌机到线 / 到回合 → 移出战场，本场判我方胜利（`撤退: true`）。"
+    },
+    {
+     "name": "进场增援规格",
+     "line": 245,
+     "static": true,
+     "returns": "Dictionary",
+     "signature": "static func 进场增援规格(u: Dictionary, e: Variant) -> Dictionary",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": "进场增援规格：等级 / 强化按 Boss 的层与梯队推。"
     }
    ],
    "dependsOn": [
     {
      "to": "core/battle/ai.gd",
      "layer": "core",
-     "n": 4,
+     "n": 6,
      "symbols": [
       "Ai"
      ],
@@ -7649,7 +7727,7 @@
     {
      "to": "core/battle/btl.gd",
      "layer": "core",
-     "n": 8,
+     "n": 13,
      "symbols": [
       "Btl"
      ],
@@ -7669,11 +7747,55 @@
      ]
     },
     {
+     "to": "core/battle/data_fn.gd",
+     "layer": "core",
+     "n": 3,
+     "symbols": [
+      "DataFn"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/diff.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "Diff"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/flow.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "Flow"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
      "to": "core/battle/reach.gd",
      "layer": "core",
-     "n": 2,
+     "n": 5,
      "symbols": [
       "Reach"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/rival.gd",
+     "layer": "core",
+     "n": 3,
+     "symbols": [
+      "Rival"
      ],
      "kinds": [
       "类引用"
@@ -7691,9 +7813,20 @@
      ]
     },
     {
+     "to": "core/battle/traits.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "Traits"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
      "to": "core/battle/units.gd",
      "layer": "core",
-     "n": 2,
+     "n": 4,
      "symbols": [
       "Units"
      ],
@@ -7704,7 +7837,7 @@
     {
      "to": "core/data/db.gd",
      "layer": "core",
-     "n": 1,
+     "n": 2,
      "symbols": [
       "Db"
      ],
@@ -7715,7 +7848,7 @@
     {
      "to": "core/util/js.gd",
      "layer": "core",
-     "n": 35,
+     "n": 61,
      "symbols": [
       "J"
      ],
@@ -7744,7 +7877,15 @@
     {
      "from": "core/battle/intent.gd",
      "layer": "core",
-     "n": 2,
+     "n": 3,
+     "symbols": [
+      "Boss"
+     ]
+    },
+    {
+     "from": "core/battle/setup.gd",
+     "layer": "core",
+     "n": 1,
      "symbols": [
       "Boss"
      ]
@@ -7760,7 +7901,7 @@
     {
      "from": "presentation/battle/board_panel.gd",
      "layer": "presentation",
-     "n": 4,
+     "n": 3,
      "symbols": [
       "Boss"
      ]
@@ -7769,6 +7910,38 @@
      "from": "session/tooltip_text.gd",
      "layer": "session",
      "n": 2,
+     "symbols": [
+      "Boss"
+     ]
+    },
+    {
+     "from": "tests/unit/test_boss_phase_entry.gd",
+     "layer": "tests",
+     "n": 13,
+     "symbols": [
+      "Boss"
+     ]
+    },
+    {
+     "from": "tests/unit/test_boss_retreat.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "Boss"
+     ]
+    },
+    {
+     "from": "tests/unit/test_faction_layers.gd",
+     "layer": "tests",
+     "n": 2,
+     "symbols": [
+      "Boss"
+     ]
+    },
+    {
+     "from": "tests/unit/test_named_bosses.gd",
+     "layer": "tests",
+     "n": 10,
      "symbols": [
       "Boss"
      ]
@@ -7826,8 +7999,8 @@
      "static": true,
      "returns": "void",
      "signature": "static func pushLog(ctx: Dictionary, text: String, extra: Variant = null) -> void",
-     "callsOutside": 201,
-     "callsTotal": 201,
+     "callsOutside": 208,
+     "callsTotal": 208,
      "doc": ""
     },
     {
@@ -7846,8 +8019,8 @@
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 谁(u: Dictionary) -> Dictionary",
-     "callsOutside": 131,
-     "callsTotal": 131,
+     "callsOutside": 138,
+     "callsTotal": 138,
      "doc": ""
     },
     {
@@ -8006,8 +8179,8 @@
      "static": true,
      "returns": "float",
      "signature": "static func 加战意(u: Variant, 值: Variant, _ctx: Variant = null, _原因: String = \"\") -> float",
-     "callsOutside": 60,
-     "callsTotal": 60,
+     "callsOutside": 61,
+     "callsTotal": 61,
      "doc": ""
     },
     {
@@ -8176,8 +8349,8 @@
      "static": true,
      "returns": "float",
      "signature": "static func 应用全场词条(ctx: Dictionary) -> float",
-     "callsOutside": 2,
-     "callsTotal": 2,
+     "callsOutside": 3,
+     "callsTotal": 3,
      "doc": ""
     },
     {
@@ -9075,7 +9248,7 @@
     {
      "from": "core/battle/boss.gd",
      "layer": "core",
-     "n": 8,
+     "n": 13,
      "symbols": [
       "Btl"
      ]
@@ -9172,6 +9345,14 @@
      "from": "core/battle/deck_flow.gd",
      "layer": "core",
      "n": 62,
+     "symbols": [
+      "Btl"
+     ]
+    },
+    {
+     "from": "core/battle/enemy_mech.gd",
+     "layer": "core",
+     "n": 9,
      "symbols": [
       "Btl"
      ]
@@ -9300,6 +9481,14 @@
      "from": "core/battle/repair_cards.gd",
      "layer": "core",
      "n": 19,
+     "symbols": [
+      "Btl"
+     ]
+    },
+    {
+     "from": "core/battle/rival.gd",
+     "layer": "core",
+     "n": 2,
      "symbols": [
       "Btl"
      ]
@@ -9701,14 +9890,14 @@
   {
    "file": "core/battle/calc.gd",
    "layer": "core",
-   "lines": 1182,
-   "bytes": 57365,
-   "chars": 43488,
-   "cjkChars": 6862,
-   "estTokens": 17327,
-   "commentBytes": 8523,
-   "commentRatio": 0.1486,
-   "commentLines": 94,
+   "lines": 1200,
+   "bytes": 58346,
+   "chars": 44291,
+   "cjkChars": 6943,
+   "estTokens": 17614,
+   "commentBytes": 8720,
+   "commentRatio": 0.1495,
+   "commentLines": 96,
    "trailingCommentLines": 12,
    "className": "Calc",
    "classLine": 2,
@@ -9716,7 +9905,7 @@
    "extendsLine": 3,
    "innerClasses": 0,
    "responsibility": "20-战斗计算.js：命中 / 暴击 / 伤害管线（弱点 → 装甲 → 防御 → 公式 → 屏障 → λ力场 → 护盾…",
-   "declares": 72,
+   "declares": 74,
    "consts": [
     {
      "name": "STAT_KEY",
@@ -9725,7 +9914,7 @@
     },
     {
      "name": "九死一生_每阶段上限",
-     "line": 1037,
+     "line": 1055,
      "doc": ""
     }
    ],
@@ -9865,14 +10054,34 @@
      "line": 64,
      "static": true,
      "returns": "float",
-     "signature": "static func lsLeft(u: Dictionary, turn: Variant) -> float",
-     "callsOutside": 0,
-     "callsTotal": 0,
+     "signature": "static func lsLeft(u: Dictionary, turn: Variant, ctx: Variant = null) -> float",
+     "callsOutside": 2,
+     "callsTotal": 2,
      "doc": ""
     },
     {
+     "name": "λ次数上限",
+     "line": 69,
+     "static": true,
+     "returns": "float",
+     "signature": "static func λ次数上限(u: Dictionary, ctx: Variant) -> float",
+     "callsOutside": 5,
+     "callsTotal": 5,
+     "doc": "N3 λ 共振：同侧活着的「λ 力场 + λ共振」≥2 台 → 每回合减免 3 次（否则 2 次）。"
+    },
+    {
+     "name": "λ减免量",
+     "line": 80,
+     "static": true,
+     "returns": "float",
+     "signature": "static func λ减免量(u: Dictionary) -> float",
+     "callsOutside": 4,
+     "callsTotal": 4,
+     "doc": "λ 力场每下的减免量：单位写了 `λ减免` 就按它，否则 3000。"
+    },
+    {
      "name": "hitRate",
-     "line": 67,
+     "line": 84,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func hitRate(att: Dictionary, w: Dictionary, def: Dictionary, opts: Dictionary = {}) -> Dictionary",
@@ -9882,7 +10091,7 @@
     },
     {
      "name": "critRate",
-     "line": 98,
+     "line": 115,
      "static": true,
      "returns": "float",
      "signature": "static func critRate(w: Dictionary, att: Variant, def: Variant = null, ctx: Variant = null) -> float",
@@ -9892,7 +10101,7 @@
     },
     {
      "name": "无视抗性",
-     "line": 109,
+     "line": 126,
      "static": true,
      "returns": "bool",
      "signature": "static func 无视抗性(att: Variant) -> bool",
@@ -9902,7 +10111,7 @@
     },
     {
      "name": "weakList",
-     "line": 114,
+     "line": 131,
      "static": true,
      "returns": "Array",
      "signature": "static func weakList(def: Dictionary, w: Variant, o: Dictionary = {}) -> Array",
@@ -9912,7 +10121,7 @@
     },
     {
      "name": "护卫减伤值",
-     "line": 145,
+     "line": 162,
      "static": true,
      "returns": "float",
      "signature": "static func 护卫减伤值(u: Variant) -> float",
@@ -9922,7 +10131,7 @@
     },
     {
      "name": "同侧还有别人",
-     "line": 150,
+     "line": 167,
      "static": true,
      "returns": "bool",
      "signature": "static func 同侧还有别人(u: Variant, ctx: Variant) -> bool",
@@ -9932,7 +10141,7 @@
     },
     {
      "name": "攻击距离",
-     "line": 159,
+     "line": 176,
      "static": true,
      "returns": "int",
      "signature": "static func 攻击距离(att: Variant, def: Variant) -> int",
@@ -9942,7 +10151,7 @@
     },
     {
      "name": "远距判定",
-     "line": 167,
+     "line": 184,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 远距判定(_ctx: Variant, att: Variant, def: Variant, w: Variant) -> Dictionary",
@@ -9952,7 +10161,7 @@
     },
     {
      "name": "狙击之王加成",
-     "line": 184,
+     "line": 201,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 狙击之王加成(_ctx: Variant, att: Variant, def: Variant) -> Dictionary",
@@ -9962,7 +10171,7 @@
     },
     {
      "name": "v03伤害倍率",
-     "line": 193,
+     "line": 210,
      "static": true,
      "returns": "float",
      "signature": "static func v03伤害倍率(ctx: Variant, att: Variant, def: Variant, w: Variant) -> float",
@@ -9972,7 +10181,7 @@
     },
     {
      "name": "statCoef",
-     "line": 223,
+     "line": 240,
      "static": true,
      "returns": "float",
      "signature": "static func statCoef(atk: float, D: float) -> float",
@@ -9982,17 +10191,17 @@
     },
     {
      "name": "dmgCore",
-     "line": 227,
+     "line": 244,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func dmgCore(att: Variant, w: Dictionary, def: Dictionary, o: Dictionary = {}) -> Dictionary",
-     "callsOutside": 4,
-     "callsTotal": 4,
+     "callsOutside": 8,
+     "callsTotal": 8,
      "doc": "伤害管线。返回 c；preview 时屏障 / 力场 / 护盾不扣次数与数值。"
     },
     {
      "name": "wv",
-     "line": 351,
+     "line": 369,
      "static": true,
      "returns": "Variant",
      "signature": "static func wv(u: Variant, w: Dictionary, key: String) -> Variant",
@@ -10002,7 +10211,7 @@
     },
     {
      "name": "expectedDamage",
-     "line": 358,
+     "line": 376,
      "static": true,
      "returns": "float",
      "signature": "static func expectedDamage(att: Dictionary, def: Dictionary, w: Dictionary, opts: Dictionary = {}) -> float",
@@ -10012,7 +10221,7 @@
     },
     {
      "name": "startCdOf",
-     "line": 365,
+     "line": 383,
      "static": true,
      "returns": "float",
      "signature": "static func startCdOf(w: Dictionary) -> float",
@@ -10022,7 +10231,7 @@
     },
     {
      "name": "weaponPlayable",
-     "line": 370,
+     "line": 388,
      "static": true,
      "returns": "bool",
      "signature": "static func weaponPlayable(w: Variant) -> bool",
@@ -10032,7 +10241,7 @@
     },
     {
      "name": "usableWeapons",
-     "line": 383,
+     "line": 401,
      "static": true,
      "returns": "Array",
      "signature": "static func usableWeapons(u: Dictionary, ctx: Variant) -> Array",
@@ -10042,7 +10251,7 @@
     },
     {
      "name": "spendWeapon",
-     "line": 400,
+     "line": 418,
      "static": true,
      "returns": "void",
      "signature": "static func spendWeapon(_u: Dictionary, entry: Variant) -> void",
@@ -10052,7 +10261,7 @@
     },
     {
      "name": "healAmount",
-     "line": 411,
+     "line": 429,
      "static": true,
      "returns": "float",
      "signature": "static func healAmount(u: Dictionary, w: Dictionary) -> float",
@@ -10062,7 +10271,7 @@
     },
     {
      "name": "标定经济参数",
-     "line": 414,
+     "line": 432,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 标定经济参数() -> Dictionary",
@@ -10072,7 +10281,7 @@
     },
     {
      "name": "标定经济开",
-     "line": 418,
+     "line": 436,
      "static": true,
      "returns": "bool",
      "signature": "static func 标定经济开() -> bool",
@@ -10082,7 +10291,7 @@
     },
     {
      "name": "标定数",
-     "line": 421,
+     "line": 439,
      "static": true,
      "returns": "float",
      "signature": "static func 标定数(键: String, 默认值: float) -> float",
@@ -10092,7 +10301,7 @@
     },
     {
      "name": "标定层数上限",
-     "line": 425,
+     "line": 443,
      "static": true,
      "returns": "float",
      "signature": "static func 标定层数上限() -> float",
@@ -10102,7 +10311,7 @@
     },
     {
      "name": "_子",
-     "line": 428,
+     "line": 446,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func _子(名: String) -> Dictionary",
@@ -10112,7 +10321,7 @@
     },
     {
      "name": "标定狙击暴击",
-     "line": 431,
+     "line": 449,
      "static": true,
      "returns": "float",
      "signature": "static func 标定狙击暴击() -> float",
@@ -10122,7 +10331,7 @@
     },
     {
      "name": "标定狙击倍率",
-     "line": 435,
+     "line": 453,
      "static": true,
      "returns": "float",
      "signature": "static func 标定狙击倍率() -> float",
@@ -10132,7 +10341,7 @@
     },
     {
      "name": "标定范围每层",
-     "line": 439,
+     "line": 457,
      "static": true,
      "returns": "float",
      "signature": "static func 标定范围每层() -> float",
@@ -10142,7 +10351,7 @@
     },
     {
      "name": "标定狙击消耗层",
-     "line": 443,
+     "line": 461,
      "static": true,
      "returns": "float",
      "signature": "static func 标定狙击消耗层() -> float",
@@ -10152,7 +10361,7 @@
     },
     {
      "name": "标定经济条",
-     "line": 447,
+     "line": 465,
      "static": true,
      "returns": "Variant",
      "signature": "static func 标定经济条(u: Variant) -> Variant",
@@ -10162,7 +10371,7 @@
     },
     {
      "name": "标定经济层数",
-     "line": 451,
+     "line": 469,
      "static": true,
      "returns": "float",
      "signature": "static func 标定经济层数(u: Variant) -> float",
@@ -10172,7 +10381,7 @@
     },
     {
      "name": "标定经济拿条",
-     "line": 455,
+     "line": 473,
      "static": true,
      "returns": "Variant",
      "signature": "static func 标定经济拿条(u: Variant) -> Variant",
@@ -10182,7 +10391,7 @@
     },
     {
      "name": "标定来源名",
-     "line": 465,
+     "line": 483,
      "static": true,
      "returns": "Array",
      "signature": "static func 标定来源名(d: Variant) -> Array",
@@ -10192,7 +10401,7 @@
     },
     {
      "name": "标定经济产标",
-     "line": 473,
+     "line": 491,
      "static": true,
      "returns": "float",
      "signature": "static func 标定经济产标(ctx: Variant, 攻击者: Variant, 目标: Variant) -> float",
@@ -10202,7 +10411,7 @@
     },
     {
      "name": "标定经济狙击加成",
-     "line": 506,
+     "line": 524,
      "static": true,
      "returns": "Variant",
      "signature": "static func 标定经济狙击加成(目标: Variant) -> Variant",
@@ -10212,7 +10421,7 @@
     },
     {
      "name": "标定经济消耗一",
-     "line": 513,
+     "line": 531,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 标定经济消耗一(目标: Variant) -> Dictionary",
@@ -10222,7 +10431,7 @@
     },
     {
      "name": "标定经济引爆",
-     "line": 523,
+     "line": 541,
      "static": true,
      "returns": "Variant",
      "signature": "static func 标定经济引爆(ctx: Variant, 攻击者: Variant, 目标: Variant, w: Variant, 主伤害: Variant) -> Variant",
@@ -10232,7 +10441,7 @@
     },
     {
      "name": "标定来源词",
-     "line": 555,
+     "line": 573,
      "static": true,
      "returns": "String",
      "signature": "static func 标定来源词(d: Variant) -> String",
@@ -10242,7 +10451,7 @@
     },
     {
      "name": "标定连锁文本",
-     "line": 559,
+     "line": 577,
      "static": true,
      "returns": "String",
      "signature": "static func 标定连锁文本(引爆者: Dictionary, _目标: Variant, 来源词: String, 伤害: Variant, 打死了: bool) -> String",
@@ -10252,7 +10461,7 @@
     },
     {
      "name": "标定经济记录",
-     "line": 562,
+     "line": 580,
      "static": true,
      "returns": "void",
      "signature": "static func 标定经济记录(ctx: Variant, 攻击者: Variant, 目标: Variant, 一: Variant, 记号: Variant) -> void",
@@ -10262,7 +10471,7 @@
     },
     {
      "name": "命中段步长",
-     "line": 579,
+     "line": 597,
      "static": true,
      "returns": "float",
      "signature": "static func 命中段步长(att: Dictionary, w: Dictionary, 段: Dictionary) -> float",
@@ -10272,7 +10481,7 @@
     },
     {
      "name": "resolveAttack",
-     "line": 584,
+     "line": 602,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func resolveAttack(att: Dictionary, def: Dictionary, w: Dictionary, ctx: Dictionary, opts: Dictionary = {}) -> Dictionary",
@@ -10282,7 +10491,7 @@
     },
     {
      "name": "_单体结算",
-     "line": 590,
+     "line": 608,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func _单体结算(att: Dictionary, def: Dictionary, w: Dictionary, ctx: Dictionary, opts: Dictionary = {}) -> Dictionary",
@@ -10292,7 +10501,7 @@
     },
     {
      "name": "散布适用",
-     "line": 880,
+     "line": 898,
      "static": true,
      "returns": "bool",
      "signature": "static func 散布适用(w: Variant, _ctx: Variant, opts: Dictionary) -> bool",
@@ -10302,7 +10511,7 @@
     },
     {
      "name": "散布候选",
-     "line": 890,
+     "line": 908,
      "static": true,
      "returns": "Array",
      "signature": "static func 散布候选(def: Dictionary, ctx: Variant) -> Array",
@@ -10312,7 +10521,7 @@
     },
     {
      "name": "_散布结算",
-     "line": 905,
+     "line": 923,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func _散布结算(att: Dictionary, def: Dictionary, w: Dictionary, ctx: Dictionary, opts: Dictionary) -> Dictionary",
@@ -10322,7 +10531,7 @@
     },
     {
      "name": "_落字段",
-     "line": 1005,
+     "line": 1023,
      "static": true,
      "returns": "void",
      "signature": "static func _落字段(r: Dictionary, 落点: Array, 偏移: int, 池录: Array, 甲表: Dictionary) -> void",
@@ -10332,7 +10541,7 @@
     },
     {
      "name": "_聚合池",
-     "line": 1015,
+     "line": 1033,
      "static": true,
      "returns": "Array",
      "signature": "static func _聚合池(池录: Array, 落点: Array, 甲表: Dictionary) -> Array",
@@ -10342,7 +10551,7 @@
     },
     {
      "name": "九死一生_闪",
-     "line": 1039,
+     "line": 1057,
      "static": true,
      "returns": "bool",
      "signature": "static func 九死一生_闪(u: Variant) -> bool",
@@ -10352,7 +10561,7 @@
     },
     {
      "name": "九死一生_本阶段轮转",
-     "line": 1042,
+     "line": 1060,
      "static": true,
      "returns": "int",
      "signature": "static func 九死一生_本阶段轮转(u: Variant) -> int",
@@ -10362,7 +10571,7 @@
     },
     {
      "name": "九死一生_本阶段合计",
-     "line": 1045,
+     "line": 1063,
      "static": true,
      "returns": "int",
      "signature": "static func 九死一生_本阶段合计(ctx: Variant) -> int",
@@ -10372,7 +10581,7 @@
     },
     {
      "name": "九死一生_阶段切换",
-     "line": 1052,
+     "line": 1070,
      "static": true,
      "returns": "void",
      "signature": "static func 九死一生_阶段切换(ctx: Dictionary) -> void",
@@ -10382,7 +10591,7 @@
     },
     {
      "name": "九死一生_判定",
-     "line": 1060,
+     "line": 1078,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 九死一生_判定(ctx: Dictionary, att: Variant, def: Variant, 记账: Dictionary) -> Dictionary",
@@ -10392,7 +10601,7 @@
     },
     {
      "name": "九死一生_轮转",
-     "line": 1098,
+     "line": 1116,
      "static": true,
      "returns": "Array",
      "signature": "static func 九死一生_轮转(u: Dictionary) -> Array",
@@ -10402,7 +10611,7 @@
     },
     {
      "name": "_结算单机牌组战意",
-     "line": 1117,
+     "line": 1135,
      "static": true,
      "returns": "void",
      "signature": "static func _结算单机牌组战意(att: Variant, def: Variant, landed: float, ctx: Dictionary, 原HP: float, 跳过攻击方奖励: bool = false) -> void",
@@ -10412,7 +10621,7 @@
     },
     {
      "name": "应用武器debuff",
-     "line": 1136,
+     "line": 1154,
      "static": true,
      "returns": "String",
      "signature": "static func 应用武器debuff(def: Dictionary, d: Dictionary, 武器名: Variant, att: Variant) -> String",
@@ -10422,7 +10631,7 @@
     },
     {
      "name": "debuff文字",
-     "line": 1167,
+     "line": 1185,
      "static": true,
      "returns": "String",
      "signature": "static func debuff文字(d: Dictionary) -> String",
@@ -10600,7 +10809,7 @@
     {
      "to": "core/util/js.gd",
      "layer": "core",
-     "n": 292,
+     "n": 299,
      "symbols": [
       "J"
      ],
@@ -10681,6 +10890,14 @@
      "from": "core/battle/colonial_units.gd",
      "layer": "core",
      "n": 1,
+     "symbols": [
+      "Calc"
+     ]
+    },
+    {
+     "from": "core/battle/enemy_mech.gd",
+     "layer": "core",
+     "n": 2,
      "symbols": [
       "Calc"
      ]
@@ -10910,6 +11127,14 @@
      ]
     },
     {
+     "from": "tests/unit/test_lambda_resonance.gd",
+     "layer": "tests",
+     "n": 11,
+     "symbols": [
+      "Calc"
+     ]
+    },
+    {
      "from": "tests/unit/test_mithril_v03.gd",
      "layer": "tests",
      "n": 7,
@@ -10945,6 +11170,14 @@
      "from": "tests/unit/test_repair_cards.gd",
      "layer": "tests",
      "n": 3,
+     "symbols": [
+      "Calc"
+     ]
+    },
+    {
+     "from": "tests/unit/test_rival.gd",
+     "layer": "tests",
+     "n": 2,
      "symbols": [
       "Calc"
      ]
@@ -12093,13 +12326,13 @@
   {
    "file": "core/battle/card_play.gd",
    "layer": "core",
-   "lines": 292,
-   "bytes": 11963,
-   "chars": 8881,
-   "cjkChars": 1532,
-   "estTokens": 3632,
+   "lines": 298,
+   "bytes": 12173,
+   "chars": 9059,
+   "cjkChars": 1548,
+   "estTokens": 3694,
    "commentBytes": 1408,
-   "commentRatio": 0.1177,
+   "commentRatio": 0.1157,
    "commentLines": 24,
    "trailingCommentLines": 0,
    "className": "CardPlay",
@@ -12329,7 +12562,7 @@
     },
     {
      "name": "_收尾",
-     "line": 257,
+     "line": 261,
      "static": true,
      "returns": "String",
      "signature": "static func _收尾(ctx: Dictionary, u: Dictionary, card: Dictionary, 区: String, 从公有: bool) -> String",
@@ -12339,7 +12572,7 @@
     },
     {
      "name": "_实际费",
-     "line": 265,
+     "line": 269,
      "static": true,
      "returns": "float",
      "signature": "static func _实际费(ctx: Dictionary, u: Dictionary, card: Dictionary, 区: String, 从公有: bool) -> float",
@@ -12349,7 +12582,7 @@
     },
     {
      "name": "_在武器栏",
-     "line": 279,
+     "line": 285,
      "static": true,
      "returns": "bool",
      "signature": "static func _在武器栏(u: Dictionary, card: Dictionary) -> bool",
@@ -12359,7 +12592,7 @@
     },
     {
      "name": "_有武器",
-     "line": 285,
+     "line": 291,
      "static": true,
      "returns": "bool",
      "signature": "static func _有武器(card: Dictionary) -> bool",
@@ -12369,7 +12602,7 @@
     },
     {
      "name": "_武器是修理",
-     "line": 289,
+     "line": 295,
      "static": true,
      "returns": "bool",
      "signature": "static func _武器是修理(w: Variant) -> bool",
@@ -12396,6 +12629,17 @@
      "n": 2,
      "symbols": [
       "DeckFlow"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/morale.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "BattleMorale"
      ],
      "kinds": [
       "类引用"
@@ -12510,6 +12754,14 @@
      "from": "core/battle/deck_flow.gd",
      "layer": "core",
      "n": 2,
+     "symbols": [
+      "CardPlay"
+     ]
+    },
+    {
+     "from": "core/battle/enemy_mech.gd",
+     "layer": "core",
+     "n": 1,
      "symbols": [
       "CardPlay"
      ]
@@ -18018,8 +18270,8 @@
      "static": true,
      "returns": "String",
      "signature": "static func tierOfEnemy(k: Variant) -> String",
-     "callsOutside": 6,
-     "callsTotal": 6,
+     "callsOutside": 15,
+     "callsTotal": 15,
      "doc": "11-敌方梯队.js tierOfEnemy()"
     },
     {
@@ -18069,6 +18321,14 @@
     }
    ],
    "dependsBy": [
+    {
+     "from": "core/battle/boss.gd",
+     "layer": "core",
+     "n": 3,
+     "symbols": [
+      "DataFn"
+     ]
+    },
     {
      "from": "core/battle/card_pool.gd",
      "layer": "core",
@@ -18121,6 +18381,30 @@
      "from": "core/run/roster_manager.gd",
      "layer": "core",
      "n": 1,
+     "symbols": [
+      "DataFn"
+     ]
+    },
+    {
+     "from": "tests/unit/test_faction_layers.gd",
+     "layer": "tests",
+     "n": 2,
+     "symbols": [
+      "DataFn"
+     ]
+    },
+    {
+     "from": "tests/unit/test_l1_enemies.gd",
+     "layer": "tests",
+     "n": 2,
+     "symbols": [
+      "DataFn"
+     ]
+    },
+    {
+     "from": "tests/unit/test_named_bosses.gd",
+     "layer": "tests",
+     "n": 2,
      "symbols": [
       "DataFn"
      ]
@@ -19333,8 +19617,8 @@
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 敌方强度倍率(层: Variant, 梯队: Variant) -> Dictionary",
-     "callsOutside": 2,
-     "callsTotal": 2,
+     "callsOutside": 3,
+     "callsTotal": 3,
      "doc": ""
     },
     {
@@ -19415,6 +19699,14 @@
      ]
     },
     {
+     "from": "core/battle/boss.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "Diff"
+     ]
+    },
+    {
      "from": "core/battle/setup.gd",
      "layer": "core",
      "n": 1,
@@ -19444,6 +19736,252 @@
      "n": 1,
      "symbols": [
       "Diff"
+     ]
+    }
+   ]
+  },
+  {
+   "file": "core/battle/enemy_mech.gd",
+   "layer": "core",
+   "lines": 121,
+   "bytes": 6537,
+   "chars": 4825,
+   "cjkChars": 848,
+   "estTokens": 1984,
+   "commentBytes": 1221,
+   "commentRatio": 0.1868,
+   "commentLines": 12,
+   "trailingCommentLines": 0,
+   "className": "EnemyMech",
+   "classLine": 2,
+   "extends": "RefCounted",
+   "extendsLine": 3,
+   "innerClasses": 0,
+   "responsibility": "职责：敌方阵营机制里要挂规则钩子的部分（N4 粒子抑制场的精神牌加费、N2 悬赏令、N5 影锁拽位）。只认单位数据字段…",
+   "declares": 8,
+   "consts": [],
+   "funcs": [
+    {
+     "name": "牌打出后",
+     "line": 6,
+     "static": true,
+     "returns": "void",
+     "signature": "static func 牌打出后(ctx: Dictionary, u: Dictionary, _卡: Dictionary, 区: String) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": "精神牌打出后：抑制场成立就多扣 1 点战意（门槛那边 `CardPlay._实际费` 已经按 +1 判过）。"
+    },
+    {
+     "name": "悬赏开",
+     "line": 15,
+     "static": true,
+     "returns": "bool",
+     "signature": "static func 悬赏开(ctx: Variant) -> bool",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": "场上还有活着的带 `悬赏令` 的敌机吗。"
+    },
+    {
+     "name": "悬赏目标",
+     "line": 24,
+     "static": true,
+     "returns": "Variant",
+     "signature": "static func 悬赏目标(ctx: Variant) -> Variant",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": "当前悬赏目标（活着的我方机体），没有就 null。"
+    },
+    {
+     "name": "敌方阶段初",
+     "line": 33,
+     "static": true,
+     "returns": "void",
+     "signature": "static func 敌方阶段初(ctx: Dictionary) -> void",
+     "callsOutside": 3,
+     "callsTotal": 3,
+     "doc": "敌方阶段开始：先给上一个悬赏目标结赏金（它本回合击破过敌机 → 战意 +10），再按本回合我方输出重新标记。"
+    },
+    {
+     "name": "可选目标",
+     "line": 67,
+     "static": true,
+     "returns": "Dictionary",
+     "signature": "static func 可选目标(ctx: Dictionary, actor: Variant, target: Variant, w: Variant) -> Dictionary",
+     "callsOutside": 3,
+     "callsTotal": 3,
+     "doc": "带悬赏令的敌机：悬赏目标够得着时只许选它（预告与实战同源，都经 `Ai.bestWeaponOn`）。"
+    },
+    {
+     "name": "攻方伤害倍率",
+     "line": 79,
+     "static": true,
+     "returns": "float",
+     "signature": "static func 攻方伤害倍率(ctx: Variant, att: Variant, def: Variant, _w: Variant) -> float",
+     "callsOutside": 3,
+     "callsTotal": 3,
+     "doc": "带悬赏令的敌机打悬赏目标：伤害 +20%。"
+    },
+    {
+     "name": "武器攻击后",
+     "line": 87,
+     "static": true,
+     "returns": "void",
+     "signature": "static func 武器攻击后(ctx: Variant, att: Variant, def: Variant, landed: Variant, w: Variant) -> void",
+     "callsOutside": 5,
+     "callsTotal": 5,
+     "doc": "带 `影锁武器` 的敌机用那把武器打中我方后排 → 把目标和同列前排换位（前排空着就直接拽进去）。"
+    },
+    {
+     "name": "机制提示",
+     "line": 106,
+     "static": true,
+     "returns": "Array",
+     "signature": "static func 机制提示(u: Dictionary, ctx: Dictionary) -> Array",
+     "callsOutside": 1,
+     "callsTotal": 1,
+     "doc": "棋盘悬停用的阵营机制提示（只读）：封锁线、悬赏令、粒子抑制、λ 共振、影锁、宿敌。"
+    }
+   ],
+   "dependsOn": [
+    {
+     "to": "core/battle/btl.gd",
+     "layer": "core",
+     "n": 9,
+     "symbols": [
+      "Btl"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/calc.gd",
+     "layer": "core",
+     "n": 2,
+     "symbols": [
+      "Calc"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/card_play.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "CardPlay"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/fm.gd",
+     "layer": "core",
+     "n": 3,
+     "symbols": [
+      "Fm"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/morale.gd",
+     "layer": "core",
+     "n": 3,
+     "symbols": [
+      "BattleMorale"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/reach.gd",
+     "layer": "core",
+     "n": 2,
+     "symbols": [
+      "Reach"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/swap.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "BattleSwap"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/units.gd",
+     "layer": "core",
+     "n": 2,
+     "symbols": [
+      "Units"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/util/js.gd",
+     "layer": "core",
+     "n": 23,
+     "symbols": [
+      "J"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    }
+   ],
+   "dependsBy": [
+    {
+     "from": "core/battle/rule_hooks.gd",
+     "layer": "core",
+     "n": 5,
+     "symbols": [
+      "EnemyMech"
+     ]
+    },
+    {
+     "from": "presentation/battle/board_panel.gd",
+     "layer": "presentation",
+     "n": 1,
+     "symbols": [
+      "EnemyMech"
+     ]
+    },
+    {
+     "from": "tests/unit/test_bounty.gd",
+     "layer": "tests",
+     "n": 9,
+     "symbols": [
+      "EnemyMech"
+     ]
+    },
+    {
+     "from": "tests/unit/test_particle_suppression.gd",
+     "layer": "tests",
+     "n": 2,
+     "symbols": [
+      "EnemyMech"
+     ]
+    },
+    {
+     "from": "tests/unit/test_shadow_chain.gd",
+     "layer": "tests",
+     "n": 5,
+     "symbols": [
+      "EnemyMech"
      ]
     }
    ]
@@ -22080,14 +22618,14 @@
   {
    "file": "core/battle/flow.gd",
    "layer": "core",
-   "lines": 417,
-   "bytes": 24321,
-   "chars": 16880,
-   "cjkChars": 3662,
-   "estTokens": 7439,
-   "commentBytes": 7906,
-   "commentRatio": 0.3251,
-   "commentLines": 73,
+   "lines": 424,
+   "bytes": 24609,
+   "chars": 17060,
+   "cjkChars": 3716,
+   "estTokens": 7529,
+   "commentBytes": 8053,
+   "commentRatio": 0.3272,
+   "commentLines": 74,
    "trailingCommentLines": 0,
    "className": "Flow",
    "classLine": 4,
@@ -22095,7 +22633,7 @@
    "extendsLine": 5,
    "innerClasses": 0,
    "responsibility": "60-战斗-2-回合流程.js：单位行动、动作结算。",
-   "declares": 12,
+   "declares": 13,
    "consts": [],
    "funcs": [
     {
@@ -22129,8 +22667,18 @@
      "doc": ""
     },
     {
+     "name": "增援一波",
+     "line": 31,
+     "static": true,
+     "returns": "Array",
+     "signature": "static func 增援一波(ctx: Dictionary, w: Dictionary, 已用: Dictionary) -> Array",
+     "callsOutside": 1,
+     "callsTotal": 1,
+     "doc": "来一波敌方增援（`w.来` = `[{键, 等级, 强化, 层, 词条}]`）：固定波次与 Boss 阶段进场共用。返回新来的单位。"
+    },
+    {
      "name": "指挥被动",
-     "line": 52,
+     "line": 59,
      "static": true,
      "returns": "void",
      "signature": "static func 指挥被动(ctx: Dictionary) -> void",
@@ -22140,7 +22688,7 @@
     },
     {
      "name": "我方阶段初_指挥",
-     "line": 73,
+     "line": 80,
      "static": true,
      "returns": "void",
      "signature": "static func 我方阶段初_指挥(ctx: Dictionary) -> void",
@@ -22150,7 +22698,7 @@
     },
     {
      "name": "单位动作",
-     "line": 76,
+     "line": 83,
      "static": true,
      "returns": "Variant",
      "signature": "static func 单位动作(u: Dictionary, ctx: Dictionary) -> Variant",
@@ -22160,7 +22708,7 @@
     },
     {
      "name": "actOnce",
-     "line": 81,
+     "line": 88,
      "static": true,
      "returns": "void",
      "signature": "static func actOnce(u: Dictionary, ctx: Dictionary) -> void",
@@ -22170,7 +22718,7 @@
     },
     {
      "name": "runAutoCast",
-     "line": 106,
+     "line": 113,
      "static": true,
      "returns": "void",
      "signature": "static func runAutoCast(u: Dictionary, ctx: Dictionary) -> void",
@@ -22180,7 +22728,7 @@
     },
     {
      "name": "_散布击破们",
-     "line": 132,
+     "line": 139,
      "static": true,
      "returns": "Array",
      "signature": "static func _散布击破们(ctx: Dictionary, 字段: Variant, 已计入: Dictionary) -> Array",
@@ -22190,7 +22738,7 @@
     },
     {
      "name": "_buff文字",
-     "line": 146,
+     "line": 153,
      "static": true,
      "returns": "String",
      "signature": "static func _buff文字(buff: Dictionary) -> String",
@@ -22200,7 +22748,7 @@
     },
     {
      "name": "结算一个目标",
-     "line": 164,
+     "line": 171,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 结算一个目标(ctx: Dictionary, actor: Dictionary, 原目标: Dictionary, w: Dictionary, opts: Dictionary) -> Dictionary",
@@ -22210,7 +22758,7 @@
     },
     {
      "name": "resolveAction",
-     "line": 293,
+     "line": 300,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func resolveAction(actor: Dictionary, action: Dictionary, ctx: Dictionary) -> Dictionary",
@@ -22402,6 +22950,14 @@
      "from": "core/battle/atx_three.gd",
      "layer": "core",
      "n": 5,
+     "symbols": [
+      "Flow"
+     ]
+    },
+    {
+     "from": "core/battle/boss.gd",
+     "layer": "core",
+     "n": 1,
      "symbols": [
       "Flow"
      ]
@@ -22602,8 +23158,8 @@
      "static": true,
      "returns": "float",
      "signature": "static func 行列数(i: float) -> float",
-     "callsOutside": 10,
-     "callsTotal": 10,
+     "callsOutside": 11,
+     "callsTotal": 11,
      "doc": ""
     },
     {
@@ -22642,8 +23198,8 @@
      "static": true,
      "returns": "float",
      "signature": "static func rowOfSlot(slot: float) -> float",
-     "callsOutside": 68,
-     "callsTotal": 68,
+     "callsOutside": 70,
+     "callsTotal": 70,
      "doc": ""
     },
     {
@@ -22662,8 +23218,8 @@
      "static": true,
      "returns": "float",
      "signature": "static func slotOf(row: float, col: float) -> float",
-     "callsOutside": 18,
-     "callsTotal": 18,
+     "callsOutside": 19,
+     "callsTotal": 19,
      "doc": ""
     },
     {
@@ -22822,8 +23378,8 @@
      "static": true,
      "returns": "bool",
      "signature": "static func 格被占(ctx: Variant, side: String, slot: int) -> bool",
-     "callsOutside": 4,
-     "callsTotal": 4,
+     "callsOutside": 5,
+     "callsTotal": 5,
      "doc": "这个格子上「有东西占着」吗：存活单位 或 掩体（`ctx.掩体 = { \"0\": hp, ... }`，也可写数组）。"
     },
     {
@@ -22862,8 +23418,8 @@
      "static": true,
      "returns": "int",
      "signature": "static func 另一排同位(位: Variant) -> int",
-     "callsOutside": 15,
-     "callsTotal": 15,
+     "callsOutside": 17,
+     "callsTotal": 17,
      "doc": "同列的另一排格子（前排 / 后排）。`位` 越界 → `-1`。"
     },
     {
@@ -22999,6 +23555,14 @@
      ]
     },
     {
+     "from": "core/battle/enemy_mech.gd",
+     "layer": "core",
+     "n": 3,
+     "symbols": [
+      "Fm"
+     ]
+    },
+    {
      "from": "core/battle/fac_atx.gd",
      "layer": "core",
      "n": 4,
@@ -23097,7 +23661,7 @@
     {
      "from": "core/battle/reach.gd",
      "layer": "core",
-     "n": 33,
+     "n": 40,
      "symbols": [
       "Fm"
      ]
@@ -23394,6 +23958,14 @@
      "from": "tests/unit/test_shadow_cards.gd",
      "layer": "tests",
      "n": 4,
+     "symbols": [
+      "Fm"
+     ]
+    },
+    {
+     "from": "tests/unit/test_shadow_chain.gd",
+     "layer": "tests",
+     "n": 1,
      "symbols": [
       "Fm"
      ]
@@ -24002,13 +24574,13 @@
   {
    "file": "core/battle/intent.gd",
    "layer": "core",
-   "lines": 130,
-   "bytes": 5608,
-   "chars": 4236,
-   "cjkChars": 682,
-   "estTokens": 1697,
+   "lines": 131,
+   "bytes": 5790,
+   "chars": 4362,
+   "cjkChars": 710,
+   "estTokens": 1753,
    "commentBytes": 754,
-   "commentRatio": 0.1345,
+   "commentRatio": 0.1302,
    "commentLines": 7,
    "trailingCommentLines": 0,
    "className": "BattleIntent",
@@ -24036,13 +24608,13 @@
      "static": true,
      "returns": "Array",
      "signature": "static func 算意图(ctx: Dictionary) -> Array",
-     "callsOutside": 1,
-     "callsTotal": 1,
+     "callsOutside": 3,
+     "callsTotal": 3,
      "doc": "纯读：按敌方格位 0..7 顺序，对每台存活敌机用影子判断算一次行动。"
     },
     {
      "name": "算意图表",
-     "line": 112,
+     "line": 113,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 算意图表(ctx: Dictionary) -> Dictionary",
@@ -24052,7 +24624,7 @@
     },
     {
      "name": "刷新敌方意图",
-     "line": 119,
+     "line": 120,
      "static": true,
      "returns": "Array",
      "signature": "static func 刷新敌方意图(ctx: Dictionary) -> Array",
@@ -24076,7 +24648,7 @@
     {
      "to": "core/battle/boss.gd",
      "layer": "core",
-     "n": 2,
+     "n": 3,
      "symbols": [
       "Boss"
      ],
@@ -24145,6 +24717,22 @@
      "from": "core/battle/btl.gd",
      "layer": "core",
      "n": 4,
+     "symbols": [
+      "BattleIntent"
+     ]
+    },
+    {
+     "from": "tests/unit/test_faction_layers.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "BattleIntent"
+     ]
+    },
+    {
+     "from": "tests/unit/test_named_bosses.gd",
+     "layer": "tests",
+     "n": 1,
      "symbols": [
       "BattleIntent"
      ]
@@ -27034,14 +27622,14 @@
   {
    "file": "core/battle/morale.gd",
    "layer": "core",
-   "lines": 55,
-   "bytes": 1803,
-   "chars": 1375,
-   "cjkChars": 212,
-   "estTokens": 544,
-   "commentBytes": 262,
-   "commentRatio": 0.1453,
-   "commentLines": 5,
+   "lines": 67,
+   "bytes": 2329,
+   "chars": 1831,
+   "cjkChars": 245,
+   "estTokens": 698,
+   "commentBytes": 313,
+   "commentRatio": 0.1344,
+   "commentLines": 4,
    "trailingCommentLines": 0,
    "className": "BattleMorale",
    "classLine": 2,
@@ -27049,32 +27637,32 @@
    "extendsLine": 3,
    "innerClasses": 0,
    "responsibility": "职责：士气 —— 气势总攻槽、单机战意与战意费用、连续攻击计次。",
-   "declares": 9,
+   "declares": 10,
    "consts": [],
    "funcs": [
     {
      "name": "是单机牌组单位",
-     "line": 6,
+     "line": 5,
      "static": true,
      "returns": "bool",
      "signature": "static func 是单机牌组单位(u: Variant) -> bool",
      "callsOutside": 1,
      "callsTotal": 1,
-     "doc": "是不是单机牌组单位。"
+     "doc": ""
     },
     {
      "name": "战意",
-     "line": 10,
+     "line": 8,
      "static": true,
      "returns": "float",
      "signature": "static func 战意(u: Variant) -> float",
-     "callsOutside": 1,
-     "callsTotal": 1,
-     "doc": "单机战意读数。"
+     "callsOutside": 2,
+     "callsTotal": 2,
+     "doc": ""
     },
     {
      "name": "战意Of",
-     "line": 13,
+     "line": 11,
      "static": true,
      "returns": "float",
      "signature": "static func 战意Of(u: Variant) -> float",
@@ -27084,17 +27672,17 @@
     },
     {
      "name": "设战意",
-     "line": 17,
+     "line": 15,
      "static": true,
      "returns": "float",
      "signature": "static func 设战意(u: Variant, 值: Variant) -> float",
-     "callsOutside": 1,
-     "callsTotal": 1,
+     "callsOutside": 2,
+     "callsTotal": 2,
      "doc": "设战意（带上限、最低 0）。"
     },
     {
      "name": "连续攻击可用",
-     "line": 26,
+     "line": 24,
      "static": true,
      "returns": "bool",
      "signature": "static func 连续攻击可用(u: Dictionary, _ctx: Dictionary) -> bool",
@@ -27104,7 +27692,7 @@
     },
     {
      "name": "连续攻击记",
-     "line": 31,
+     "line": 29,
      "static": true,
      "returns": "void",
      "signature": "static func 连续攻击记(u: Dictionary, _ctx: Dictionary) -> void",
@@ -27114,17 +27702,27 @@
     },
     {
      "name": "加战意",
-     "line": 35,
+     "line": 33,
      "static": true,
      "returns": "float",
      "signature": "static func 加战意(u: Variant, 值: Variant, _ctx: Variant = null, _原因: String = \"\") -> float",
-     "callsOutside": 1,
-     "callsTotal": 1,
+     "callsOutside": 5,
+     "callsTotal": 5,
      "doc": ""
     },
     {
+     "name": "抑制层数",
+     "line": 48,
+     "static": true,
+     "returns": "int",
+     "signature": "static func 抑制层数(ctx: Variant, u: Variant) -> int",
+     "callsOutside": 6,
+     "callsTotal": 6,
+     "doc": "N4 粒子抑制层数：对面活着的 `粒子散布` 机体数（≤2），每层战意获得 −25%。"
+    },
+    {
      "name": "_战意费用",
-     "line": 47,
+     "line": 59,
      "static": true,
      "returns": "float",
      "signature": "static func _战意费用(d: Variant) -> float",
@@ -27134,7 +27732,7 @@
     },
     {
      "name": "战意费用",
-     "line": 54,
+     "line": 66,
      "static": true,
      "returns": "float",
      "signature": "static func 战意费用(d: Variant) -> float",
@@ -27158,7 +27756,7 @@
     {
      "to": "core/util/js.gd",
      "layer": "core",
-     "n": 10,
+     "n": 13,
      "symbols": [
       "J"
      ],
@@ -27172,6 +27770,30 @@
      "from": "core/battle/btl.gd",
      "layer": "core",
      "n": 9,
+     "symbols": [
+      "BattleMorale"
+     ]
+    },
+    {
+     "from": "core/battle/card_play.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "BattleMorale"
+     ]
+    },
+    {
+     "from": "core/battle/enemy_mech.gd",
+     "layer": "core",
+     "n": 3,
+     "symbols": [
+      "BattleMorale"
+     ]
+    },
+    {
+     "from": "tests/unit/test_particle_suppression.gd",
+     "layer": "tests",
+     "n": 8,
      "symbols": [
       "BattleMorale"
      ]
@@ -27285,8 +27907,8 @@
      "static": true,
      "returns": "Variant",
      "signature": "static func 敌方职业(键: Variant) -> Variant",
-     "callsOutside": 1,
-     "callsTotal": 1,
+     "callsOutside": 2,
+     "callsTotal": 2,
      "doc": ""
     },
     {
@@ -28575,6 +29197,14 @@
      ]
     },
     {
+     "from": "tests/unit/test_l1_enemies.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "Params"
+     ]
+    },
+    {
      "from": "tests/unit/test_layout_hand.gd",
      "layer": "tests",
      "n": 2,
@@ -29021,14 +29651,14 @@
   {
    "file": "core/battle/reach.gd",
    "layer": "core",
-   "lines": 292,
-   "bytes": 12271,
-   "chars": 9785,
-   "cjkChars": 1219,
-   "estTokens": 3666,
-   "commentBytes": 3134,
-   "commentRatio": 0.2554,
-   "commentLines": 34,
+   "lines": 316,
+   "bytes": 13414,
+   "chars": 10672,
+   "cjkChars": 1347,
+   "estTokens": 4011,
+   "commentBytes": 3355,
+   "commentRatio": 0.2501,
+   "commentLines": 36,
    "trailingCommentLines": 0,
    "className": "Reach",
    "classLine": 2,
@@ -29036,7 +29666,7 @@
    "extendsLine": 3,
    "innerClasses": 0,
    "responsibility": "30-射程.js：5 类射程、能不能打到、被挡惩罚、职业判定、范围落点。",
-   "declares": 35,
+   "declares": 37,
    "consts": [
     {
      "name": "AREA_SINGLE",
@@ -29131,8 +29761,8 @@
      "static": true,
      "returns": "Variant",
      "signature": "static func rangeKindOf(w: Variant) -> Variant",
-     "callsOutside": 52,
-     "callsTotal": 52,
+     "callsOutside": 53,
+     "callsTotal": 53,
      "doc": ""
     },
     {
@@ -29151,8 +29781,8 @@
      "static": true,
      "returns": "bool",
      "signature": "static func isHealKind(kind: Variant) -> bool",
-     "callsOutside": 10,
-     "callsTotal": 10,
+     "callsOutside": 11,
+     "callsTotal": 11,
      "doc": ""
     },
     {
@@ -29161,8 +29791,8 @@
      "static": true,
      "returns": "bool",
      "signature": "static func isSupportKind(kind: Variant) -> bool",
-     "callsOutside": 6,
-     "callsTotal": 6,
+     "callsOutside": 7,
+     "callsTotal": 7,
      "doc": ""
     },
     {
@@ -29201,8 +29831,8 @@
      "static": true,
      "returns": "bool",
      "signature": "static func 近战可达(att: Variant, w: Variant, target: Variant, 敌方单位们: Variant) -> bool",
-     "callsOutside": 4,
-     "callsTotal": 4,
+     "callsOutside": 6,
+     "callsTotal": 6,
      "doc": ""
     },
     {
@@ -29331,23 +29961,43 @@
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 武器可达吗(ctx: Variant, u: Variant, w: Variant, t: Variant) -> Dictionary",
-     "callsOutside": 27,
-     "callsTotal": 27,
+     "callsOutside": 28,
+     "callsTotal": 28,
      "doc": "· 距离一律 `dist in [min_range, max_range]`（近战用 `近战距离`，其余用 `真实距离`）。"
     },
     {
+     "name": "封锁线成立",
+     "line": 241,
+     "static": true,
+     "returns": "bool",
+     "signature": "static func 封锁线成立(ctx: Variant, side: String) -> bool",
+     "callsOutside": 4,
+     "callsTotal": 4,
+     "doc": "N1【封锁线】：这一方前排 4 格都被占（活机体或掩体），且还有活着的带 `封锁线` 的机体。"
+    },
+    {
+     "name": "封锁线状态",
+     "line": 258,
+     "static": true,
+     "returns": "String",
+     "signature": "static func 封锁线状态(ctx: Variant, side: String) -> String",
+     "callsOutside": 2,
+     "callsTotal": 2,
+     "doc": "界面用：「完整」/ 空串（这一方没有封锁线机体，或前排有缺口）。"
+    },
+    {
      "name": "够得着吗",
-     "line": 238,
+     "line": 262,
      "static": true,
      "returns": "bool",
      "signature": "static func 够得着吗(ctx: Variant, u: Variant, w: Variant, t: Variant) -> bool",
-     "callsOutside": 2,
-     "callsTotal": 2,
+     "callsOutside": 5,
+     "callsTotal": 5,
      "doc": "便捷读法：只问能不能打。"
     },
     {
      "name": "范围落点",
-     "line": 247,
+     "line": 271,
      "static": true,
      "returns": "Array",
      "signature": "static func 范围落点(w: Variant, t: Variant) -> Array",
@@ -29357,7 +30007,7 @@
     },
     {
      "name": "范围目标们",
-     "line": 281,
+     "line": 305,
      "static": true,
      "returns": "Array",
      "signature": "static func 范围目标们(ctx: Variant, w: Variant, t: Variant) -> Array",
@@ -29403,7 +30053,7 @@
     {
      "to": "core/battle/fm.gd",
      "layer": "core",
-     "n": 33,
+     "n": 40,
      "symbols": [
       "Fm"
      ],
@@ -29447,7 +30097,7 @@
     {
      "to": "core/util/js.gd",
      "layer": "core",
-     "n": 33,
+     "n": 35,
      "symbols": [
       "J"
      ],
@@ -29492,7 +30142,7 @@
     {
      "from": "core/battle/boss.gd",
      "layer": "core",
-     "n": 2,
+     "n": 5,
      "symbols": [
       "Reach"
      ]
@@ -29554,6 +30204,14 @@
      ]
     },
     {
+     "from": "core/battle/enemy_mech.gd",
+     "layer": "core",
+     "n": 2,
+     "symbols": [
+      "Reach"
+     ]
+    },
+    {
      "from": "core/battle/fac_atx.gd",
      "layer": "core",
      "n": 3,
@@ -29597,6 +30255,14 @@
      "from": "core/battle/params.gd",
      "layer": "core",
      "n": 37,
+     "symbols": [
+      "Reach"
+     ]
+    },
+    {
+     "from": "core/battle/rival.gd",
+     "layer": "core",
+     "n": 1,
      "symbols": [
       "Reach"
      ]
@@ -29667,6 +30333,14 @@
     },
     {
      "from": "tests/unit/test_atx_three_v01.gd",
+     "layer": "tests",
+     "n": 9,
+     "symbols": [
+      "Reach"
+     ]
+    },
+    {
+     "from": "tests/unit/test_blockade.gd",
      "layer": "tests",
      "n": 9,
      "symbols": [
@@ -30400,15 +31074,220 @@
    ]
   },
   {
+   "file": "core/battle/rival.gd",
+   "layer": "core",
+   "lines": 107,
+   "bytes": 4859,
+   "chars": 3717,
+   "cjkChars": 570,
+   "estTokens": 1469,
+   "commentBytes": 822,
+   "commentRatio": 0.1692,
+   "commentLines": 7,
+   "trailingCommentLines": 0,
+   "className": "Rival",
+   "classLine": 3,
+   "extends": "RefCounted",
+   "extendsLine": 4,
+   "innerClasses": 0,
+   "responsibility": "职责：Boss「宿敌」彩蛋骨架（B 稿 N1 宿敌在场 / N2 指定角色修正 / N3 猎杀名单）。只读敌机模板的 …",
+   "declares": 8,
+   "consts": [],
+   "funcs": [
+    {
+     "name": "键Of",
+     "line": 7,
+     "static": true,
+     "returns": "String",
+     "signature": "static func 键Of(u: Variant) -> String",
+     "callsOutside": 3,
+     "callsTotal": 3,
+     "doc": "我方机体的角色键（重复上场时去掉 `#n`）。"
+    },
+    {
+     "name": "_我方键们",
+     "line": 12,
+     "static": true,
+     "returns": "Array",
+     "signature": "static func _我方键们(ctx: Dictionary) -> Array",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_势力数",
+     "line": 19,
+     "static": true,
+     "returns": "int",
+     "signature": "static func _势力数(ctx: Dictionary, 势力: String) -> int",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "条件成立",
+     "line": 27,
+     "static": true,
+     "returns": "bool",
+     "signature": "static func 条件成立(ctx: Dictionary, 件: Variant) -> bool",
+     "callsOutside": 2,
+     "callsTotal": 2,
+     "doc": "一条宿敌条目的条件成立吗：`在场`（任一）/ `在场全部` / `在场至少 {键们, 数}` / `势力至少 {势力: 数}`。"
+    },
+    {
+     "name": "开局初始化",
+     "line": 46,
+     "static": true,
+     "returns": "void",
+     "signature": "static func 开局初始化(ctx: Dictionary) -> void",
+     "callsOutside": 5,
+     "callsTotal": 5,
+     "doc": "开局：逐台敌机看 `宿敌` 条目，成立的记到 `_宿敌生效`，并兑现开场效果（词条 / 开场 HP / 无视力场名单）。"
+    },
+    {
+     "name": "_生效",
+     "line": 73,
+     "static": true,
+     "returns": "Array",
+     "signature": "static func _生效(e: Variant) -> Array",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "可选目标",
+     "line": 77,
+     "static": true,
+     "returns": "Dictionary",
+     "signature": "static func 可选目标(ctx: Dictionary, actor: Variant, target: Variant, w: Variant) -> Dictionary",
+     "callsOutside": 3,
+     "callsTotal": 3,
+     "doc": "猎杀名单：名单里的角色还活着、而且这一把武器够得着 → 只许选名单里的人（预告与实战同源）。"
+    },
+    {
+     "name": "攻方伤害倍率",
+     "line": 94,
+     "static": true,
+     "returns": "float",
+     "signature": "static func 攻方伤害倍率(_ctx: Variant, att: Variant, def: Variant, _w: Variant) -> float",
+     "callsOutside": 4,
+     "callsTotal": 4,
+     "doc": "指定角色修正：名单角色打这台 Boss 增伤 / 斩杀线；Boss 自己的宿敌伤害倍率。"
+    }
+   ],
+   "dependsOn": [
+    {
+     "to": "core/battle/btl.gd",
+     "layer": "core",
+     "n": 2,
+     "symbols": [
+      "Btl"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/reach.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "Reach"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/traits.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "Traits"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/units.gd",
+     "layer": "core",
+     "n": 2,
+     "symbols": [
+      "Units"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/data/db.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "Db"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/util/js.gd",
+     "layer": "core",
+     "n": 32,
+     "symbols": [
+      "J"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    }
+   ],
+   "dependsBy": [
+    {
+     "from": "core/battle/boss.gd",
+     "layer": "core",
+     "n": 3,
+     "symbols": [
+      "Rival"
+     ]
+    },
+    {
+     "from": "core/battle/rule_hooks.gd",
+     "layer": "core",
+     "n": 3,
+     "symbols": [
+      "Rival"
+     ]
+    },
+    {
+     "from": "tests/unit/test_boss_phase_entry.gd",
+     "layer": "tests",
+     "n": 2,
+     "symbols": [
+      "Rival"
+     ]
+    },
+    {
+     "from": "tests/unit/test_rival.gd",
+     "layer": "tests",
+     "n": 15,
+     "symbols": [
+      "Rival"
+     ]
+    }
+   ]
+  },
+  {
    "file": "core/battle/rule_hooks.gd",
    "layer": "core",
    "lines": 162,
-   "bytes": 6488,
-   "chars": 4940,
+   "bytes": 6564,
+   "chars": 5016,
    "cjkChars": 771,
-   "estTokens": 1962,
+   "estTokens": 1984,
    "commentBytes": 782,
-   "commentRatio": 0.1205,
+   "commentRatio": 0.1191,
    "commentLines": 14,
    "trailingCommentLines": 0,
    "className": "RuleHooks",
@@ -30633,6 +31512,17 @@
      ]
     },
     {
+     "to": "core/battle/enemy_mech.gd",
+     "layer": "core",
+     "n": 5,
+     "symbols": [
+      "EnemyMech"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
      "to": "core/battle/fac.gd",
      "layer": "core",
      "n": 1,
@@ -30726,6 +31616,17 @@
      "n": 5,
      "symbols": [
       "RepairCards"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/rival.gd",
+     "layer": "core",
+     "n": 3,
+     "symbols": [
+      "Rival"
      ],
      "kinds": [
       "类引用"
@@ -30866,6 +31767,22 @@
      "symbols": [
       "RuleHooks"
      ]
+    },
+    {
+     "from": "tests/unit/test_particle_suppression.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "RuleHooks"
+     ]
+    },
+    {
+     "from": "tests/unit/test_rival.gd",
+     "layer": "tests",
+     "n": 3,
+     "symbols": [
+      "RuleHooks"
+     ]
     }
    ]
   },
@@ -30873,12 +31790,12 @@
    "file": "core/battle/setup.gd",
    "layer": "core",
    "lines": 541,
-   "bytes": 27246,
-   "chars": 18454,
-   "cjkChars": 4319,
-   "estTokens": 8358,
+   "bytes": 27264,
+   "chars": 18464,
+   "cjkChars": 4323,
+   "estTokens": 8363,
    "commentBytes": 9782,
-   "commentRatio": 0.359,
+   "commentRatio": 0.3588,
    "commentLines": 90,
    "trailingCommentLines": 0,
    "className": "Setup",
@@ -30912,8 +31829,8 @@
      "static": true,
      "returns": "Variant",
      "signature": "static func checkResult(ctx: Dictionary) -> Variant",
-     "callsOutside": 4,
-     "callsTotal": 4,
+     "callsOutside": 12,
+     "callsTotal": 12,
      "doc": ""
     },
     {
@@ -31132,8 +32049,8 @@
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 开局(我方编成: Array, 敌方编成: Array, 种子: Variant, 单位开关表: Variant = null, 选项: Variant = null) -> Dictionary",
-     "callsOutside": 58,
-     "callsTotal": 58,
+     "callsOutside": 60,
+     "callsTotal": 60,
      "doc": "开局。种子按 JS 的 (种子 >>> 0) || 1；选项：波次 / 战术卡牌 / 已选战术牌 / 初始手牌上限 / 含统帅牌 / 补齐…"
     },
     {
@@ -31142,8 +32059,8 @@
      "static": true,
      "returns": "void",
      "signature": "static func 打一回合(ctx: Dictionary) -> void",
-     "callsOutside": 9,
-     "callsTotal": 9,
+     "callsOutside": 12,
+     "callsTotal": 12,
      "doc": ""
     },
     {
@@ -31219,6 +32136,17 @@
      "n": 2,
      "symbols": [
       "AtxThree"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/boss.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "Boss"
      ],
      "kinds": [
       "类引用"
@@ -31619,6 +32547,22 @@
      ]
     },
     {
+     "from": "tests/unit/test_boss_phase_entry.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "Setup"
+     ]
+    },
+    {
+     "from": "tests/unit/test_boss_retreat.gd",
+     "layer": "tests",
+     "n": 9,
+     "symbols": [
+      "Setup"
+     ]
+    },
+    {
      "from": "tests/unit/test_celestial_v01.gd",
      "layer": "tests",
      "n": 1,
@@ -31651,9 +32595,25 @@
      ]
     },
     {
+     "from": "tests/unit/test_faction_layers.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "Setup"
+     ]
+    },
+    {
      "from": "tests/unit/test_iteration_fixes.gd",
      "layer": "tests",
      "n": 5,
+     "symbols": [
+      "Setup"
+     ]
+    },
+    {
+     "from": "tests/unit/test_l1_enemies.gd",
+     "layer": "tests",
+     "n": 1,
      "symbols": [
       "Setup"
      ]
@@ -31702,6 +32662,14 @@
      "from": "tests/unit/test_moon_v02.gd",
      "layer": "tests",
      "n": 2,
+     "symbols": [
+      "Setup"
+     ]
+    },
+    {
+     "from": "tests/unit/test_named_bosses.gd",
+     "layer": "tests",
+     "n": 1,
      "symbols": [
       "Setup"
      ]
@@ -33959,8 +34927,8 @@
      "static": true,
      "returns": "int",
      "signature": "static func 换位(ctx: Variant, side: String, posA: Variant, posB: Variant, opts: Variant = null) -> int",
-     "callsOutside": 36,
-     "callsTotal": 36,
+     "callsOutside": 37,
+     "callsTotal": 37,
      "doc": "`opts` 认两个键：`isShadowCard`（影世界牌 → 记【移位】并挂〔错位〕）、`来源`（战报里显示谁挪的）。"
     },
     {
@@ -34263,6 +35231,14 @@
      ]
     },
     {
+     "from": "core/battle/enemy_mech.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "BattleSwap"
+     ]
+    },
+    {
      "from": "core/battle/mithril_v03_cards.gd",
      "layer": "core",
      "n": 1,
@@ -34483,8 +35459,8 @@
      "static": true,
      "returns": "Variant",
      "signature": "static func 应用词条到单位(u: Variant, t: Variant, 层: Variant) -> Variant",
-     "callsOutside": 0,
-     "callsTotal": 0,
+     "callsOutside": 2,
+     "callsTotal": 2,
      "doc": ""
     },
     {
@@ -34579,7 +35555,23 @@
    ],
    "dependsBy": [
     {
+     "from": "core/battle/boss.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "Traits"
+     ]
+    },
+    {
      "from": "core/battle/flow.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "Traits"
+     ]
+    },
+    {
+     "from": "core/battle/rival.gd",
      "layer": "core",
      "n": 1,
      "symbols": [
@@ -34631,8 +35623,8 @@
      "static": true,
      "returns": "String",
      "signature": "static func otherSide(s: Variant) -> String",
-     "callsOutside": 10,
-     "callsTotal": 10,
+     "callsOutside": 12,
+     "callsTotal": 12,
      "doc": ""
     },
     {
@@ -34671,8 +35663,8 @@
      "static": true,
      "returns": "Array",
      "signature": "static func livingOf(side: Variant, ctx: Dictionary) -> Array",
-     "callsOutside": 160,
-     "callsTotal": 160,
+     "callsOutside": 163,
+     "callsTotal": 163,
      "doc": ""
     },
     {
@@ -34721,8 +35713,8 @@
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 已用键表(单位们: Variant) -> Dictionary",
-     "callsOutside": 1,
-     "callsTotal": 1,
+     "callsOutside": 2,
+     "callsTotal": 2,
      "doc": "场上一批单位用过的键计数（`#n` 后缀按 `tplKey` / 原键归一）。"
     },
     {
@@ -34731,8 +35723,8 @@
      "static": true,
      "returns": "Dictionary",
      "signature": "static func makeUnit(键: Variant, side: String, slot: float, lv: float, 强化: Variant = 1.0, 当前HP比: Variant = null, 层: Variant = null, 实例键: Variant = null) -> Dictionary",
-     "callsOutside": 9,
-     "callsTotal": 9,
+     "callsOutside": 38,
+     "callsTotal": 38,
      "doc": ""
     },
     {
@@ -34990,7 +35982,7 @@
     {
      "from": "core/battle/boss.gd",
      "layer": "core",
-     "n": 2,
+     "n": 4,
      "symbols": [
       "Units"
      ]
@@ -35087,6 +36079,14 @@
      "from": "core/battle/diff.gd",
      "layer": "core",
      "n": 1,
+     "symbols": [
+      "Units"
+     ]
+    },
+    {
+     "from": "core/battle/enemy_mech.gd",
+     "layer": "core",
+     "n": 2,
      "symbols": [
       "Units"
      ]
@@ -35236,6 +36236,14 @@
      ]
     },
     {
+     "from": "core/battle/rival.gd",
+     "layer": "core",
+     "n": 2,
+     "symbols": [
+      "Units"
+     ]
+    },
+    {
      "from": "core/battle/setup.gd",
      "layer": "core",
      "n": 13,
@@ -35356,6 +36364,30 @@
      ]
     },
     {
+     "from": "tests/unit/test_blockade.gd",
+     "layer": "tests",
+     "n": 6,
+     "symbols": [
+      "Units"
+     ]
+    },
+    {
+     "from": "tests/unit/test_boss_phase_entry.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "Units"
+     ]
+    },
+    {
+     "from": "tests/unit/test_bounty.gd",
+     "layer": "tests",
+     "n": 5,
+     "symbols": [
+      "Units"
+     ]
+    },
+    {
      "from": "tests/unit/test_class_cards.gd",
      "layer": "tests",
      "n": 6,
@@ -35372,9 +36404,33 @@
      ]
     },
     {
+     "from": "tests/unit/test_lambda_resonance.gd",
+     "layer": "tests",
+     "n": 5,
+     "symbols": [
+      "Units"
+     ]
+    },
+    {
      "from": "tests/unit/test_layout_hand.gd",
      "layer": "tests",
      "n": 3,
+     "symbols": [
+      "Units"
+     ]
+    },
+    {
+     "from": "tests/unit/test_named_bosses.gd",
+     "layer": "tests",
+     "n": 2,
+     "symbols": [
+      "Units"
+     ]
+    },
+    {
+     "from": "tests/unit/test_particle_suppression.gd",
+     "layer": "tests",
+     "n": 4,
      "symbols": [
       "Units"
      ]
@@ -35388,9 +36444,25 @@
      ]
     },
     {
+     "from": "tests/unit/test_rival.gd",
+     "layer": "tests",
+     "n": 2,
+     "symbols": [
+      "Units"
+     ]
+    },
+    {
      "from": "tests/unit/test_shadow_cards.gd",
      "layer": "tests",
      "n": 10,
+     "symbols": [
+      "Units"
+     ]
+    },
+    {
+     "from": "tests/unit/test_shadow_chain.gd",
+     "layer": "tests",
+     "n": 4,
      "symbols": [
       "Units"
      ]
@@ -35899,7 +36971,7 @@
     {
      "from": "core/battle/boss.gd",
      "layer": "core",
-     "n": 1,
+     "n": 2,
      "symbols": [
       "Db"
      ]
@@ -36060,6 +37132,14 @@
      "from": "core/battle/repair_cards.gd",
      "layer": "core",
      "n": 3,
+     "symbols": [
+      "Db"
+     ]
+    },
+    {
+     "from": "core/battle/rival.gd",
+     "layer": "core",
+     "n": 1,
      "symbols": [
       "Db"
      ]
@@ -36273,6 +37353,14 @@
      ]
     },
     {
+     "from": "tests/unit/test_boss_phase_entry.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "Db"
+     ]
+    },
+    {
      "from": "tests/unit/test_boundary.gd",
      "layer": "tests",
      "n": 4,
@@ -36284,6 +37372,22 @@
      "from": "tests/unit/test_display_names.gd",
      "layer": "tests",
      "n": 6,
+     "symbols": [
+      "Db"
+     ]
+    },
+    {
+     "from": "tests/unit/test_faction_layers.gd",
+     "layer": "tests",
+     "n": 4,
+     "symbols": [
+      "Db"
+     ]
+    },
+    {
+     "from": "tests/unit/test_l1_enemies.gd",
+     "layer": "tests",
+     "n": 3,
      "symbols": [
       "Db"
      ]
@@ -36308,6 +37412,14 @@
      "from": "tests/unit/test_layout_ux1.gd",
      "layer": "tests",
      "n": 2,
+     "symbols": [
+      "Db"
+     ]
+    },
+    {
+     "from": "tests/unit/test_named_bosses.gd",
+     "layer": "tests",
+     "n": 3,
      "symbols": [
       "Db"
      ]
@@ -38562,15 +39674,15 @@
   {
    "file": "core/run/node_resolver.gd",
    "layer": "core",
-   "lines": 958,
-   "bytes": 46768,
-   "chars": 34469,
-   "cjkChars": 6075,
-   "estTokens": 14188,
-   "commentBytes": 8400,
-   "commentRatio": 0.1796,
-   "commentLines": 90,
-   "trailingCommentLines": 3,
+   "lines": 964,
+   "bytes": 46965,
+   "chars": 34651,
+   "cjkChars": 6086,
+   "estTokens": 14247,
+   "commentBytes": 8303,
+   "commentRatio": 0.1768,
+   "commentLines": 89,
+   "trailingCommentLines": 4,
    "className": "NodeResolver",
    "classLine": 14,
    "extends": "RefCounted",
@@ -38586,13 +39698,13 @@
     },
     {
      "name": "槽位映射",
-     "line": 206,
+     "line": 208,
      "doc": "所以 `后5` 只做兼容解析用 —— 真正的合法范围永远以 `Fm.SLOTS()` 为准）。"
     },
     {
      "name": "第一层减负表",
      "line": 384,
-     "doc": "第 2 层起原样不动；Boss / 守军不在表里也原样不动（出口守军是第一层的考试）。"
+     "doc": "IT-3 第一层减负：只截第 1 层普通 / 精英编成（副本）的开场台数与增援波次；守军 / Boss 不动。"
     }
    ],
    "funcs": [
@@ -38692,13 +39804,13 @@
      "static": true,
      "returns": "Array",
      "signature": "static func 选编成(层: int, 类型: String) -> Array",
-     "callsOutside": 0,
-     "callsTotal": 0,
+     "callsOutside": 4,
+     "callsTotal": 4,
      "doc": ""
     },
     {
      "name": "抽一条",
-     "line": 79,
+     "line": 80,
      "static": true,
      "returns": "Variant",
      "signature": "static func 抽一条(层: int, 类型: String, rng: Mulberry32) -> Variant",
@@ -38708,7 +39820,7 @@
     },
     {
      "name": "抽编成兜底",
-     "line": 87,
+     "line": 88,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 抽编成兜底(层: int, 类型: String, rng: Mulberry32) -> Dictionary",
@@ -38718,7 +39830,7 @@
     },
     {
      "name": "词条开",
-     "line": 118,
+     "line": 119,
      "static": true,
      "returns": "bool",
      "signature": "static func 词条开() -> bool",
@@ -38728,7 +39840,7 @@
     },
     {
      "name": "词条组",
-     "line": 121,
+     "line": 122,
      "static": true,
      "returns": "Array",
      "signature": "static func 词条组(挂: String) -> Array",
@@ -38738,7 +39850,7 @@
     },
     {
      "name": "编成词条",
-     "line": 126,
+     "line": 127,
      "static": true,
      "returns": "Array",
      "signature": "static func 编成词条(条目: Dictionary) -> Array",
@@ -38748,7 +39860,7 @@
     },
     {
      "name": "词条作用在",
-     "line": 139,
+     "line": 140,
      "static": true,
      "returns": "bool",
      "signature": "static func 词条作用在(t: Dictionary, 位: float) -> bool",
@@ -38758,7 +39870,7 @@
     },
     {
      "name": "词条汇总",
-     "line": 151,
+     "line": 153,
      "static": true,
      "returns": "Array",
      "signature": "static func 词条汇总(条目: Dictionary, 位: float) -> Array",
@@ -38768,27 +39880,27 @@
     },
     {
      "name": "等级Of",
-     "line": 159,
+     "line": 161,
      "static": true,
      "returns": "float",
      "signature": "static func 等级Of(条目: Dictionary, 键: String, 场次: int) -> float",
-     "callsOutside": 0,
-     "callsTotal": 0,
+     "callsOutside": 1,
+     "callsTotal": 1,
      "doc": ""
     },
     {
      "name": "强化Of",
-     "line": 165,
+     "line": 167,
      "static": true,
      "returns": "float",
      "signature": "static func 强化Of(条目: Dictionary, 键: String) -> float",
-     "callsOutside": 0,
-     "callsTotal": 0,
+     "callsOutside": 1,
+     "callsTotal": 1,
      "doc": ""
     },
     {
      "name": "编成到规格",
-     "line": 170,
+     "line": 172,
      "static": true,
      "returns": "Array",
      "signature": "static func 编成到规格(条目: Dictionary, 场次: int = 0) -> Array",
@@ -38798,7 +39910,7 @@
     },
     {
      "name": "增援波次",
-     "line": 188,
+     "line": 190,
      "static": true,
      "returns": "Array",
      "signature": "static func 增援波次(条目: Dictionary, 场次: int = 0) -> Array",
@@ -38808,7 +39920,7 @@
     },
     {
      "name": "_解析槽位",
-     "line": 213,
+     "line": 215,
      "static": true,
      "returns": "int",
      "signature": "static func _解析槽位(slot_val: Variant) -> int",
@@ -38818,17 +39930,17 @@
     },
     {
      "name": "解析槽位",
-     "line": 236,
+     "line": 238,
      "static": true,
      "returns": "int",
      "signature": "static func 解析槽位(slot_val: Variant) -> int",
-     "callsOutside": 11,
-     "callsTotal": 11,
+     "callsOutside": 13,
+     "callsTotal": 13,
      "doc": ""
     },
     {
      "name": "槽位映射表",
-     "line": 240,
+     "line": 242,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 槽位映射表() -> Dictionary",
@@ -38838,7 +39950,7 @@
     },
     {
      "name": "我方编成",
-     "line": 258,
+     "line": 260,
      "static": true,
      "returns": "Array",
      "signature": "static func 我方编成(state: RunState) -> Array",
@@ -38848,7 +39960,7 @@
     },
     {
      "name": "_是玩家编队",
-     "line": 266,
+     "line": 268,
      "static": true,
      "returns": "bool",
      "signature": "static func _是玩家编队(state: RunState) -> bool",
@@ -38858,7 +39970,7 @@
     },
     {
      "name": "_按玩家槽位编成",
-     "line": 286,
+     "line": 288,
      "static": true,
      "returns": "Array",
      "signature": "static func _按玩家槽位编成(state: RunState, 排位: Array) -> Array",
@@ -38868,7 +39980,7 @@
     },
     {
      "name": "_按默认位编成",
-     "line": 316,
+     "line": 318,
      "static": true,
      "returns": "Array",
      "signature": "static func _按默认位编成(state: RunState, 排位: Array) -> Array",
@@ -38878,7 +39990,7 @@
     },
     {
      "name": "_默认位",
-     "line": 343,
+     "line": 345,
      "static": true,
      "returns": "float",
      "signature": "static func _默认位(排位: Array, 键: String, 序: int) -> float",
@@ -38888,7 +40000,7 @@
     },
     {
      "name": "默认位号",
-     "line": 350,
+     "line": 352,
      "static": true,
      "returns": "int",
      "signature": "static func 默认位号(键: String, 序: int = 0) -> int",
@@ -38898,7 +40010,7 @@
     },
     {
      "name": "_兜底位",
-     "line": 355,
+     "line": 357,
      "static": true,
      "returns": "int",
      "signature": "static func _兜底位(排位: Array, 键: String, 序: int, 已占: Dictionary) -> int",
@@ -38908,12 +40020,12 @@
     },
     {
      "name": "开战",
-     "line": 368,
+     "line": 370,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 开战(state: RunState, 条目: Dictionary, 覆盖类型: String = \"\", 附加选项: Variant = null) -> Dictionary",
-     "callsOutside": 4,
-     "callsTotal": 4,
+     "callsOutside": 9,
+     "callsTotal": 9,
      "doc": "`SessionBattleOptions.生产()` 整份进来，本节先用 `RelicSystem.build_battle_optio…"
     },
     {
@@ -38922,8 +40034,8 @@
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 第一层减负(条目: Dictionary) -> Dictionary",
-     "callsOutside": 2,
-     "callsTotal": 2,
+     "callsOutside": 3,
+     "callsTotal": 3,
      "doc": ""
     },
     {
@@ -38962,13 +40074,13 @@
      "static": true,
      "returns": "Dictionary",
      "signature": "static func resolve_battle(state: RunState, ctx: Dictionary, 格类型: String = \"\") -> Dictionary",
-     "callsOutside": 6,
-     "callsTotal": 6,
+     "callsOutside": 7,
+     "callsTotal": 7,
      "doc": "战后结算（唯一汇合点）。返回完整结果字典。"
     },
     {
      "name": "胜利希望",
-     "line": 502,
+     "line": 508,
      "static": true,
      "returns": "int",
      "signature": "static func 胜利希望() -> int",
@@ -38978,7 +40090,7 @@
     },
     {
      "name": "精英希望",
-     "line": 505,
+     "line": 511,
      "static": true,
      "returns": "int",
      "signature": "static func 精英希望() -> int",
@@ -38988,7 +40100,7 @@
     },
     {
      "name": "Boss希望",
-     "line": 508,
+     "line": 514,
      "static": true,
      "returns": "int",
      "signature": "static func Boss希望() -> int",
@@ -38998,7 +40110,7 @@
     },
     {
      "name": "胜利源碳",
-     "line": 511,
+     "line": 517,
      "static": true,
      "returns": "int",
      "signature": "static func 胜利源碳() -> int",
@@ -39008,7 +40120,7 @@
     },
     {
      "name": "经验Of",
-     "line": 514,
+     "line": 520,
      "static": true,
      "returns": "int",
      "signature": "static func 经验Of(格类型: String) -> int",
@@ -39018,7 +40130,7 @@
     },
     {
      "name": "整数",
-     "line": 518,
+     "line": 524,
      "static": true,
      "returns": "int",
      "signature": "static func 整数(v: Variant, 默认: int = 0) -> int",
@@ -39028,7 +40140,7 @@
     },
     {
      "name": "零件箱上限",
-     "line": 523,
+     "line": 529,
      "static": true,
      "returns": "int",
      "signature": "static func 零件箱上限() -> int",
@@ -39038,7 +40150,7 @@
     },
     {
      "name": "抽零件",
-     "line": 532,
+     "line": 538,
      "static": true,
      "returns": "String",
      "signature": "static func 抽零件(state: RunState, 格号: int = -1, weight_by_rarity: Variant = null) -> String",
@@ -39048,7 +40160,7 @@
     },
     {
      "name": "发零件",
-     "line": 535,
+     "line": 541,
      "static": true,
      "returns": "Variant",
      "signature": "static func 发零件(state: RunState, 奖: String, 来源: String) -> Variant",
@@ -39058,7 +40170,7 @@
     },
     {
      "name": "清空格",
-     "line": 554,
+     "line": 560,
      "static": true,
      "returns": "void",
      "signature": "static func 清空格(state: RunState) -> void",
@@ -39068,7 +40180,7 @@
     },
     {
      "name": "格键",
-     "line": 562,
+     "line": 568,
      "static": true,
      "returns": "String",
      "signature": "static func 格键(state: RunState) -> String",
@@ -39078,7 +40190,7 @@
     },
     {
      "name": "结算休整",
-     "line": 566,
+     "line": 572,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 结算休整(state: RunState, 选: String = \"耐久\") -> Dictionary",
@@ -39088,7 +40200,7 @@
     },
     {
      "name": "休整回血",
-     "line": 589,
+     "line": 595,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 休整回血(state: RunState) -> Dictionary",
@@ -39098,7 +40210,7 @@
     },
     {
      "name": "补给",
-     "line": 607,
+     "line": 613,
      "static": true,
      "returns": "int",
      "signature": "static func 补给(state: RunState) -> int",
@@ -39108,7 +40220,7 @@
     },
     {
      "name": "黑市货",
-     "line": 615,
+     "line": 621,
      "static": true,
      "returns": "Array",
      "signature": "static func 黑市货(state: RunState) -> Array",
@@ -39118,7 +40230,7 @@
     },
     {
      "name": "黑市刷新次数",
-     "line": 629,
+     "line": 635,
      "static": true,
      "returns": "int",
      "signature": "static func 黑市刷新次数(state: RunState) -> int",
@@ -39128,7 +40240,7 @@
     },
     {
      "name": "黑市价",
-     "line": 632,
+     "line": 638,
      "static": true,
      "returns": "int",
      "signature": "static func 黑市价(state: RunState, id: String) -> int",
@@ -39138,7 +40250,7 @@
     },
     {
      "name": "黑市买",
-     "line": 639,
+     "line": 645,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 黑市买(state: RunState, id: String) -> Dictionary",
@@ -39148,7 +40260,7 @@
     },
     {
      "name": "黑市刷新价",
-     "line": 655,
+     "line": 661,
      "static": true,
      "returns": "Variant",
      "signature": "static func 黑市刷新价(state: RunState) -> Variant",
@@ -39158,7 +40270,7 @@
     },
     {
      "name": "黑市刷新",
-     "line": 662,
+     "line": 668,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 黑市刷新(state: RunState) -> Dictionary",
@@ -39168,7 +40280,7 @@
     },
     {
      "name": "黑市离开",
-     "line": 676,
+     "line": 682,
      "static": true,
      "returns": "bool",
      "signature": "static func 黑市离开(state: RunState) -> bool",
@@ -39178,7 +40290,7 @@
     },
     {
      "name": "黑市牌价",
-     "line": 683,
+     "line": 689,
      "static": true,
      "returns": "int",
      "signature": "static func 黑市牌价(state: RunState, card_id: String) -> int",
@@ -39188,7 +40300,7 @@
     },
     {
      "name": "黑市删牌价",
-     "line": 690,
+     "line": 696,
      "static": true,
      "returns": "int",
      "signature": "static func 黑市删牌价(state: RunState) -> int",
@@ -39198,7 +40310,7 @@
     },
     {
      "name": "黑市买牌",
-     "line": 694,
+     "line": 700,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 黑市买牌(state: RunState, card_id: String) -> Dictionary",
@@ -39208,7 +40320,7 @@
     },
     {
      "name": "黑市删牌",
-     "line": 713,
+     "line": 719,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 黑市删牌(state: RunState, card_id: String) -> Dictionary",
@@ -39218,7 +40330,7 @@
     },
     {
      "name": "结算瞭望站",
-     "line": 731,
+     "line": 737,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 结算瞭望站(state: RunState, 选: String = \"登高\") -> Dictionary",
@@ -39228,7 +40340,7 @@
     },
     {
      "name": "结算隧道",
-     "line": 762,
+     "line": 768,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 结算隧道(state: RunState) -> Dictionary",
@@ -39238,7 +40350,7 @@
     },
     {
      "name": "结算遗迹",
-     "line": 783,
+     "line": 789,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 结算遗迹(state: RunState, 选: String = \"藤蔓\") -> Dictionary",
@@ -39248,7 +40360,7 @@
     },
     {
      "name": "结算侵蚀源代价",
-     "line": 810,
+     "line": 816,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 结算侵蚀源代价(state: RunState, 选: String) -> Dictionary",
@@ -39258,7 +40370,7 @@
     },
     {
      "name": "结算奇遇",
-     "line": 833,
+     "line": 839,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 结算奇遇(state: RunState, 选: String = \"\") -> Dictionary",
@@ -39268,7 +40380,7 @@
     },
     {
      "name": "当前事件",
-     "line": 930,
+     "line": 936,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 当前事件(state: RunState) -> Dictionary",
@@ -39278,7 +40390,7 @@
     },
     {
      "name": "内置事件表",
-     "line": 939,
+     "line": 945,
      "static": true,
      "returns": "Array",
      "signature": "static func 内置事件表() -> Array",
@@ -39288,7 +40400,7 @@
     },
     {
      "name": "特记",
-     "line": 951,
+     "line": 957,
      "static": true,
      "returns": "Dictionary",
      "signature": "static func 特记(state: RunState) -> Dictionary",
@@ -39298,7 +40410,7 @@
     },
     {
      "name": "特取",
-     "line": 954,
+     "line": 960,
      "static": true,
      "returns": "Variant",
      "signature": "static func 特取(state: RunState, 键: String, 默认: Variant) -> Variant",
@@ -39308,7 +40420,7 @@
     },
     {
      "name": "特置",
-     "line": 957,
+     "line": 963,
      "static": true,
      "returns": "void",
      "signature": "static func 特置(state: RunState, 键: String, 值: Variant) -> void",
@@ -39534,9 +40646,49 @@
      ]
     },
     {
+     "from": "tests/unit/test_boss_phase_entry.gd",
+     "layer": "tests",
+     "n": 3,
+     "symbols": [
+      "NodeResolver"
+     ]
+    },
+    {
+     "from": "tests/unit/test_boss_retreat.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "NodeResolver"
+     ]
+    },
+    {
+     "from": "tests/unit/test_faction_layers.gd",
+     "layer": "tests",
+     "n": 2,
+     "symbols": [
+      "NodeResolver"
+     ]
+    },
+    {
      "from": "tests/unit/test_iteration_fixes.gd",
      "layer": "tests",
      "n": 2,
+     "symbols": [
+      "NodeResolver"
+     ]
+    },
+    {
+     "from": "tests/unit/test_l1_enemies.gd",
+     "layer": "tests",
+     "n": 5,
+     "symbols": [
+      "NodeResolver"
+     ]
+    },
+    {
+     "from": "tests/unit/test_named_bosses.gd",
+     "layer": "tests",
+     "n": 4,
      "symbols": [
       "NodeResolver"
      ]
@@ -41241,8 +42393,8 @@
      "static": true,
      "returns": "RunState",
      "signature": "static func new_run(种子: int, 分队: String = \"无\", 分队类型: String = \"混编\") -> RunState",
-     "callsOutside": 29,
-     "callsTotal": 29,
+     "callsOutside": 35,
+     "callsTotal": 35,
      "doc": "开局（选分队 → 名册空 → 发 3 张券）。返回 state。"
     },
     {
@@ -41462,6 +42614,22 @@
      ]
     },
     {
+     "from": "tests/unit/test_boss_phase_entry.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "RosterManager"
+     ]
+    },
+    {
+     "from": "tests/unit/test_boss_retreat.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "RosterManager"
+     ]
+    },
+    {
      "from": "tests/unit/test_class_heavy_cmd.gd",
      "layer": "tests",
      "n": 3,
@@ -41470,9 +42638,33 @@
      ]
     },
     {
+     "from": "tests/unit/test_faction_layers.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "RosterManager"
+     ]
+    },
+    {
+     "from": "tests/unit/test_l1_enemies.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "RosterManager"
+     ]
+    },
+    {
      "from": "tests/unit/test_layout_tooltip.gd",
      "layer": "tests",
      "n": 3,
+     "symbols": [
+      "RosterManager"
+     ]
+    },
+    {
+     "from": "tests/unit/test_named_bosses.gd",
+     "layer": "tests",
+     "n": 2,
      "symbols": [
       "RosterManager"
      ]
@@ -42048,8 +43240,8 @@
      "static": true,
      "returns": "bool",
      "signature": "static func truthy(v: Variant) -> bool",
-     "callsOutside": 998,
-     "callsTotal": 998,
+     "callsOutside": 1021,
+     "callsTotal": 1021,
      "doc": "JS ToBoolean"
     },
     {
@@ -42058,8 +43250,8 @@
      "static": true,
      "returns": "Variant",
      "signature": "static func or_(a: Variant, b: Variant) -> Variant",
-     "callsOutside": 762,
-     "callsTotal": 762,
+     "callsOutside": 792,
+     "callsTotal": 792,
      "doc": "a || b（a 为假时取 b；两边都会求值，带副作用的右边请自己写 if）"
     },
     {
@@ -42088,8 +43280,8 @@
      "static": true,
      "returns": "float",
      "signature": "static func num(v: Variant) -> float",
-     "callsOutside": 83,
-     "callsTotal": 83,
+     "callsOutside": 91,
+     "callsTotal": 91,
      "doc": "Number(v)。null 按 JS 的 undefined 处理（→ NaN）：取不存在的字段是最常见的情况。"
     },
     {
@@ -42098,8 +43290,8 @@
      "static": true,
      "returns": "float",
      "signature": "static func num0(v: Variant) -> float",
-     "callsOutside": 806,
-     "callsTotal": 806,
+     "callsOutside": 816,
+     "callsTotal": 816,
      "doc": "Number(v) || 0"
     },
     {
@@ -42108,8 +43300,8 @@
      "static": true,
      "returns": "bool",
      "signature": "static func finite(v: Variant) -> bool",
-     "callsOutside": 9,
-     "callsTotal": 9,
+     "callsOutside": 13,
+     "callsTotal": 13,
      "doc": "Number.isFinite(Number(v))（v 已经是数时就是 Number.isFinite(v)）"
     },
     {
@@ -42128,8 +43320,8 @@
      "static": true,
      "returns": "String",
      "signature": "static func s(v: Variant) -> String",
-     "callsOutside": 565,
-     "callsTotal": 565,
+     "callsOutside": 582,
+     "callsTotal": 582,
      "doc": "String(v)：数字按 JS 的格式（整数不带小数点）"
     },
     {
@@ -42158,8 +43350,8 @@
      "static": true,
      "returns": "Variant",
      "signature": "static func at(o: Variant, key: Variant) -> Variant",
-     "callsOutside": 19,
-     "callsTotal": 19,
+     "callsOutside": 20,
+     "callsTotal": 20,
      "doc": "o[key]：数组按整数下标、字典按 JS 的字符串键；越界 / 缺键得 null"
     },
     {
@@ -42178,8 +43370,8 @@
      "static": true,
      "returns": "float",
      "signature": "static func round(x: float) -> float",
-     "callsOutside": 195,
-     "callsTotal": 195,
+     "callsOutside": 198,
+     "callsTotal": 198,
      "doc": "Math.round（.5 朝 +∞）"
     },
     {
@@ -42198,8 +43390,8 @@
      "static": true,
      "returns": "float",
      "signature": "static func mod(a: float, b: float) -> float",
-     "callsOutside": 2,
-     "callsTotal": 2,
+     "callsOutside": 3,
+     "callsTotal": 3,
      "doc": "JS 的 % （截断取余，与 C 的 fmod 相同）"
     },
     {
@@ -42208,8 +43400,8 @@
      "static": true,
      "returns": "bool",
      "signature": "static func inc(arr: Variant, v: Variant) -> bool",
-     "callsOutside": 108,
-     "callsTotal": 108,
+     "callsOutside": 109,
+     "callsTotal": 109,
      "doc": "arr.includes(v)：按 == 比较（1 与 1.0 相等）"
     },
     {
@@ -42238,8 +43430,8 @@
      "static": true,
      "returns": "bool",
      "signature": "static func same(a: Variant, b: Variant) -> bool",
-     "callsOutside": 70,
-     "callsTotal": 70,
+     "callsOutside": 71,
+     "callsTotal": 71,
      "doc": "a === b（数字按值、对象按引用）"
     },
     {
@@ -42268,8 +43460,8 @@
      "static": true,
      "returns": "bool",
      "signature": "static func some(arr: Variant, pred: Callable) -> bool",
-     "callsOutside": 48,
-     "callsTotal": 48,
+     "callsOutside": 49,
+     "callsTotal": 49,
      "doc": "arr.some(pred)"
     },
     {
@@ -42358,8 +43550,8 @@
      "static": true,
      "returns": "Dictionary",
      "signature": "static func merged(a: Variant = null, b: Variant = null, c: Variant = null) -> Dictionary",
-     "callsOutside": 192,
-     "callsTotal": 192,
+     "callsOutside": 199,
+     "callsTotal": 199,
      "doc": "Object.assign({}, a, b, c)"
     },
     {
@@ -42368,8 +43560,8 @@
      "static": true,
      "returns": "bool",
      "signature": "static func is_arr(v: Variant) -> bool",
-     "callsOutside": 9,
-     "callsTotal": 9,
+     "callsOutside": 15,
+     "callsTotal": 15,
      "doc": "Array.isArray(v)"
     },
     {
@@ -42378,8 +43570,8 @@
      "static": true,
      "returns": "Variant",
      "signature": "static func g(o: Variant, key: String) -> Variant",
-     "callsOutside": 154,
-     "callsTotal": 154,
+     "callsOutside": 160,
+     "callsTotal": 160,
      "doc": "取字段：o 为 null 时返回 null（JS 的 o && o.k / o?.k）"
     },
     {
@@ -42408,8 +43600,8 @@
      "static": true,
      "returns": "Array",
      "signature": "static func concat(a: Variant, b: Variant) -> Array",
-     "callsOutside": 17,
-     "callsTotal": 17,
+     "callsOutside": 20,
+     "callsTotal": 20,
      "doc": "arr.concat(b)（返回新数组；b 可以是数组或单个元素）"
     },
     {
@@ -42528,7 +43720,7 @@
     {
      "from": "core/battle/boss.gd",
      "layer": "core",
-     "n": 35,
+     "n": 61,
      "symbols": [
       "J"
      ]
@@ -42536,7 +43728,7 @@
     {
      "from": "core/battle/calc.gd",
      "layer": "core",
-     "n": 292,
+     "n": 299,
      "symbols": [
       "J"
      ]
@@ -42633,6 +43825,14 @@
      "from": "core/battle/diff.gd",
      "layer": "core",
      "n": 31,
+     "symbols": [
+      "J"
+     ]
+    },
+    {
+     "from": "core/battle/enemy_mech.gd",
+     "layer": "core",
+     "n": 23,
      "symbols": [
       "J"
      ]
@@ -42776,7 +43976,7 @@
     {
      "from": "core/battle/morale.gd",
      "layer": "core",
-     "n": 10,
+     "n": 13,
      "symbols": [
       "J"
      ]
@@ -42808,7 +44008,7 @@
     {
      "from": "core/battle/reach.gd",
      "layer": "core",
-     "n": 33,
+     "n": 35,
      "symbols": [
       "J"
      ]
@@ -42825,6 +44025,14 @@
      "from": "core/battle/repair_cards.gd",
      "layer": "core",
      "n": 38,
+     "symbols": [
+      "J"
+     ]
+    },
+    {
+     "from": "core/battle/rival.gd",
+     "layer": "core",
+     "n": 32,
      "symbols": [
       "J"
      ]
@@ -42998,6 +44206,38 @@
      ]
     },
     {
+     "from": "tests/unit/test_blockade.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "J"
+     ]
+    },
+    {
+     "from": "tests/unit/test_boss_phase_entry.gd",
+     "layer": "tests",
+     "n": 5,
+     "symbols": [
+      "J"
+     ]
+    },
+    {
+     "from": "tests/unit/test_boss_retreat.gd",
+     "layer": "tests",
+     "n": 4,
+     "symbols": [
+      "J"
+     ]
+    },
+    {
+     "from": "tests/unit/test_bounty.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "J"
+     ]
+    },
+    {
      "from": "tests/unit/test_celestial_v01.gd",
      "layer": "tests",
      "n": 161,
@@ -43062,9 +44302,25 @@
      ]
     },
     {
+     "from": "tests/unit/test_faction_layers.gd",
+     "layer": "tests",
+     "n": 5,
+     "symbols": [
+      "J"
+     ]
+    },
+    {
      "from": "tests/unit/test_iteration_fixes.gd",
      "layer": "tests",
      "n": 3,
+     "symbols": [
+      "J"
+     ]
+    },
+    {
+     "from": "tests/unit/test_l1_enemies.gd",
+     "layer": "tests",
+     "n": 5,
      "symbols": [
       "J"
      ]
@@ -43102,6 +44358,22 @@
      ]
     },
     {
+     "from": "tests/unit/test_named_bosses.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "J"
+     ]
+    },
+    {
+     "from": "tests/unit/test_particle_suppression.gd",
+     "layer": "tests",
+     "n": 2,
+     "symbols": [
+      "J"
+     ]
+    },
+    {
      "from": "tests/unit/test_quick_battle_v03.gd",
      "layer": "tests",
      "n": 11,
@@ -43134,6 +44406,14 @@
      ]
     },
     {
+     "from": "tests/unit/test_rival.gd",
+     "layer": "tests",
+     "n": 3,
+     "symbols": [
+      "J"
+     ]
+    },
+    {
      "from": "tests/unit/test_run_golden.gd",
      "layer": "tests",
      "n": 7,
@@ -43145,6 +44425,14 @@
      "from": "tests/unit/test_shadow_cards.gd",
      "layer": "tests",
      "n": 25,
+     "symbols": [
+      "J"
+     ]
+    },
+    {
+     "from": "tests/unit/test_shadow_chain.gd",
+     "layer": "tests",
+     "n": 2,
      "symbols": [
       "J"
      ]
@@ -47160,14 +48448,14 @@
   {
    "file": "presentation/battle/board_panel.gd",
    "layer": "presentation",
-   "lines": 536,
-   "bytes": 22838,
-   "chars": 16717,
-   "cjkChars": 3023,
-   "estTokens": 6936,
-   "commentBytes": 2503,
-   "commentRatio": 0.1096,
-   "commentLines": 25,
+   "lines": 541,
+   "bytes": 23082,
+   "chars": 16903,
+   "cjkChars": 3052,
+   "estTokens": 7009,
+   "commentBytes": 2580,
+   "commentRatio": 0.1118,
+   "commentLines": 26,
    "trailingCommentLines": 0,
    "className": null,
    "classLine": null,
@@ -47175,7 +48463,7 @@
    "extendsLine": 2,
    "innerClasses": 0,
    "responsibility": "职责：4×4 棋盘（敌方 / 战线 / 我方）、双方机体卡填充、援护连线、动作播报条与本拍摘要。",
-   "declares": 33,
+   "declares": 34,
    "consts": [],
    "funcs": [
     {
@@ -47339,8 +48627,18 @@
      "doc": "敌方下一拍行动意图预告：`Boss.bossAction()` 是内核现成的纯函数（JS `算意图()` 内层就是它）。"
     },
     {
+     "name": "_机制提示",
+     "line": 298,
+     "static": true,
+     "returns": "Array",
+     "signature": "static func _机制提示(u: Dictionary, ctx: Dictionary) -> Array",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": "阵营机制提示：内核 `EnemyMech.机制提示` 现算（只读）。"
+    },
+    {
      "name": "_写播报条",
-     "line": 297,
+     "line": 302,
      "static": true,
      "returns": "void",
      "signature": "static func _写播报条(宿主, 文: String, 色: Color = UiTheme.高亮) -> void",
@@ -47350,7 +48648,7 @@
     },
     {
      "name": "播报文本",
-     "line": 304,
+     "line": 309,
      "static": true,
      "returns": "String",
      "signature": "static func 播报文本(宿主) -> String",
@@ -47360,7 +48658,7 @@
     },
     {
      "name": "_写作战画面空态",
-     "line": 308,
+     "line": 313,
      "static": true,
      "returns": "void",
      "signature": "static func _写作战画面空态(宿主) -> void",
@@ -47370,7 +48668,7 @@
     },
     {
      "name": "_本拍摘要",
-     "line": 317,
+     "line": 322,
      "static": true,
      "returns": "String",
      "signature": "static func _本拍摘要(宿主, 新们: Array) -> String",
@@ -47380,7 +48678,7 @@
     },
     {
      "name": "_本拍色",
-     "line": 369,
+     "line": 374,
      "static": true,
      "returns": "Color",
      "signature": "static func _本拍色(宿主, 新们: Array) -> Color",
@@ -47390,7 +48688,7 @@
     },
     {
      "name": "_攻击摘要",
-     "line": 392,
+     "line": 397,
      "static": true,
      "returns": "String",
      "signature": "static func _攻击摘要(宿主, e: Dictionary) -> String",
@@ -47400,7 +48698,7 @@
     },
     {
      "name": "_修理摘要",
-     "line": 433,
+     "line": 438,
      "static": true,
      "returns": "String",
      "signature": "static func _修理摘要(宿主, e: Dictionary) -> String",
@@ -47410,7 +48708,7 @@
     },
     {
      "name": "_战术牌摘要",
-     "line": 442,
+     "line": 447,
      "static": true,
      "returns": "String",
      "signature": "static func _战术牌摘要(宿主, e: Dictionary) -> String",
@@ -47420,7 +48718,7 @@
     },
     {
      "name": "_势力摘要",
-     "line": 448,
+     "line": 453,
      "static": true,
      "returns": "String",
      "signature": "static func _势力摘要(宿主, e: Dictionary) -> String",
@@ -47430,7 +48728,7 @@
     },
     {
      "name": "_通用摘要",
-     "line": 455,
+     "line": 460,
      "static": true,
      "returns": "String",
      "signature": "static func _通用摘要(宿主, e: Dictionary) -> String",
@@ -47440,7 +48738,7 @@
     },
     {
      "name": "_剥文本前缀",
-     "line": 459,
+     "line": 464,
      "static": true,
      "returns": "String",
      "signature": "static func _剥文本前缀(宿主, 文: String) -> String",
@@ -47450,7 +48748,7 @@
     },
     {
      "name": "_卡牌摘要尾",
-     "line": 477,
+     "line": 482,
      "static": true,
      "returns": "String",
      "signature": "static func _卡牌摘要尾(宿主, e: Dictionary) -> String",
@@ -47460,7 +48758,7 @@
     },
     {
      "name": "_卡",
-     "line": 493,
+     "line": 498,
      "static": true,
      "returns": "UnitCard",
      "signature": "static func _卡(宿主, 方: String, 位号: int) -> UnitCard",
@@ -47470,7 +48768,7 @@
     },
     {
      "name": "_单位名",
-     "line": 501,
+     "line": 506,
      "static": true,
      "returns": "String",
      "signature": "static func _单位名(宿主, 方: String, 位号: int, 键: String) -> String",
@@ -47480,7 +48778,7 @@
     },
     {
      "name": "_是大招",
-     "line": 510,
+     "line": 515,
      "static": true,
      "returns": "bool",
      "signature": "static func _是大招(宿主, e: Dictionary) -> bool",
@@ -47490,7 +48788,7 @@
     },
     {
      "name": "_数字",
-     "line": 527,
+     "line": 532,
      "static": true,
      "returns": "String",
      "signature": "static func _数字(宿主, 值: float) -> String",
@@ -47500,7 +48798,7 @@
     },
     {
      "name": "_为什么",
-     "line": 530,
+     "line": 535,
      "static": true,
      "returns": "String",
      "signature": "static func _为什么(宿主, r: Dictionary) -> String",
@@ -47524,9 +48822,20 @@
     {
      "to": "core/battle/boss.gd",
      "layer": "core",
-     "n": 4,
+     "n": 3,
      "symbols": [
       "Boss"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/enemy_mech.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "EnemyMech"
      ],
      "kinds": [
       "类引用"
@@ -47592,6 +48901,14 @@
     {
      "from": "presentation/battle/battle_view.gd",
      "layer": "presentation",
+     "n": 1,
+     "symbols": [
+      "res://presentation/battle/board_panel.gd"
+     ]
+    },
+    {
+     "from": "tests/unit/test_blockade.gd",
+     "layer": "tests",
      "n": 1,
      "symbols": [
       "res://presentation/battle/board_panel.gd"
@@ -55864,8 +57181,8 @@
      "static": true,
      "returns": "bool",
      "signature": "static func install(errors: Array = []) -> bool",
-     "callsOutside": 54,
-     "callsTotal": 54,
+     "callsOutside": 65,
+     "callsTotal": 65,
      "doc": "读入并装进 Db（会话启动与测试共用）；失败返回 false，原因写进 errors"
     },
     {
@@ -56082,7 +57399,39 @@
      ]
     },
     {
+     "from": "tests/unit/test_blockade.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ]
+    },
+    {
+     "from": "tests/unit/test_boss_phase_entry.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ]
+    },
+    {
+     "from": "tests/unit/test_boss_retreat.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ]
+    },
+    {
      "from": "tests/unit/test_boundary.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ]
+    },
+    {
+     "from": "tests/unit/test_bounty.gd",
      "layer": "tests",
      "n": 1,
      "symbols": [
@@ -56186,7 +57535,31 @@
      ]
     },
     {
+     "from": "tests/unit/test_faction_layers.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ]
+    },
+    {
      "from": "tests/unit/test_iteration_fixes.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ]
+    },
+    {
+     "from": "tests/unit/test_l1_enemies.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ]
+    },
+    {
+     "from": "tests/unit/test_lambda_resonance.gd",
      "layer": "tests",
      "n": 1,
      "symbols": [
@@ -56234,7 +57607,23 @@
      ]
     },
     {
+     "from": "tests/unit/test_named_bosses.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ]
+    },
+    {
      "from": "tests/unit/test_native_goldens.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ]
+    },
+    {
+     "from": "tests/unit/test_particle_suppression.gd",
      "layer": "tests",
      "n": 1,
      "symbols": [
@@ -56275,6 +57664,14 @@
     },
     {
      "from": "tests/unit/test_rf0_fixes.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ]
+    },
+    {
+     "from": "tests/unit/test_rival.gd",
      "layer": "tests",
      "n": 1,
      "symbols": [
@@ -56323,6 +57720,14 @@
     },
     {
      "from": "tests/unit/test_shadow_cards.gd",
+     "layer": "tests",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ]
+    },
+    {
+     "from": "tests/unit/test_shadow_chain.gd",
      "layer": "tests",
      "n": 1,
      "symbols": [
@@ -67553,6 +68958,474 @@
    "dependsBy": []
   },
   {
+   "file": "tests/unit/test_blockade.gd",
+   "layer": "tests",
+   "lines": 38,
+   "bytes": 2882,
+   "chars": 2084,
+   "cjkChars": 394,
+   "estTokens": 877,
+   "commentBytes": 387,
+   "commentRatio": 0.1343,
+   "commentLines": 4,
+   "trailingCommentLines": 0,
+   "className": null,
+   "classLine": null,
+   "extends": "RefCounted",
+   "extendsLine": 3,
+   "innerClasses": 0,
+   "responsibility": "职责：N1【封锁线】—— 敌方前排 4 格都有活着的机体、且场上有带「封锁线」的敌机时，",
+   "declares": 1,
+   "consts": [],
+   "funcs": [
+    {
+     "name": "run",
+     "line": 5,
+     "static": false,
+     "returns": "void",
+     "signature": "func run(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    }
+   ],
+   "dependsOn": [
+    {
+     "to": "core/battle/reach.gd",
+     "layer": "core",
+     "n": 9,
+     "symbols": [
+      "Reach"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/units.gd",
+     "layer": "core",
+     "n": 6,
+     "symbols": [
+      "Units"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/util/js.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "J"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "presentation/battle/board_panel.gd",
+     "layer": "presentation",
+     "n": 1,
+     "symbols": [
+      "res://presentation/battle/board_panel.gd"
+     ],
+     "kinds": [
+      "preload/load"
+     ]
+    },
+    {
+     "to": "session/data_loader.gd",
+     "layer": "session",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    }
+   ],
+   "dependsBy": []
+  },
+  {
+   "file": "tests/unit/test_boss_phase_entry.gd",
+   "layer": "tests",
+   "lines": 115,
+   "bytes": 5653,
+   "chars": 4545,
+   "cjkChars": 551,
+   "estTokens": 1692,
+   "commentBytes": 159,
+   "commentRatio": 0.0281,
+   "commentLines": 1,
+   "trailingCommentLines": 0,
+   "className": null,
+   "classLine": null,
+   "extends": "RefCounted",
+   "extendsLine": 2,
+   "innerClasses": 0,
+   "responsibility": "职责：Boss 阶段进场事件（B 稿 N4）：进新阶段只执行一次 —— 叫增援 / 套词条 / 写战报；`除非` 条件…",
+   "declares": 10,
+   "consts": [],
+   "funcs": [
+    {
+     "name": "run",
+     "line": 4,
+     "static": false,
+     "returns": "void",
+     "signature": "func run(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_条目",
+     "line": 13,
+     "static": false,
+     "returns": "Dictionary",
+     "signature": "func _条目(号: String) -> Dictionary",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_开",
+     "line": 19,
+     "static": false,
+     "returns": "Dictionary",
+     "signature": "func _开(号: String, 我方: Array) -> Dictionary",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_首",
+     "line": 29,
+     "static": false,
+     "returns": "Dictionary",
+     "signature": "func _首(ctx: Dictionary) -> Dictionary",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_进场条数",
+     "line": 35,
+     "static": false,
+     "returns": "int",
+     "signature": "func _进场条数(ctx: Dictionary) -> int",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_叫增援",
+     "line": 38,
+     "static": false,
+     "returns": "void",
+     "signature": "func _叫增援(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_除非与强化增援",
+     "line": 64,
+     "static": false,
+     "returns": "void",
+     "signature": "func _除非与强化增援(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_套词条",
+     "line": 87,
+     "static": false,
+     "returns": "void",
+     "signature": "func _套词条(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_跳阶段与只报战报",
+     "line": 99,
+     "static": false,
+     "returns": "void",
+     "signature": "func _跳阶段与只报战报(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_旧脚本不变",
+     "line": 110,
+     "static": false,
+     "returns": "void",
+     "signature": "func _旧脚本不变(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    }
+   ],
+   "dependsOn": [
+    {
+     "to": "core/battle/boss.gd",
+     "layer": "core",
+     "n": 13,
+     "symbols": [
+      "Boss"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/rival.gd",
+     "layer": "core",
+     "n": 2,
+     "symbols": [
+      "Rival"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/setup.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "Setup"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/units.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "Units"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/data/db.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "Db"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/run/node_resolver.gd",
+     "layer": "core",
+     "n": 3,
+     "symbols": [
+      "NodeResolver"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/run/roster_manager.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "RosterManager"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/util/js.gd",
+     "layer": "core",
+     "n": 5,
+     "symbols": [
+      "J"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "session/data_loader.gd",
+     "layer": "session",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    }
+   ],
+   "dependsBy": []
+  },
+  {
+   "file": "tests/unit/test_boss_retreat.gd",
+   "layer": "tests",
+   "lines": 78,
+   "bytes": 4019,
+   "chars": 3101,
+   "cjkChars": 456,
+   "estTokens": 1212,
+   "commentBytes": 154,
+   "commentRatio": 0.0383,
+   "commentLines": 1,
+   "trailingCommentLines": 0,
+   "className": null,
+   "classLine": null,
+   "extends": "RefCounted",
+   "extendsLine": 2,
+   "innerClasses": 0,
+   "responsibility": "职责：敌方中途撤退（B 稿 N9）：到线 / 到回合撤离 → 移出战场、判我方胜利；结算希望 / 源碳减半、不发零件。",
+   "declares": 6,
+   "consts": [],
+   "funcs": [
+    {
+     "name": "run",
+     "line": 4,
+     "static": false,
+     "returns": "void",
+     "signature": "func run(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_开",
+     "line": 11,
+     "static": false,
+     "returns": "Dictionary",
+     "signature": "func _开(我方: Array, 敌方: Array) -> Dictionary",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_到线",
+     "line": 20,
+     "static": false,
+     "returns": "void",
+     "signature": "func _到线(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_到回合与条件",
+     "line": 41,
+     "static": false,
+     "returns": "void",
+     "signature": "func _到回合与条件(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_结算",
+     "line": 56,
+     "static": false,
+     "returns": "Dictionary",
+     "signature": "func _结算(撤: bool) -> Dictionary",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_结算减半",
+     "line": 70,
+     "static": false,
+     "returns": "void",
+     "signature": "func _结算减半(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    }
+   ],
+   "dependsOn": [
+    {
+     "to": "core/battle/boss.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "Boss"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/setup.gd",
+     "layer": "core",
+     "n": 9,
+     "symbols": [
+      "Setup"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/run/node_resolver.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "NodeResolver"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/run/roster_manager.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "RosterManager"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/util/js.gd",
+     "layer": "core",
+     "n": 4,
+     "symbols": [
+      "J"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "session/data_loader.gd",
+     "layer": "session",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    }
+   ],
+   "dependsBy": []
+  },
+  {
    "file": "tests/unit/test_boundary.gd",
    "layer": "tests",
    "lines": 212,
@@ -67739,6 +69612,86 @@
      ],
      "kinds": [
       "preload/load"
+     ]
+    },
+    {
+     "to": "session/data_loader.gd",
+     "layer": "session",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    }
+   ],
+   "dependsBy": []
+  },
+  {
+   "file": "tests/unit/test_bounty.gd",
+   "layer": "tests",
+   "lines": 38,
+   "bytes": 2792,
+   "chars": 1952,
+   "cjkChars": 416,
+   "estTokens": 855,
+   "commentBytes": 374,
+   "commentRatio": 0.134,
+   "commentLines": 4,
+   "trailingCommentLines": 0,
+   "className": null,
+   "classLine": null,
+   "extends": "RefCounted",
+   "extendsLine": 3,
+   "innerClasses": 0,
+   "responsibility": "职责：N2【悬赏令】—— 敌方阶段开始标记我方本回合输出最高者；带悬赏令的敌机够得着就只打它、伤害 +20%；",
+   "declares": 1,
+   "consts": [],
+   "funcs": [
+    {
+     "name": "run",
+     "line": 5,
+     "static": false,
+     "returns": "void",
+     "signature": "func run(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    }
+   ],
+   "dependsOn": [
+    {
+     "to": "core/battle/enemy_mech.gd",
+     "layer": "core",
+     "n": 9,
+     "symbols": [
+      "EnemyMech"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/units.gd",
+     "layer": "core",
+     "n": 5,
+     "symbols": [
+      "Units"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/util/js.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "J"
+     ],
+     "kinds": [
+      "类引用"
      ]
     },
     {
@@ -72196,6 +74149,218 @@
    "dependsBy": []
   },
   {
+   "file": "tests/unit/test_faction_layers.gd",
+   "layer": "tests",
+   "lines": 127,
+   "bytes": 6024,
+   "chars": 4784,
+   "cjkChars": 619,
+   "estTokens": 1809,
+   "commentBytes": 782,
+   "commentRatio": 0.1298,
+   "commentLines": 8,
+   "trailingCommentLines": 0,
+   "className": null,
+   "classLine": null,
+   "extends": "RefCounted",
+   "extendsLine": 3,
+   "innerClasses": 0,
+   "responsibility": "职责：第 2 层起各层阵营敌机（cw_ / ok_ / hg_ / tr_）的数据落地与开战冒烟。",
+   "declares": 8,
+   "consts": [
+    {
+     "name": "层表",
+     "line": 6,
+     "doc": "层 → {前缀: 新编成编号前缀们, 模板: 本层阵营模板键}"
+    }
+   ],
+   "funcs": [
+    {
+     "name": "run",
+     "line": 12,
+     "static": false,
+     "returns": "void",
+     "signature": "func run(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_新",
+     "line": 27,
+     "static": false,
+     "returns": "bool",
+     "signature": "func _新(e: Dictionary, 前缀们: Array) -> bool",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_开战",
+     "line": 33,
+     "static": false,
+     "returns": "Dictionary",
+     "signature": "func _开战(e: Dictionary, 种子: int = 20261022) -> Dictionary",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_打完",
+     "line": 46,
+     "static": false,
+     "returns": "void",
+     "signature": "func _打完(ctx: Dictionary) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_开战冒烟",
+     "line": 53,
+     "static": false,
+     "returns": "void",
+     "signature": "func _开战冒烟(t, e: Dictionary) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_焊修机会修",
+     "line": 61,
+     "static": false,
+     "returns": "void",
+     "signature": "func _焊修机会修(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": "敌方修理（引擎早支持、数据第一次用）：友军掉到 60% 以下时，焊修机的行动是「修理」。"
+    },
+    {
+     "name": "_实战辅助",
+     "line": 82,
+     "static": false,
+     "returns": "void",
+     "signature": "func _实战辅助(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": "ENEMY-AI-1：敌方修理 / 支援在实战与预告里真的出手（之前敌方只走 Ai.enemyAction，只会攻击）。"
+    }
+   ],
+   "dependsOn": [
+    {
+     "to": "core/battle/ai.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "Ai"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/boss.gd",
+     "layer": "core",
+     "n": 2,
+     "symbols": [
+      "Boss"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/data_fn.gd",
+     "layer": "core",
+     "n": 2,
+     "symbols": [
+      "DataFn"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/intent.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "BattleIntent"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/setup.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "Setup"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/data/db.gd",
+     "layer": "core",
+     "n": 4,
+     "symbols": [
+      "Db"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/run/node_resolver.gd",
+     "layer": "core",
+     "n": 2,
+     "symbols": [
+      "NodeResolver"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/run/roster_manager.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "RosterManager"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/util/js.gd",
+     "layer": "core",
+     "n": 5,
+     "symbols": [
+      "J"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "session/data_loader.gd",
+     "layer": "session",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    }
+   ],
+   "dependsBy": []
+  },
+  {
    "file": "tests/unit/test_font_coverage.gd",
    "layer": "tests",
    "lines": 47,
@@ -72543,6 +74708,270 @@
      "n": 4,
      "symbols": [
       "GoldenIO"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    }
+   ],
+   "dependsBy": []
+  },
+  {
+   "file": "tests/unit/test_l1_enemies.gd",
+   "layer": "tests",
+   "lines": 92,
+   "bytes": 5003,
+   "chars": 4019,
+   "cjkChars": 491,
+   "estTokens": 1499,
+   "commentBytes": 414,
+   "commentRatio": 0.0828,
+   "commentLines": 4,
+   "trailingCommentLines": 0,
+   "className": null,
+   "classLine": null,
+   "extends": "RefCounted",
+   "extendsLine": 3,
+   "innerClasses": 0,
+   "responsibility": "职责：第 1 层新敌机（lr_ 六台）与三条编成（1-L1~1-L3）的数据与开战冒烟。",
+   "declares": 9,
+   "consts": [
+    {
+     "name": "新键",
+     "line": 5,
+     "doc": ""
+    },
+    {
+     "name": "新编成",
+     "line": 6,
+     "doc": ""
+    }
+   ],
+   "funcs": [
+    {
+     "name": "run",
+     "line": 8,
+     "static": false,
+     "returns": "void",
+     "signature": "func run(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_tpl",
+     "line": 21,
+     "static": false,
+     "returns": "Dictionary",
+     "signature": "func _tpl(k: String) -> Dictionary",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_大招",
+     "line": 24,
+     "static": false,
+     "returns": "Array",
+     "signature": "func _大招(k: String) -> Array",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_模板",
+     "line": 27,
+     "static": false,
+     "returns": "void",
+     "signature": "func _模板(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_梯队与职业",
+     "line": 42,
+     "static": false,
+     "returns": "void",
+     "signature": "func _梯队与职业(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_条目",
+     "line": 51,
+     "static": false,
+     "returns": "Dictionary",
+     "signature": "func _条目(号: String) -> Dictionary",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_开战冒烟",
+     "line": 57,
+     "static": false,
+     "returns": "void",
+     "signature": "func _开战冒烟(t, 号: String) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    }
+   ],
+   "dependsOn": [
+    {
+     "to": "core/battle/data_fn.gd",
+     "layer": "core",
+     "n": 2,
+     "symbols": [
+      "DataFn"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/params.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "Params"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/setup.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "Setup"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/data/db.gd",
+     "layer": "core",
+     "n": 3,
+     "symbols": [
+      "Db"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/run/node_resolver.gd",
+     "layer": "core",
+     "n": 5,
+     "symbols": [
+      "NodeResolver"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/run/roster_manager.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "RosterManager"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/util/js.gd",
+     "layer": "core",
+     "n": 5,
+     "symbols": [
+      "J"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "session/data_loader.gd",
+     "layer": "session",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    }
+   ],
+   "dependsBy": []
+  },
+  {
+   "file": "tests/unit/test_lambda_resonance.gd",
+   "layer": "tests",
+   "lines": 31,
+   "bytes": 2116,
+   "chars": 1639,
+   "cjkChars": 229,
+   "estTokens": 632,
+   "commentBytes": 226,
+   "commentRatio": 0.1068,
+   "commentLines": 2,
+   "trailingCommentLines": 0,
+   "className": null,
+   "classLine": null,
+   "extends": "RefCounted",
+   "extendsLine": 2,
+   "innerClasses": 0,
+   "responsibility": "职责：N3【λ 共振】—— λ 力场减免量按单位读；同侧 ≥2 台带「λ共振」的 λ 机在场时，每回合减免次数 2 →…",
+   "declares": 1,
+   "consts": [],
+   "funcs": [
+    {
+     "name": "run",
+     "line": 4,
+     "static": false,
+     "returns": "void",
+     "signature": "func run(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    }
+   ],
+   "dependsOn": [
+    {
+     "to": "core/battle/calc.gd",
+     "layer": "core",
+     "n": 11,
+     "symbols": [
+      "Calc"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/units.gd",
+     "layer": "core",
+     "n": 5,
+     "symbols": [
+      "Units"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "session/data_loader.gd",
+     "layer": "session",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
      ],
      "kinds": [
       "类引用"
@@ -76056,6 +78485,218 @@
    "dependsBy": []
   },
   {
+   "file": "tests/unit/test_named_bosses.gd",
+   "layer": "tests",
+   "lines": 104,
+   "bytes": 5277,
+   "chars": 4040,
+   "cjkChars": 618,
+   "estTokens": 1596,
+   "commentBytes": 456,
+   "commentRatio": 0.0864,
+   "commentLines": 4,
+   "trailingCommentLines": 0,
+   "className": null,
+   "classLine": null,
+   "extends": "RefCounted",
+   "extendsLine": 4,
+   "innerClasses": 0,
+   "responsibility": "职责：第 1～4 层代号 Boss 池（守关 / 终点 / 精英头目）的数据落地与开战冒烟。",
+   "declares": 9,
+   "consts": [
+    {
+     "name": "守关",
+     "line": 6,
+     "doc": ""
+    },
+    {
+     "name": "终点",
+     "line": 7,
+     "doc": ""
+    },
+    {
+     "name": "头目",
+     "line": 8,
+     "doc": ""
+    }
+   ],
+   "funcs": [
+    {
+     "name": "run",
+     "line": 10,
+     "static": false,
+     "returns": "void",
+     "signature": "func run(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_条目",
+     "line": 19,
+     "static": false,
+     "returns": "Dictionary",
+     "signature": "func _条目(号: String) -> Dictionary",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_抽取池",
+     "line": 25,
+     "static": false,
+     "returns": "void",
+     "signature": "func _抽取池(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_开战冒烟",
+     "line": 39,
+     "static": false,
+     "returns": "void",
+     "signature": "func _开战冒烟(t, 号: String) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_阶段武器收起",
+     "line": 68,
+     "static": false,
+     "returns": "void",
+     "signature": "func _阶段武器收起(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_大技能预告",
+     "line": 95,
+     "static": false,
+     "returns": "void",
+     "signature": "func _大技能预告(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": "B 稿 N5：意图 / 棋盘上的大技能倒计时要算上武器的开场冷却（之前第 1 回合会误报「这一拍放」）。"
+    }
+   ],
+   "dependsOn": [
+    {
+     "to": "core/battle/boss.gd",
+     "layer": "core",
+     "n": 10,
+     "symbols": [
+      "Boss"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/data_fn.gd",
+     "layer": "core",
+     "n": 2,
+     "symbols": [
+      "DataFn"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/intent.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "BattleIntent"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/setup.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "Setup"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/units.gd",
+     "layer": "core",
+     "n": 2,
+     "symbols": [
+      "Units"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/data/db.gd",
+     "layer": "core",
+     "n": 3,
+     "symbols": [
+      "Db"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/run/node_resolver.gd",
+     "layer": "core",
+     "n": 4,
+     "symbols": [
+      "NodeResolver"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/run/roster_manager.gd",
+     "layer": "core",
+     "n": 2,
+     "symbols": [
+      "RosterManager"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/util/js.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "J"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "session/data_loader.gd",
+     "layer": "session",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    }
+   ],
+   "dependsBy": []
+  },
+  {
    "file": "tests/unit/test_native_goldens.gd",
    "layer": "tests",
    "lines": 103,
@@ -76194,6 +78835,108 @@
      "n": 4,
      "symbols": [
       "NativeGoldenRunner"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    }
+   ],
+   "dependsBy": []
+  },
+  {
+   "file": "tests/unit/test_particle_suppression.gd",
+   "layer": "tests",
+   "lines": 29,
+   "bytes": 1950,
+   "chars": 1450,
+   "cjkChars": 247,
+   "estTokens": 591,
+   "commentBytes": 265,
+   "commentRatio": 0.1359,
+   "commentLines": 2,
+   "trailingCommentLines": 0,
+   "className": null,
+   "classLine": null,
+   "extends": "RefCounted",
+   "extendsLine": 3,
+   "innerClasses": 0,
+   "responsibility": "职责：N4【粒子抑制场】—— 敌方每台活着的粒子散布机算 1 层（最多 2 层）：",
+   "declares": 1,
+   "consts": [],
+   "funcs": [
+    {
+     "name": "run",
+     "line": 5,
+     "static": false,
+     "returns": "void",
+     "signature": "func run(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    }
+   ],
+   "dependsOn": [
+    {
+     "to": "core/battle/enemy_mech.gd",
+     "layer": "core",
+     "n": 2,
+     "symbols": [
+      "EnemyMech"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/morale.gd",
+     "layer": "core",
+     "n": 8,
+     "symbols": [
+      "BattleMorale"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/rule_hooks.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "RuleHooks"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/units.gd",
+     "layer": "core",
+     "n": 4,
+     "symbols": [
+      "Units"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/util/js.gd",
+     "layer": "core",
+     "n": 2,
+     "symbols": [
+      "J"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "session/data_loader.gd",
+     "layer": "session",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
      ],
      "kinds": [
       "类引用"
@@ -76950,12 +79693,12 @@
    "file": "tests/unit/test_quick_battle_v03.gd",
    "layer": "tests",
    "lines": 458,
-   "bytes": 28063,
-   "chars": 19947,
-   "cjkChars": 3905,
-   "estTokens": 8488,
-   "commentBytes": 6270,
-   "commentRatio": 0.2234,
+   "bytes": 28134,
+   "chars": 19989,
+   "cjkChars": 3919,
+   "estTokens": 8510,
+   "commentBytes": 6341,
+   "commentRatio": 0.2254,
    "commentLines": 72,
    "trailingCommentLines": 0,
    "className": null,
@@ -77988,6 +80731,128 @@
    "dependsBy": []
   },
   {
+   "file": "tests/unit/test_rival.gd",
+   "layer": "tests",
+   "lines": 54,
+   "bytes": 3493,
+   "chars": 2728,
+   "cjkChars": 378,
+   "estTokens": 1049,
+   "commentBytes": 285,
+   "commentRatio": 0.0816,
+   "commentLines": 8,
+   "trailingCommentLines": 0,
+   "className": null,
+   "classLine": null,
+   "extends": "RefCounted",
+   "extendsLine": 2,
+   "innerClasses": 0,
+   "responsibility": "职责：Boss 宿敌骨架（B 稿 N1 宿敌在场 / N2 指定角色修正 / N3 猎杀名单）。",
+   "declares": 3,
+   "consts": [],
+   "funcs": [
+    {
+     "name": "_敌",
+     "line": 4,
+     "static": false,
+     "returns": "Dictionary",
+     "signature": "func _敌(k: String, slot: float) -> Dictionary",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "_我",
+     "line": 7,
+     "static": false,
+     "returns": "Dictionary",
+     "signature": "func _我(k: String, slot: float) -> Dictionary",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    },
+    {
+     "name": "run",
+     "line": 10,
+     "static": false,
+     "returns": "void",
+     "signature": "func run(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    }
+   ],
+   "dependsOn": [
+    {
+     "to": "core/battle/calc.gd",
+     "layer": "core",
+     "n": 2,
+     "symbols": [
+      "Calc"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/rival.gd",
+     "layer": "core",
+     "n": 15,
+     "symbols": [
+      "Rival"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/rule_hooks.gd",
+     "layer": "core",
+     "n": 3,
+     "symbols": [
+      "RuleHooks"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/units.gd",
+     "layer": "core",
+     "n": 2,
+     "symbols": [
+      "Units"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/util/js.gd",
+     "layer": "core",
+     "n": 3,
+     "symbols": [
+      "J"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "session/data_loader.gd",
+     "layer": "session",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    }
+   ],
+   "dependsBy": []
+  },
+  {
    "file": "tests/unit/test_rng.gd",
    "layer": "tests",
    "lines": 26,
@@ -78060,12 +80925,12 @@
    "file": "tests/unit/test_run_core.gd",
    "layer": "tests",
    "lines": 553,
-   "bytes": 29945,
-   "chars": 22321,
-   "cjkChars": 3744,
-   "estTokens": 9052,
-   "commentBytes": 4998,
-   "commentRatio": 0.1669,
+   "bytes": 29921,
+   "chars": 22340,
+   "cjkChars": 3724,
+   "estTokens": 9043,
+   "commentBytes": 4940,
+   "commentRatio": 0.1651,
    "commentLines": 56,
    "trailingCommentLines": 2,
    "className": null,
@@ -80009,6 +82874,97 @@
      "to": "core/util/js.gd",
      "layer": "core",
      "n": 25,
+     "symbols": [
+      "J"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "session/data_loader.gd",
+     "layer": "session",
+     "n": 1,
+     "symbols": [
+      "DataLoader"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    }
+   ],
+   "dependsBy": []
+  },
+  {
+   "file": "tests/unit/test_shadow_chain.gd",
+   "layer": "tests",
+   "lines": 25,
+   "bytes": 1646,
+   "chars": 1202,
+   "cjkChars": 219,
+   "estTokens": 500,
+   "commentBytes": 164,
+   "commentRatio": 0.0996,
+   "commentLines": 1,
+   "trailingCommentLines": 0,
+   "className": null,
+   "classLine": null,
+   "extends": "RefCounted",
+   "extendsLine": 2,
+   "innerClasses": 0,
+   "responsibility": "职责：N5【影锁拽位】—— 锁链抓投机用「影锁」打中我方后排 → 和同列前排换位；打前排、别的武器、旧敌机都不拽。",
+   "declares": 1,
+   "consts": [],
+   "funcs": [
+    {
+     "name": "run",
+     "line": 4,
+     "static": false,
+     "returns": "void",
+     "signature": "func run(t) -> void",
+     "callsOutside": 0,
+     "callsTotal": 0,
+     "doc": ""
+    }
+   ],
+   "dependsOn": [
+    {
+     "to": "core/battle/enemy_mech.gd",
+     "layer": "core",
+     "n": 5,
+     "symbols": [
+      "EnemyMech"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/fm.gd",
+     "layer": "core",
+     "n": 1,
+     "symbols": [
+      "Fm"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/battle/units.gd",
+     "layer": "core",
+     "n": 4,
+     "symbols": [
+      "Units"
+     ],
+     "kinds": [
+      "类引用"
+     ]
+    },
+    {
+     "to": "core/util/js.gd",
+     "layer": "core",
+     "n": 2,
      "symbols": [
       "J"
      ],
@@ -83115,25 +86071,19 @@
    {
     "调用方": "presentation/battle/board_panel.gd",
     "目标": "core/battle/boss.gd",
-    "符号": "Boss.Boss下次技能回合",
-    "n": 1
-   },
-   {
-    "调用方": "presentation/battle/board_panel.gd",
-    "目标": "core/battle/boss.gd",
     "符号": "Boss.Boss参数",
     "n": 1
    },
    {
     "调用方": "presentation/battle/board_panel.gd",
     "目标": "core/battle/boss.gd",
-    "符号": "Boss.Boss本回合放大技能",
+    "符号": "Boss.bossAction",
     "n": 1
    },
    {
     "调用方": "presentation/battle/board_panel.gd",
     "目标": "core/battle/boss.gd",
-    "符号": "Boss.bossAction",
+    "符号": "Boss.大技能预告回合",
     "n": 1
    },
    {
@@ -83146,6 +86096,12 @@
     "调用方": "presentation/widgets/modal_layer.gd",
     "目标": "core/run/deck_builder.gd",
     "符号": "DeckBuilder.找到",
+    "n": 1
+   },
+   {
+    "调用方": "presentation/battle/board_panel.gd",
+    "目标": "core/battle/enemy_mech.gd",
+    "符号": "EnemyMech.机制提示",
     "n": 1
    },
    {
@@ -83599,6 +86555,10 @@
    [
     "core/battle/atx_three.gd",
     "core/battle/setup.gd"
+   ],
+   [
+    "core/battle/boss.gd",
+    "core/battle/flow.gd"
    ],
    [
     "core/battle/btl.gd",
@@ -84894,9 +87854,9 @@
     {
      "路径": "core/battle/calc.gd",
      "上限": 18553,
-     "当前": 17327,
-     "行数": 1182,
-     "余量": 1226,
+     "当前": 17614,
+     "行数": 1200,
+     "余量": 939,
      "超": false
     },
     {
@@ -84942,9 +87902,9 @@
     {
      "路径": "core/run/node_resolver.gd",
      "上限": 14253,
-     "当前": 14188,
-     "行数": 958,
-     "余量": 65,
+     "当前": 14247,
+     "行数": 964,
+     "余量": 6,
      "超": false
     },
     {
@@ -85031,7 +87991,7 @@
    "登记形式": "路径清单（数组，不含逐文件数值）；判据 = 本层阈值，不冻结建表时的占比",
    "登记数": 79,
    "超限数": 0,
-   "警告数": 76,
+   "警告数": 78,
    "登记表": [
     "core/battle/atx_faction.gd",
     "core/battle/atx_three.gd",
@@ -85285,16 +88245,6 @@
      "超": false
     },
     {
-     "路径": "tests/unit/test_run_core.gd",
-     "层": "tests",
-     "阈值": 0.2,
-     "占比": 0.16690599432292536,
-     "注释字节": 4998,
-     "行数": 553,
-     "余量字节": 991,
-     "超": false
-    },
-    {
      "路径": "tests/unit/test_session_flow.gd",
      "层": "tests",
      "阈值": 0.2,
@@ -85302,6 +88252,16 @@
      "注释字节": 17864,
      "行数": 1898,
      "余量字节": 3543,
+     "超": false
+    },
+    {
+     "路径": "tests/unit/test_run_core.gd",
+     "层": "tests",
+     "阈值": 0.2,
+     "占比": 0.1651014337756091,
+     "注释字节": 4940,
+     "行数": 553,
+     "余量字节": 1044,
      "超": false
     },
     {
@@ -85325,6 +88285,16 @@
      "超": false
     },
     {
+     "路径": "core/battle/calc.gd",
+     "层": "core",
+     "阈值": 0.15,
+     "占比": 0.14945326157748604,
+     "注释字节": 8720,
+     "行数": 1200,
+     "余量字节": 31,
+     "超": false
+    },
+    {
      "路径": "core/battle/weapon_exec.gd",
      "层": "core",
      "阈值": 0.15,
@@ -85345,16 +88315,6 @@
      "超": false
     },
     {
-     "路径": "core/battle/calc.gd",
-     "层": "core",
-     "阈值": 0.15,
-     "占比": 0.14857491501786804,
-     "注释字节": 8523,
-     "行数": 1182,
-     "余量字节": 81,
-     "超": false
-    },
-    {
      "路径": "core/battle/phase_flow.gd",
      "层": "core",
      "阈值": 0.15,
@@ -85372,16 +88332,6 @@
      "注释字节": 658,
      "行数": 132,
      "余量字节": 17,
-     "超": false
-    },
-    {
-     "路径": "core/battle/morale.gd",
-     "层": "core",
-     "阈值": 0.15,
-     "占比": 0.14531336661120356,
-     "注释字节": 262,
-     "行数": 55,
-     "余量字节": 8,
      "超": false
     },
     {
@@ -85455,6 +88405,16 @@
      "超": false
     },
     {
+     "路径": "core/battle/boss.gd",
+     "层": "core",
+     "阈值": 0.15,
+     "占比": 0.13853052234109503,
+     "注释字节": 1761,
+     "行数": 251,
+     "余量字节": 145,
+     "超": false
+    },
+    {
      "路径": "presentation/battle/hand_panel.gd",
      "层": "presentation",
      "阈值": 0.15,
@@ -85485,13 +88445,13 @@
      "超": false
     },
     {
-     "路径": "core/battle/intent.gd",
+     "路径": "core/battle/morale.gd",
      "层": "core",
      "阈值": 0.15,
-     "占比": 0.13445078459343796,
-     "注释字节": 754,
-     "行数": 130,
-     "余量字节": 87,
+     "占比": 0.13439244310863033,
+     "注释字节": 313,
+     "行数": 67,
+     "余量字节": 36,
      "超": false
     },
     {
@@ -85522,6 +88482,16 @@
      "注释字节": 3634,
      "行数": 497,
      "余量字节": 1941,
+     "超": false
+    },
+    {
+     "路径": "core/battle/intent.gd",
+     "层": "core",
+     "阈值": 0.15,
+     "占比": 0.13022452504317789,
+     "注释字节": 754,
+     "行数": 131,
+     "余量字节": 114,
      "超": false
     },
     {
@@ -85605,16 +88575,6 @@
      "超": false
     },
     {
-     "路径": "core/battle/rule_hooks.gd",
-     "层": "core",
-     "阈值": 0.15,
-     "占比": 0.12053020961775586,
-     "注释字节": 782,
-     "行数": 162,
-     "余量字节": 191,
-     "超": false
-    },
-    {
      "路径": "core/battle/card_pool.gd",
      "层": "core",
      "阈值": 0.15,
@@ -85622,6 +88582,16 @@
      "注释字节": 1721,
      "行数": 394,
      "余量字节": 436,
+     "超": false
+    },
+    {
+     "路径": "core/battle/rule_hooks.gd",
+     "层": "core",
+     "阈值": 0.15,
+     "占比": 0.11913467397928093,
+     "注释字节": 782,
+     "行数": 162,
+     "余量字节": 202,
      "超": false
     },
     {
@@ -85635,16 +88605,6 @@
      "超": false
     },
     {
-     "路径": "core/battle/card_play.gd",
-     "层": "core",
-     "阈值": 0.15,
-     "占比": 0.11769623004263145,
-     "注释字节": 1408,
-     "行数": 292,
-     "余量字节": 386,
-     "超": false
-    },
-    {
      "路径": "presentation/battle/battle_animation_layer.gd",
      "层": "presentation",
      "阈值": 0.15,
@@ -85652,6 +88612,16 @@
      "注释字节": 1426,
      "行数": 330,
      "余量字节": 412,
+     "超": false
+    },
+    {
+     "路径": "core/battle/card_play.gd",
+     "层": "core",
+     "阈值": 0.15,
+     "占比": 0.11566581779347737,
+     "注释字节": 1408,
+     "行数": 298,
+     "余量字节": 417,
      "超": false
     },
     {
@@ -85685,6 +88655,16 @@
      "超": false
     },
     {
+     "路径": "presentation/battle/board_panel.gd",
+     "层": "presentation",
+     "阈值": 0.15,
+     "占比": 0.11177540940992982,
+     "注释字节": 2580,
+     "行数": 541,
+     "余量字节": 882,
+     "超": false
+    },
+    {
      "路径": "presentation/battle/deck_sidebar.gd",
      "层": "presentation",
      "阈值": 0.15,
@@ -85692,26 +88672,6 @@
      "注释字节": 1762,
      "行数": 324,
      "余量字节": 626,
-     "超": false
-    },
-    {
-     "路径": "presentation/battle/board_panel.gd",
-     "层": "presentation",
-     "阈值": 0.15,
-     "占比": 0.10959803835712409,
-     "注释字节": 2503,
-     "行数": 536,
-     "余量字节": 922,
-     "超": false
-    },
-    {
-     "路径": "core/battle/boss.gd",
-     "层": "core",
-     "阈值": 0.15,
-     "占比": 0.10506938544321721,
-     "注释字节": 742,
-     "行数": 146,
-     "余量字节": 317,
      "超": false
     },
     {
@@ -86063,7 +89023,7 @@
      "路径": "core/battle/setup.gd",
      "层": "core",
      "阈值": 0.15,
-     "占比": 0.35902517800778094,
+     "占比": 0.3587881455399061,
      "注释字节": 9782,
      "行数": 541
     },
@@ -86132,20 +89092,20 @@
      "行数": 652
     },
     {
+     "路径": "core/battle/flow.gd",
+     "层": "core",
+     "阈值": 0.15,
+     "占比": 0.3272380023568613,
+     "注释字节": 8053,
+     "行数": 424
+    },
+    {
      "路径": "core/run/map_navigator.gd",
      "层": "core",
      "阈值": 0.15,
      "占比": 0.32721305237121245,
      "注释字节": 6879,
      "行数": 439
-    },
-    {
-     "路径": "core/battle/flow.gd",
-     "层": "core",
-     "阈值": 0.15,
-     "占比": 0.325068870523416,
-     "注释字节": 7906,
-     "行数": 417
     },
     {
      "路径": "core/battle/fm.gd",
@@ -86316,14 +89276,6 @@
      "行数": 96
     },
     {
-     "路径": "core/battle/reach.gd",
-     "层": "core",
-     "阈值": 0.15,
-     "占比": 0.25539890799445847,
-     "注释字节": 3134,
-     "行数": 292
-    },
-    {
      "路径": "tests/golden_compare.gd",
      "层": "tests",
      "阈值": 0.2,
@@ -86338,6 +89290,14 @@
      "占比": 0.25202151533501943,
      "注释字节": 7075,
      "行数": 679
+    },
+    {
+     "路径": "core/battle/reach.gd",
+     "层": "core",
+     "阈值": 0.15,
+     "占比": 0.25011182346801847,
+     "注释字节": 3355,
+     "行数": 316
     },
     {
      "路径": "core/battle/repair_cards.gd",
@@ -86375,8 +89335,8 @@
      "路径": "tests/unit/test_quick_battle_v03.gd",
      "层": "tests",
      "阈值": 0.2,
-     "占比": 0.22342586323628977,
-     "注释字节": 6270,
+     "占比": 0.2253856543683799,
+     "注释字节": 6341,
      "行数": 458
     },
     {
@@ -86476,12 +89436,28 @@
      "行数": 57
     },
     {
+     "路径": "core/battle/enemy_mech.gd",
+     "层": "core",
+     "阈值": 0.15,
+     "占比": 0.18678292794860027,
+     "注释字节": 1221,
+     "行数": 121
+    },
+    {
      "路径": "core/run/node_resolver.gd",
      "层": "core",
      "阈值": 0.15,
-     "占比": 0.17960998973657202,
-     "注释字节": 8400,
-     "行数": 958
+     "占比": 0.17679122750984777,
+     "注释字节": 8303,
+     "行数": 964
+    },
+    {
+     "路径": "core/battle/rival.gd",
+     "层": "core",
+     "阈值": 0.15,
+     "占比": 0.16917061123688001,
+     "注释字节": 822,
+     "行数": 107
     },
     {
      "路径": "core/battle/units.gd",

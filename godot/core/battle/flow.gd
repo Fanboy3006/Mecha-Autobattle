@@ -23,30 +23,37 @@ static func 增援(ctx: Dictionary) -> void:
 	for w in J.or_(ctx.get("波次"), []):
 		if w == null or not J.same(w.get("回合"), ctx.turn):
 			continue
-		var 位们 := []
-		var 单位们 := []
-		var 名们 := []
-		var 没空位 := 0.0
-		for e in J.or_(w.get("来"), []):
-			var s = 空位(ctx, "enemy")
-			if s == null:
-				没空位 += 1.0
-				continue
-			var 实例键 := Units.下一个键(str(e.键), 已用)
-			var u := Units.makeUnit(e.键, "enemy", float(s), float(e.等级), e.强化 if e.get("强化") != null else 1.0, null, e.get("层"), 实例键)
-			if J.truthy(e.get("词条")):
-				Traits.词条到单位([u], {"词条": e.词条, "层": e.get("层")})
-			ctx.enemies.append(u)
-			位们.append(s)
-			单位们.append(u.key)
-			名们.append(u.name)
-		if not 位们.is_empty():
-			Btl.pushLog(ctx, "〔增援〕第 %s 回合：敌方 %d 台赶到（%s：%s）" % [J.s(ctx.turn), 位们.size(), "、".join(位们.map(func(s): return Fm.位名(s))), "、".join(名们)],
-				{"类型": "增援", "数量": float(位们.size()), "位们": 位们, "目标方们": 位们.map(func(_s): return "enemy"), "单位们": 单位们})
-		if 没空位 != 0:
-			Btl.pushLog(ctx, "〔增援〕第 %s 回合：还有 %s 台挤不进来（9 个位都占着）" % [J.s(ctx.turn), J.s(没空位)], {"类型": "增援", "数量": 0.0, "结果": "没空位"})
+		增援一波(ctx, w, 已用)
 	if J.some(ctx.enemies, func(u): return J.truthy(u.get("词条全场"))):
 		Btl.应用全场词条(ctx)
+
+## 来一波敌方增援（`w.来` = `[{键, 等级, 强化, 层, 词条}]`）：固定波次与 Boss 阶段进场共用。返回新来的单位。
+static func 增援一波(ctx: Dictionary, w: Dictionary, 已用: Dictionary) -> Array:
+	var 新 := []
+	var 位们 := []
+	var 单位们 := []
+	var 名们 := []
+	var 没空位 := 0.0
+	for e in J.or_(w.get("来"), []):
+		var s = 空位(ctx, "enemy")
+		if s == null:
+			没空位 += 1.0
+			continue
+		var 实例键 := Units.下一个键(str(e.键), 已用)
+		var u := Units.makeUnit(e.键, "enemy", float(s), float(e.等级), e.强化 if e.get("强化") != null else 1.0, null, e.get("层"), 实例键)
+		if J.truthy(e.get("词条")):
+			Traits.词条到单位([u], {"词条": e.词条, "层": e.get("层")})
+		ctx.enemies.append(u)
+		新.append(u)
+		位们.append(s)
+		单位们.append(u.key)
+		名们.append(u.name)
+	if not 位们.is_empty():
+		Btl.pushLog(ctx, "〔增援〕第 %s 回合：敌方 %d 台赶到（%s：%s）" % [J.s(ctx.turn), 位们.size(), "、".join(位们.map(func(s): return Fm.位名(s))), "、".join(名们)],
+			{"类型": "增援", "数量": float(位们.size()), "位们": 位们, "目标方们": 位们.map(func(_s): return "enemy"), "单位们": 单位们})
+	if 没空位 != 0:
+		Btl.pushLog(ctx, "〔增援〕第 %s 回合：还有 %s 台挤不进来（9 个位都占着）" % [J.s(ctx.turn), J.s(没空位)], {"类型": "增援", "数量": 0.0, "结果": "没空位"})
+	return 新
 
 ## 指挥职业被动：同排队友命中 +10（本回合）；后排指挥再给正前方队友「后方本阵」的命中 / 防御。
 static func 指挥被动(ctx: Dictionary) -> void:

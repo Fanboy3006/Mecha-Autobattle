@@ -402,7 +402,7 @@ func _段7_UI展示(t) -> void:
 # ⑧ 敌方多段武器 × 装甲共享池：只测量、不改数值
 # ==========================================================================================
 func _段8_装甲池对照(t) -> void:
-	# ---- 盘点：敌方模板（`ENEMY_T` 29 台）里 `hits >= 2` 的武器只有 `funnel` 那两把 ----
+	# ---- 盘点：敌方模板里 `hits >= 2` 的武器：`funnel` 那两把 + 代号 Boss（g3b / g3c / g4a）五把 + 猎杀机·赤牙（tr_hunter）两把（10-22 加） ----
 	var 多段: Array = []
 	for k in (Db.T.ENEMY_T as Dictionary).keys():
 		var tpl: Variant = (Db.T.ENEMY_T as Dictionary).get(k)
@@ -413,7 +413,7 @@ func _段8_装甲池对照(t) -> void:
 				多段.append({"键": str(k), "武器": str((w as Dictionary).get("name", "")),
 					"威力": float((w as Dictionary).get("power", 0.0)),
 					"段数": int(float((w as Dictionary).get("hits", 1.0)))})
-	t.ok(多段.size() == 2, "⑧ 敌方模板里 `hits >= 2` 的武器共 %d 把（%s）" % [
+	t.ok(多段.size() == 9, "⑧ 敌方模板里 `hits >= 2` 的武器共 %d 把（%s）" % [
 		多段.size(), str(多段.map(func(x): return "%s·%s %s×%s" % [x["键"], x["武器"], x["威力"], x["段数"]]))])
 	# ---- 受控对照：coef == 1（攻方射击 == 守方防御）、defMul == 1、只换武器与装甲 ----
 	_对照(t, 浮游炮, 600.0, 30, 586)

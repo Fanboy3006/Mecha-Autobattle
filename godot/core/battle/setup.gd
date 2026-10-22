@@ -16,7 +16,7 @@ static func checkResult(ctx: Dictionary) -> Variant:
 		return {"结果": "胜", "原因": "敌方全灭"}
 	if Units.livingOf("ally", ctx).is_empty():
 		return {"结果": "败", "原因": "我方全灭"}
-	return null
+	return Boss.撤离检查(ctx)
 
 static func _减剩余(b: Dictionary) -> bool:
 	b.剩余 = (1.0 if b.get("剩余") == null else float(b.剩余)) - 1.0

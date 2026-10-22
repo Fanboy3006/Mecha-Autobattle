@@ -1,0 +1,519 @@
+<!doctype html><html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body style="margin:0">
+<title>影凤凰演出</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+SC:wght@400;700&display=swap">
+<style>
+/* Layout: GBA 240×160 stage on top, controls + beat timeline + asset list below; dark single look (shadow-world violet). */
+:root{
+  --bg:#0d0a14; --panel:#17121f; --line:#30263f; --fg:#ece6f4; --muted:#9a8fae;
+  --acc:#ff4fd8; --acc-dim:#7a2a6c;
+  --f-px:"Press Start 2P","Courier New",monospace;
+  --f-body:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--f-body);padding-block:20px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:960px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1{margin:0;font-family:var(--f-px);font-weight:400;font-size:clamp(13px,2.2vw,18px);color:var(--acc);letter-spacing:.06em;line-height:1.6}
+h1 span{font-family:var(--f-body);font-weight:700;font-size:1.25em}
+header p{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.7;max-width:70ch}
+.stage{width:100%;aspect-ratio:3/2;background:#000;border:2px solid var(--line);border-radius:4px;overflow:hidden}
+canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+.controls,.tl,.assets{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:12px 14px}
+.controls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.grp{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lbl{color:var(--muted);font-size:12px;letter-spacing:.08em}
+button{font:inherit;font-size:13px;color:var(--fg);background:#221a2e;border:1px solid var(--line);border-radius:3px;padding:6px 12px;cursor:pointer}
+button:hover{border-color:var(--acc-dim)}
+button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+button.primary{background:var(--acc);color:#1a0616;border-color:var(--acc);font-weight:700}
+button[aria-pressed="true"]{border-color:var(--acc);color:var(--acc)}
+.tl{display:flex;flex-direction:column;gap:8px}
+.tl-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:12px}
+.tl-head b{font-family:var(--f-px);font-size:10px;color:var(--fg);font-weight:400}
+.track{position:relative;display:flex;height:40px;overflow:hidden;cursor:pointer;user-select:none;touch-action:none}
+.seg{border-right:2px solid var(--bg);background:#221a2e;display:flex;align-items:center;justify-content:center;min-width:0;font-size:11px;color:var(--muted);overflow:hidden;white-space:nowrap}
+.seg.on{background:#3a1d38;color:var(--acc)}
+.seg.cut{background:#1b2232}
+.seg.cut.on{background:#26355a;color:#bcd2ff}
+.head{position:absolute;top:0;bottom:0;width:2px;background:var(--acc);pointer-events:none}
+.note{font-size:12px;color:var(--muted);line-height:1.7}
+.assets h2{margin:0 0 8px;font-size:15px}
+.assets table{border-collapse:collapse;width:100%;font-size:13px;min-width:520px}
+.assets th,.assets td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.assets th{color:var(--muted);font-weight:400;white-space:nowrap}
+.assets .x{overflow-x:auto}
+.dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+@media (max-width:520px){.seg{font-size:0}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>SHADOW PHOENIX <span>影凤凰 · 蕾卡</span></h1>
+    <p>按机战A的实现方式做的 GBA 240×160 演出，所有素材都按原生分辨率绘制（不放大）：攻方、守方两个镜头用马赛克切换；机体是一张静态立绘加两张姿势图，瞬间切换；动作全部按 3 帧一步量化；受击是 ±6px 斜向震动加闪白/闪黑。打开「素材框」可以看到画面里哪些是要画的素材。</p>
+  </header>
+
+  <div class="stage"><canvas id="cv" width="240" height="160" aria-label="影凤凰像素战斗演出"></canvas></div>
+
+  <div class="controls">
+    <div class="grp"><button class="primary" id="play">▶ 播放（带音效）</button><button id="pause">暂停</button></div>
+    <div class="grp"><span class="lbl">结果</span><button id="rKill" aria-pressed="true">击破 1 台</button><button id="rLive" aria-pressed="false">全部存活</button></div>
+    <div class="grp"><span class="lbl">速度</span><button data-sp="0.25" aria-pressed="false">¼</button><button data-sp="0.5" aria-pressed="false">½</button><button data-sp="1" aria-pressed="true">1×</button></div>
+    <div class="grp"><span class="lbl">素材框</span><button id="boxes" aria-pressed="false">关</button></div>
+    <div class="grp"><span class="lbl">音效</span><button id="snd" aria-pressed="true">开</button></div>
+  </div>
+
+  <div class="tl">
+    <div class="tl-head"><span>时间轴（60 帧/秒；点或拖动跳到那一拍；蓝色是马赛克转场）</span><span><b id="now">0</b> / <b id="total">0</b> 帧</span></div>
+    <div class="track" id="track"><div class="head" id="head"></div></div>
+    <div class="note">镜头 A：蕾卡喊招 → 展翼蓄力 → 化身影凤凰冲出画面。镜头 B：凤凰从左贯穿两台敌机。镜头 C：蕾卡在第 5 格刹停。</div>
+  </div>
+
+  <div class="assets">
+    <h2>这段演出用到的素材</h2>
+    <div class="x"><table>
+      <tr><th>类别</th><th>本页里的东西</th><th>要不要画</th></tr>
+      <tr><td><span class="dot" style="background:#ffd23a"></span>机体姿势图</td><td>蕾卡：A 待机、B 展翼、C 冲刺（C 由 B 的身体前倾 + 后掠翼拼成）</td><td>要画，3 张（占位稿）</td></tr>
+      <tr><td><span class="dot" style="background:#c8c6d8"></span>驾驶员</td><td>蕾卡：cut-in 半身像（约 60px）+ 对话框头像（30px）</td><td>要画，2 张（cut-in 眼睛高光用 1 帧点亮）</td></tr>
+      <tr><td><span class="dot" style="background:#ff4fd8"></span>特效精灵</td><td>影凤凰 2 帧（振翅上/下）、暗焰 2 帧、爆炸 2 帧、残影</td><td>凤凰要画；暗焰、爆炸、残影本页用代码生成</td></tr>
+      <tr><td><span class="dot" style="background:#7fd6ff"></span>敌机</td><td>量产型小兵 1 张立绘（两台共用）</td><td>沿用陨石 demo 的占位稿</td></tr>
+      <tr><td><span class="dot" style="background:#9be38a"></span>背景层</td><td>远景天空 + 山（慢）、近景云（快、斜向）、地面带</td><td>本页用代码生成；正式版建议画 2 层可横向循环的图</td></tr>
+      <tr><td><span class="dot" style="background:#c8c6d8"></span>界面</td><td>头像、对话框、HP 面板、招式名牌、伤害数字字体</td><td>头像要画；框和数字可以复用</td></tr>
+      <tr><td>参数（不用画）</td><td>震动 ±6px / 3 帧、闪白/闪黑各 6 帧、冲刺缓动、马赛克 40+24 帧、台词</td><td>写在演出脚本里</td></tr>
+    </table></div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const cv = document.getElementById('cv');
+const OUT = cv.getContext('2d'); OUT.imageSmoothingEnabled = false;
+const W = 240, H = 160;
+const FB = document.createElement('canvas'); FB.width = W; FB.height = H;   // world framebuffer (gets mosaic)
+const MZ = document.createElement('canvas');
+let g = FB.getContext('2d'); g.imageSmoothingEnabled = false;
+
+/* ---------- settings ---------- */
+const S = { speed: 1, kill: true, sound: true, boxes: false };
+const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- beats (frames @60fps) ---------- */
+const BEATS = [
+  { k: 'in', n: '淡入', a: 0, b: 30 },
+  { k: 'quote', n: '喊招', a: 30, b: 120 },
+  { k: 'power', n: '展翼', a: 120, b: 150 },
+  { k: 'cutin', n: '驾驶员切入', a: 150, b: 200 },
+  { k: 'form', n: '化凤凰', a: 200, b: 215 },
+  { k: 'dash', n: '冲出', a: 215, b: 235 },
+  { k: 'm1', n: '转场', a: 235, b: 299, cut: true },
+  { k: 'alert', n: '察觉', a: 299, b: 320 },
+  { k: 'cross', n: '贯穿', a: 320, b: 340 },
+  { k: 'hit', n: '受击', a: 340, b: 425 },
+  { k: 'react', n: '结果', a: 425, b: 500 },
+  { k: 'm2', n: '转场', a: 500, b: 564, cut: true },
+  { k: 'brake', n: '刹停', a: 564, b: 610 },
+  { k: 'end', n: '收招', a: 610, b: 720 },
+];
+const TOTAL = 720;
+
+/* ---------- helpers ---------- */
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const prog = (f, a, b) => clamp((f - a) / (b - a), 0, 1);
+const easeIn = t => t * t * t, easeOut = t => 1 - Math.pow(1 - t, 3);
+const r = Math.round;
+const q3 = f => f - (f % 3);                      // GBA-style: motion advances every 3 frames
+const px = (x, y, c) => { g.fillStyle = c; g.fillRect(r(x), r(y), 1, 1); };
+const rect = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(r(x), r(y), r(w), r(h)); };
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function disc(cx, cy, rad, c, dither) { g.fillStyle = c; const R2 = rad * rad; for (let y = -rad; y <= rad; y++) for (let x = -rad; x <= rad; x++) { if (x * x + y * y > R2) continue; if (dither && ((x + y + r(cx) + r(cy)) & 1)) continue; g.fillRect(r(cx) + x, r(cy) + y, 1, 1); } }
+function dim(c, step) { for (let y = 0; y < H; y++) for (let x = (y & 1); x < W; x += step) px(x, y, c); }
+
+/* ---------- sprites: part shapes rasterized at native GBA resolution, auto cel-shading + 1px outline ---------- */
+// Each part = shapes in mech space (pelvis = 0,0, facing right). A pose only changes part angles, so one
+// rig yields every pose. Shading is per part: top/left edge = highlight, bottom/right 1px = shadow, 2px = mid.
+const RAMP = {
+  arm: ['#c9b8f2', '#6a4fa8', '#4c3784', '#2c1d52'],
+  dark: ['#7d6aa6', '#3a2a5a', '#2c2046', '#1a1230'],
+  silver: ['#ffffff', '#d6d3e6', '#a6a2c0', '#666282'],
+  gold: ['#fff3b0', '#f2c45a', '#c8902e', '#7a5418'],
+  wing: ['#ff9ae8', '#4a2c6e', '#36205a', '#1e1236'],
+  wingF: ['#c860b4', '#33204e', '#271840', '#160c26'],
+  gun: ['#d0d4e0', '#6c7082', '#50546a', '#2c2e3e'],
+  red: ['#ffb4a2', '#a8483f', '#80362f', '#4a1e22'],
+  redD: ['#c46a5c', '#6e2c2a', '#562220', '#331416'],
+  phx: ['#ff9ae8', '#2a1748', '#221239', '#170b28'],
+  phxF: ['#c860b4', '#1d1033', '#170c29', '#10071e'],
+};
+const OUTLINE = '#0b0612';
+const cap = (x1, y1, x2, y2, r1, r2) => { const a = Math.atan2(y2 - y1, x2 - x1), nx = -Math.sin(a), ny = Math.cos(a), pts = []; for (let i = 0; i <= 6; i++) { const t = Math.PI / 2 + i / 6 * Math.PI; pts.push(x1 + Math.cos(a + t) * r1, y1 + Math.sin(a + t) * r1); } for (let i = 0; i <= 6; i++) { const t = -Math.PI / 2 + i / 6 * Math.PI; pts.push(x2 + Math.cos(a + t) * r2, y2 + Math.sin(a + t) * r2); } return ['p', pts]; };
+const ell = (cx, cy, rx, ry) => ['e', cx, cy, rx, ry];
+const poly = (...pts) => ['p', pts];
+
+function rig(parts, pose, { w, h, ox, oy, scale = 1, outline = OUTLINE }) {
+  const rot = pose.rot || 0, cr = Math.cos(rot), sr = Math.sin(rot);
+  const ids = new Int16Array(w * h).fill(-1);
+  const tf = (P, x, y) => {
+    const a = (pose[P.name] || 0) + (P.inherit ? (pose[P.inherit] || 0) : 0), piv = P.pivot || [0, 0], piv2 = P.inheritPivot || piv;
+    let px = x, py = y;
+    if (P.inherit && pose[P.inherit]) { const b = pose[P.inherit], cb = Math.cos(b), sb = Math.sin(b), dx = px - piv2[0], dy = py - piv2[1]; px = piv2[0] + dx * cb - dy * sb; py = piv2[1] + dx * sb + dy * cb; }
+    if (pose[P.name]) { const c = Math.cos(pose[P.name]), s = Math.sin(pose[P.name]), dx = px - piv[0], dy = py - piv[1]; px = piv[0] + dx * c - dy * s; py = piv[1] + dx * s + dy * c; }
+    return [(px * cr - py * sr) * scale + ox, (px * sr + py * cr) * scale + oy];
+  };
+  const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h; const q = tmp.getContext('2d');
+  parts.forEach((P, pi) => {
+    q.clearRect(0, 0, w, h); q.fillStyle = '#000';
+    for (const S of P.shapes) {
+      q.beginPath();
+      if (S[0] === 'e') { const n = 20; for (let i = 0; i < n; i++) { const t = i / n * Math.PI * 2, [x, y] = tf(P, S[1] + Math.cos(t) * S[3], S[2] + Math.sin(t) * S[4]); i ? q.lineTo(x, y) : q.moveTo(x, y); } }
+      else { for (let i = 0; i < S[1].length; i += 2) { const [x, y] = tf(P, S[1][i], S[1][i + 1]); i ? q.lineTo(x, y) : q.moveTo(x, y); } }
+      q.closePath(); q.fill();
+    }
+    const d = q.getImageData(0, 0, w, h).data;
+    for (let i = 0; i < w * h; i++) if (d[i * 4 + 3] > 120) ids[i] = pi;
+  });
+  const id = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? -1 : ids[y * w + x];
+  const c = document.createElement('canvas'); c.width = w; c.height = h; const o = c.getContext('2d');
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const p = id(x, y);
+    if (p < 0) { if (id(x - 1, y) >= 0 || id(x + 1, y) >= 0 || id(x, y - 1) >= 0 || id(x, y + 1) >= 0) { o.fillStyle = outline; o.fillRect(x, y, 1, 1); } continue; }
+    const R = RAMP[parts[p].ramp], inn = (dx, dy) => id(x + dx, y + dy) === p;
+    const front = [[1, 0], [0, 1], [-1, 0], [0, -1]].some(([dx, dy]) => id(x + dx, y + dy) > p);
+    let col = R[1];
+    if (front) col = R[3];
+    else if (!inn(1, 0) || !inn(0, 1)) col = R[3];
+    else if (!inn(0, -1) || !inn(-1, 0)) col = R[0];
+    else if (!inn(2, 0) || !inn(0, 2) || !inn(1, 1)) col = R[2];
+    o.fillStyle = col; o.fillRect(x, y, 1, 1);
+  }
+  // emissive details (lines / dots) drawn on top, transformed with their part
+  parts.forEach(P => (P.glow || []).forEach(([x1, y1, x2, y2, col]) => {
+    const [a, b] = tf(P, x1, y1), [cc, dd] = tf(P, x2, y2), n = Math.max(1, Math.round(Math.max(Math.abs(cc - a), Math.abs(dd - b))));
+    o.fillStyle = col; for (let i = 0; i <= n; i++) o.fillRect(Math.round(a + (cc - a) * i / n), Math.round(b + (dd - b) * i / n), 1, 1);
+  }));
+  return { c, ox, oy };
+}
+
+// 蕾卡 (B2) — flying scout: big helmet with phoenix crest, slim body, two bird-wing binders, long rifle.
+const REKA = [
+  { name: 'wingF', ramp: 'wingF', pivot: [-5, -16], shapes: [poly(-5, -16, -18, -31, -29, -29, -12, -12), poly(-5, -14, -25, -22, -32, -15, -10, -8), poly(-5, -11, -21, -9, -25, -2, -9, -5)] },
+  { name: 'legF', ramp: 'dark', pivot: [-3, 2], shapes: [cap(-3, 3, -6, 12, 3.5, 3), cap(-6, 12, -8, 24, 3.5, 1.5)] },
+  { name: 'armF', ramp: 'dark', pivot: [-8, -16], shapes: [cap(-8, -15, -11, -6, 3, 2.5), ell(-11, -5, 2.5, 2.5)] },
+  { name: 'shF', ramp: 'dark', shapes: [ell(-8, -17, 4.5, 4)] },
+  { name: 'torso', ramp: 'arm', shapes: [poly(-8, -1, -10, -12, -7, -20, 6, -20, 10, -13, 8, -1)], glow: [[3, -15, 4, -15, '#ff4fd8'], [3, -14, 4, -14, '#ff9ae8'], [-3, -19, -2, -9, '#2c1d52']] },
+  { name: 'wingN', ramp: 'wing', pivot: [-3, -17], shapes: [poly(-3, -17, -21, -37, -36, -35, -12, -14), poly(-3, -15, -30, -25, -41, -17, -11, -9), poly(-3, -12, -26, -9, -33, 0, -9, -5)], glow: [[-21, -36, -34, -34, '#ff4fd8'], [-30, -24, -40, -17, '#ff4fd8']] },
+  { name: 'waist', ramp: 'silver', shapes: [poly(-8, -2, 8, -2, 9, 4, 3, 7, -3, 7, -9, 4)] },
+  { name: 'legN', ramp: 'arm', pivot: [2, 3], shapes: [cap(2, 3, 5, 13, 4, 3.5), cap(5, 13, 4, 26, 4.5, 1.5)], glow: [[5, 17, 5, 22, '#ff4fd8']] },
+  { name: 'knee', ramp: 'silver', pivot: [2, 3], inherit: 'legN', shapes: [ell(6, 13, 3, 3)] },
+  { name: 'head', ramp: 'arm', shapes: [poly(-7, -21, -9, -29, -5, -36, 4, -37, 10, -33, 12, -27, 8, -21)], glow: [[2, -31, 11, -30, '#ff4fd8'], [9, -30, 10, -30, '#7ff0ff']] },
+  { name: 'face', ramp: 'silver', shapes: [poly(4, -28, 12, -27, 10, -22, 5, -22)] },
+  { name: 'crest', ramp: 'gold', shapes: [poly(-3, -35, -14, -45, -11, -38, -20, -39, -7, -31), poly(6, -36, 15, -43, 10, -34)] },
+  { name: 'shN', ramp: 'arm', shapes: [ell(9, -17, 6, 5)], glow: [[5, -20, 13, -19, '#ff4fd8']] },
+  { name: 'armN', ramp: 'arm', pivot: [9, -16], shapes: [cap(10, -14, 12, -7, 3, 3), cap(12, -6, 17, -4, 3, 2.5)] },
+  { name: 'gun', ramp: 'gun', pivot: [9, -16], inherit: 'armN', inheritPivot: [9, -16], shapes: [poly(10, -7, 39, -8, 39, -4, 10, -2), poly(5, -6, 11, -7, 11, -1, 4, -1), poly(18, -11, 27, -11, 27, -8, 18, -8)], glow: [[38, -6, 39, -6, '#ff4fd8']] },
+];
+// gun follows armN: give it the arm angle via 'inherit'; its own extra angle is pose.gun
+const POSE = {
+  A: { wingF: -0.35, wingN: -0.3, armN: 0.15, legN: 0.05, legF: 0.1 },
+  B: { rot: -0.05, wingF: 0.8, wingN: 0.75, armN: -0.15, legN: 0.15, legF: 0.25 },
+  C: { rot: 0.4, wingF: 0.05, wingN: 0.0, armN: -0.35, legN: 0.7, legF: 0.9 },
+};
+const RW = 112, RH = 88, ROX = 58, ROY = 56;
+
+// enemy grunt — stocky mono-eye mass-production unit, built facing right then mirrored
+const GRUNTP = [
+  { name: 'shF', ramp: 'redD', shapes: [ell(-11, -17, 6, 5)] },
+  { name: 'legF', ramp: 'redD', shapes: [cap(-4, 2, -6, 13, 5, 4.5), cap(-6, 13, -6, 21, 5, 5), poly(-12, 20, -1, 20, 0, 25, -13, 25)] },
+  { name: 'torso', ramp: 'red', shapes: [poly(-11, -1, -13, -16, -7, -22, 8, -22, 12, -16, 10, -1)], glow: [[-2, -20, -2, -4, '#4a1e22']] },
+  { name: 'waist', ramp: 'gun', shapes: [poly(-10, -2, 10, -2, 9, 5, -9, 5)] },
+  { name: 'legN', ramp: 'red', shapes: [cap(4, 2, 6, 13, 5.5, 5), cap(6, 13, 6, 21, 5.5, 5.5), poly(0, 20, 13, 20, 14, 25, -1, 25)] },
+  { name: 'head', ramp: 'red', shapes: [ell(2, -27, 9.5, 7.5)] },
+  { name: 'visor', ramp: 'dark', shapes: [poly(-5, -30, 11, -30, 11, -25, -5, -25)], glow: [[6, -28, 7, -28, '#ffe066'], [6, -27, 7, -27, '#ff9a3a']] },
+  { name: 'shN', ramp: 'red', shapes: [ell(11, -17, 7, 6)] },
+  { name: 'armN', ramp: 'red', shapes: [cap(11, -13, 14, -5, 4, 4)] },
+  { name: 'gun', ramp: 'gun', shapes: [poly(8, -8, 33, -8, 33, -4, 8, -3), poly(14, -4, 19, -4, 18, 2, 14, 2)], glow: [[32, -6, 33, -6, '#ffe066']] },
+];
+const GW = 80, GH = 64, GOX = 36, GOY = 38;
+
+// shadow phoenix — two frames (wings up / wings down), magenta rim instead of a black outline
+const PHX = up => [
+  { name: 'wf', ramp: 'phxF', shapes: [up ? poly(-2, -4, 4, -28, 10, -36, 13, -26, 20, -28, 15, -4) : poly(-2, 2, 4, 22, 10, 30, 13, 20, 20, 22, 15, 2)] },
+  { name: 'tail', ramp: 'phx', shapes: [poly(-14, -3, -40, -10, -68, -5, -44, -2, -16, 2), poly(-14, 1, -44, 4, -74, 12, -48, 8, -16, 4), poly(-12, 3, -34, 14, -58, 25, -38, 12, -14, 6)], glow: [[-40, -9, -60, -6, '#ff4fd8'], [-44, 5, -66, 10, '#ff4fd8']] },
+  { name: 'body', ramp: 'phx', shapes: [ell(0, 0, 19, 7.5), poly(12, -4, 26, -13, 31, -8, 16, 3)] },
+  { name: 'head', ramp: 'phx', shapes: [ell(31, -11, 7, 5), poly(36, -13, 47, -10, 36, -8), poly(26, -15, 17, -27, 27, -18, 23, -30, 32, -16)], glow: [[33, -12, 34, -12, '#ffe066']] },
+  { name: 'wn', ramp: 'phx', shapes: [up ? poly(-6, -4, -20, -32, -12, -29, -8, -42, 0, -31, 6, -40, 8, -27, 15, -31, 10, -4) : poly(-6, 2, -22, 28, -12, 24, -8, 36, 0, 25, 6, 34, 8, 22, 15, 24, 10, 2)], glow: up ? [[-20, -31, -8, -41, '#ff4fd8']] : [[-22, 27, -8, 35, '#ff4fd8']] },
+];
+const PW = 130, PH = 84, POX = 78, POY = 44;
+
+function flipS(s) { const c = document.createElement('canvas'); c.width = s.c.width; c.height = s.c.height; const q = c.getContext('2d'); q.translate(c.width, 0); q.scale(-1, 1); q.drawImage(s.c, 0, 0); return { c, ox: c.width - s.ox, oy: s.oy }; }
+function tint(s, color) { const c = document.createElement('canvas'); c.width = s.c.width; c.height = s.c.height; const q = c.getContext('2d'); q.drawImage(s.c, 0, 0); q.globalCompositeOperation = 'source-in'; q.fillStyle = color; q.fillRect(0, 0, c.width, c.height); return { c, ox: s.ox, oy: s.oy }; }
+const drawS = (s, x, y) => g.drawImage(s.c, r(x - s.ox), r(y - s.oy));
+const SP = {
+  A: rig(REKA, POSE.A, { w: RW, h: RH, ox: ROX, oy: ROY }),
+  B: rig(REKA, POSE.B, { w: RW, h: RH, ox: ROX, oy: ROY }),
+  C: rig(REKA, POSE.C, { w: RW, h: RH, ox: ROX, oy: ROY }),
+  grunt: flipS(rig(GRUNTP, {}, { w: GW, h: GH, ox: GOX, oy: GOY })),
+  phx: [rig(PHX(true), {}, { w: PW, h: PH, ox: POX, oy: POY, outline: '#ff4fd8' }), rig(PHX(false), {}, { w: PW, h: PH, ox: POX, oy: POY, outline: '#ff4fd8' })],
+  // portraits drawn at 2x detail (not upscaled): head parts only
+  portrait: rig(REKA.filter(p => ['head', 'face', 'crest', 'shN', 'torso'].includes(p.name)), { rot: 0 }, { w: 30, h: 30, ox: 12, oy: 72, scale: 2 }),
+  gportrait: flipS(rig(GRUNTP.filter(p => ['head', 'visor', 'torso', 'shN'].includes(p.name)), {}, { w: 30, h: 30, ox: 13, oy: 64, scale: 2 })),
+};
+SP.Cshadow = tint(SP.C, '#35244f');
+SP.gruntW = tint(SP.grunt, '#ffffff'); SP.gruntK = tint(SP.grunt, '#120a1c');
+
+// pilot 蕾卡 — blue-haired woman, GBA anime style: flat skin, 3-tone hair with a highlight ring, big eyes as hand-placed pixels
+Object.assign(RAMP, {
+  skin: ['#fff0e4', '#f8cfb4', '#eab092', '#b97a66'],
+  hair: ['#9fd8ff', '#3f7fe6', '#2c5cc0', '#1a3478'],
+  hairD: ['#5f8fd6', '#2a55a8', '#20438a', '#122452'],
+  suit: ['#9a86c8', '#3a2a5a', '#2c2046', '#1a1230'],
+});
+const EYE = (x, y, s) => [  // one eye: lash, iris (2-3 px), highlight, lower lid
+  [x - 1, y - 1, x + 5 * s, y - 2, '#1a1030'], [x, y, x + 4 * s, y - 1, '#1a1030'],
+  [x + 1 * s, y + 1, x + 1 * s, y + 3, '#2c5cc0'], [x + 2 * s, y + 1, x + 2 * s, y + 3, '#5ab8ff'], [x + 3 * s, y + 1, x + 3 * s, y + 3, '#2c5cc0'],
+  [x + 2 * s, y + 1, x + 2 * s, y + 1, '#ffffff'], [x + 1 * s, y + 4, x + 3 * s, y + 4, '#c98a74'],
+];
+const PILOT = [
+  { name: 'hairB', ramp: 'hairD', shapes: [poly(-14, -18, -6, -25, 8, -25, 17, -14, 19, 6, 16, 28, 6, 33, -10, 33, -21, 22, -19, 0)] },
+  { name: 'neck', ramp: 'skin', shapes: [poly(-4, 8, 4, 8, 5, 19, -5, 19)] },
+  { name: 'suit', ramp: 'suit', shapes: [poly(-24, 34, -16, 21, -5, 17, 6, 17, 18, 21, 26, 34)], glow: [[-14, 25, -6, 21, '#ff4fd8'], [8, 21, 16, 25, '#ff4fd8']] },
+  { name: 'collar', ramp: 'silver', shapes: [poly(-7, 16, 7, 16, 9, 21, 0, 25, -9, 21)] },
+  { name: 'face', ramp: 'skin', shapes: [poly(-11, -11, -11, 3, -5, 11, 2, 14, 9, 9, 12, 0, 12, -11, 0, -15)],
+    glow: [...EYE(3, -4, 1), ...EYE(-8, -4, 0.8), [3, -9, 9, -10, '#1a3478'], [-8, -8, -4, -9, '#1a3478'], [11, 2, 11, 3, '#eab092'], [5, 8, 7, 8, '#c98a74']] },
+  { name: 'hairF', ramp: 'hair', shapes: [
+      poly(-15, -14, -12, -24, -2, -29, 10, -27, 17, -18, 16, -8, 13, -12, 11, -5, 8, -12, 5, -6, 2, -13, -3, -6, -5, -13, -10, -3, -12, -9, -15, 4),
+      poly(12, -12, 18, -6, 17, 14, 12, 21, 13, 6), poly(-14, -7, -17, 10, -12, 23, -10, 8)],
+    glow: [[-9, -21, -2, -24, '#c8ecff'], [1, -24, 9, -23, '#c8ecff'], [14, -2, 15, 8, '#9fd8ff']] },
+  { name: 'clip', ramp: 'gold', shapes: [poly(9, -23, 15, -26, 14, -21, 11, -20)] },
+];
+SP.pilot = rig(PILOT, {}, { w: 64, h: 60, ox: 30, oy: 30 });                 // cut-in bust, native 1x
+SP.portrait = rig(PILOT, {}, { w: 30, h: 30, ox: 15, oy: 10, scale: 0.72 });  // message-window face
+
+/* ---------- bitmap text ---------- */
+const TXT = new Map();
+function text(str, font, color, outline) {
+  const key = str + '|' + font + '|' + color + '|' + outline; let c = TXT.get(key); if (c) return c;
+  const m = document.createElement('canvas').getContext('2d'); m.font = font;
+  const w = Math.ceil(m.measureText(str).width) + 4, size = parseInt(font.match(/(\d+)px/)[1], 10), h = size + 6;
+  const raw = document.createElement('canvas'); raw.width = w; raw.height = h; const q = raw.getContext('2d'); q.font = font; q.textBaseline = 'top'; q.fillStyle = '#fff'; q.fillText(str, 2, 2);
+  const d = q.getImageData(0, 0, w, h), on = new Uint8Array(w * h); for (let i = 0; i < w * h; i++) on[i] = d.data[i * 4 + 3] > 120 ? 1 : 0;
+  c = document.createElement('canvas'); c.width = w + 2; c.height = h + 2; const o = c.getContext('2d');
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (on[y * w + x]) { o.fillStyle = color; o.fillRect(x + 1, y + 1, 1, 1); }
+    else if (outline && ((x > 0 && on[y * w + x - 1]) || (x < w - 1 && on[y * w + x + 1]) || (y > 0 && on[(y - 1) * w + x]) || (y < h - 1 && on[(y + 1) * w + x]))) { o.fillStyle = outline; o.fillRect(x + 1, y + 1, 1, 1); }
+  }
+  TXT.set(key, c); return c;
+}
+function drawText(str, x, y, font, color, outline, align = 'left') { const c = text(str, font, color, outline); const dx = align === 'center' ? x - c.width / 2 : align === 'right' ? x - c.width : x; g.drawImage(c, r(dx), r(y)); }
+const FCN = n => `${n}px "Noto Sans SC","Microsoft YaHei","PingFang SC",sans-serif`;
+const FCNB = n => `700 ${n}px "Noto Sans SC","Microsoft YaHei","PingFang SC",sans-serif`;
+const FPX = n => `${n}px "Press Start 2P","Courier New",monospace`;
+
+/* ---------- world data ---------- */
+const R = rng(20261021);
+const CLOUDS = Array.from({ length: 14 }, () => ({ x: R() * 360, y: 18 + R() * 80, w: 10 + r(R() * 16) }));
+const STARS = Array.from({ length: 40 }, () => ({ x: R() * 300, y: R() * 50 }));
+const GROUND = 112;
+const E = [{ x: 70 }, { x: 166 }];                  // two grunts in a row (map weapon pierces both)
+const EMAX = 5600, DMG = [3120, 4210];
+const EHP = () => [S.kill ? 2900 : 5600, 5200];
+const RMAX = 4500;
+const LINE_A1 = '影子啊……', LINE_A2 = '化作凤凰，穿过去！';
+const LINE_B = '什么！？是影子……！', LINE_C = '……下一个。';
+const FIRE = ['#fffbe0', '#ffe066', '#ffa23a', '#e8502c', '#8a2420'];
+const boxes = [];
+const box = (x, y, w, h, label, col) => { if (S.boxes) boxes.push({ x, y, w, h, label, col }); };
+
+/* ---------- backgrounds: two parallax layers like BG3/BG2 ---------- */
+function bgSky(f, speed, shadow) {
+  const bands = shadow ? ['#0a0612', '#140a22', '#22102e', '#311238', '#3d1236'] : ['#140c2a', '#24164a', '#3a1f5c', '#5e2a62', '#8a3a5a'];
+  for (let i = 0; i < 5; i++) { rect(0, i * 24, W, 24, bands[i]); for (let x = (i & 1); x < W && i < 4; x += 2) px(x, i * 24 + 23, bands[i + 1]); }
+  for (const s of STARS) { const x = ((s.x - q3(f) * 0.1 * speed) % 300 + 300) % 300 - 30; if (x >= 0 && x < W) px(x, s.y, '#b9a8d8'); }
+  // far layer: mountains, slow horizontal scroll
+  for (let x = 0; x < W; x++) { const wx = x + q3(f) * 0.5 * speed; const h = r(14 + 7 * Math.sin(wx / 30) + 4 * Math.sin(wx / 12 + 1)); rect(x, 120 - h, 1, h + 40, shadow ? '#120a1c' : '#2a1838'); px(x, 120 - h, shadow ? '#2a1748' : '#4a2c5a'); }
+  box(0, 0, W, 120, 'BG 远景层(慢)', '#9be38a');
+}
+function bgClouds(f, speed) {
+  // near layer: dithered cloud puffs drifting diagonally, ~2x the far layer
+  for (const c of CLOUDS) {
+    const x = ((c.x - q3(f) * 1.0 * speed) % 360 + 360) % 360 - 60, y = ((c.y + q3(f) * 0.25 * speed) % 110) + 8;
+    for (let k = 0; k < 3; k++) disc(x + k * c.w * 0.45, y - (k === 1 ? 3 : 0), r(c.w / 3), '#c9a6d8', true);
+  }
+}
+function bgGround(f) {
+  rect(0, GROUND, W, H - GROUND, '#2a1e30');
+  for (let x = (q3(f) & 2); x < W; x += 4) px(x, GROUND, '#5a3f6a');
+  for (let i = 0; i < 8; i++) { const x = ((i * 47 - q3(f) * 0.3) % 280 + 280) % 280 - 20; rect(x, GROUND + 6 + (i % 3) * 5, 10 + (i % 4) * 4, 1, '#3a2a44'); }
+}
+
+/* ---------- HUD (top) + message window (bottom): not affected by mosaic, like BG0/BG1 on GBA ---------- */
+function frame9(x, y, w, h) { rect(x, y, w, h, '#120e24'); rect(x, y, w, 1, '#c3b8e3'); rect(x, y + h - 1, w, 1, '#4d3f78'); rect(x, y, 1, h, '#c3b8e3'); rect(x + w - 1, y, 1, h, '#4d3f78'); }
+function bar(x, y, w, frac) { rect(x - 1, y - 1, w + 2, 4, '#120a1c'); const col = frac > .5 ? '#5fd35a' : frac > .25 ? '#ffd23a' : '#ff5a3a'; rect(x, y, r(w * clamp(frac, 0, 1)), 2, col); }
+function hud(hp) {
+  frame9(0, 0, 128, 24); frame9(130, 0, 110, 24);
+  for (let i = 0; i < 2; i++) { drawText('小兵' + (i + 1), 3, -1 + i * 11, FCN(10), '#ff9a86'); bar(36, 4 + i * 11, 52, hp[i] / EMAX); drawText(String(Math.max(0, r(hp[i]))), 125, 2 + i * 11, FPX(8), '#ece6f4', null, 'right'); }
+  drawText('蕾卡', 133, -1, FCN(10), '#d9b3ff'); bar(164, 4, 72, 1); drawText(`${RMAX}/${RMAX}`, 237, 13, FPX(8), '#ece6f4', null, 'right');
+}
+function msg(who, line, n, portrait) {
+  frame9(0, 122, W, 38); frame9(3, 125, 32, 32);
+  g.save(); g.beginPath(); g.rect(4, 126, 30, 30); g.clip(); rect(4, 126, 30, 30, '#22163a');
+  g.drawImage(portrait.c, 4, 126); g.restore();
+  box(3, 125, 32, 32, '头像', '#c8c6d8');
+  drawText(who + '「' + line.slice(0, n) + (n >= line.length ? '」' : ''), 40, 128, FCN(12), '#ffffff');
+}
+
+/* ---------- one frame, pure function of frame number ---------- */
+function render(f) {
+  f = Math.floor(f); boxes.length = 0;
+  g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; rect(0, 0, W, H, '#000');
+  let mosaic = 1;
+  if (f >= 235 && f < 275) mosaic = 1 + Math.floor(prog(q3(f), 235, 272) * 15);
+  else if (f >= 275 && f < 299) mosaic = 16 - Math.floor(prog(q3(f), 275, 296) * 15);
+  else if (f >= 500 && f < 540) mosaic = 1 + Math.floor(prog(q3(f), 500, 537) * 15);
+  else if (f >= 540 && f < 564) mosaic = 16 - Math.floor(prog(q3(f), 540, 561) * 15);
+  const shot = f < 275 ? 'A' : f < 540 ? 'B' : 'C';
+  const H0 = EHP(), hp = [H0[0], H0[1]];
+  const hitAt = [326, 330];
+
+  if (shot === 'A') {
+    const shadow = f >= 120;
+    const speed = f >= 215 ? 5 : f >= 200 ? 2 : 1;
+    bgSky(f, speed, shadow); bgClouds(f, speed);
+    if (shadow && f < 160) dim('#000000', Math.max(2, 8 - Math.floor(q3(f - 120) / 6)));
+    const bob = (Math.floor(f / 16) % 2);
+    let x = 116, y = 78 + bob;
+    if (f >= 215) x = 120 + r(easeIn(prog(q3(f), 215, 234)) * 260);
+    // dark-flame aura: 2-frame loop, toggles every 6 frames
+    if (f >= 120 && f < 235) { const ph = Math.floor(f / 6) % 2; for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + ph * .5; disc(x + Math.cos(a) * 30, y - 8 + Math.sin(a) * 30 - ph * 2, 2 + ((i + ph) & 1), i & 1 ? '#9a2a86' : '#ff4fd8', ph === 1); } box(x - 34, y - 42, 68, 66, '暗焰 2帧', '#ff4fd8'); }
+    // after-images while dashing
+    if (f >= 215) for (let k = 3; k >= 1; k--) { const xk = 120 + r(easeIn(prog(q3(f) - k * 3, 215, 234)) * 260); if (xk < x - 4) drawS(SP.Cshadow, xk, y); }
+    const pose = f < 120 ? SP.A : f < 200 ? SP.B : SP.C, name = f < 120 ? '姿势A 待机' : f < 200 ? '姿势B 展翼' : '姿势C 冲刺';
+    // phoenix appears with a GBA-style flicker, then wraps the mech
+    if (f >= 200) { const on = f >= 209 || (f % 6) < 3; if (on) { const ph = SP.phx[Math.floor(f / 6) % 2]; drawS(ph, x + 2, y - 10); box(x + 2 - ph.ox, y - 10 - ph.oy, ph.c.width, ph.c.height, '影凤凰 2帧', '#ff4fd8'); } }
+    drawS(pose, x, y); box(x - pose.ox + 30, y - pose.oy + 8, pose.c.width - 50, pose.c.height - 10, name, '#ffd23a');
+    if (f >= 215) for (let i = 0; i < 9; i++) rect(((i * 53 - q3(f) * 9) % 280 + 280) % 280 - 20, 14 + i * 12, 24 + (i % 3) * 10, 1, '#e8d0ff');
+    if (f >= 120 && f < 235) { frame9(76, 28, 88, 15); drawText('影凤凰', 80, 28, FCNB(11), '#ff9ae8'); drawText('2617', 160, 32, FPX(8), '#ffe066', null, 'right'); }
+  } else if (shot === 'B') {
+    bgSky(f, 1, true); bgGround(f);
+    const px0 = -110 + r(prog(q3(f), 320, 338) * 460);           // phoenix crossing
+    for (let i = 0; i < 2; i++) {
+      const h = hitAt[i], t = f - h;
+      if (t >= 10) hp[i] = Math.max(0, lerp(H0[i], H0[i] - DMG[i], easeOut(prog(q3(t), 10, 60))));
+      let ox = 0, oy = 0, spr = SP.grunt;
+      if (t >= 0 && t < 80) { const k = Math.floor(t / 3) % 4; ox = [0, -6, 0, 6][k]; oy = [0, 6, 0, -6][k]; }
+      else if (t >= 80 && t < 105) { const a = [4, 3, 2, 1, 1, 0, 0, 0, 0][Math.floor((t - 80) / 3)] || 0; const k = Math.floor(t / 3) % 4; ox = [0, -a, 0, a][k]; oy = [0, a, 0, -a][k]; }
+      if (t >= 0 && t < 72) { const k = Math.floor(t / 6) % 4; spr = k === 0 ? SP.gruntW : k === 2 ? SP.gruntK : SP.grunt; }
+      const dead = S.kill && i === 0 && f >= 440;
+      const ex = E[i].x, ey = GROUND - 50;
+      if (!dead) { rect(ex - 22, GROUND, 44, 2, '#120a1c'); drawS(spr, ex + ox, GROUND - 25 + oy); box(ex - 22 + ox, ey + oy - 2, 46, 52, '敌机立绘', '#7fd6ff'); }
+      if (f >= 305 && f < 320 && !(f % 6 < 3)) drawText('!', ex + 4, ey - 14, FPX(8), '#ffe066', '#120a1c');
+      // small explosions: 2-frame loop, three pops staggered
+      if (t >= 0 && t < 60) for (let k = 0; k < 3; k++) { const lt = t - k * 12; if (lt < 0 || lt >= 24) continue; const big = Math.floor(lt / 6) % 2; const xx = ex - 14 + k * 14, yy = ey + 14 + (k % 2) * 14; disc(xx, yy, 4 + big * 2, FIRE[2 + big]); disc(xx, yy, 2 + big, FIRE[big]); if (k === 0) box(xx - 7, yy - 7, 14, 14, '爆炸 2帧', '#ff4fd8'); }
+      // damage number with a 2-step hop
+      if (t >= 6 && t < 100) drawText(DMG[i].toLocaleString('en-US'), ex, ey - 14 + (t < 12 ? -3 : t < 18 ? -1 : 0), FPX(10), '#ffffff', '#c2361e', 'center');
+      // kill: big blast then gone
+      if (S.kill && i === 0 && f >= 425 && f < 470) { const lt = f - 425, big = Math.floor(lt / 6) % 2; disc(ex, ey + 26, 16 + big * 5 + Math.min(14, lt / 3), FIRE[3 - big]); disc(ex, ey + 26, 9 + big * 4, FIRE[big]); if (lt < 3) rect(0, 0, W, H, '#ffffff'); }
+      if (S.kill && i === 0 && f >= 450 && f < 500 && (f % 12) < 9) drawText('击破', ex, ey - 6, FCNB(18), '#ff5a3a', '#2a0805', 'center');
+    }
+    if (f >= 320 && f < 340) {
+      for (let k = 1; k <= 6; k++) { const tx = px0 - k * 14; rect(tx - 60, GROUND - 52 + ((k * 7) % 20), 18, 2, k < 3 ? '#ff4fd8' : '#5a3f8f'); }
+      drawS(SP.phx[Math.floor(f / 3) % 2], px0, GROUND - 34); box(px0 - 78, GROUND - 78, 130, 84, '影凤凰 2帧', '#ff4fd8');
+      if (f === hitAt[0] || f === hitAt[1]) rect(0, 0, W, H, '#ffffffaa');
+    }
+  } else {
+    bgSky(f, 1, false); bgClouds(f, 1);
+    const t = q3(f);
+    const x = f < 564 ? -40 : r(lerp(-40, 150, easeOut(prog(t, 564, 606))));
+    const pose = f < 606 ? SP.C : SP.A; const bob = f >= 606 ? (Math.floor(f / 16) % 2) : 0;
+    drawS(pose, x, 80 + bob); box(x - 26, 80 + bob - 48, 56, 76, f < 606 ? '姿势C' : '姿势A', '#ffd23a');
+    if (f >= 564 && f < 606) for (let i = 0; i < 5; i++) rect(x - 50 - i * 10, 60 + i * 6, 14, 1, '#e8d0ff');
+    hp[0] = Math.max(0, H0[0] - DMG[0]); hp[1] = H0[1] - DMG[1];
+  }
+
+  // mosaic: world layers only (HUD/messages are on unmosaiced layers, like BG0/BG1)
+  if (mosaic > 1) { MZ.width = Math.ceil(W / mosaic); MZ.height = Math.ceil(H / mosaic); const m = MZ.getContext('2d'); m.imageSmoothingEnabled = false; m.drawImage(FB, 0, 0, MZ.width, MZ.height); g.drawImage(MZ, 0, 0, MZ.width * mosaic, MZ.height * mosaic); }
+
+  if (f >= 30) hud(hp);
+  // pilot cut-in band (its own layer, like a GBA BG): slides in, holds, eye glint, slides out
+  if (f >= 150 && f < 200) {
+    const inP = prog(q3(f), 150, 159), outP = prog(q3(f), 190, 199), off = r((1 - inP) * W - outP * W);
+    dim('#000000', 2);
+    g.save(); g.translate(off, 0); const y0 = 38, bh = 64;
+    rect(0, y0, W, bh, '#1a0f2e');
+    for (let i = 0; i < 12; i++) { const yy = y0 + 3 + ((i * 19) % (bh - 6)); const xx = ((i * 67 - q3(f) * 7) % (W + 60) + W + 60) % (W + 60) - 30; rect(xx, yy, 16 + (i % 4) * 8, 1, i % 3 ? '#3a2456' : '#7a3a8a'); }
+    rect(0, y0, W, 2, '#ff4fd8'); rect(0, y0 + bh - 2, W, 2, '#ff4fd8');
+    g.save(); g.beginPath(); g.rect(0, y0 + 2, W, bh - 4); g.clip();
+    drawS(SP.pilot, 48, y0 + 30); if (f >= 172 && f < 178) { px(48 + 5, y0 + 30 - 3, '#ffffff'); px(48 + 6, y0 + 30 - 4, '#ffffff'); }
+    g.restore(); box(18, y0 + 2, 62, bh - 4, '驾驶员立绘', '#c8c6d8');
+    if (f >= 162) drawText('影凤凰！', 96, y0 + 18, FCNB(20), '#ffffff', '#ff4fd8');
+    drawText('REKA', 96, y0 + 6, FPX(8), '#ff9ae8');
+    g.restore();
+  }
+  if (f >= 30 && f < 150) msg('蕾卡', f < 75 ? LINE_A1 : LINE_A2, f < 75 ? Math.floor((f - 30) / 4) : Math.floor((f - 75) / 4), SP.portrait);
+  if (f >= 430 && f < 500) msg('小兵', LINE_B, Math.floor((f - 430) / 4), SP.gportrait);
+  if (f >= 612 && f < 700) msg('蕾卡', LINE_C, Math.floor((f - 612) / 5), SP.portrait);
+
+  // palette fades (stepped like GBA BLDY)
+  const fadeIn = 1 - prog(q3(f), 0, 27), fadeOut = prog(q3(f), 690, 717), lv = Math.max(fadeIn, fadeOut);
+  if (lv > 0) { g.globalAlpha = Math.round(lv * 16) / 16; rect(0, 0, W, H, '#000'); g.globalAlpha = 1; }
+
+  if (S.boxes) for (const b of boxes) { g.strokeStyle = b.col; g.lineWidth = 1; g.strokeRect(r(b.x) + .5, r(b.y) + .5, b.w - 1, b.h - 1); g.fillStyle = '#000000b0'; const c = text(b.label, FCN(9), b.col, null); g.fillRect(r(b.x), r(b.y) - 10, c.width, 10); g.drawImage(c, r(b.x), r(b.y) - 12); }
+  OUT.drawImage(FB, 0, 0);
+}
+
+/* ---------- sound (chiptune voices) ---------- */
+let AC = null;
+const ac = () => { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } } return AC; };
+function sfx(kind) {
+  if (!S.sound) return; const a = ac(); if (!a || a.state !== 'running') return;
+  const now = a.currentTime, out = a.createGain(); out.gain.value = .3; out.connect(a.destination);
+  const tone = (type, f0, f1, dur, vol, at = 0) => { const o = a.createOscillator(), gn = a.createGain(); o.type = type; o.frequency.setValueAtTime(f0, now + at); o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), now + at + dur); gn.gain.setValueAtTime(vol, now + at); gn.gain.exponentialRampToValueAtTime(.0001, now + at + dur); o.connect(gn); gn.connect(out); o.start(now + at); o.stop(now + at + dur + .05); };
+  const noise = (dur, f0, f1, vol) => { const b = a.createBuffer(1, a.sampleRate * (dur + .1), a.sampleRate), d = b.getChannelData(0); let v = 0; for (let i = 0; i < d.length; i++) { if (i % 6 === 0) v = Math.random() * 2 - 1; d[i] = v; } const s = a.createBufferSource(); s.buffer = b; const fl = a.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.setValueAtTime(f0, now); fl.frequency.exponentialRampToValueAtTime(f1, now + dur); const gn = a.createGain(); gn.gain.setValueAtTime(vol, now); gn.gain.exponentialRampToValueAtTime(.0001, now + dur); s.connect(fl); fl.connect(gn); gn.connect(out); s.start(now); s.stop(now + dur + .05); };
+  switch (kind) {
+    case 'blip': tone('square', 1100, 1100, .03, .1); break;
+    case 'power': tone('square', 90, 700, .9, .14); tone('triangle', 180, 1400, .9, .18); break;
+    case 'cry': tone('square', 1400, 2400, .12, .2); tone('square', 2400, 900, .35, .18, .12); break;
+    case 'dash': noise(.45, 6000, 300, .6); tone('square', 600, 80, .4, .25); break;
+    case 'mosaic': tone('triangle', 300, 1200, .5, .12); break;
+    case 'hit': noise(.5, 3000, 120, .9); tone('triangle', 140, 40, .4, .8); break;
+    case 'boom': noise(1.1, 1800, 70, 1); tone('triangle', 90, 25, 1, 1); break;
+  }
+}
+const EVENTS = (() => { const ev = [[150, 'cry'], [120, 'power'], [200, 'cry'], [215, 'dash'], [235, 'mosaic'], [326, 'hit'], [330, 'hit'], [500, 'mosaic'], [564, 'dash']]; for (let f = 30; f < 200; f += 8) ev.push([f, 'blip']); return ev; })();
+
+/* ---------- timeline UI + playback ---------- */
+const track = document.getElementById('track'), head = document.getElementById('head'), nowEl = document.getElementById('now');
+document.getElementById('total').textContent = TOTAL;
+for (const b of BEATS) { const d = document.createElement('div'); d.className = 'seg' + (b.cut ? ' cut' : ''); d.style.flex = `${b.b - b.a} 0 0`; d.textContent = b.n; d.dataset.k = b.k; track.insertBefore(d, head); }
+function ui(f) { head.style.left = `calc(${(f / TOTAL) * 100}% - 1px)`; nowEl.textContent = Math.floor(f); for (const n of track.querySelectorAll('.seg')) { const b = BEATS.find(x => x.k === n.dataset.k); n.classList.toggle('on', f >= b.a && f < b.b); } }
+let fr = 0, playing = false, last = 0;
+function tick(now) {
+  if (!playing) return;
+  const dt = Math.min(50, now - last); last = now;
+  const prev = fr; fr += dt * 60 / 1000 * S.speed;
+  const killBoom = S.kill ? [[425, 'boom']] : [];
+  for (const [at, kind] of EVENTS.concat(killBoom)) if (prev <= at && fr > at) sfx(kind);
+  if (fr >= TOTAL) { fr = TOTAL - 1; playing = false; }
+  render(fr); ui(fr);
+  if (playing) requestAnimationFrame(tick);
+}
+function play(fromStart) { if (fromStart || fr >= TOTAL - 1) fr = 0; playing = true; last = performance.now(); requestAnimationFrame(tick); }
+function seek(f) { playing = false; fr = clamp(f, 0, TOTAL - 1); render(fr); ui(fr); }
+document.getElementById('play').addEventListener('click', () => { const a = ac(); if (a && a.state === 'suspended') a.resume(); document.getElementById('pause').textContent = '暂停'; play(true); });
+document.getElementById('pause').addEventListener('click', e => { if (playing) { playing = false; e.target.textContent = '继续'; } else { e.target.textContent = '暂停'; play(false); } });
+const rKill = document.getElementById('rKill'), rLive = document.getElementById('rLive');
+const setKill = v => { S.kill = v; rKill.setAttribute('aria-pressed', String(v)); rLive.setAttribute('aria-pressed', String(!v)); if (!playing) render(fr); };
+rKill.addEventListener('click', () => setKill(true)); rLive.addEventListener('click', () => setKill(false));
+document.querySelectorAll('[data-sp]').forEach(b => b.addEventListener('click', () => { S.speed = +b.dataset.sp; document.querySelectorAll('[data-sp]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); }));
+const bx = document.getElementById('boxes'); bx.addEventListener('click', () => { S.boxes = !S.boxes; bx.setAttribute('aria-pressed', String(S.boxes)); bx.textContent = S.boxes ? '开' : '关'; if (!playing) render(fr); });
+const snd = document.getElementById('snd'); snd.addEventListener('click', () => { S.sound = !S.sound; snd.setAttribute('aria-pressed', String(S.sound)); snd.textContent = S.sound ? '开' : '关'; });
+let drag = false; const tseek = e => { const b = track.getBoundingClientRect(); seek(((e.clientX - b.left) / b.width) * TOTAL); };
+track.addEventListener('pointerdown', e => { drag = true; track.setPointerCapture(e.pointerId); tseek(e); });
+track.addEventListener('pointermove', e => { if (drag) tseek(e); });
+track.addEventListener('pointerup', () => { drag = false; });
+const boot = () => { TXT.clear(); if (reduce) { seek(330); return; } render(0); ui(0); play(true); };
+(document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(boot, boot);
+})();
+</script>
+</body></html>

@@ -108,7 +108,7 @@ func _检查领域目录(t) -> void:
 	t.ok(c.character("不存在的键").is_empty(), "catalog.character(查不到) 给空字典，不报错")
 	t.ok(c.enemies() is Dictionary and c.enemies().size() >= 20, "catalog.enemies() = %d 个敌机模板" % c.enemies().size())
 	t.ok(not c.enemy("bluefish").is_empty(), "catalog.enemy(\"bluefish\") 查得到")
-	t.ok(c.stages() is Array and c.stages().size() == 47, "catalog.stages() = 47 条编成")
+	t.ok(c.stages() is Array and c.stages().size() == 93, "catalog.stages() = 93 条编成")
 	t.ok(not c.stage(0).is_empty() and c.stage(9999).is_empty(), "catalog.stage(0) 有货、越界给空字典")
 	t.ok(c.trait_groups() is Dictionary and not c.trait_groups().is_empty(), "catalog.trait_groups() = %d 组词条" % c.trait_groups().size())
 	t.ok(c.cards() is Array and c.cards().size() == 28, "catalog.cards() = 28 张战术牌")

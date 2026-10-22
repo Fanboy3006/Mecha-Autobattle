@@ -61,8 +61,25 @@ static func abilOn(u: Variant, k: Variant) -> bool:
 static func shieldOn(u: Variant) -> bool:
 	return u != null and J.num(u.get("shield")) > 0 and J.num(u.get("shieldHp")) > 0
 
-static func lsLeft(u: Dictionary, turn: Variant) -> float:
-	return 2.0 if not J.same(u.get("lsTurn"), turn) else 2.0 - J.num0(u.get("lsCount"))
+static func lsLeft(u: Dictionary, turn: Variant, ctx: Variant = null) -> float:
+	var 顶 := λ次数上限(u, ctx)
+	return 顶 if not J.same(u.get("lsTurn"), turn) else 顶 - J.num0(u.get("lsCount"))
+
+## N3 λ 共振：同侧活着的「λ 力场 + λ共振」≥2 台 → 每回合减免 3 次（否则 2 次）。
+static func λ次数上限(u: Dictionary, ctx: Variant) -> float:
+	if not J.truthy(u.get("λ共振")) or not (ctx is Dictionary):
+		return 2.0
+	var 同侧: Array = J.or_(ctx.get("enemies") if u.get("side") == "enemy" else ctx.get("allies"), [])
+	var n := 0
+	for x in 同侧:
+		if x is Dictionary and float(x.get("hp", 0.0)) > 0.0 and J.truthy(x.get("λ共振")) and abilOn(x, "lambdaShield"):
+			n += 1
+	return 3.0 if n >= 2 else 2.0
+
+## λ 力场每下的减免量：单位写了 `λ减免` 就按它，否则 3000。
+static func λ减免量(u: Dictionary) -> float:
+	var v := J.num(u.get("λ减免"))
+	return v if (is_finite(v) and v > 0.0) else 3000.0
 
 static func hitRate(att: Dictionary, w: Dictionary, def: Dictionary, opts: Dictionary = {}) -> Dictionary:
 	if isSure(w):
@@ -330,8 +347,9 @@ static func dmgCore(att: Variant, w: Dictionary, def: Dictionary, o: Dictionary 
 		c.dmg = maxf(0.0, J.round(c.dmg))
 		return c
 	# 3 λ 力场
-	if float(c.dmg) > 0 and abilOn(def, "lambdaShield") and lsLeft(def, c.turn) > 0:
-		var a := J.round(3000.0 * c.defMul)
+	if float(c.dmg) > 0 and abilOn(def, "lambdaShield") and lsLeft(def, c.turn, c.get("ctx")) > 0 \
+			and not (att is Dictionary and J.inc(J.or_(def.get("_无视力场键"), []), str(J.or_(att.get("tplKey"), att.get("key"))))):
+		var a := J.round(λ减免量(def) * c.defMul)
 		c.dmg = maxf(0.0, float(c.dmg) - a)
 		if not c.preview:
 			if not J.same(def.get("lsTurn"), c.turn):
