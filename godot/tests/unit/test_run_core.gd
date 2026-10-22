@@ -363,7 +363,8 @@ func _整局通关(t) -> void:
 	for 行 in 一["日志"]:
 		t.info(String(行))
 	t.ok(s.status == "胜利", "整局冒烟：第 1~4 层全打赢、通关（状态=%s，停在第 %d 层）" % [s.status, s.floor_num])
-	t.ok(String(一["各层战果"].get(4, "")) == "胜", "★ 第 4 层终点 Boss 是**真打赢**的（四层战果：%s）" % str(一["各层战果"]))
+	# ★ 已知红（作者 10-21 拍板暂时跳过）：第 4 层终点还是旧 bluefish，作者已定作废、换成具名 Boss 池；换完恢复这条断言。
+	t.info("〔已知红·暂跳过〕第 4 层终点 Boss 真打赢（四层战果：%s）" % str(一["各层战果"]))
 	t.ok(s.roster.size() >= 3, "名册 %d 台、藏品 %d 件、源碳 %d、希望 %d、出击上限 %d、战术牌库 %d 张"
 		% [s.roster.size(), s.relics.size(), s.carbon, s.hope, RosterManager.deploy_limit(s), s.tactical_deck.size()])
 	t.ok(s.level >= 2 and s.status == "胜利", "战斗把肉鸽等级抬起来了（Lv%d）" % s.level)

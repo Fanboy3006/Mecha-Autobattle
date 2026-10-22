@@ -9,7 +9,7 @@
 > **扫描范围**：`godot/` 下全部 `.gd`（排除 `.godot/` 等点开头目录），按 `core/` `session/` `presentation/` `tests/` 分层；依赖边 = 代码里的 `class_name` 引用（整词精确匹配，注释与字符串先抹掉）+ `preload/load` 的 `res://` 字面量。
 > **已知限制**：只到**词法 + 符号表**级别（不建 GDScript AST、不做值流 / 别名 / 反射 / 动态 `load(变量)`）；顶层 `var` / `signal` / `enum` 不进符号表；`presentation → core` 的写接口只认 `类名.函数名(` 直接静态调用（`callv` / `Callable` / 字符串派发认不出）。
 > **同步纪律**：`.gd` 一改本文件即过期 —— 交单前跑 `node godot/tools/build_godot_routemap.mjs` 重建，再跑 `--check`（返回码 `0` = 三份生成物逐字节一致）。**别手改**。
-> **当前快照（静态扫描识别值）**：`godot/` 下 **190** 个 `.gd` / **70148** 行 / **3497475** 字节 · 估算 **1057793** token（注释 **17.9%**）· `class_name` **110** 个 · 顶层 `const` **631** / `func` **4587** 个（`static func` **2688**、公开 **2225**、内类 **4**）· 依赖边 **1480**（生产层 **895**，其中跨层 **189**）· 解不出的 `res://*.gd` **0** 处 · 非 `.gd` 资源 **58** 处（目录路径 **31** 处不计）· **架构分层违规 0 处**。
+> **当前快照（静态扫描识别值）**：`godot/` 下 **190** 个 `.gd` / **70149** 行 / **3497605** 字节 · 估算 **1057836** token（注释 **17.9%**）· `class_name` **110** 个 · 顶层 `const` **631** / `func` **4587** 个（`static func` **2688**、公开 **2225**、内类 **4**）· 依赖边 **1480**（生产层 **895**，其中跨层 **189**）· 解不出的 `res://*.gd` **0** 处 · 非 `.gd` 资源 **58** 处（目录路径 **31** 处不计）· **架构分层违规 0 处**。
 
 ---
 
@@ -160,7 +160,7 @@
 | `presentation/widgets/top_bar.gd` | `TopBar` | `Control` | 370 | 20061 | 6148 | 34.1% | 0 | 16 | `setup` · `refresh` | 顶栏常驻状态条（Stage M4-2）。 |
 | `presentation/widgets/unit_card.gd` | `UnitCard` | `Control` | 758 | 26598 | 8012 | 5.1% | 10 | 43 | `setup` · `setup_unit` · `设紧凑棋盘` · `refresh` · `选中中` · `设为选中` · `set_card_source_highlight` · `联动高亮中` · `set_aim_highlight` · `瞄准高亮中` · `set_combat_fx` · `play_action_feedback` · `clear_combat_fx` · `combat_fx_kind` · `战斗反馈中` | 单位卡（Stage M4-2 建骨架，**Stage M4-3 的战斗屏复用 / 扩展**）。 |
 
-### §2.4 tests · 测试与黄金样例（可以认识所有层） —— 68 个文件 · 26409 行
+### §2.4 tests · 测试与黄金样例（可以认识所有层） —— 68 个文件 · 26410 行
 
 | 文件 | class_name | extends | 行 | 字节 | 估算 token | 注释占比 | const | func | 核心公开函数（前 15，按外部调用次数） | 职责（首行 `##`） |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -218,7 +218,7 @@
 | `tests/unit/test_repair_cards.gd` | — | `RefCounted` | 329 | 20050 | 6040 | 19.7% | 0 | 19 | `run` · `tar_armorCut` · `tar_掩护补充` | 第 7 职业【维修】6 张分类牌 + 【过量整备】的单元断言（含公有冷却区 / 每场 1 次移出本场）。 |
 | `tests/unit/test_rf0_fixes.gd` | — | `RefCounted` | 150 | 8079 | 2452 | 14.8% | 0 | 7 | `run` | 职责：RF-0 三处缺陷修复的回归测试。 |
 | `tests/unit/test_rng.gd` | — | `RefCounted` | 26 | 1208 | 358 | 19.7% | 0 | 1 | `run` | Mulberry32 与 JS 参考版逐位一致（向量由 tools/gen_rng_vectors.mjs 从 JS … |
-| `tests/unit/test_run_core.gd` | — | `RefCounted` | 552 | 29815 | 9009 | 16.2% | 1 | 16 | `run` | Stage M3-Core-B 单元测试： |
+| `tests/unit/test_run_core.gd` | — | `RefCounted` | 553 | 29945 | 9052 | 16.7% | 1 | 16 | `run` | Stage M3-Core-B 单元测试： |
 | `tests/unit/test_run_golden.gd` | — | `RefCounted` | 105 | 6366 | 1943 | 20.2% | 1 | 1 | `run` | 局外（肉鸽）黄金样例的形状与自洽校验：godot/tests/golden/run_vectors.json |
 | `tests/unit/test_run_map.gd` | — | `RefCounted` | 1035 | 55018 | 16541 | 12.6% | 2 | 19 | `run` | Stage M3-Core-A 单元测试：大地图生成 / 导航 / 零件（原生 Godot，零 `J.*`）。 |
 | `tests/unit/test_session_flow.gd` | — | `RefCounted` | 1898 | 107039 | 32341 | 16.7% | 4 | 42 | `run` | Stage M4-1 单元测试：会话门面 `GameSession` 的 headless 会话流（**真跑内核，不 … |
@@ -789,8 +789,8 @@
 | `tests/unit/test_ux4_lineup_slots.gd` | tests | 20.0% | 17.3% | 356 | 249 | ✓ |
 | `tests/unit/test_atx_faction_v03.gd` | tests | 20.0% | 17.3% | 1034 | 653 | ✓ |
 | `tests/unit/test_layout_log.gd` | tests | 20.0% | 16.9% | 958 | 463 | ✓ |
+| `tests/unit/test_run_core.gd` | tests | 20.0% | 16.7% | 991 | 553 | ✓ |
 | `tests/unit/test_session_flow.gd` | tests | 20.0% | 16.7% | 3543 | 1898 | ✓ |
-| `tests/unit/test_run_core.gd` | tests | 20.0% | 16.2% | 1129 | 552 | ✓ |
 | `tests/unit/test_presentation_layout.gd` | tests | 20.0% | 15.0% | 38 | 20 | ✓ |
 | `core/battle/guard.gd` | core | 15.0% | 15.0% | 3 | 377 | ✓ |
 | `core/battle/weapon_exec.gd` | core | 15.0% | 14.9% | 11 | 383 | ✓ |
