@@ -1,0 +1,705 @@
+/* ============================================================================
+ * 机甲指挥 · 游戏样式
+ * ----------------------------------------------------------------------------
+ * M0 只做骨架，所以这里只有：配色变量、顶栏、卡片。
+ * 战斗画面 / 编队 / 大地图的样式在 M2–M4 加进来。
+ * 配色沿用战棋的座舱控制台风格（深色 + 琥珀强调色），方便以后搬美术素材。
+ * ========================================================================== */
+
+:root{
+  color-scheme:dark;
+  --bg:#121820; --panel:#19212c; --panel2:#212b38; --line:#2e3b4c;
+  --fg:#dfe7ef; --muted:#8a99ab; --accent:#e9a23b;
+  --ally:#4f95e0; --enemy:#d9564b; --good:#5cc08a;
+  --font-d:'Saira Condensed','Noto Sans SC',system-ui,sans-serif;
+  --font-b:'Noto Sans SC',system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+  --font-m:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-b);font-size:14px;line-height:1.5;margin:0}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.app{min-height:100%;display:grid;grid-template-rows:auto 1fr;gap:12px;padding:12px 16px;box-sizing:border-box}
+
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px}
+.brand{display:flex;align-items:baseline;gap:10px}
+.mark{font-family:var(--font-d);font-weight:700;font-size:24px;letter-spacing:.06em}
+.ver{color:var(--muted);font-size:12px;letter-spacing:.08em}
+.ctrl{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.ctrl button{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:6px 12px}
+.ctrl button:hover:not(:disabled){border-color:var(--muted)}
+.ctrl button:disabled{opacity:.4;cursor:not-allowed}
+
+.main{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;min-height:0;align-content:start}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 14px;max-width:820px}
+.card h3{margin:0 0 8px;font-family:var(--font-d);font-weight:600;font-size:13px;letter-spacing:.14em;color:var(--muted)}
+.card p{margin:0 0 8px}
+.card ul{margin:0 0 8px;padding-left:18px;display:flex;flex-direction:column;gap:3px}
+.small{font-size:12px;color:var(--muted)}
+code{font-family:var(--font-m);font-size:12px;color:var(--accent)}
+
+/* ============================================================================
+ * M2：菜单 / 编队 / 战斗 / 结算
+ * ========================================================================== */
+
+.hud{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.chip{display:flex;align-items:baseline;gap:6px;background:var(--panel);border:1px solid var(--line);padding:2px 10px;border-radius:4px}
+.chip .lbl{color:var(--muted);font-size:12px}
+.chip b{font-family:var(--font-m);font-size:15px;font-variant-numeric:tabular-nums}
+.ctrl button{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:6px 12px}
+.ctrl button:hover{border-color:var(--muted)}
+.ctrl button.on{border-color:var(--accent);color:var(--accent)}
+.primary{background:var(--accent);color:#1b1407;border-color:var(--accent);font-weight:700}
+
+.card .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.mini{font-size:12px;padding:2px 8px;border-radius:4px;border:1px solid var(--line);background:var(--panel2);color:var(--fg)}
+.mini.on{border-color:var(--accent);color:var(--accent)}
+.sel{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:4px;font:inherit;font-size:13px;padding:5px 6px;width:100%}
+h3 .small{margin-left:6px;font-weight:400}
+
+/* ---------- 编队 ---------- */
+.编队屏{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:14px;align-items:start}
+.编队屏 .col{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px}
+.编队屏 .filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;align-items:center}
+.编队屏 .filters .sep{width:8px}
+.picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:6px;max-height:62vh;overflow:auto;padding-right:2px}
+.pick{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;background:var(--panel2);
+  border:1px solid var(--line);border-left:4px solid var(--fc);border-radius:4px;padding:5px 8px;color:var(--fg)}
+.pick b{font-size:13px}
+.pick small{color:var(--muted);font-size:11px}
+.pick .nums{font-family:var(--font-m);font-size:11px;color:var(--accent)}
+.pick.on{outline:2px solid var(--accent)}
+.pick.used{opacity:.45}
+/* ★ 2026-10-13（正交 4×2 阵型）：棋盘不再是「三列的自适应网格」——
+   编队屏与战斗屏的每一排**固定四列**，且**四路上下严格对齐**（不再错位缩进后排）。
+   `.grid` 本身保留（别的屏 / 调参室还在用三列的自适应网格）。 */
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0 10px}
+.编队屏 .grid .row,.战斗屏 .row{grid-template-columns:repeat(4,1fr)}
+.slot{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-height:66px;background:var(--panel2);
+  border:1px dashed var(--line);border-radius:6px;padding:6px 8px;color:var(--fg);text-align:left}
+.slot .pos{font-family:var(--font-m);font-size:10px;color:var(--muted)}
+.slot b{font-size:13px}
+.slot small{font-size:11px;color:var(--muted)}
+.slot .nums{font-family:var(--font-m);font-size:11px;color:var(--accent)}
+.slot.filled{border-style:solid;border-left:4px solid var(--fc)}
+
+/* ---------- 战斗 ---------- */
+.战斗屏{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 320px;gap:12px;align-items:start}
+.战斗屏 .side{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px}
+.战斗屏 .side.ally{border-top:3px solid var(--ally)}
+.战斗屏 .side.enemy{border-top:3px solid var(--enemy)}
+.战斗屏 .side h3{margin:0 0 8px}
+/* ★ 2026-10-13（正交 4×2）：四列固定、上下对齐（原 `--cols` 在 4×2 之后恒为 4，留着当兜底） */
+.战斗屏 .row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px}
+.uc{position:relative;background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--fc);
+  border-radius:6px;padding:5px 7px;min-height:74px;overflow:hidden;transition:transform .12s,box-shadow .12s,opacity .2s}
+.uc .pos{position:absolute;top:4px;right:6px;font-family:var(--font-m);font-size:10px;color:var(--muted)}
+.uc .head{display:flex;flex-direction:column;line-height:1.25}
+.uc .head b{font-size:13px}
+.uc .head small{font-size:10px;color:var(--muted)}
+.uc .bar{height:5px;background:#0d131a;border-radius:3px;overflow:hidden;margin:4px 0 2px}
+.uc .bar i{display:block;height:100%;background:var(--good);transition:width .18s}
+.uc .nums{font-family:var(--font-m);font-size:10px;color:var(--muted)}
+.uc .tags{font-size:10px;color:var(--muted)}
+/* 势力特色那一行（作者 2026-10-10；框架在 72-势力.js）：SEED 层数 / 觉醒后的加成 */
+.uc .faction{font-family:var(--font-m);font-size:10px;color:#ff9ad0;margin-top:2px}
+.uc.empty{border-style:dashed;border-left-color:var(--line);opacity:.5;display:flex;align-items:center;justify-content:center}
+.uc.down{opacity:.35;filter:grayscale(1)}
+/* ★ 敌人卡第一批 · 卡 C「献祭者」：进入**濒死区间**（HP 比例 < 35%，初稿）的敌机卡变红 ——
+   配合卡上那句「濒死自爆：落点 …」的预告（`84-反馈.js` 的 `敌人机制预告()`）。
+   只有带 `abilities:['selfDestruct']` 的敌人才可能带上这个 class，别的卡片一个字节都不变。 */
+.uc.dying{border-color:var(--enemy);border-left-color:var(--enemy);background:color-mix(in srgb,var(--enemy) 16%,var(--panel2));
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--enemy) 55%,transparent) inset}
+.uc.hit{animation:hitflash .18s;box-shadow:0 0 0 2px color-mix(in srgb,var(--enemy) 70%,transparent)}
+.uc.hit.crit{box-shadow:0 0 0 3px var(--accent)}
+/* 攻击者向前冲一下（方案 8.1）：我方往右、敌方往左，都朝接触线方向 */
+.uc.act{animation:lunge .26s ease-out}
+.side.ally .uc.act{animation-name:lungeRight}
+.side.enemy .uc.act{animation-name:lungeLeft}
+@keyframes hitflash{50%{transform:translateX(3px)}}
+@keyframes lungeRight{40%{transform:translateX(7px)}}
+@keyframes lungeLeft{40%{transform:translateX(-7px)}}
+.float{position:absolute;right:6px;top:16px;font-family:var(--font-m);font-weight:700;font-size:15px;color:#fff;
+  text-shadow:0 1px 3px #000;animation:floatup .8s ease-out forwards}
+.float.crit{font-size:20px;color:var(--accent)}
+@keyframes floatup{to{transform:translateY(-18px);opacity:0}}
+.logcol{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px;display:flex;flex-direction:column;min-height:0}
+.logcol h3{margin:0 0 8px}
+#log{list-style:none;margin:0;padding:0;overflow:auto;max-height:64vh;display:flex;flex-direction:column;gap:5px;font-size:12px}
+#log li{border-left:2px solid var(--line);padding-left:8px}
+#log li.ally{border-color:var(--ally)}
+#log li.enemy{border-color:var(--enemy)}
+#log li.sys{border-color:var(--accent);color:var(--accent)}
+#log .t{font-family:var(--font-m);color:var(--muted);margin-right:6px}
+
+/* ---------- M3：指令阶段 ---------- */
+button:disabled{opacity:.4;cursor:not-allowed}
+.warn{color:var(--enemy)}
+.uc[data-act]{cursor:pointer}
+.uc[data-act]:hover{border-color:var(--muted)}
+.uc.sel{outline:2px solid var(--accent);outline-offset:-2px}
+.uc .cmd{font-family:var(--font-m);font-size:10px;color:var(--accent);margin-top:2px}
+.uc .intent{font-family:var(--font-m);font-size:10px;color:#ffb38a;margin-top:2px}
+.cmdpanel{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:8px;margin-bottom:10px}
+.cmdpanel h3{margin:0 0 6px}
+.cmdpanel p{margin:4px 0 0}
+.cmds{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:2px}
+#log li.sys2{border-color:var(--accent);color:var(--accent);opacity:.9}
+.filters .mini,.cmds .mini{cursor:pointer}
+.cmdpanel .mini.on{border-color:var(--accent);color:var(--accent)}
+
+/* ---------- 结算 ---------- */.card.end .eyebrow{font-family:var(--font-d);letter-spacing:.2em;font-size:13px;color:var(--enemy)}
+.card.end.win .eyebrow{color:var(--good)}
+.card.end h2{font-family:var(--font-d);letter-spacing:.06em;font-size:30px;margin:2px 0 10px}
+.card.end ul{margin:0;padding-left:18px}
+.card.end li b{font-family:var(--font-m);color:var(--accent)}
+
+/* ---------- 手机宽度：单列，战斗记录放到下面 ---------- */
+@media (max-width:980px){
+  .编队屏{grid-template-columns:minmax(0,1fr)}
+  .战斗屏{grid-template-columns:minmax(0,1fr)}
+  .picks{max-height:none}
+  #log{max-height:32vh}
+  .uc{min-height:64px;padding:4px 6px}
+  .uc .head b{font-size:12px}
+}
+
+
+/* ---------- 拖动（作者 2026-10-10） ---------- */
+.pick,.slot{touch-action:none;-webkit-user-select:none;user-select:none}
+.pick[draggable],.slot{cursor:grab}
+.dragghost{position:fixed;z-index:99;pointer-events:none;background:var(--panel2);border:1px solid var(--accent);
+  border-radius:4px;padding:3px 8px;font-size:12px;color:var(--fg);box-shadow:0 4px 14px rgba(0,0,0,.5)}
+/* 编队格子：每一排一行，**正交四列**（★ 2026-10-13 从「按 --cols 的错开 9 格」改成固定 4 列对齐） */
+.编队屏 .grid{display:flex;flex-direction:column;gap:6px}
+.编队屏 .grid .row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:0}
+/* ---------- M4 肉鸽：大地图 ---------- */
+.rv-bar2{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.rv-bar2 .rv-chip{font-size:13px;padding:3px 10px;border:1px solid var(--line);border-radius:4px;background:var(--panel2)}
+.rv-bar2 .rv-chip b{font-family:var(--font-m);margin-left:4px;color:var(--accent)}
+.rv-bar2 .rv-chip.warn b{color:var(--enemy)}
+.rv-map2{display:flex;gap:12px;overflow-x:auto;padding:10px 2px 14px}
+.rv-col{display:flex;flex-direction:column;gap:8px;min-width:118px}
+.rv-node{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;padding:7px 9px;border-radius:6px;
+  border:1px dashed var(--line);border-left:4px solid var(--fc);background:var(--panel2);color:var(--fg);font:inherit;cursor:default;opacity:.55}
+.rv-node b{font-size:13px}
+.rv-node small{font-size:10px;color:var(--muted)}
+.rv-node.done{opacity:.4;border-style:solid}
+.rv-node.can{opacity:1;border-style:solid;cursor:pointer;box-shadow:0 0 0 1px color-mix(in srgb,var(--fc) 60%,transparent)}
+.rv-node.can:hover{border-color:var(--accent)}
+.rv-node.here{opacity:1;border-style:solid;outline:2px solid var(--accent)}
+
+/* ---------- 网格大地图（作者 2026-10-10：换成战棋那套 6×4 网格 + 推进剂） ----------
+   格子按钮沿用 .rv-node 的视觉语言（--fc 类型色 + 已过 / 可去 / 当前三态）；
+   手机上横向滚动（.gmap 有 overflow-x:auto），格子本身还是普通按钮，pointer 事件照旧能点。 */
+.gmap{display:flex;flex-direction:column;gap:6px;overflow-x:auto;padding:10px 2px 14px}
+.gmap .grow{display:grid;grid-template-columns:repeat(6,minmax(74px,1fr));gap:6px}
+.gcell{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;text-align:center;
+  padding:6px 4px;border-radius:6px;border:1px dashed var(--line);border-top:3px solid var(--fc);
+  background:var(--panel2);color:var(--fg);font:inherit;cursor:default;opacity:.5;min-height:56px}
+.gcell i{font-size:15px;font-style:normal;line-height:1}
+.gcell b{font-size:11px;font-weight:600}
+.gcell small{font-size:9px;color:var(--muted);line-height:1.15}
+.gcell.walked{opacity:.32}
+.gcell.done{opacity:.28;border-style:solid}
+.gcell.can{opacity:1;border-style:solid;cursor:pointer;box-shadow:0 0 0 1px color-mix(in srgb,var(--fc) 60%,transparent)}
+.gcell.can:hover{border-color:var(--accent)}
+.gcell.can small{color:var(--accent)}
+.gcell.here{opacity:1;border-style:solid;outline:2px solid var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--panel2))}
+/* ★ 2026-10-13（任务书 §1 模块 1 · 第 2 条）：被存在率挖掉的格 = **地形断层**（⛰），
+   不是「地图缺了一块（Bug）」。所以给它一块**暗岩斜纹**的实心底 + 不透明的说明文字，
+   一眼看得出「这里过不去，但它是设计好的地形」（旧样式 `.18` 透明度的「不存在」看起来像渲染失败）。 */
+.gcell.none{opacity:1;cursor:not-allowed;border:1px dashed #39414f;border-top:3px solid #39414f;
+  color:#7d879a;background:repeating-linear-gradient(135deg,#171b22 0 6px,#212734 6px 12px)}
+.gcell.none i{color:#8a93a4}
+.gcell.none b{color:#9aa5b7;letter-spacing:.06em}
+.gcell.none small{color:#6b7684}
+/* ★ 2026-10-13（任务书 §1 模块 2 · 第 3 条）：正在用零件时，**目标格**加这个类 ——
+   青金脉冲边框，比 `.gcell.can` 的普通高亮更醒目（写了 `!important` 级的后位覆盖，
+   因为它跟在 `.gcell.can` 后面、同优先级）。 */
+.gcell.part-target{opacity:1;cursor:pointer;border-style:solid;border-color:#3fd0c9;
+  animation:partTargetPulse 1.15s ease-in-out infinite}
+@keyframes partTargetPulse{
+  0%,100%{box-shadow:0 0 0 1px #3fd0c9,0 0 5px rgba(63,208,201,.45)}
+  50%{box-shadow:0 0 0 2px #7af0e8,0 0 16px rgba(122,240,232,.85)}
+}
+@media (prefers-reduced-motion:reduce){.gcell.part-target{animation:none;box-shadow:0 0 0 2px #7af0e8}}
+/* 「正在使用零件【X】：请点击高亮目标格（或点此取消）」提示条（大地图上方那颗整条按钮）。 */
+.part-bar{display:flex;align-items:center;gap:8px;width:100%;margin:0 0 10px;padding:6px 10px;
+  border:1px solid #3fd0c9;border-left:4px solid #3fd0c9;border-radius:4px;cursor:pointer;
+  background:color-mix(in srgb,#3fd0c9 12%,var(--panel2));color:var(--fg);font:inherit;text-align:left}
+.part-bar:hover{background:color-mix(in srgb,#3fd0c9 22%,var(--panel2))}
+.part-bar b{color:#7af0e8;white-space:nowrap}
+.part-bar span{font-size:12px;color:var(--muted)}
+.glegend{display:inline-flex;align-items:center;gap:4px;margin-right:8px;border-left:3px solid var(--fc);padding-left:4px}
+
+/* ---------- 结果条 + 记录屏（2026-10-11：作者「结果没有提示」「记录也需要显示」） ----------
+   结果条 = 大地图屏顶部固定那一行「最近一条结果」，四种类型各一个颜色（成功 / 警告 / 失败 / 信息）；
+   记录屏 = `RUN.日志` 倒着画（最新在前），`.logbox` 限高可滚动。 */
+.resbar{display:flex;align-items:flex-start;gap:8px;margin:0 0 10px;padding:6px 10px;border-radius:4px;
+  border:1px solid var(--line);border-left:4px solid var(--muted);background:var(--panel2)}
+.resbar b{font-family:var(--font-d);letter-spacing:.08em;white-space:nowrap}
+.resbar.ok{border-left-color:var(--good)}   .resbar.ok b{color:var(--good)}
+.resbar.warn{border-left-color:var(--accent)} .resbar.warn b{color:var(--accent)}
+.resbar.bad{border-left-color:var(--enemy)} .resbar.bad b{color:var(--enemy)}
+.resbar.info{border-left-color:var(--ally)} .resbar.info b{color:var(--ally)}
+.resbar small{color:var(--muted)}
+.logbox{max-height:320px;overflow-y:auto;border:1px solid var(--line);border-radius:4px;background:var(--panel2);padding:6px 10px}
+.logbox .logline{display:flex;gap:8px;align-items:baseline;padding:2px 0;border-bottom:1px dashed color-mix(in srgb,var(--line) 60%,transparent)}
+.logbox .logline:last-child{border-bottom:0}
+.logbox .logline .tag{flex:0 0 auto;font-family:var(--font-m);font-size:11px;color:var(--muted);min-width:52px}
+.logbox .logline .idx{flex:0 0 auto;font-family:var(--font-m);font-size:11px;color:var(--muted);min-width:34px;text-align:right}
+.logbox .logline .tx{flex:1 1 auto;min-width:0}
+.rv-mini{margin:10px 0 0}
+.rv-mini .rv-row{padding:2px 0}
+.battle-res{margin:10px 0 0;padding:6px 10px;border-radius:4px;border:1px solid var(--line);
+  border-left:4px solid var(--good);background:var(--panel2)}
+.battle-res.lose{border-left-color:var(--enemy)}
+.battle-res b{font-family:var(--font-m);color:var(--accent)}
+
+/* ============================================================================
+ * ★ 三层反馈（预告 / 即时 / 结算）—— 作者 2026-10-12 拍板（第 2 件，第 2 节）
+ * ----------------------------------------------------------------------------
+ *   · 预告：单位卡上那一小块 `.fb-line`（大招冷却 / 打得到后排 / 盾标 + 防御值 +50 /
+ *     集中攻击的「预计伤害合计 / 它剩多少 HP」）；
+ *   · 即时：伤害数字旁那个小标签 `.float-tag`（`集中` / `被挡 −20` / `防御 少挨 N`），
+ *     战斗记录行尾巴上的 `.tagx`；
+ *   · 结算：战斗结束屏 / 大地图 / 本局结算屏上的「本场战报」块 `.battle-report`。
+ * 全部只是显示：不加数值、不改判定（`84-反馈.js` 的文件头写了三条硬规矩）。
+ * ========================================================================== */
+.uc .fb-line{font-family:var(--font-m);font-size:10px;color:var(--ally);margin-top:2px;line-height:1.35}
+.side.enemy .uc .fb-line{color:#ffb38a}
+.float-tag{position:absolute;right:6px;top:32px;font-family:var(--font-m);font-size:10px;color:#fff;
+  background:color-mix(in srgb,var(--accent) 45%,#000);border-radius:3px;padding:0 3px;white-space:nowrap;
+  animation:floatup .9s ease-out forwards}
+.float-tag.crit{color:var(--accent);background:#0d131a}
+#log .tagx{font-family:var(--font-m);font-size:10px;color:var(--accent);margin-left:4px}
+.battle-report{margin:10px 0 0;padding:6px 10px;border-radius:4px;border:1px solid var(--line);
+  border-left:4px solid var(--accent);background:var(--panel2)}
+.battle-report h3{margin:0 0 4px}
+.battle-report ul{margin:0;padding-left:18px}
+.battle-report li{font-family:var(--font-m);font-size:12px;line-height:1.55}
+
+/* ============================================================================
+ * ★ 2026-10-12 作战记录（作者：「作战记录你看看能不能安排保存一下」）
+ * ----------------------------------------------------------------------------
+ *   · 结算屏上那一块 `.battle-log`（`data-battle-log="1"`）：一行摘要 + 逐条记录（`.logbox` 可滚动）
+ *     + 「复制为文本」/「下载 .txt」两个按钮；
+ *   · 菜单入口那一屏「战斗记录（最近 N 场）」：`.picks` 里一场一个按钮（时间 / 结果 / 回合数 / 种子）；
+ *   · 复制 / 下载的反馈是现成的 `.resbar`；失败时那段「全选文本」摊在 `.copyout` 里。
+ * 全部只是显示：不改 `RUN`、不动存档版本号（数据在 `88-战斗记录.js`，独立 localStorage 键）。
+ * ========================================================================== */
+.battle-log{margin:10px 0 0;padding:6px 10px;border-radius:4px;border:1px solid var(--line);
+  border-left:4px solid var(--ally);background:var(--panel2)}
+.battle-log h3{margin:6px 0 4px}
+.battle-log .logbox{max-height:260px}
+.copyout{width:100%;box-sizing:border-box;margin:6px 0 0;background:var(--panel2);color:var(--fg);
+  border:1px solid var(--line);border-radius:4px;font-family:var(--font-m);font-size:11px;padding:6px}
+/* 节点弹窗（隧道 / 休整）：大地图屏上一张卡片 + 一排按钮，点一下走 data-act="弹窗:<值>" */
+.dlg{border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--panel2));margin:10px 0}
+.dlg h3{color:var(--accent)}
+
+/* ============================================================================
+ * ★ 2026-10-12 调参室（作者亲手调难度，规格书 §3.1：**左选战斗 / 中调数 / 右看结果**）
+ * ----------------------------------------------------------------------------
+ * 三列在窄屏上会被挤扁，所以用 minmax(0,1fr) 让每一列都能收缩（不会撑破顶栏）；
+ * 滑条 / 输入框的样式只在这一屏里生效（`.调参室屏` 作用域内），别的屏一个字节都不变。
+ * ========================================================================== */
+.调参室屏{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start}
+.调参室屏 .col{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px;min-width:0}
+.调参室屏 h3{margin:0 0 8px}
+.调参室屏 h4{margin:10px 0 5px;font-family:var(--font-d);font-size:12px;letter-spacing:.12em;color:var(--muted)}
+.调参室屏 .cmds{display:flex;flex-wrap:wrap;gap:5px}
+.调参室屏 .cmds .mini{cursor:pointer}
+.调参室屏 .tune-row{display:flex;align-items:center;gap:8px;margin:5px 0}
+.调参室屏 .tune-row label{flex:0 0 78px;font-size:12px;color:var(--muted)}
+.调参室屏 .tune-row input[type=range]{flex:1 1 auto;min-width:50px;accent-color:var(--accent)}
+.调参室屏 .tune-row input[type=number],.调参室屏 .tune-row input[type=text]{flex:0 0 96px;background:var(--panel2);
+  color:var(--fg);border:1px solid var(--line);border-radius:4px;font:inherit;font-size:12px;padding:4px 6px}
+.调参室屏 .tune-row .val{flex:0 0 60px;text-align:right;font-family:var(--font-m);font-size:12px;color:var(--accent)}
+.调参室屏 .tune-grid{display:flex;flex-direction:column;gap:6px;margin:6px 0 8px}
+.调参室屏 .tune-grid .row{display:grid;grid-template-columns:repeat(var(--cols,3),1fr);gap:6px}
+.调参室屏 .tune-card{border:1px solid var(--line);border-radius:5px;padding:7px 9px;margin:8px 0;background:var(--panel2)}
+.调参室屏 .tune-card h4{margin-top:0}
+.调参室屏 textarea{width:100%;min-height:104px;background:var(--panel2);color:var(--fg);border:1px solid var(--line);
+  border-radius:4px;font-family:var(--font-m);font-size:11px;padding:6px;box-sizing:border-box}
+.调参室屏 .bar2{height:7px;background:#0d131a;border-radius:4px;overflow:hidden;margin:3px 0 6px}
+.调参室屏 .bar2 i{display:block;height:100%;background:var(--accent);transition:width .12s}
+.调参室屏 .stat{display:flex;gap:6px;align-items:baseline;font-family:var(--font-m);font-size:11px}
+.调参室屏 .stat .nm{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.调参室屏 .stat .n{flex:0 0 auto;color:var(--accent)}
+.调参室屏 .stat .pc{flex:0 0 46px;text-align:right;color:var(--muted)}
+.调参室屏 .picks{max-height:34vh}
+.调参室屏 .slot{min-height:52px}
+.调参室屏 p.small{margin:4px 0}
+
+/* ============================================================================
+ * M5：机体图标和声音开关
+ * ----------------------------------------------------------------------------
+ * 图标是 art/mech-icons.js 的原创矢量图形，由 78-图标.js 画成 dataURL 内联在 <img> 里；
+ * 画不出来时退成 `.mic.fb`（势力色方块 + 短名）。
+ * ========================================================================== */
+.mic{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;border-radius:4px;overflow:hidden}
+.mic img{display:block;width:100%;height:100%}
+.mic.fb{background:var(--fc);color:#0b1016;font-family:var(--font-d);font-weight:700;font-size:11px}
+.uc .head{flex-direction:row;align-items:center;gap:6px}
+.uc .head .nm{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.uc .head .nm b{font-size:13px}
+.uc .head .nm small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pick .pk-top,.slot .pk-top,.rv-row .pk-top{display:flex;align-items:center;gap:7px;min-width:0;width:100%}
+.pk-nm{display:flex;flex-direction:column;line-height:1.2;min-width:0;text-align:left}
+.pk-nm b{font-size:13px}
+.pk-nm small{color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sndbtn{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:6px 12px;margin-left:8px}
+.sndbtn:hover{border-color:var(--muted)}
+.sndbtn[aria-pressed="false"]{color:var(--muted)}
+.sndbtn.on{border-color:var(--accent);color:var(--accent)}
+
+/* ============================================================================
+ * ★ 2026-10-13 作者亲手提的两条 UI 修改（B：「**所有可选项都需要集中在画面中间**」）
+ * ----------------------------------------------------------------------------
+ * 作者原话：「音乐关闭的按钮位置也不明显。每一个画面都要有，然后**所有可选项都需要集中在画面中间**，
+ * 这个是 UI 层面的修改」。这一节就是第二条：**只动布局与样式** ——
+ * 一个 `data-act` 值、一个动作名、一句屏的语义都没改（今天的界面 bug 全是那一族，不再碰）。
+ *
+ * 判据（测试读的就是它，口径写清）：**装选项的那些容器一律带 `data-center="1"`**
+ *   —— `data-center` 是这一节定的**显式标记**（不是靠位置 / 类名去猜），
+ *   测试 `tests/battle_ui.js` 第 [13] 段逐屏断言「这一屏里每一个动作容器的 HTML 里都带 `data-center="1"`」。
+ *   容器一共五族（`80-界面.js` / `92-肉鸽界面.js` 里一处一处标的）：
+ *     `.acts`（`.card .acts` / 编队屏 / 肉鸽各屏的按钮行）· `.cmds`（方针栏 / 单位开关 / 调参室的选择钮）·
+ *     `.picks`（候选卡片网格）· `.filters`（编队屏的等级 / 势力筛选）· `.snd-row`（每屏那一行声音开关）。
+ *
+ * 居中的手法（不改变可读与点击区域，只挪位置）：
+ *   · **按行居中**：容器 `display:flex; flex-wrap:wrap; justify-content:center`；
+ *   · **整块居中**：容器自己 `margin-left:auto; margin-right:auto` 并且给一个**最大宽度**
+ *     （`--opt-max`，默认 96ch 的可读宽度），于是标题贴着左边、按钮群落在画面中间那一竖条里；
+ *   · **网格居中**：`.picks` 三列 / 五列网格按 `justify-content:center` 收拢，卡片本身尺寸一点没动
+ *     （`.pick` 的 padding / 字号 / 边框都沿用上面那几段，点击区域不变）。
+ * 别的屏（战斗 / 顶栏 / 音乐鉴赏自己的样式）一个字节都不动。
+ * ========================================================================== */
+.opt-center{margin-left:auto;margin-right:auto;max-width:var(--opt-max,96ch)}
+.card .acts[data-center="1"]{justify-content:center;margin-left:auto;margin-right:auto;max-width:var(--opt-max,96ch)}
+/* ★ 兜底（同一套居中）：**卡片里的动作行一律居中**，即使那一处没标 `data-center`
+   —— 全仓库只有两处没标：`89-录像.js` 的三块与 `8a-上报.js` 的菜单块。
+   那两个文件是**别的线**的（录像线 / 上报线），界面这条线不越线去改它们，
+   所以居中在这里用**通用选择器**兜住：`.card .acts`（录像屏的 `<section class="card">` 里那三块）。 */
+.card .acts:not([data-center]){justify-content:center;margin-left:auto;margin-right:auto;max-width:var(--opt-max,96ch)}
+.cmds[data-center="1"]{justify-content:center;margin-left:auto;margin-right:auto;max-width:var(--opt-max,96ch)}
+.filters[data-center="1"]{justify-content:center;margin-left:auto;margin-right:auto;max-width:var(--opt-max,96ch)}
+.picks[data-center="1"]{justify-content:center;margin-left:auto;margin-right:auto;max-width:var(--opt-max,96ch)}
+/* 每一屏末尾那一行声音开关（`80-界面.js` 的 `声音行Html()`）：图标 + 文字，居中、好点 */
+.snd-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;
+  margin:12px auto 2px;padding-top:10px;border-top:1px dashed var(--line)}
+.snd-row .sndbtn{margin-left:0}
+.snd-inline{font-size:13px;padding:6px 14px}
+/* 顶栏那一排（`#ctrl`）也跟「选项集中在画面中间」一起居中 —— 顶栏的声音开关就在这一排里。
+   手法只在 `.bar` 这一层：左右两块用 `flex:1 1 auto` 平分空白、`.ctrl` 走 `margin:auto` 居中，
+   于是顶栏上的操作按钮（含声音开关）落在**画面中间**，而不是贴在右上角。 */
+.bar .brand{flex:1 1 auto}
+.bar .hud{flex:1 1 auto;justify-content:flex-end}
+.bar .ctrl{margin-left:auto;margin-right:auto;justify-content:center}
+
+/* 弹窗骨架：音乐鉴赏页（audio/music-room.js）自己只带页面内的样式，
+   外面的 .modal / .dlg / .btn / .eyebrow 这些壳儿从战棋的 main.css:154-168 搬最小一份过来。 */
+.modal[hidden]{display:none}
+.modal{position:fixed;inset:0;background:rgba(6,9,13,.72);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
+.dlg{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px;width:min(720px,100%);max-height:90vh;overflow:auto;box-sizing:border-box;color:var(--fg)}
+.dlg h2{margin:2px 0 6px;font-size:22px}
+.dlg .eyebrow{font-family:var(--font-d);letter-spacing:.2em;color:var(--enemy);font-size:13px}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:6px 12px;color:var(--fg)}
+.btn:hover:not(:disabled){border-color:var(--muted)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ---------- 对局录像（作者 2026-10-12，`src/js/89-录像.js`） ----------
+   · `.vcr-block` = 战斗结算屏那一块「正在录这一局」；
+   · `.vcr-reason` = 招募 / 晋升 / 黑市 / 零件那四屏上**可以不填**的「为什么选它？」输入框
+     （默认收起 —— 只显示一行小按钮，展开才有输入框，绝不打断作者）。 */
+.vcr-block{margin:10px 0 0;padding:6px 10px;border-radius:4px;border:1px solid var(--line);
+  border-left:4px solid var(--ally);background:var(--panel2)}
+.vcr-block b{font-family:var(--font-m)}
+.vcr-reason{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0 0;padding:5px 8px;
+  border:1px dashed var(--line);border-radius:4px;background:color-mix(in srgb,var(--ally) 6%,transparent)}
+.vcr-reason .small{color:var(--muted);font-size:11px}
+.vcr-reason-in{flex:1 1 260px;min-width:180px;background:var(--panel2);color:var(--fg);
+  border:1px solid var(--line);border-radius:4px;font:inherit;font-size:13px;padding:4px 8px}
+.vcr-reason-in:focus{outline:none;border-color:var(--accent)}
+
+/* ============================================================================
+ * ★ K3 UI 改版（v0.7.0 · K3 版分叉）
+ * ----------------------------------------------------------------------------
+ * 只动布局与样式：DOM 结构 / data-act / 类名 / 文本一个字节都没改（22 套测试照旧）。
+ *   1) 战斗屏：方针栏整行置顶；我方 / 敌方双栏均分；记录列固定右侧 300px——
+ *      修掉原版「敌方被挤进记录列宽、卡片逐字竖排」的问题；
+ *   2) 单位卡：排版重排（图标+名字一行、血条与数字分行、意图行整段可读）；
+ *   3) 大地图屏：长说明段折叠（悬停展开，文本还在，测试照过），格子放大；
+ *   4) 编队屏加宽编队格一侧；5) 结算屏戏剧化；6) 按钮 / 滚动条等小件打磨。
+ * ========================================================================== */
+
+/* ---------- 1) 战斗屏骨架 ---------- */
+.战斗屏{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 300px;gap:14px}
+.战斗屏 .policybar{grid-column:1/-1;margin-bottom:0}
+@media (max-width:980px){.战斗屏{grid-template-columns:minmax(0,1fr)}.战斗屏 .policybar{grid-column:1/-1}}
+
+/* 方针栏压扁成一条：标题在左、五条按钮居中、说明小字整行垫底 */
+.policybar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;padding:8px 14px}
+.policybar h3{margin:0;white-space:nowrap;font-size:14px}
+.policybar .cmds{flex:1 1 auto;justify-content:center;margin:0;max-width:none}
+.policybar p.small{width:100%;margin:2px 0 0;line-height:1.45}
+.policybar .mini{font-size:13px;padding:4px 14px;transition:transform .1s,box-shadow .1s}
+.policybar .mini:hover:not(:disabled){transform:translateY(-1px)}
+.policybar .mini.on{box-shadow:0 0 0 1px var(--accent),0 0 10px color-mix(in srgb,var(--accent) 45%,transparent)}
+
+/* 两侧面板：卡片网格拉开一点 */
+.战斗屏 .side{padding:12px}
+.战斗屏 .side h3{font-size:13px;letter-spacing:.12em;display:flex;align-items:baseline;justify-content:space-between}
+.战斗屏 .row{gap:7px;margin-bottom:7px}
+
+/* ---------- 2) 单位卡 ---------- */
+.uc{min-height:88px;padding:6px 8px;border-radius:8px;border-top:1px solid var(--line);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--fc) 7%,var(--panel2)) 0%,var(--panel2) 46%);
+  box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.uc[data-act]:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.35);border-color:var(--muted)}
+.uc .pos{top:5px;right:7px}
+.uc .head{gap:7px;margin-bottom:2px}
+.uc .head .nm{flex:1 1 auto}
+.uc .head .nm b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.uc .head .nm small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uc .bar.hp{height:6px;margin:3px 0 2px;box-shadow:inset 0 1px 2px rgba(0,0,0,.5)}
+.uc .bar.hp i{background:linear-gradient(90deg,#3f9d63,#5cc08a)}
+.uc .nums{display:flex;justify-content:space-between;font-size:10px;margin-bottom:1px}
+.uc .tags{font-size:10px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 意图 / 预告 / 势力行：整段可读（原版在窄卡里逐字竖排）；数字不断开 */
+.uc .intent,.uc .fb-line,.uc .cmd,.uc .faction{font-size:10px;line-height:1.45;overflow-wrap:anywhere;margin-top:3px}
+.uc .intent{background:color-mix(in srgb,#ffb38a 8%,transparent);border-radius:4px;padding:2px 5px}
+.uc .fb-line{background:color-mix(in srgb,var(--ally) 8%,transparent);border-radius:4px;padding:2px 5px}
+.uc .cmd{color:var(--accent)}
+.uc .marked{outline:2px solid var(--enemy);outline-offset:-2px}
+.uc .pickable{outline:2px dashed var(--accent);outline-offset:-2px;cursor:pointer}
+.uc .pickable:hover{outline-style:solid}
+/* 暴击数字带辉光，更显眼 */
+.uc .float.crit{text-shadow:0 0 8px color-mix(in srgb,var(--accent) 80%,transparent),0 1px 3px #000}
+
+/* ---------- 3) 记录列：跟随滚动 + 更高 ---------- */
+.logcol{position:sticky;top:12px;align-self:start}
+#log{max-height:72vh}
+#log::-webkit-scrollbar,.logbox::-webkit-scrollbar,.picks::-webkit-scrollbar{width:8px}
+#log::-webkit-scrollbar-thumb,.logbox::-webkit-scrollbar-thumb,.picks::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+#log::-webkit-scrollbar-thumb:hover,.logbox::-webkit-scrollbar-thumb:hover,.picks::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+
+/* ---------- 4) 大地图屏：长说明段折叠（悬停展开），格子放大 ---------- */
+.card>p.small[data-deploy-cap],.card>p.small[data-hope-src],.card>p.small[data-prop-plan]{
+  font-size:11px;line-height:1.5;opacity:.6;max-height:3em;overflow:hidden;position:relative;
+  transition:max-height .25s ease,opacity .25s ease;cursor:default;
+  -webkit-mask-image:linear-gradient(#000 55%,transparent 96%);mask-image:linear-gradient(#000 55%,transparent 96%)}
+.card>p.small[data-deploy-cap]:hover,.card>p.small[data-hope-src]:hover,.card>p.small[data-prop-plan]:hover{
+  max-height:40em;opacity:1;-webkit-mask-image:none;mask-image:none}
+.gmap .grow{gap:8px}
+.gcell{min-height:68px;padding:7px 5px;border-radius:8px}
+.gcell i{font-size:17px}
+.gcell b{font-size:12px}
+.gcell small{font-size:9.5px}
+.rv-bar2 .rv-chip{padding:4px 12px}
+
+/* ---------- 5) 编队屏：编队格一侧加宽 ---------- */
+.编队屏{grid-template-columns:minmax(0,1fr) 500px}
+@media (max-width:980px){.编队屏{grid-template-columns:minmax(0,1fr)}}
+.编队屏 .slot{min-height:76px}
+
+/* ---------- 6) 结算屏戏剧化 ---------- */
+.card.end{margin:6vh auto 0;max-width:660px;text-align:center;padding:26px 30px}
+.card.end h2{font-size:44px;letter-spacing:.14em;margin:4px 0 12px}
+.card.end.win h2{color:var(--good);text-shadow:0 0 24px color-mix(in srgb,var(--good) 50%,transparent)}
+.card.end.lose h2{color:var(--enemy);text-shadow:0 0 24px color-mix(in srgb,var(--enemy) 50%,transparent)}
+.card.end ul{text-align:left;display:inline-block}
+.card.end .acts{justify-content:center}
+
+/* ---------- 7) 小件 ---------- */
+.mini{transition:transform .1s,border-color .12s,color .12s}
+.mini:hover:not(:disabled){transform:translateY(-1px)}
+.primary{box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 60%,transparent),0 2px 8px color-mix(in srgb,var(--accent) 30%,transparent)}
+.chip{box-shadow:0 1px 2px rgba(0,0,0,.2)}
+/* ============================================================================
+ * ③「看见特色」· 状态角标 / 标定 / 特色摘要（2026-10-13，P1 & P2）
+ * ----------------------------------------------------------------------------
+ * 全部**只挂类名的那几条线现在把样式补齐**：
+ *   · `.标定` / `.标定角标` / `.标定闪框`  = 标定经济（作者 2026-10-13 拍板）在卡片上的标记；
+ *   · `.特色角标`                        = 我方单位卡的状态角标槽位（重装护卫 / 首击闪+20 / 狙击免挡 / 🎰好运暴×3）；
+ *   · `.签-职业` / `.签-势力`            = 即时飘字的两类短签（红=职业、蓝紫=势力）；
+ *   · `.特色摘要`                        = 编队屏 / 招募屏候选卡上的「职业 + 势力一句话」（P2）。
+ * 高对比度描边 + 胶囊背景（深底、亮字），保证在深色卡面上读得清。
+ * ========================================================================== */
+
+/* ---------- 8) ③「看见特色」：标定经济那三个类名 ---------- */
+.uc.标定{border-color:#ffd166;border-left-color:#ffd166;
+  box-shadow:0 0 0 1px color-mix(in srgb,#ffd166 55%,transparent),inset 0 0 12px color-mix(in srgb,#ffd166 14%,transparent)}
+.uc.标定::after{content:'标定';position:absolute;left:6px;bottom:4px;font-family:var(--font-m);font-size:9px;
+  letter-spacing:.1em;color:#1b1407;background:#ffd166;border-radius:3px;padding:0 4px}
+.uc.标定角标{border-left-color:#7fd6ff}
+.uc .标定经济卡行{color:#ffd166}
+.uc .标定经济卡行 b{color:#ffd166}
+.uc.标定闪框{animation:标定闪 .5s ease-out 2;
+  box-shadow:0 0 0 2px #ffd166,0 0 16px color-mix(in srgb,#ffd166 60%,transparent)}
+@keyframes 标定闪{0%{filter:brightness(1.6)}100%{filter:brightness(1)}}
+
+/* ---------- 9) ③「看见特色」：我方单位卡的状态角标区（唯一槽位） ---------- */
+.uc .特色角标行{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}
+.uc .特色角标{display:inline-flex;align-items:center;font-family:var(--font-m);font-size:9.5px;line-height:1.5;
+  color:#0b1016;background:var(--ally);border:1px solid color-mix(in srgb,#fff 45%,transparent);
+  border-radius:999px;padding:0 6px;white-space:nowrap;
+  box-shadow:0 0 0 1px color-mix(in srgb,#000 35%,transparent),0 1px 4px rgba(0,0,0,.35)}
+.side.enemy .uc .特色角标{background:var(--enemy);color:#0b1016}
+/* 第二条起换个底色，一排角标之间也分得开（深底亮字，仍然是高对比度胶囊） */
+.uc .特色角标 + .特色角标{background:color-mix(in srgb,var(--accent) 75%,#fff 25%)}
+/* ★ 2026-10-13（《兰斯10》四路战线 · 正交 4×2）：战线效果角标各给一个底色，
+   一眼分得清「前卫近战 / 同路掩护 / 铁壁护卫 / 侧翼游击 / 中枢固守」。
+   类名挂在同一个 `.特色角标` 元素上（`.特色角标.侧翼游击`），所以这里只覆盖底色 —— 别的屏一个字都不动。 */
+.uc .特色角标.前卫近战{background:#ffb37a}
+.uc .特色角标.同路掩护,.uc .特色角标.铁壁护卫{background:#8ce0a8}
+.uc .特色角标.侧翼游击{background:#ffd166}
+.uc .特色角标.中枢固守{background:#7fd6ff}
+
+/* ---------- 10) ③「看见特色」：即时飘字的两类短签 ---------- */
+.签-职业,.签-势力{display:inline-block;font-family:var(--font-m);font-size:10px;line-height:1.6;
+  border-radius:999px;padding:0 6px;margin-left:4px;border:1px solid transparent;white-space:nowrap}
+.签-职业{color:#ffd9c2;background:color-mix(in srgb,#ff8a5c 28%,#0d131a);border-color:#ff8a5c}
+.签-势力{color:#d7c2ff;background:color-mix(in srgb,#9b7cff 28%,#0d131a);border-color:#9b7cff}
+.logbox .logline .签-职业,.logbox .logline .签-势力{margin-left:4px}
+
+/* ---------- 11) ③「看见特色」：入战前那一行「职业 + 势力」摘要（编队 / 招募卡） ---------- */
+.特色摘要{width:100%;margin-top:3px;font-size:10px;line-height:1.45;text-align:left;
+  color:#cfe6ff;background:color-mix(in srgb,var(--ally) 14%,transparent);
+  border-left:2px solid var(--ally);border-radius:3px;padding:1px 5px;overflow-wrap:anywhere}
+.pick .特色摘要,.slot .特色摘要{font-family:var(--font-m)}
+.pick.used .特色摘要{opacity:.6}
+/* ============================================================================
+ * ★ 2026-10-13 任务书 §1 模块 4 / 5：详情弹窗与「ⓘ 详情」入口（UI 线）
+ * ----------------------------------------------------------------------------
+ * 三类：
+ *   · `.mech-info-btn`        = 5 屏统一的「ⓘ 详情」入口（大地图队伍栏 / 招募候选 / 编队候选与阵型格 /
+ *                               晋升名册行 / 战斗屏单位卡）。既是 `<button>` 也是 `<span role=button>`，
+ *                               所以**不写死标签选择器**，只按类名给样式（span 那种要 `cursor:pointer`）。
+ *   · `.rv-chip-btn` / `.mech-relic-entry` = 藏品一览的两个入口（顶栏那种「像 chip、能点」+ 标题旁那颗小按钮）；
+ *   · `.mech-detail` / `.mech-relic` = 两个弹窗的正文。弹窗正文压在一个窄卡片里，所以全部走
+ *                               紧凑字号 + 网格对齐，四大板块各自成块、块内可滚动。
+ * 颜色一律用现有变量（`--panel2` / `--line` / `--muted` / `--accent` / `--ally` / `--enemy` / `--good`），
+ * 不引新配色，深色底上读得清。
+ * ========================================================================== */
+
+/* ---------- 12) 「ⓘ 详情」入口（5 屏统一） ---------- */
+.mech-info-btn{display:inline-flex;align-items:center;justify-content:center;gap:3px;
+  font-family:var(--font-m);font-size:10px;line-height:1.6;white-space:nowrap;cursor:pointer;
+  color:#cfe6ff;background:color-mix(in srgb,var(--ally) 16%,var(--panel2));
+  border:1px solid color-mix(in srgb,var(--ally) 45%,var(--line));border-radius:999px;padding:0 7px;
+  margin-top:3px;align-self:flex-start;transition:border-color .12s,background .12s,transform .1s}
+.mech-info-btn:hover{background:color-mix(in srgb,var(--ally) 30%,var(--panel2));border-color:var(--ally);transform:translateY(-1px)}
+.mech-info-btn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+/* 卡片是 flex 列时它自己占一行；`.rv-row` 那种横排里跟着按钮排 */
+.pick .mech-info-btn,.slot .mech-info-btn{width:100%;justify-content:center}
+.uc .mech-info-btn{position:absolute;right:6px;bottom:5px;margin-top:0}
+.rv-row .mech-info-btn{margin-left:6px}
+/* 招募候选卡外面那层壳：**卡片 + 详情按钮绑成同一个网格项** —— 不加这层壳的话，
+   `.picks`（auto-fill 网格）会把「卡片按钮」和「详情按钮」当成两个独立格子，详情按钮会飘到别的列去。
+   壳自己不画东西（没有背景 / 边框），只负责竖向把两颗按钮摞在一起；卡片本体一个字节都没改。 */
+.pick-wrap{display:flex;flex-direction:column;align-items:stretch;gap:2px;min-width:0}
+
+/* ---------- 13) 藏品一览的两个入口 ---------- */
+.rv-chip-btn{cursor:pointer;font:inherit;color:inherit;background:var(--panel2);
+  border:1px solid var(--line);border-radius:999px;transition:border-color .12s,background .12s}
+.rv-chip-btn:hover{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--panel2))}
+.btn.sm{font-size:11px;padding:2px 8px;border-radius:999px;margin-left:8px;vertical-align:middle}
+.mech-relic-entry{cursor:pointer}
+
+/* ---------- 14) 两个详情弹窗的**公共外壳** ---------- */
+.dlg-body{max-height:64vh;overflow:auto;line-height:1.5}
+.dlg-body h4{margin:8px 0 3px;font-size:13px;color:var(--accent);letter-spacing:.03em}
+.dlg-body h5{margin:6px 0 2px;font-size:11.5px;color:var(--muted);letter-spacing:.03em}
+.dlg-body h4 .small,.dlg-body h5 .small{font-weight:400}
+.mech-sec{border:1px solid var(--line);border-radius:6px;padding:5px 8px;margin:7px 0;background:color-mix(in srgb,var(--panel2) 70%,transparent)}
+/* 弹窗里的行沿用 `.rv-row` 的排版，但更紧凑（不要把它撑成整张卡片那么高） */
+.dlg-body .rv-row{padding:3px 0;border-bottom:1px dashed color-mix(in srgb,var(--line) 70%,transparent)}
+.dlg-body .rv-row:last-child{border-bottom:0}
+.dlg-body .rv-row .nm{line-height:1.45}
+
+/* ---------- 15) ① 头部与六维（Lv10 / Lv20 / Lv30 对照） ---------- */
+.mech-head .mech-top{display:flex;align-items:center;gap:8px}
+.mech-head .mech-top .nm{display:flex;flex-direction:column;min-width:0;line-height:1.35}
+.mech-head .mech-top .nm b{font-size:14px}
+.mst{display:grid;grid-template-columns:46px repeat(auto-fit,minmax(52px,1fr));gap:1px 6px;margin-top:6px;
+  font-family:var(--font-m);font-size:10.5px}
+.mst-h{color:var(--muted);text-align:right;white-space:nowrap}
+.mst-h.cur{color:var(--accent);font-weight:700}
+.mst-k{color:var(--muted)}
+.mst-v{color:var(--fg);text-align:right}
+.mst-v.cur{color:var(--accent);font-weight:700}
+
+/* ---------- 16) ② 个人特技与势力特色 ---------- */
+.mech-trait b,.mech-faction b{color:#ffd9a8}
+.mech-faction b{color:#d7c2ff}
+.mech-sum{margin:2px 0 4px}
+/* ---------- 17) ③ 职业 × 前后排双态 ---------- */
+.mech-pos b{color:#8ce0a8}
+/* ---------- 18) ④ 武器与大招表 ---------- */
+.mech-weapon b{color:#7fd6ff}
+.mech-ok{color:var(--good)}
+.mech-lock{color:var(--muted)}
+
+/* ---------- 19) 藏品一览正文 ---------- */
+.mech-relic .rv-tier{min-width:34px;text-align:center}
+.mech-held{color:var(--good);font-size:10px;margin-left:5px}
+.mech-codex{border:1px solid var(--line);border-radius:5px;margin:5px 0;padding:3px 7px;
+  background:color-mix(in srgb,var(--panel2) 55%,transparent)}
+.mech-codex>summary{cursor:pointer;font-size:11.5px;color:var(--accent);padding:2px 0;list-style:revert}
+.mech-codex-row.held{background:color-mix(in srgb,var(--good) 10%,transparent);
+  border-left:2px solid color-mix(in srgb,var(--good) 60%,transparent);padding-left:6px;border-radius:4px}
+.mech-relic-row b{color:#ffd9a8}
+@media (max-width:980px){
+  .mst{grid-template-columns:40px repeat(auto-fit,minmax(44px,1fr));font-size:10px}
+  .dlg-body{max-height:70vh}
+}
+
+/* ---------- 20) 战术卡牌手牌栏与构筑面板（2026-10-13 · P1.1） ---------- */
+.tactical-hand-bar{margin-top:8px;padding:8px 10px;border:1px solid color-mix(in srgb,var(--accent) 42%,var(--line));border-radius:7px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--panel2) 86%,transparent),color-mix(in srgb,var(--panel) 94%,transparent))}
+.tactical-hand-bar .th-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;
+  font-size:12px;margin-bottom:6px;color:var(--fg)}
+.tactical-hand-bar .th-cards,.tactical-pick-box .th-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:7px}
+.tactical-card{display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;text-align:left;gap:3px;
+  padding:6px 8px;border:1px solid var(--line);border-radius:6px;
+  background:color-mix(in srgb,var(--panel) 92%,transparent);color:var(--fg);cursor:pointer;
+  transition:border-color .15s,transform .12s,box-shadow .15s}
+.tactical-card.tier-class{border-left:3.5px solid #6ec1ff}
+.tactical-card.tier-faction{border-left:3.5px solid #c59bff}
+.tactical-card.tier-char{border-left:3.5px solid #ffc96b}
+.tactical-card.tier-cmd{border-left:3.5px solid #ff7d7d}
+.tactical-card.ready{border-color:color-mix(in srgb,var(--accent) 48%,var(--line))}
+.tactical-card.ready:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 3px 10px rgba(0,0,0,.35)}
+.tactical-card.is-triggered{box-shadow:0 0 0 1px color-mix(in srgb,var(--good) 75%,transparent);
+  background:color-mix(in srgb,var(--good) 14%,var(--panel))}
+.tactical-card:disabled{opacity:.48;cursor:not-allowed}
+.tactical-card .tc-top{display:flex;justify-content:space-between;align-items:center;gap:4px;width:100%;font-size:10px;color:var(--muted)}
+.tactical-card .tc-tag{color:var(--accent);font-weight:700}
+.tactical-card .tc-sub{font-size:10px;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tactical-card .tc-cost{font-family:var(--font-m);font-weight:700;padding:1px 4px;border-radius:3px;font-size:10px}
+.tactical-card .tc-cost.is-gain{color:#7ef7b8;background:rgba(46,204,113,.16)}
+.tactical-card .tc-cost.is-cost{color:#ffd98a;background:rgba(255,193,7,.15)}
+.tactical-card .tc-name{font-size:12.5px;color:var(--fg);margin-top:1px}
+.tactical-card .tc-entry{font-size:10px;color:#9cd6ff}
+.tactical-card .tc-desc{font-size:10.5px;line-height:1.35;color:var(--fg);opacity:.92}
+.tactical-card .tc-foot{display:flex;justify-content:space-between;align-items:center;width:100%;margin-top:2px;padding-top:3px;
+  border-top:1px dashed color-mix(in srgb,var(--line) 70%,transparent);font-size:10px;color:var(--muted)}
+.tactical-card.ready .tc-state{color:var(--accent);font-weight:700}
+.tactical-pending-row{margin-top:7px;padding-top:6px;border-top:1px dashed var(--line);display:flex;flex-wrap:wrap;align-items:center;gap:5px;font-size:11px}
+.tactical-pending-row .tp-label{color:var(--muted);font-weight:600}
+.tp-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border:1px solid var(--line);border-radius:4px;
+  background:color-mix(in srgb,var(--panel) 80%,transparent);font-size:11px;color:var(--fg)}
+.tp-chip small{color:var(--muted);font-size:10px}
+.tactical-pick-box{margin:8px 0 10px;padding:10px 12px;border:1.5px solid color-mix(in srgb,var(--accent) 68%,var(--line));border-radius:7px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 12%,var(--panel2)),var(--panel))}
+.tactical-deck-preview{margin:8px 0;padding:8px 10px;border:1px solid color-mix(in srgb,var(--accent) 38%,var(--line));border-radius:6px;
+  background:color-mix(in srgb,var(--panel2) 75%,transparent)}
+.tactical-deck-preview h4{margin:0 0 6px;font-size:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
+.tactical-deck-preview .tdp-row{display:flex;align-items: flex-start;gap:6px;margin-top:4px;font-size:11px}
+.tactical-deck-preview .tdp-label{color:var(--muted);white-space:nowrap;padding-top:2px}
+.tactical-deck-preview .tdp-chips{display:flex;flex-wrap:wrap;gap:5px}

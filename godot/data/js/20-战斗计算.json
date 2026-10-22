@@ -1,0 +1,10 @@
+{
+ "STAT_KEY": {
+  "格斗": "melee",
+  "射击": "shoot",
+  "觉醒": "awaken",
+  "防御": "defense"
+ },
+ "START_CD_ULT": 3,
+ "特种降命中值": 20
+}

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>机甲战棋 · 机体图标素材预览 v1</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161a21; --line:#262c36; --fg:#dfe6ef; --dim:#8b95a3;
+    --plain:#3b4a37; --forest:#264530; --mountain:#5b4e40; --water:#1f3d5c; --chasm:#07090c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:14px/1.6 "Noto Sans SC",system-ui,-apple-system,"Segoe UI",sans-serif;}
+  header{padding:22px 26px 14px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#171c24,#0e1116)}
+  h1{margin:0 0 6px;font-size:19px;letter-spacing:.5px}
+  h2{margin:30px 26px 10px;font-size:15px;color:#ffd38a;font-weight:700}
+  h2 small{color:var(--dim);font-weight:400;margin-left:8px}
+  p.lead{margin:0;color:var(--dim);font-size:13px;max-width:1040px}
+  code{background:#1d222b;padding:1px 5px;border-radius:4px;font-size:12px;color:#9ff3e0}
+  section{padding:0 26px 8px}
+  .row{display:flex;flex-wrap:wrap;gap:10px}
+
+  /* 单张卡片 */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:10px;width:190px;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .card .name{font-size:12.5px;font-weight:700;text-align:center;line-height:1.35}
+  .card .meta{font-size:11px;color:var(--dim);text-align:center}
+  .card canvas{display:block;image-rendering:auto}
+  .strip{display:flex;align-items:flex-end;gap:11px;background:#0b0e13;
+    border-radius:8px;padding:8px 10px;border:1px solid #1c222b}
+  .strip .slot{display:flex;flex-direction:column;align-items:center;gap:3px}
+  .strip .slot span{font-size:9.5px;color:var(--dim);font-family:ui-monospace,monospace}
+  .big{background:#0b0e13;border-radius:8px;border:1px solid #1c222b;padding:6px}
+
+  /* 地形底 + 真实尺寸演示 */
+  .terr{position:relative;border-radius:8px;overflow:hidden;border:1px solid #1c222b}
+  .terr canvas{position:absolute;left:0;top:0}
+  .terrlabel{font-size:10px;color:#cfe0b8;padding:2px 5px;position:relative;z-index:2}
+
+  table{border-collapse:collapse;margin:0 26px 24px;font-size:12.5px}
+  th,td{border:1px solid var(--line);padding:5px 10px;text-align:left}
+  th{background:#1a1f27;color:#ffd38a;font-weight:700}
+  td.mono{font-family:ui-monospace,monospace;color:#9ff3e0}
+  .note{color:var(--dim);font-size:12px;margin:0 26px 18px;max-width:1040px}
+  .sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  .shots{display:flex;flex-direction:column;gap:14px;max-width:1100px}
+  .shots figure{margin:0;background:#0b0e13;border:1px solid #1c222b;border-radius:8px;padding:8px}
+  .shots img{display:block;width:100%;height:auto;image-rendering:auto;border-radius:4px}
+  .shots figcaption{color:var(--dim);font-size:11.5px;padding-top:6px}
+</style>
+</head>
+<body>
+<header>
+  <h1>机甲战棋 · 机体图标素材预览 <span style="color:#8b95a3;font-weight:400;font-size:13px">v1 · 全部为代码生成的原创矢量图形</span></h1>
+  <p class="lead">
+    这一页不是游戏，是给作者审素材用的对照表。所有图标都来自 <code>art/mech-icons.js</code>，
+    没有使用任何外部图片。每张卡片上面是 96px 大图（精细版），右边一排是**游戏里真正会出现的尺寸**
+    （22 / 33 / 44 px）。格子尺寸取自游戏：<code>TS=22</code>，关卡里地图缩放 <code>SC</code> 最大 1.7，
+    所以实际显示是 22–37px；游戏会按这个尺寸自动降低细节（见第六节）。
+  </p>
+</header>
+
+<h2>一、我方机体 <small>9 台 + 纳德雷变身形态</small></h2>
+<section><div class="row" id="allies"></div></section>
+
+<h2>二、敌方机体 <small>12 种</small></h2>
+<section><div class="row" id="enemies"></div></section>
+
+<h2>三、中立物体</h2>
+<section><div class="row" id="neutral"></div></section>
+
+<h2>四、游戏实际画面 <small>这些图是 <b>游戏自己的绘制代码</b> 跑出来的，不是手画的示意图</small></h2>
+<section>
+  <p class="note" style="margin:0 0 10px">
+    由 <code>node tools/render-game.mjs</code> 生成：在 Node 里启动单文件游戏、跑 <code>draw()</code>，再把地图画布存成 PNG。
+    机体比格子大（约 1.55 格宽）、按行序互相遮挡、占位是地面圆环、脚下有投影、机体有一圈暗色外描边。
+    <b>canvas 上的文字不会渲染</b>（坐标数字、浮动伤害、「撤离区」标签），因为那需要内嵌中文字体。
+  </p>
+  <div class="shots">
+    <figure><img src="out/game-tut1.png" alt="教学 1"><figcaption>教学 1 · 移动（26×12，地图缩放 1.7，格子约 37px）</figcaption></figure>
+    <figure><img src="out/game-tut3.png" alt="教学 3"><figcaption>教学 3 · 地形与闪避（20×16）</figcaption></figure>
+    <figure><img src="out/game-defense.png" alt="大规模防卫战"><figcaption>大规模防卫战（40×32、20 个单位，格子约 25px —— 最密的情况）</figcaption></figure>
+    <figure><img src="out/game-tut2-selected.png" alt="选中状态"><figcaption>选中机体 / 显示射程时的状态</figcaption></figure>
+  </div>
+</section>
+
+<h2>五、战斗分类配色 <small>胸口核心的颜色 = 战斗分类，是缩小后的主要区分线索</small></h2>
+<section><div class="row" id="roles"></div></section>
+
+<h2>六、细节等级 LOD <small>同一个图标在 22px / 37px / 96px 三种显示尺寸下的处理</small></h2>
+<section><div class="row" id="lod"></div></section>
+<p class="note">
+  游戏会按<b>实际显示尺寸</b>自动选细节等级：≤26px 用「简」，≤46px 用「中」，其余用「详」。
+  小尺寸下会自动丢掉铆钉、细能量线这类细节，并把所有描边加粗 1.5 倍——因为在 22px 上
+  细于约 1px 的线只会变成一团糊。下面三张是同样 96px 的画面，区别只在等级。
+</p>
+
+<h2>七、接口一览 <small>给接下来的接入用</small></h2>
+<table>
+  <tr><th>接口</th><th>说明</th></tr>
+  <tr><td class="mono">MechIcons.build(id, opts)</td><td>返回绘制指令数组。opts: <code>pal</code>（调色板或键名）、<code>plate</code>（square/circle/none）、<code>size</code>（显示尺寸，决定细节等级）、<code>role</code>（战斗分类）</td></tr>
+  <tr><td class="mono">MechIcons.draw(ctx, prims, size, x, y)</td><td>把指令数组画到 2D 上下文，(x,y) 是左上角</td></tr>
+  <tr><td class="mono">MechIcons.makeSprite(id, opts, renderPx)</td><td>预渲染成离屏 canvas，游戏里直接 drawImage</td></tr>
+  <tr><td class="mono">MechIcons.ICON_BY_MECH</td><td>机体名 → 图标 id（例如 <code>'B1'→'B1'</code>、<code>'指挥舰'→'flagship'</code>）</td></tr>
+  <tr><td class="mono">MechIcons.PAL</td><td>调色板：ying / moon / cb / enemy / acted / rock</td></tr>
+</table>
+<p class="note">
+  图标一共 <b id="cnt"></b> 个。所有图形都在 0–1 的「单位空间」里描述，缩放不糊；地形底板、朝向标记、HP 条还是由游戏自己画。
+</p>
+
+<script src="mech-icons.js"></script>
+<script>
+const I = window.MechIcons;
+
+/* 图标清单：和游戏里的 mech 名对应 */
+const ALLIES = ['B1','B2','M1','M2','M3','CB1','CB2','CB3','CB4','CB4N'];
+const ENEMIES = ['grunt','hound','drone','ironwall','raider','turret','shield','pursuer','fighter','artillery','fortress','flagship'];
+const NEUTRAL = ['debris'];
+
+const PALKEY = {B1:'ying',B2:'ying',M1:'moon',M2:'moon',M3:'moon',
+                CB1:'cb',CB2:'cb',CB3:'cb',CB4:'cb',CB4N:'cb'};
+const SIZE_TILES = {M2:2, fortress:2, flagship:3};      // 占地格数
+const palOf = id => I.PAL[PALKEY[id] || 'enemy'];
+const plateOf = id => PALKEY[id] ? 'square' : (id === 'debris' ? 'none' : 'circle');
+const optsOf = (id, size) => ({pal: palOf(id), plate: plateOf(id), role: I.ROLE_OF[id], size});
+
+function canvasInto(parent, id, size, cls){
+  const px = Math.round(size * 1.6);
+  const spr = I.makeSprite(id, optsOf(id, size), px);
+  const c = document.createElement('canvas');
+  c.width = px; c.height = px;
+  c.style.width = size + 'px'; c.style.height = size + 'px';
+  c.className = cls || '';
+  c.getContext('2d').drawImage(spr, 0, 0);
+  parent.appendChild(c);
+  return c;
+}
+
+function card(id){
+  const d = document.createElement('div');
+  d.className = 'card';
+  const big = document.createElement('div');
+  big.className = 'big';
+  canvasInto(big, id, 96);
+  d.appendChild(big);
+
+  const strip = document.createElement('div');
+  strip.className = 'strip';
+  [22, 33, 44].forEach(s => {
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+    canvasInto(slot, id, s);
+    const t = document.createElement('span'); t.textContent = s + 'px';
+    slot.appendChild(t);
+    strip.appendChild(slot);
+  });
+  d.appendChild(strip);
+
+  const n = document.createElement('div');
+  n.className = 'name'; n.textContent = I.NAMES[id] || id;
+  const m = document.createElement('div');
+  m.className = 'meta';
+  const tiles = SIZE_TILES[id] || 1;
+  m.textContent = `id: ${id} · ${tiles}×${tiles}` + (I.ROLE_OF[id] ? ` · ${I.ROLE_OF[id]}` : '');
+  d.appendChild(n); d.appendChild(m);
+  return d;
+}
+
+ALLIES.forEach(id => document.getElementById('allies').appendChild(card(id)));
+ENEMIES.forEach(id => document.getElementById('enemies').appendChild(card(id)));
+NEUTRAL.forEach(id => document.getElementById('neutral').appendChild(card(id)));
+
+/* 真实地图模拟已经改成直接展示 tools/render-game.mjs 渲染出来的游戏画面（见第四节），
+   这里不再用 JS 重画一遍地图 —— 那样等于把游戏的绘制逻辑复制一份，迟早会不一致。 */
+
+/* ---- 战斗分类配色 ---- */
+(function roles(){
+  const host = document.getElementById('roles');
+  Object.keys(I.ROLE_COL).forEach(r => {
+    const d = document.createElement('div');
+    d.className = 'card'; d.style.width = '120px';
+    d.innerHTML = `<div style="font-size:12.5px;font-weight:700">
+      <span class="sw" style="background:${I.ROLE_COL[r]}"></span>${r}</div>
+      <div class="meta mono" style="font-family:ui-monospace,monospace">${I.ROLE_COL[r]}</div>`;
+    host.appendChild(d);
+  });
+})();
+
+document.getElementById('cnt').textContent = I.ids.length;
+
+/* ---- 细节等级对比 ---- */
+(function lod(){
+  const host = document.getElementById('lod');
+  const picks = ['B1', 'M3', 'CB2'];
+  const LV = [['s', '简 · 22px 用'], ['m', '中 · 37px 用'], ['l', '详 · 96px 用']];
+  picks.forEach(id => {
+    const d = document.createElement('div');
+    d.className = 'card'; d.style.width = '276px';
+    const t = document.createElement('div');
+    t.className = 'name'; t.textContent = I.NAMES[id] || id;
+    d.appendChild(t);
+    const strip = document.createElement('div');
+    strip.className = 'strip';
+    LV.forEach(([level, label]) => {
+      const slot = document.createElement('div');
+      slot.className = 'slot';
+      const o = optsOf(id, 96);
+      o.lod = level;                       // 强制指定等级
+      const spr = I.makeSprite(id, o, 154);
+      const c = document.createElement('canvas');
+      c.width = 154; c.height = 154;
+      c.style.width = c.style.height = '86px';
+      c.getContext('2d').drawImage(spr, 0, 0);
+      slot.appendChild(c);
+      const s = document.createElement('span'); s.textContent = label;
+      slot.appendChild(s);
+      strip.appendChild(slot);
+    });
+    d.appendChild(strip);
+    host.appendChild(d);
+  });
+})();
+</script>
+</body>
+</html>

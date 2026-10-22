@@ -1,0 +1,3 @@
+# 不自动转换换行符：两份 HTML 要逐字节比对同步（tools/build-src.mjs --check、
+# tests/smoke.js），让 git 保持文件原样，避免出现纯换行符的假改动。
+* -text

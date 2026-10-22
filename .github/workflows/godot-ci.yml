@@ -1,0 +1,30 @@
+# Godot 测试（分支与 PR）。main 分支的测试在 pages.yml 里跑，发布前必须全绿。
+name: Godot 测试
+
+on:
+  pull_request:
+    paths: ["godot/**", ".github/workflows/godot-ci.yml"]
+  push:
+    branches-ignore: [main]
+    paths: ["godot/**", ".github/workflows/godot-ci.yml"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 缓存 Godot
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/godot-ci
+          key: godot-4.7.2-v1
+
+      - name: 安装 Godot
+        run: bash godot/tools/ci_setup_godot.sh
+
+      - name: 导入工程
+        run: godot --headless --path godot --import
+
+      - name: 运行测试
+        run: godot --headless --path godot --script res://tests/run_tests.gd

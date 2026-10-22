@@ -1,0 +1,1200 @@
+/* ============================================================================
+ * 战斗引擎：回合流程 + 全队方针 + 职业特色 + simulate()（方案 3.2 / 第 4 / 5 / 6.3 节
+ *   + **作者 2026-10-12 拍板的第一件「全队方针」**：`协作/方向调整-全队方针与反馈.md` 第 1 节）
+ * ----------------------------------------------------------------------------
+ * 对外接口（M3 起是「一回合一个回合地打」，因为玩家的方针会变，不能一次算完整场）：
+ *
+ *   开局(我方, 敌方, 种子, 单位开关表, 选项) → ctx
+ *                                     一次战斗的状态：双方单位、记录、带种子的随机数、
+ *                                     当前全队方针 `ctx.方针`（**每场新战斗从「全军突击」开始**）、
+ *                                     **敌方增援波次**（`选项.波次`，编成表配；不传 = 没有增援）
+ *                                     （里面会调 `藏品开战`，把这一局的藏品应用到双方；见 93-藏品.js）
+ *   设方针(ctx, {类型, 目标位})        全队层：一条全军方针（5 条之一）——**保持到玩家改为止**
+ *                                     类型 = 全军突击（默认）/ 集中攻击 / 攻击后排 / 前守后攻 / 全军防御
+ *                                     认不出来的当「全军突击」（§1.6）
+ *   设单位开关(ctx, {位: {…}})         单位层：`保留大招` / `TRANSAM`（'自动' | '手动'）/ `本回合开TRANSAM`
+ *                                     （★ 势力特色第四件「天人 TRANS-AM」的**单位级开关**，作者 2026-10-11 拍板；
+ *                                       不写这些字段 = 自动 + 不保留，与改之前逐字一致）
+ *   算意图(ctx)                        敌人这一回合打算打谁、用什么武器、期望多少伤害（方案 5.3，纯函数；
+ *                                     ★ 按**当前方针**算 —— 全军防御下我方防御值 +50 会影响敌人挑谁打）
+ *   打一回合(ctx)                      指令阶段 → 行动阶段 → 回合结束；返回**这一回合**的记录
+ *   simulate(我方, 敌方, 方针, 种子, 选项)  一整场（M1 的接口，测试和以后的平衡工具用）
+ *                                     方针 = 一条方针（整场不变）/ **按回合的表** `{1:'全军防御', 2:'全军突击'}`
+ *                                     （表里没写的回合**沿用上一回合**）/ `{}` 或不传 = 整场全军突击
+ *
+ * 一个回合（方案 3.2）：全场单位按速度从高到低各行动一次（同速 → 我方先，再按列号），
+ * 然后 buff / 冷却计时减 1。胜负：敌方全灭 = 胜；我方全灭或第 12 回合结束 = 败。
+ *
+ * ★ **两层决策（§1.1）**：全队层 = 一条全军方针（本文件）；单位层 = 只有「大招：自动 / 保留」
+ *   （+ 天人的 TRANS-AM 开关）。**战斗中不再有换位**（编队摆位照旧），逐台指令与「守护」整条机制已删（§1.4）。
+ *
+ * ★ **三层反馈（作者 2026-10-12 拍板的第 2 件，`协作/方向调整-全队方针与反馈.md` 第 2 节）**：
+ *   「即时」那一层就写在这里（玩家看得见「这个决定刚刚起作用了」）——
+ *     · 攻击记录里按需带上 `方针` / `集中` / `被挡` / `被挡惩罚`（**全军突击下三个字段一个都不出现**，
+ *       所以默认路径的记录仍然逐字节不变，§1.8 第 1 条继续成立）；
+ *     · 「集中攻击」点名的那一位被这一发打死 → 紧接着写一条 `〔方针〕集中攻击击破 X`（`类型: '方针'`）；
+ *     · 「防御少挨了多少」由 `20-战斗计算.js` 的 `resolveAttack()` 按 §2.4 算好放进记录字段
+ *       （同一套参数、**不带防御加成**再算一次 `dmgCore`，取差值；**只用来显示、不消耗随机数**）。
+ *   预告与结算（本场战报）在 `84-反馈.js`（纯读），画出来在 `80-界面.js`。
+ *
+ * 敌方单位的行动先过**站桩 Boss 脚本**（方案 5.2，`61-Boss.js`）：每 N 回合放一次大技能、
+ * 半血换阶段。没配脚本的敌人原样走 `enemyAction`（50-AI.js），行为不变。
+ * ========================================================================== */
+
+/* 回合上限：**改前是全仓库统一的 12**（方案 3.2）。
+ * ★ 作者 2026-10-11 拍板「四个杠杆都可以用」，第 ④ 个 =「**回合上限随档位收紧**」：
+ *   现在按**敌方阵容里最硬的那一档**现算（`71-改动.js` 的 `难度调整.回合上限`：
+ *   杂兵 / 精锐 12、头目 11、Boss 10），存进 `ctx.回合上限`，`打一回合()` 用它。
+ *   `MAX_TURN` 这个常量**保留**做兜底（没有敌人 / 老调用点）与 `simulate()` 的护栏。 */
+const MAX_TURN = 12;          // 兜底：第 12 回合结束还没分出胜负 = 败（方案 3.2）
+const ULT_START_CD = 3;       // 大招（unlock 20 / 30）开场冷却 3 回合（方案第 4 节）
+/* ★ **五条全军方针**（作者 2026-10-12 拍板，`协作/方向调整-全队方针与反馈.md` §1.2）。
+ *   **方针本身不带任何加成** —— 代价和收益全部来自现有规则（§1.2 表）。
+ *   旧的逐台指令（进攻 / 集火 / 守护 / 防御 / 换位）与 `指令们` 一起删掉（§1.4）。 */
+const 方针们 = ['全军突击', '集中攻击', '攻击后排', '前守后攻', '全军防御'];
+const 默认方针 = () => ({ 类型: '全军突击', 目标位: null });
+/** 认不出来的类型当「全军突击」（§1.6）。
+ *  ★ 2026-10-12 调参室顺手修掉的一个真 bug：**光写一个字符串**（`'全军防御'`）原来会被当成全军突击 ——
+ *    `规整方针()` 只读 `p.类型`，而字符串的 `.类型` 是 `undefined`。可是 `协作/接口约定.md` §1.4
+ *    与 §1.6 都把「一条方针（整场不变）：`'全军防御'`」写成合法写法（`simulate(…, '全军防御', …)`），
+ *    调参室的「整场固定一条」也走这条路 → 现在**字符串也认**。
+ *    `'全军突击'` / 认不出来的字符串 / `{}` / `undefined` 都还是「全军突击」，其余行为一个字节没动。 */
+const 规整方针 = p => {
+  if (typeof p === 'string') return 方针们.includes(p) ? p : '全军突击';
+  return 方针们.includes(p && p.类型) ? p.类型 : '全军突击';
+};
+
+/* ---------- 记录 ---------- */
+function pushLog(ctx, text, extra) {
+  ctx.log.push(Object.assign({ 回合: ctx.turn, 文本: text }, extra || {}));
+}
+/* 记录里带上「谁 / 打谁」的阵营与格子：界面回放要靠它画血条、闪白、飘伤害数字。
+   只用单位键不行——编成里常常有两台同名敌人（例如两个 grunt）。 */
+const 谁 = u => ({ 单位方: u.side, 单位位: u.slot });
+const 谁目标 = u => ({ 目标方: u.side, 目标位: u.slot });
+
+/* ---------- 全队方针（§1.1 / §1.6）----------
+ * `设方针(ctx, {类型, 目标位})`：**全队层**唯一的决策，一条全军方针，**保持到玩家改为止**（§1.3 第 1 条）。
+ *   类型认不出来 → 「全军突击」；目标的落地与「目标被击破 → 自动回全军突击」在 `回合开始()` 里做。
+ * `设单位开关(ctx, {位: {…}})`：**单位层**（只有大招开关 + 天人的 TRANS-AM），字段照旧的 `默认指令()` 那三项。
+ *
+ * ★ 为什么拆成两个（§1.6）：作者 2026-10-12 拍板「不应该设置每一个单位的决策，单位层面只应该选择开不开大招；
+ *   大方向的决策应该是全队性质的」。旧的 `设指令(ctx, 指令表)` 里那张**逐台指令表**整条删掉（§1.4）。 */
+function 设方针(ctx, 方针) {
+  const p = 方针 || {};
+  ctx.方针 = { 类型: 规整方针(p), 目标位: p.目标位 != null ? p.目标位 : null };
+  /* 「集中攻击」必须有一个目标位；没给就退回全军突击（界面还没点目标时不会走到这里） */
+  if (ctx.方针.类型 === '集中攻击' && ctx.方针.目标位 == null) ctx.方针.类型 = '全军突击';
+  return ctx;
+}
+
+/** 单位层的开关：`保留大招` / `TRANSAM` / `本回合开TRANSAM`（每一项不写 = 沿用上一回合 / 默认）。 */
+function 设单位开关(ctx, 开关表) {
+  for (const u of ctx.allies) {
+    const c = (开关表 && 开关表[u.slot]) || null;
+    if (!c) continue;
+    if (c.保留大招 != null) u.holdUlt = !!c.保留大招;
+    /* TRANS-AM 的单位级开关（只对天人生效，别的单位读了不用）：`手动` = 不自动开，
+       等玩家在指令阶段点「开 TRANS-AM」；**没写 = 不动**（与改之前逐字一致）。 */
+    if (c.TRANSAM != null) u.TRANSAM手动 = (c.TRANSAM === '手动');
+    if (c.本回合开TRANSAM != null) u.本回合开TRANSAM = !!c.本回合开TRANSAM;
+  }
+  return ctx;
+}
+
+/** 当前这一回合我方用的方针（AI 读它；`ctx.方针` 永远存在）。 */
+const 当前方针 = ctx => ((ctx && ctx.方针) || 默认方针());
+
+/** 集中攻击的目标（当前那一位上活着的那台；没有 = null）。界面与测试都要读它。 */
+function 方针目标(ctx) {
+  const p = 当前方针(ctx);
+  if (p.类型 !== '集中攻击' || p.目标位 == null) return null;
+  return ((ctx && ctx.enemies) || []).find(u => u.slot === p.目标位 && u.hp > 0) || null;
+}
+
+/* ---------- 「这条方针禁止我攻击吗」（§1.3 第 5 条「奶妈正常行动」）----------
+ * 全军防御 / 前守后攻的**前排**：**只禁止攻击类动作**（`kind:'attack'`，含范围），
+ * 修理 / 支援 / 增益 / 再动照常挑；一个都挑不出来才执行防御动作。
+ * ⚠ 这个判定**只能**拦住「攻击」这一个动作 —— `chooseAttack()` 在两条路上会被"非决策"地调用
+ *   （`grantTargetOf()` 拿它给队友的期望输出排队；平衡工具拿它估输出），那两处传
+ *   `{ 忽略攻击禁令: true }`（§1.3 第 5 条最后一句：再动出来的那一下**照当前方针**行动）。 */
+function 禁止攻击(u, ctx) {
+  if (!u || u.side !== 'ally') return false;
+  const t = 当前方针(ctx).类型;
+  if (t === '全军防御') return true;
+  if (t === '前守后攻') return unitRow(u) === ROW_FRONT;
+  return false;
+}
+
+/** 这一下按**防御姿态**结算吗（防御值 +50，`20-战斗计算.js` 的 `guard` 条目）。
+ *  来源有两个（§1.3 第 4、5 条）：
+ *    ① 这台单位本回合**真的要执行防御动作**（纯攻击手在禁令下落到了 `{kind:'defend'}`）；或
+ *    ② **当前方针**就是让它防御的那一档 —— 全军防御 / 前守后攻的前排：
+ *       它这一回合本来就不攻击，所以「这一发打上去」一定按防御结算。
+ *  ② 必须让**指令阶段的 `算意图()`** 也吃得到（那时还没打，`u.defending` 还是 false）——
+ *  §1.6 原话：「全军防御下我方的防御值 +50 会影响敌人挑谁打」。
+ *  ★ 默认路径（全军突击）两个来源都是假 → `dmgCore` 与改动前逐字相同。 */
+const 按防御结算 = (u, ctx) => !!(u && (u.defending || (ctx && 禁止攻击(u, ctx))));
+
+/** 回合开始时的方针那一半（§1.3 第 1、2 条）：
+ *  ① 「**保持到改为止**」：方针存在 `ctx.方针` 里，回合之间不重置；玩家在指令阶段改了才变
+ *     （`设方针()`）。`simulate()` 的**按回合的表**另走 `ctx.当局方针`（表里没写的回合沿用上一回合，
+ *     由 `simulate()` 算好塞进来）。
+ *  ② 集中攻击的目标被击破 → **自动回全军突击** + 写一条 `〔方针〕` 记录。
+ *  判定读**格子号**（`ctx.方针.目标位`）—— 单位引用会在增援 / 阵亡之后错位，格子号是稳的。
+ *  目标位那格空着（被击破 / 增援换人 / 玩家点了空格）→ 也当作「目标没了」，同样回到全军突击。
+ *  ★ 这条**不消耗随机数**（`ctx.rng` 一次都不调），所以「集中攻击没击破目标」的战斗逐字不变。 */
+function 方针回合(ctx) {
+  if (ctx.当局方针) 设方针(ctx, ctx.当局方针);         // 按回合的表：这一回合那一条
+  const p = 当前方针(ctx);
+  if (p.类型 !== '集中攻击') return ctx;
+  const 目标 = (ctx.enemies || []).find(u => u.slot === p.目标位 && u.hp > 0) || null;
+  if (目标) return ctx;
+  /* 名字优先取「那一位上原来是谁」—— 目标已经倒下时 `ctx.enemies` 里那台还在（只是 hp ≤ 0），
+     名字照样读得到。 */
+  const 原 = (ctx.enemies || []).find(u => u.slot === p.目标位) || null;
+  const 名 = (原 && 原.name) || (p.目标位 != null ? (位名(p.目标位) || `位 ${p.目标位}`) : '—');
+  ctx.方针 = 默认方针();
+  pushLog(ctx, `〔方针〕集中攻击的目标 ${名} 已击破，恢复全军突击`, { 类型: '方针', 方针: '全军突击', 原方针: '集中攻击', 目标位: p.目标位, 目标名: 名 });
+  return ctx;
+}
+
+/* ---------- 气势与战术指令（总攻 / 紧急掩护）+ 全队憋大招（2026-10-13，1 + A2 + C1） ----------
+ * ★ 两条铁律：
+ *   ① `气势总攻开() === false` 时整套短路；
+ *   ② 未下达战术指令时，`加气势()` 只做纯算术累加（0 次 `ctx.rng` 调用、0 条新日志）。 */
+const 战术集合 = ['总攻', '掩护'];
+
+function 加气势(ctx, 值) {
+  if (!ctx || !气势总攻开()) return 0;
+  const 增 = Number(值) || 0;
+  if (!(增 > 0)) return Number(ctx.气势) || 0;
+  const 上限 = Number(气势总攻参数().上限) || 100;
+  const 前 = Number(ctx.气势) || 0;
+  const 后 = Math.max(0, Math.min(上限, 前 + 增));
+  ctx.气势 = 后;
+  if (后 >= 上限 && ctx.曾满气势回合 == null) ctx.曾满气势回合 = ctx.turn || 1;
+  /* ★ P1.2 §1.5：气势一变就复查条件发牌 —— 统帅牌（`MORALE_75`：气势 ≥ 75）靠这一下当场入牌，
+     不管是【激励】回气、自然加气势、击破加气势还是受重击加气势走到的 75。 */
+  if (后 > 前) 气势变动后发牌(ctx);
+  return 后;
+}
+
+function 设战术(ctx, 类型) {
+  if (!ctx || !气势总攻开()) return ctx;
+  if (类型 == null || 类型 === '' || 类型 === '取消') {
+    ctx.预约战术 = null;
+    return ctx;
+  }
+  const 型 = String(类型);
+  if (!战术集合.includes(型)) return ctx;
+  const 上限 = Number(气势总攻参数().上限) || 100;
+  if ((Number(ctx.气势) || 0) < 上限) return ctx;
+  ctx.预约战术 = (ctx.预约战术 === 型) ? null : 型;
+  return ctx;
+}
+
+function 设全队憋大招(ctx, 布尔) {
+  if (!ctx || !气势总攻开()) return ctx;
+  ctx.全队憋大招 = !!布尔;
+  return ctx;
+}
+
+function 战术回合(ctx) {
+  if (!ctx || !气势总攻开()) return ctx;
+  if (ctx.当局全队憋大招 !== undefined) ctx.全队憋大招 = !!ctx.当局全队憋大招;
+  if (ctx.当局战术) {
+    const 上限 = Number(气势总攻参数().上限) || 100;
+    if (战术集合.includes(ctx.当局战术) && (Number(ctx.气势) || 0) >= 上限) {
+      ctx.预约战术 = ctx.当局战术;
+    }
+    ctx.当局战术 = null;
+  }
+  const 型 = ctx.预约战术;
+  if (!型 || !战术集合.includes(型)) return ctx;
+  const c = 气势总攻参数();
+  const 上限 = Number(c.上限) || 100;
+  if ((Number(ctx.气势) || 0) < 上限) {
+    ctx.预约战术 = null;
+    return ctx;
+  }
+  ctx.预约战术 = null;
+  ctx.气势 = 0;
+  ctx.当前战术 = 型;
+  if (型 === '总攻') {
+    let 切换方针 = false;
+    if (c.总攻自动转突击 !== false && 当前方针(ctx).类型 === '全军防御') {
+      ctx.方针 = 默认方针();
+      切换方针 = true;
+    }
+    const 减 = Number(c.总攻减冷却) || 1;
+    for (const u of (ctx.allies || [])) {
+      if (!u || u.hp <= 0) continue;
+      for (const e of (u.weapons || [])) {
+        if (!e) continue;
+        if (e.cd > 0) e.cd = Math.max(0, e.cd - 减);
+        if (e.readyTurn && e.readyTurn > 1) e.readyTurn = Math.max(1, e.readyTurn - 减);
+      }
+    }
+    pushLog(ctx, `〔战术〕⚡ 全军总攻发动！全队伤害 ×${c.总攻伤害倍率 || 1.35}、命中 +${c.总攻命中加 || 15}、全武器冷却 −${减}，全员大招解禁！`, {
+      类型: '战术', 战术: '总攻', 伤害倍率: c.总攻伤害倍率 || 1.35, 命中加: c.总攻命中加 || 15, 减冷却: 减, 切换方针,
+    });
+  } else if (型 === '掩护') {
+    const 比 = Number(c.掩护护盾比例) || 0.25;
+    let 护盾总值 = 0, 净化数 = 0;
+    for (const u of (ctx.allies || [])) {
+      if (!u || u.hp <= 0) continue;
+      const 盾 = Math.round(u.maxHp * 比);
+      u.掩护盾 = (u.掩护盾 || 0) + 盾;
+      护盾总值 += 盾;
+      if (c.掩护清减益 !== false) {
+        const 破甲数 = Array.isArray(u.debuffs) ? u.debuffs.length : 0;
+        const 削甲数 = (Number(u.armorCut) || 0) > 0 ? 1 : 0;
+        const 减命中数 = Array.isArray(u.buffs) ? u.buffs.filter(b => b && b.stat === 'hit' && b.val < 0).length : 0;
+        净化数 += 破甲数 + 削甲数 + 减命中数;
+        u.debuffs = [];
+        u.armorCut = 0;
+        if (Array.isArray(u.buffs)) u.buffs = u.buffs.filter(b => !(b && b.stat === 'hit' && b.val < 0));
+      }
+    }
+    pushLog(ctx, `〔战术〕🛡 紧急掩护发动！全队获得 ${Math.round(比 * 100)}% 最大 HP 临时护盾（共 ${护盾总值} 点），清除减益 ${净化数} 项！`, {
+      类型: '战术', 战术: '掩护', 护盾比例: 比, 护盾总值, 净化数,
+    });
+  }
+  return ctx;
+}
+
+/* ---------- 行动顺序 ---------- */
+/* 速度从高到低；同速：我方先，再按列号（方案 3.2）。同速同列再按格子编号，保证决定性。 */
+function actionOrder(ctx) {
+  return livingUnits(ctx).sort((a, b) =>
+    speedOf(b) - speedOf(a) ||
+    (a.side === b.side ? 0 : a.side === 'ally' ? -1 : 1) ||
+    colOfSlot(a.slot) - colOfSlot(b.slot) ||
+    a.slot - b.slot
+  );
+}
+
+/* ---------- 嘲讽（方案 6.3） ----------
+ * ★ 2026-10-12（§1.3 第 6 条）：**守护整条机制已删**，嘲讽照常生效 ——
+ *   它现在接手了原来「守护」的保护作用（「敌人不攻击就不触发，不用特判」同理）。
+ * 重装（方案 6.3）：在前排时，**对方的**单体攻击 50% 概率改打它。
+ *  ★ 2026-10-11 改成对称（作者：「敌人也吃职业特色」）：改前写死「只在我方打我方时生效」
+ *    （`攻击者.side !== 'enemy' || 原目标.side !== 'ally'` → return null），
+ *    现在**双方都走同一条**：候选 = 被打那一方（`otherSide(攻击者.side)`）里
+ *    **前排的重装**（我方的重装按 `tags.战斗分类`，敌方的重装按 `战斗结构.敌方职业`）。
+ *  判定函数 `职业是()` 在 `30-射程.js`（一个参数 `战斗结构.对称职业特色` 控制，默认对称）。
+ *  ★ 顺序没变：**候选为空时一次随机数都不消耗**（`ctx.rng()` 在候选判完之后才调），
+ *    所以「对方前排没有重装」的战斗与改前逐字相同。
+ *  ★ 2026-10-13（《兰斯10》四路战线 · 正交 4×2）：最上面多了一道**零随机数**的门 ——
+ *    `战斗结构.兰斯战线.开 && 同路重装必护卫` 时，若被打的目标在**后排**、且**同路正前方格**
+ *    （`target.slot - 4`）上有一台**存活且职业是重装**的同阵营队友 → **100% 直接返回它**
+ *    （铁壁护卫，`ctx.rng` 一次都不调）。没有这道门的命中（目标在前排 / 正前方不是重装 /
+ *    开关关掉）→ **原来的 50% 掷骰一个字不改**，随机数序列与改前逐字相同。 */
+function 嘲讽(ctx, 攻击者, 原目标) {
+  const 守方 = otherSide(攻击者.side);
+  if (原目标.side !== 守方) return null;
+  /* ★ 同路铁壁护卫（判据只此一份：`71-改动-5` 的 `同路铁壁护卫()`，纯读、零 `rng`） */
+  if (typeof 同路铁壁护卫 === 'function') {
+    const 卫 = 同路铁壁护卫(ctx, 攻击者, 原目标);
+    if (卫) return 卫;
+  }
+  const 候选 = livingOf(守方, ctx).filter(u => 职业是(u, '重装') && unitRow(u) === ROW_FRONT && u !== 原目标 && u.hp > 0);
+  if (!候选.length) return null;
+  if (ctx.rng() >= 0.5) return null;                  // 50%（走带种子的随机数）
+  候选.sort((a, b) => b.hp - a.hp || a.slot - b.slot);  // 并列时血多的（决定性）
+  return 候选[0];
+}
+
+/* ---------- 敌人机制 · 钩子 `beamReflect`（卡 B「镜甲」，作者 2026-10-12 的敌人卡第一批） ----------
+ * 「**受到的伤害按比例反弹**给攻击者」（【初稿·待作者在调参室调】受到的 **30%**，
+ *  配置在 `71-改动.js` 的 `战斗结构.敌人机制.镜甲`）。三条硬规矩：
+ *   ① **不许改变随机数消耗顺序** → 反弹**不走 `resolveAttack()`**（那会为反弹的那一发掷命中 / 暴击，
+ *      把随机数序列往前推），而是按**这一发实际造成的伤害**（`一击.伤害`：已经过弱点 / 装甲 / 防御 /
+ *      屏障 / 力场 / 护盾 / 防御姿态）算一个数直接扣回去 —— **一个 `ctx.rng` 都不调**
+ *      （`tests/boss.js` 有「同一次攻击的 rng 调用次数开/关一致」的对照）。
+ *      ⚠ 与卡 B 的「落点建议用可重入的 `resolveAttack()` 打回去」不一致，**这一条是故意改的**：
+ *        用 `resolveAttack()` 必然消耗随机数，直接违反同一张卡上「不许改变随机数消耗顺序」那条红线。
+ *   ② **不许二次反弹** → 反弹是直接扣 HP、根本不经过本函数（也不看攻击者有没有镜甲），
+ *      所以「镜甲打镜甲」不可能循环。
+ *   ③ **反弹量可以是 0** → 这一发没造成伤害（被能量屏障无效化 / 被护盾吃掉）= 没东西可反弹；
+ *      攻击者已经倒下 = 也不反弹。这两种情况**只返回 0、不写记录**。
+ * 记录：`类型: '镜甲'`、`单位方/单位位` = 带镜甲的那一台、`目标方/目标位` = 挨反弹的攻击者、
+ *      `伤害` / `反弹` = 反弹量、`目标剩余HP` = 攻击者挨完之后的 HP（播放层靠它画血条 / 飘字）。
+ *      ★ 类型不是 `攻击` → **不重复计进**战报的「我方伤害 / 敌方伤害 / 我方挨打」；
+ *        战报那一条单独从 `类型 === '镜甲'` 统计（`84-反馈.js` 的 `战报统计()`）。 */
+function 镜甲反弹(ctx, 攻击者, 防御者, 一击, 武器) {
+  /* ★ 2026-10-13（关卡变体池 · 词条键 `反弹`）：**每个单位自己可以带一份反弹比例** ——
+     带 `词条` 的单位（`2-EE`【磁暴战神·雷萨残影】）身上有 `词条反弹` + `反弹比例`，
+     这时**优先读它**（20%），否则才是 `战斗结构.敌人机制.镜甲.反弹比例`（初稿 0.3）。
+     没有词条的单位 → 与改动前**逐字相同**。 */
+  const 自带 = !!(防御者 && 防御者.词条反弹);
+  const 比 = 自带 ? (Number(防御者.反弹比例) || 0) : 镜甲反弹比例();
+  if (!(比 > 0) || !(有敌人机制(防御者, 'beamReflect') || 自带)) return 0;
+  /* ★ 词条键 `反弹` 的 `仅近战`（`2-EE` 原案就是「反弹 **20% 的近战**伤害」）：
+     这一发不是近战就不反弹。**没有这个词条的单位照旧不分武器类型**（改前行为一字不动）。 */
+  if (自带 && 防御者.反弹仅近战 && rangeKindOf(武器) !== KIND_MELEE) return 0;
+  const 受伤 = Number(一击 && 一击.伤害) || 0;
+  if (!(受伤 > 0) || !攻击者 || 攻击者 === 防御者) return 0;
+  if (攻击者.hp <= 0) return 0;                       // 攻击者已经倒下 → 反弹量 0（不写记录）
+  const 反弹 = Math.max(0, Math.round(受伤 * 比));
+  const 还没死 = 攻击者.hp > 0;
+  攻击者.hp = Math.max(0, 攻击者.hp - 反弹);
+  pushLog(ctx, `〔镜甲〕${防御者.name} 的镜甲把 ${反弹} 反弹给 ${攻击者.name}（这一下受到 ${受伤} × ${Math.round(比 * 100)}%）`,
+    Object.assign({
+      类型: '镜甲', 单位: 防御者.key, 目标: 攻击者.key, 反弹, 伤害: 反弹, 原伤害: 受伤,
+      反弹比例: 比, 目标剩余HP: 攻击者.hp,
+    }, 谁(防御者), 谁目标(攻击者)));
+  /* 反弹把攻击者打死了 → 照引擎的惯例通知一次「谁被谁击破」（`72-势力.js`，只有真打死才发）。 */
+  if (还没死 && 攻击者.hp <= 0) 势力击破(ctx, 防御者, 攻击者);
+  return 反弹;
+}
+
+/* ---------- 敌人机制 · 钩子 `selfDestruct`（卡 C「献祭者」，作者 2026-10-12 的敌人卡第一批） ----------
+ * 「**被击破的瞬间自爆**，打一整排 / 一整列」（【初稿·待作者在调参室调】威力 = 它**主武器威力 × 1.5**；
+ *  落点 = `col`（**阻挡束**）；「濒死」线 = HP 比例 **< 35%**，只用来做预告）。
+ * 落点为什么选 `col`：卡 C 的预告样例写的就是「落点 前2、后2、后3」= `阻挡束(前2)`（`05-阵型.js:137`）；
+ *   而且 `col` 只有 3 格、**开战前摆位躲得掉**（这张卡逼的是「站位」杠杆）——`row` 是一整排 4–5 格，
+ *   谁都躲不掉。形状 / 倍率 / 濒死线全在 `71-改动.js` 的 `战斗结构.敌人机制.自爆`（要换只改那一处）。
+ * 四条实现口径：
+ *   ① **必中、不消耗随机数**：虚拟武器用 `fire:'map'`（`20-战斗计算.js` 的 `isSure()`）→ 不掷命中、
+ *      `sure` 时也不掷暴击 → 「同种子逐字相同」照旧（任务书红线：不许改随机数消耗顺序）；
+ *   ② **不会重复触发**：单位上挂 `自爆过` 标记（击破只会发生一次，这一个只是兜底）；
+ *   ③ **只打对面那一方**（死者的 `otherSide`）落在落点里的那几台，逐台走 `resolveAttack()`；
+ *   ④ **防御减免真的生效**：`resolveAttack()` 按现成算法给每台算好 `防御少挨`
+ *      （同一套参数、**不带防御加成**再算一次取差值）—— 这里只把它**加总显示**，不改任何数值。
+ * 记录分两层（和范围武器同形状，播放 / 战报都认）：
+ *   · 先一条 `类型: '自爆'` 的**汇总行**（`单位方/单位位` = 自爆那台、`落点们`、
+ *     `自爆伤害` / `自爆少挨`）—— 界面的即时句与战报的结算句都从它来；
+ *   · 再逐台一条 `类型: '攻击'`（带 `自爆: true`）—— 与普通攻击记录同形状，所以「我方挨了多少 /
+ *     播放层画血条」**不用另开一套账**。
+ *   ★ 汇总行的 `伤害` 写的是合计，但它的 `类型` **不在** `84-反馈.js` 的战报伤害白名单里
+ *     （`['攻击','残月余响']`）→ 不会重复计账。 */
+function 主武器威力(u) {
+  let 最高 = 0;
+  for (const e of ((u && u.weapons) || [])) {
+    const w = e && e.t;
+    if (!w) continue;
+    const k = rangeKindOf(w);
+    if (!k || isHealKind(k) || isSupportKind(k)) continue;   // 修理 / 支援 / 被动不算「主武器」
+    const p = Number(wv(u, w, 'power')) || 0;
+    if (p > 最高) 最高 = p;
+  }
+  return 最高;
+}
+
+function 自爆(ctx, 击破者, 死者, 缘由, 强制) {
+  /* ★ 2026-10-13（关卡变体池 · 词条层）：触发面从「数据里带 `selfDestruct` 的那一台」
+     放宽成「**也认词条**」——`{键:'自爆'}` / `{键:'自爆溅射两侧'}` 会给单位挂上 `词条自爆`
+     （见 `70-编成.js` 的 `应用词条到单位()`）。`{键:'自爆回合'}` 是**时间触发**、
+     不走这条路（它由 `词条到点自爆()` 调，`强制 = true`；**它不会在死亡时炸**）。
+     ★ 走词条的这一路**不看 `敌人机制.开`**（那是「退回改动前」的验证口径，管的是数据里那三把键）。 */
+  const 词条自爆 = !!(死者 && 死者.词条自爆);
+  if (死者 && 死者.自爆过) return null;
+  if (!强制 && !(有敌人机制(死者, 'selfDestruct') || 词条自爆)) return null;
+  死者.自爆过 = true;
+  const c = 自爆参数();
+  const 威力 = Math.round(主武器威力(死者) * c.威力倍率 * (词条自爆 ? (死者.词条自爆倍率 || 1) : 1));
+  const 落点 = areaSlots({ fire: 'map', area: c.范围 }, rowOfSlot(死者.slot), colOfSlot(死者.slot));
+  const 武器 = {
+    name: c.武器名, fire: 'map', area: c.范围, power: 威力, hit: 100, critMod: 0,
+    stat: '射击', dmgType: '物理', cd: 0, uses: null, unlock: 1, upgrades: [], ignoreDef: false, special: null,
+  };
+  /* ★ 词条键 `自爆溅射两侧`（`1-E2`【连环殉爆】：原案「对**周围友军与敌军**造成溅射伤害」）：
+     落点从「只打对面」扩成**两侧**（自己这一方也算 —— 死亡那一台自己除外）。
+     没有这个词条 → 只有 `otherSide`，与改动前**逐字相同**。 */
+  const 目标方们 = 死者.自爆两侧 ? [otherSide(死者.side), 死者.side] : [otherSide(死者.side)];
+  const 靶子 = 目标方们.flatMap(s => livingOf(s, ctx)).filter(t => t !== 死者 && 落点.includes(t.slot));
+  const 记录们 = [], 打死的 = [];
+  let 合计 = 0, 少挨 = 0;
+  for (const t of 靶子) {
+    const rec = resolveAttack(死者, t, 武器, ctx, {});
+    合计 += Number(rec.字段.伤害) || 0;
+    少挨 += Number(rec.字段.防御少挨) || 0;
+    记录们.push({ t, rec });
+    if (t.hp <= 0) 打死的.push(t);
+  }
+  const 缘由文字 = 缘由 || '被击破的瞬间自爆';
+  pushLog(ctx, `〔自爆〕${死者.name} ${缘由文字}：落点 ${落点.map(位名).join('、')}`
+    + `（打掉你 ${合计}${少挨 > 0 ? `，防御少挨 ${少挨}` : ''}）`,
+    Object.assign({
+      类型: '自爆', 单位: 死者.key, 武器: 武器.name, 威力, 落点们: 落点, 自爆: true,
+      自爆伤害: 合计, 自爆少挨: 少挨, 命中数: 靶子.length,
+      目标位们: 落点, 目标方们: 落点.map(() => otherSide(死者.side)),
+    }, 缘由 ? { 自爆缘由: 缘由 } : null, 谁(死者)));
+  for (const { t, rec } of 记录们) {
+    pushLog(ctx, `〔${武器.name}〕${rec.文本}`,
+      Object.assign({ 类型: '攻击', 单位: 死者.key, 目标: t.key, 武器: 武器.name, 自爆: true, 自爆落点: 落点 },
+        谁(死者), 谁目标(t), rec.字段));
+  }
+  /* 自爆打死的队友照引擎的惯例通知一次「谁被谁击破」（真打死才发；没有势力条目时是空循环）。 */
+  for (const t of 打死的) 势力击破(ctx, 死者, t);
+  return { 落点, 威力, 合计, 少挨, 台数: 靶子.length };
+}
+
+/* ---------- 词条层的三个「回合开始」钩子（关卡变体池 · 2026-10-13）----------
+ * 全部**只对带词条的单位生效**、`词条层.开 = false` 时空转 → 没有词条的编成行为逐字不变。 */
+
+/** ① `自爆回合`（`1-N5`【爆破先锋】：原案「第 2 回合**必然**释放自爆伤害」）。
+ *  · 到点（或过了点）还活着、这一回合**本来就在场**的敌人 → 调**现成的** `自爆()`
+ *    （`缘由` 传「到点自爆」，记录里就能一眼分出它和「被击破的瞬间自爆」）；
+ *  · 放完**这一台自己也炸掉**（`hp = 0`）—— 这就是原案那句「2 回合内全清」的压力；
+ *  · 新到场的（本回合刚增援进来的）**不炸**（`在场的` 快照是增援之前拍的）；
+ *  · 炸完立刻重判一次胜负（敌方可能因此全灭），所以放在 `增援()` 之后、别的钩子之前。 */
+function 词条到点自爆(ctx, 在场的) {
+  if (!词条开()) return 0;
+  let 次 = 0;
+  for (const u of livingOf('enemy', ctx)) {
+    if (!(Number(u.自爆回合) > 0) || u.自爆过) continue;
+    if (ctx.turn < Number(u.自爆回合)) continue;
+    if (在场的 && !在场的.has(u)) continue;         // 刚增援进来的不算
+    /* `自爆()` 自己会挂 `自爆过`（**不能先挂** —— 它开头那句 `if (死者.自爆过) return null`
+       会把这一发挡掉；探查脚本第一遍就踩到了：单位静悄悄消失、记录里一条都没有）。 */
+    自爆(ctx, null, u, '到点自爆', true);            // 强制：`自爆回合` 不挂 `selfDestruct` 能力
+    u.hp = 0;
+    次++;
+  }
+  if (次) ctx.result = ctx.result || checkResult(ctx);
+  return 次;
+}
+
+/** ② `冷却延长`（`1-N6`【电磁干扰阵】/ `2-EE`：原案是「扣能量条」，★ **替代 ≠ 原案** ——
+ *  我们是**冷却制**，唯一能「打断技能轴」的资源就是冷却，所以落成 `cd + 1`）。
+ *  **口径（自己定的，写在任务板里）**：只延**带冷却的武器**——
+ *    `entry.t.cd > 0`（用一次就要等的那些）或**大招**（`isUltimate`，靠 `readyTurn` 开场冷却）；
+ *    **平砍武器（cd 0）一把都不延** —— 否则「每回合 +1、endTurn −1」会变成不动点，
+ *    平砍会被**永久锁死**（推导见任务板）。
+ *  **每轮最多延一次**（标记 `entry.词条已延` 在 `spendWeapon()` 里摘掉）→ 效果是
+ *    「这一轮冷却的完成时间**推后 1 回合**」，有界、可回退。 */
+function 词条冷却延长(ctx) {
+  if (!词条开()) return 0;
+  let 数 = 0;
+  for (const e of livingOf('enemy', ctx)) {
+    const v = Number(e.冷却延长);
+    if (Number.isFinite(v) && v > 0) 数 = Math.max(数, Math.min(2, Math.round(v)));
+  }
+  if (!数) return 0;
+  const 受影响 = [];
+  for (const u of livingOf('ally', ctx)) {
+    for (const e of (u.weapons || [])) {
+      if (!e || !e.t) continue;
+      const 大招 = isUltimate(e.t);
+      if (!((e.t.cd || 0) > 0 || 大招)) continue;              // 平砍不延
+      const 冷却中 = (e.cd || 0) > 0;
+      const 本回合能用 = !冷却中 && ctx.turn >= (e.readyTurn || 1);
+      if (!冷却中 && !本回合能用) continue;                     // 开场冷却还没走完 → 先不管
+      if (e.词条已延) continue;                                 // 这一轮已经延过（标记在 spendWeapon 里摘）
+      e.cd = (e.cd || 0) + 数;
+      e.词条已延 = true;
+      受影响.push(`${u.name}【${e.t.name}】`);
+    }
+  }
+  if (受影响.length) {
+    pushLog(ctx, `〔电磁干扰〕第 ${ctx.turn} 回合：我方 ${受影响.length} 把带冷却的武器被延长 ${数} 回合`
+      + `（${受影响.slice(0, 4).join('、')}${受影响.length > 4 ? '…' : ''}）`,
+      { 类型: '冷却延长', 延长数: 数, 台数: 受影响.length, 武器们: 受影响 });
+  }
+  return 受影响.length;
+}
+
+/** ③ `隐身刷新`（`2-E3`【光学迷彩机】：原案「每回合隐身（免疫单体攻击一次）」）。
+ *  · 回合开始给带键的敌人**重新挂上** `u.隐身中`（`隐匿惩罚值()` 认它：瞄准打 −35 命中）；
+ *  · **打中一次就摘**（`20-战斗计算.js` 的 `resolveAttack()`）；
+ *  · 「免疫单体一次」在冷却制 / 我方公式里的换义就是「**−35 命中 + 打中就破**」（任务板记为简化）。 */
+function 词条隐身刷新(ctx) {
+  if (!词条开()) return 0;
+  let 次 = 0;
+  for (const u of livingOf('enemy', ctx)) {
+    if (!u.隐身刷新) continue;
+    u.隐身中 = true; 次++;
+  }
+  return 次;
+}
+
+/* ---------- 词条层的「全场效果」（关卡变体池 · `2-N5`【战术烟幕阵】）----------
+ * 原案：「开局全场浓雾，**双方命中率临时降低 30%**」——作者 2026-10-13 拍板「**双方都吃**（对称）」。
+ * 落点：`hitRate()` 本来就同时读双方的 `buffSum(att,'hit')`，所以这里给**双方每一台**各挂一条
+ * `{src:'烟幕', hit:-N}`（`剩余` 写大数 = 整场不衰减，名副其实的「整场浓雾」）。
+ * ★ 只有编成里写着 `{键:'全员命中'}` 才有这一条（写在敌人单位上的 `词条全场`）；
+ *   同一来源**只留一份**（`filter(b => b.src !== '烟幕')`），所以开局 / 增援调多少次都等价。 */
+function 应用全场词条(ctx) {
+  if (!词条开()) return 0;
+  let 生效 = null;
+  for (const e of (ctx.enemies || [])) if (e.词条全场) { 生效 = e.词条全场; break; }
+  if (!生效) return 0;
+  const 持续 = Number((词条参数() || {}).全员命中持续);
+  const 剩余 = Number.isFinite(持续) && 持续 > 0 ? 持续 : 9999;
+  let 台 = 0;
+  for (const u of livingUnits(ctx)) {
+    u.buffs = (u.buffs || []).filter(b => b.src !== '烟幕');
+    const 条 = { src: '烟幕', 剩余 };
+    if (生效.命中) 条.hit = 生效.命中;
+    u.buffs.push(条);
+    台++;
+  }
+  return 台;
+}
+
+/* ============================================================================
+ * ★ 2026-10-13 **战术卡牌系统 P1**：手牌生成、条件触发发牌与打牌结算（0 `rng`）
+ * ----------------------------------------------------------------------------
+ * 接口登记 = `协作/接口约定.md` §26；设计文档 = `docs/设计/战术卡牌系统.md`。
+ * ★ 红线：`战术卡牌开(ctx) === false`（默认）时绝不写任何记录、不改气势初值，
+ *   保证既有 47 场默认路径 `2788` 条记录逐字节不变。
+ * ========================================================================== */
+function 提取单位三层信息(u) {
+  if (!u) return { 键: '', 职业: '', 势力: '' };
+  const 键 = typeof u === 'string' ? u : (u.tplKey || u.key || u.mech || u.键 || '');
+  const tpl = (typeof tplOf === 'function' && 键) ? tplOf(键) : null;
+  const 职业 = (u.tags && u.tags.战斗分类) || u.职业 || (tpl && tpl.tags && tpl.tags.战斗分类) || '';
+  const 势力 = (u.tags && u.tags.势力) || u.势力 || (tpl && tpl.tags && tpl.tags.势力) || '';
+  return { 键, 职业, 势力 };
+}
+
+function 克隆战术牌(c) {
+  if (!c) return null;
+  return Object.assign({}, c, {
+    剩余次数: c.限次 != null ? Number(c.限次) : 1,
+    当前冷却: 0,
+    新触发: false,
+    触发回合: null,
+  });
+}
+
+function 生成队伍牌池(allies, 选项) {
+  const 列表 = Array.isArray(allies) ? allies : [];
+  const 职业集 = new Set();
+  const 势力集 = new Set();
+  const 角色集 = new Set();
+  for (const u of 列表) {
+    const info = 提取单位三层信息(u);
+    if (info.职业) 职业集.add(info.职业);
+    if (info.势力) 势力集.add(info.势力);
+    if (info.键) 角色集.add(info.键);
+  }
+  const 全表 = Array.isArray(战术卡牌表) ? 战术卡牌表 : [];
+  /* ★ P1.2 §1.4（内核解耦 `RUN`）：**只读参数传进来的 `选项.已选战术牌`** ——
+     删掉了 P1.1 那条「回退读全局 `肉鸽.RUN.战术牌库` / `选项.战术牌库`」的隐式逻辑。
+     于是练习战与肉鸽牌库**严格隔离**：
+       · 肉鸽入口（`80-界面-5` 开战 / `80-界面-2` 肉鸽态编队预览）显式传 `{ 已选战术牌: RUN.战术牌库 }`；
+       · 练习战入口（`80-界面-3` 开战 / `80-界面-2` 练习态编队预览）**不传** → 只用参战编队自己派生的三层牌池。 */
+  const 已选原始 = (选项 && Array.isArray(选项.已选战术牌)) ? 选项.已选战术牌 : [];
+  const 已选Ids = 已选原始.map(x => typeof x === 'string' ? x : (x && x.id)).filter(Boolean);
+
+  const 已收 = new Set();
+  const 全部牌池 = [];
+  for (const id of 已选Ids) {
+    const found = 全表.find(c => c && c.id === id);
+    if (found && !已收.has(found.id)) {
+      已收.add(found.id);
+      全部牌池.push(克隆战术牌(found));
+    }
+  }
+  for (const c of 全表) {
+    if (!c || 已收.has(c.id)) continue;
+    const 匹配 = (c.层级 === '职业' && 职业集.has(c.归属))
+      || (c.层级 === '势力' && 势力集.has(c.归属))
+      || (c.层级 === '角色' && 角色集.has(c.归属))
+      || (c.层级 === '统帅' && (!选项 || 选项.含统帅牌 !== false));
+    if (匹配) {
+      已收.add(c.id);
+      全部牌池.push(克隆战术牌(c));
+    }
+  }
+  if (选项 && 选项.补齐基础激励 && !已收.has('C_CMD_1')) {
+    const 基础激励 = 全表.find(c => c && c.id === 'C_CMD_1');
+    if (基础激励) {
+      已收.add('C_CMD_1');
+      全部牌池.unshift(克隆战术牌(基础激励));
+    }
+  }
+  const 初始上限 = Number((选项 && 选项.初始手牌上限) || 战术卡牌参数().初始手牌上限) || 6;
+  const 初始候选 = 全部牌池.filter(c => c.入牌 === '初始').slice().sort((a, b) => {
+    const a0 = (Number(a.耗气) === 0 && Number(a.回气) > 0) ? 0 : 1;
+    const b0 = (Number(b.耗气) === 0 && Number(b.回气) > 0) ? 0 : 1;
+    return a0 - b0;
+  });
+  const 初始手牌 = 初始候选.slice(0, 初始上限).map(克隆战术牌);
+  const 待触发牌 = 全部牌池.filter(c => c.入牌 === '条件').map(克隆战术牌);
+  const 职业牌池 = 全部牌池.filter(c => c.层级 === '职业');
+  const 势力牌池 = 全部牌池.filter(c => c.层级 === '势力');
+  const 角色牌池 = 全部牌池.filter(c => c.层级 === '角色');
+  return {
+    全部牌池,
+    初始手牌,
+    待触发牌,
+    职业牌池,
+    势力牌池,
+    角色牌池,
+  };
+}
+
+function 单位匹配职业或势力(ctx, key, 目标值, 字段) {
+  if (!ctx || !key) return false;
+  const u = ((ctx.allies || []).concat(ctx.enemies || [])).find(x => x && (x.key === key || x.tplKey === key));
+  if (!u) return false;
+  const info = 提取单位三层信息(u);
+  return info[字段] === 目标值;
+}
+
+function 是否满足卡牌触发条件(card, ctx, 事件类型, 载荷) {
+  if (!card || !ctx) return false;
+  const code = card.触发条件码;
+  if (事件类型 && 事件类型 === code) return true;
+  /* ★ P1.2 §1.3：**触发条件 100% 纯状态驱动，零 `ctx.log` 反向依赖** ——
+     只读 `ctx.战况计数`（由真实事件源码位置当场更新的显式计数器）+ 单位当前属性 + 这一下的载荷。
+     绝不再扫日志文本 / 正则匹配 `ctx.log`。 */
+  const 计 = (ctx.战况计数 && typeof ctx.战况计数 === 'object') ? ctx.战况计数 : {};
+  const allies = (ctx.allies || []).filter(u => u && u.hp > 0);
+  const enemies = (ctx.enemies || []).filter(e => e && e.hp > 0);
+  const p = 载荷 || {};
+
+  switch (code) {
+    case 'HEAVY_LOW_HP': {
+      if (p.目标 && p.目标.side === 'ally' && 职业是(p.目标, '重装') && p.目标.maxHp > 0 && (p.目标.hp / p.目标.maxHp) < 0.65) return true;
+      return (ctx.allies || []).some(u => u && u.maxHp > 0 && 职业是(u, '重装') && u.hp > 0 && (u.hp / u.maxHp) < 0.65);
+    }
+    case 'GUARD_KILL_OR_CRIT': {
+      /* 近卫击破敌机 / 造成暴击 —— 只认这一发的载荷（当场判定，不再回头翻日志）。 */
+      return !!(p.攻击者 && p.攻击者.side === 'ally' && 职业是(p.攻击者, '近卫')
+        && (p.击破 || (Number(p.暴击) || 0) > 0));
+    }
+    case 'ANY_MISS': {
+      return (Number(计.未命中段) || 0) >= 1 || (Number(p.未命中段数) || 0) >= 1;
+    }
+    case 'ENEMY_MARK_2': {
+      if ((Number(p.层数) || 0) >= 2) return true;
+      return enemies.some(e => {
+        const 经 = typeof 标定经济层数 === 'function' ? 标定经济层数(e) : 0;
+        const 秘 = (e.debuffs || []).filter(b => b && String(b.src || '').includes('秘银')).length;
+        return 经 >= 2 || 秘 >= 2 || (Number(e.标定层数) || 0) >= 2;
+      });
+    }
+    case 'CMD_TURN2_OR_ENEMY3': {
+      return (Number(ctx.turn) || 1) >= 2 || enemies.length >= 3;
+    }
+    case 'SPEC_HIT': {
+      /* 特种命中敌机 —— 只认这一发的载荷。 */
+      return !!(p.攻击者 && p.攻击者.side === 'ally' && 职业是(p.攻击者, '特种') && p.命中);
+    }
+    case 'SEED_30': {
+      if ((Number(p.SEED累计) || 0) >= 30) return true;
+      return (ctx.allies || []).some(u => {
+        if (!u) return false;
+        const 累 = typeof SEED累计 === 'function' ? SEED累计(u) : ((u.势力状态 && u.势力状态.卫星国防军 && u.势力状态.卫星国防军.累计) || 0);
+        const 觉 = typeof SEED已觉醒 === 'function' ? SEED已觉醒(u) : !!(u.势力状态 && u.势力状态.卫星国防军 && u.势力状态.卫星国防军.已觉醒);
+        return 累 >= 30 || 觉 || (Number(u.seed) || 0) >= 30;
+      });
+    }
+    case 'METEOR_SOLO': {
+      return allies.some(u => {
+        if (提取单位三层信息(u).势力 !== '流星小队') return false;
+        if (u.势力状态 && u.势力状态.流星小队 && u.势力状态.流星小队.单独行动) return true;
+        if (u.slot == null || typeof 相邻位 !== 'function') return false;
+        const 邻 = 相邻位(u.slot) || [];
+        const 挡 = typeof 遮挡位 === 'function' ? (遮挡位(u.slot) || []) : [];
+        const 禁 = new Set(邻.concat(挡));
+        return !allies.some(other => other !== u && 禁.has(other.slot));
+      });
+    }
+    case 'MOON_ECHO_OR_HIT': {
+      /* `ctx.战况计数.残月或月国命中` 由真实事件位置当场 +1：
+         `60-战斗-2` 的月球王国友军造伤、`72-势力-3` 的「残月的余响」追加一发。 */
+      if ((Number(计.残月或月国命中) || 0) >= 1) return true;
+      return !!(p.攻击者 && p.攻击者.side === 'ally'
+        && 提取单位三层信息(p.攻击者).势力 === '月球王国' && (Number(p.伤害) || 0) > 0);
+    }
+    case 'CB_TRANSAM_OR_HIT': {
+      /* 天人机体「处于 TRANS-AM 或受击后」—— 单位当前状态（激活 / 掉血）+ 这一发的载荷。 */
+      if (p.目标 && p.目标.side === 'ally' && 提取单位三层信息(p.目标).势力 === '天人' && (Number(p.伤害) || 0) > 0) return true;
+      return (ctx.allies || []).some(u => u && 提取单位三层信息(u).势力 === '天人' && (
+        (typeof 天人激活 === 'function' && 天人激活(u))
+        || (u.势力状态 && u.势力状态.天人 && u.势力状态.天人.激活)
+        || (u.maxHp > 0 && u.hp < u.maxHp)
+      ));
+    }
+    case 'ATX_MISS_2': {
+      /* `ctx.战况计数.未命中段` = 本场累计的逐段未命中段数（`60-战斗-2` 当场累加）。 */
+      return (Number(计.未命中段) || 0) >= 2 || (Number(p.未命中段数) || 0) >= 2;
+    }
+    case 'MITH_MARK': {
+      /* `ctx.战况计数.秘银标定` 由 `72-势力-5` 的挂标定 / 兑现当场 +1。 */
+      if ((Number(计.秘银标定) || 0) >= 1) return true;
+      return !!(p.攻击者 && p.攻击者.side === 'ally'
+        && 提取单位三层信息(p.攻击者).势力 === '秘银' && p.命中);
+    }
+    case 'CB1_HIT_OR_TA': {
+      /* `ctx.战况计数.刹那命中或TA` 由 `60-战斗-2`（CB1 造成伤害）、
+         `72-势力-4`（CB1 开启 TRANS-AM）、`打战术牌`（【TRANS-AM 解放】）当场 +1；
+         再叠一条**单位当前属性**兜底（§1.3 明许读「TRANS-AM」）：CB1 现在正开着 TRANS-AM。 */
+      if ((Number(计.刹那命中或TA) || 0) >= 1) return true;
+      if (!!(p.攻击者 && (p.攻击者.key === 'CB1' || p.攻击者.tplKey === 'CB1') && (Number(p.伤害) || 0) > 0)) return true;
+      return (ctx.allies || []).some(u => u && u.hp > 0 && (u.key === 'CB1' || u.tplKey === 'CB1')
+        && (typeof 天人激活 === 'function' ? 天人激活(u) : !!(u.势力状态 && u.势力状态.天人 && u.势力状态.天人.激活)));
+    }
+    case 'A1_HIT_OR_MISS': {
+      /* `ctx.战况计数.响介受击或打空` 由 `60-战斗-2` 当场 +1（A1 受击 / 场上打空段）；
+         再叠一条**单位当前属性**兜底（§1.3 明许读「HP」）：A1 现在不在满血。 */
+      if ((Number(计.响介受击或打空) || 0) >= 1) return true;
+      if (!!(p.目标 && p.目标.side === 'ally' && (p.目标.key === 'A1' || p.目标.tplKey === 'A1') && (Number(p.伤害) || 0) > 0)) return true;
+      return (ctx.allies || []).some(u => u && u.hp > 0 && u.maxHp > 0 && (u.key === 'A1' || u.tplKey === 'A1') && u.hp < u.maxHp);
+    }
+    case 'MORALE_75': {
+      /* ★ P1.2 §1.5：两张统帅牌（⚡全军总攻 / 🛡紧急掩护）改成**标准条件触发牌** ——
+         我方气势达到 75 或以上（含 `加气势` / 【激励】回气等任意途径）自动入牌。 */
+      return (Number(ctx.气势) || 0) >= 75;
+    }
+    default:
+      return false;
+  }
+}
+
+/** ★ P1.2 §1.5：气势一变就复查一次条件发牌（统帅牌的 `MORALE_75` 靠这一下当场入牌）。
+ *  关牌 / 拿不到 `检查条件发牌` 时直接返回 —— 0 副作用、0 `rng`、不限次。 */
+function 气势变动后发牌(ctx) {
+  if (!ctx || typeof 检查条件发牌 !== 'function' || !战术卡牌开(ctx)) return [];
+  return 检查条件发牌(ctx, '气势变动', { 回合: ctx.turn || 1 });
+}
+
+function 检查条件发牌(ctx, 事件类型, 载荷) {
+  if (!ctx || !战术卡牌开(ctx)) return [];
+  if (!Array.isArray(ctx.待触发战术牌) || !ctx.待触发战术牌.length) return [];
+  if (!Array.isArray(ctx.战术手牌)) ctx.战术手牌 = [];
+  const 手牌总上限 = Number(战术卡牌参数().手牌总上限) || 10;
+  const 新发牌们 = [];
+  const 剩余待触发 = [];
+  for (const card of ctx.待触发战术牌) {
+    if (!card) continue;
+    /* ★★ P1.3 §FIX-3（条件发牌被手牌上限挡下时的记录）：
+       **先判条件**，再判手牌有没有空位 —— 两件事分开看：
+         · 条件不满足 → 照旧留在待触发队列（与改前逐字同路）；
+         · 条件满足 + 手牌有空位 → 照常进手牌 + 照常写 `ctx.log`（与改前逐字同路）；
+         · **条件满足 + 手牌已满** → 这一张**推迟发**：照旧留在待触发队列（之后腾出空位还会发），
+           但**不往 `ctx.log` 插行**（零污染 `2788` 与开牌基线 `31` 条），
+           改记进 `ctx.战况计数.满手牌推迟数` / `ctx.满手牌推迟记录`（同一回合同一张牌只记一次）。
+       为什么把 `是否满足卡牌触发条件()` 提到前面：它**纯读**（P1.2 §1.3：只读 `ctx.战况计数` +
+       单位当前属性 + 这一发的载荷，零 `ctx.log` 依赖、零 `rng`），提前调用不改任何状态，
+       只是让「条件到底满没满足」这件事在满手牌时也看得见 —— 不提前判，我们就分不清
+       「没触发」和「触发了但被手牌上限挡下」。 */
+    if (!是否满足卡牌触发条件(card, ctx, 事件类型, 载荷)) { 剩余待触发.push(card); continue; }
+    if (ctx.战术手牌.length >= 手牌总上限) {
+      记满手牌推迟(ctx, card);
+      剩余待触发.push(card);
+      continue;
+    }
+    {
+      card.新触发 = true;
+      card.触发回合 = ctx.turn || 1;
+      ctx.战术手牌.push(card);
+      新发牌们.push(card);
+      /* ★ P1.2 §1.2（发牌记录当场写入）：删掉了 P1.1 的 `ctx.待写发牌日志` / `ctx.战术卡牌写日志`
+         延后补写机制 —— 一旦这张条件牌真的进了手牌，**当场**就写 `类型:'发牌'` 那一条记录。 */
+      if (Array.isArray(ctx.log)) {
+        pushLog(ctx, `〔发牌〕满足「${card.触发说明}」→ 获得战术牌【${card.名}】`, {
+          类型: '发牌',
+          卡牌ID: card.id,
+          牌名: card.名,
+          层级: card.层级,
+          归属: card.归属,
+          触发条件码: card.触发条件码,
+          触发说明: card.触发说明,
+          精神标签: card.精神标签,
+          回合: ctx.turn || 1,
+        });
+      }
+    }
+  }
+  ctx.待触发战术牌 = 剩余待触发;
+  return 新发牌们;
+}
+
+/** ★ P1.3 §FIX-3：**「条件满足、但被手牌总上限挡下」记一笔**（不写 `ctx.log`）。
+ *  · 同一回合、同一张 `card.id` 只记一次 —— `检查条件发牌()` 一回合里会被调用好几次
+ *    （每次攻击后 / 打牌后 / 气势变动后 / 手动 TRANS-AM 后），不判重就会把同一次推迟记成好几笔。
+ *  · 记账三件套：`ctx.战况计数.满手牌推迟数`（计数器）+ `ctx.满手牌推迟记录`（明细，供战后战报用）
+ *    —— 两者都由 `84-反馈.js` 的 `战报统计` / `战报行们` **纯读**出来。
+ *  · 关牌（`ctx.战况计数` 不存在）/ 手搭的 ctx（没有这两个字段）一律空转，**绝不抛**。 */
+function 记满手牌推迟(ctx, card) {
+  if (!ctx || !card) return false;
+  const 计 = ctx.战况计数;
+  if (!计 || typeof 计 !== 'object') return false;
+  if (!Array.isArray(ctx.满手牌推迟记录)) ctx.满手牌推迟记录 = [];
+  const 回合 = Number(ctx.turn) || 1;
+  for (const x of ctx.满手牌推迟记录) {
+    if (x && Number(x.回合) === 回合 && x.id === card.id) return false;   // 这一回合已经记过这张
+  }
+  if (!Number.isFinite(Number(计.满手牌推迟数))) 计.满手牌推迟数 = 0;
+  计.满手牌推迟数 = Number(计.满手牌推迟数) + 1;
+  ctx.满手牌推迟记录.push({ 回合, id: card.id, 名: card.名, 触发说明: card.触发说明 || '' });
+  return true;
+}
+
+function 加卡牌护盾(u, 盾值) {
+  if (!u || !(盾值 > 0)) return 0;
+  const v = Math.round(盾值);
+  u.shield = Math.max(Number(u.shield) || 0, v);
+  u.shieldHp = (Number(u.shieldHp) || 0) + v;
+  return v;
+}
+
+function 减单位大招冷却(u, 减值, 清零 = false) {
+  if (!u || !Array.isArray(u.weapons)) return;
+  for (const e of u.weapons) {
+    if (!e || !e.t) continue;
+    const 是大 = (typeof isUltimate === 'function' && isUltimate(e.t)) || (e.t.unlock >= 20) || (e.t.cd > 0);
+    if (!是大) continue;
+    if (清零) {
+      e.cd = 0;
+      if (e.readyTurn && e.readyTurn > 1) e.readyTurn = 1;
+      u.holdUlt = false;
+    } else {
+      const n = Number(减值) || 1;
+      if (e.cd > 0) e.cd = Math.max(0, e.cd - n);
+      if (e.readyTurn && e.readyTurn > 1) e.readyTurn = Math.max(1, e.readyTurn - n);
+    }
+  }
+}
+
+function 卡牌加标定(目标, 层数, 来源名 = '战术牌', 补满 = false) {
+  if (!目标 || typeof 标定经济拿条 !== 'function') return 0;
+  const 上限 = typeof 标定层数上限 === 'function' ? 标定层数上限() : 3;
+  const d = 标定经济拿条(目标);
+  if (!d) return 0;
+  d.上限 = 上限;
+  const 前 = Math.max(0, Number(d.层数) || 0);
+  d.层数 = 补满 ? 上限 : Math.min(上限, 前 + (Number(层数) || 1));
+  if (!(d.来源们 || []).some(g => g && g.名 === 来源名)) {
+    d.来源们 = (d.来源们 || []).concat([{ 键: 'CARD', 名: 来源名, 方: 'ally', 怎么来的: '战术牌' }]);
+  }
+  return d.层数;
+}
+
+function 打战术牌(ctx, cardId) {
+  if (!ctx) return { 成功: false, 原因: '无战斗上下文' };
+  if (!Array.isArray(ctx.战术手牌)) ctx.战术手牌 = [];
+  /* ★ P1.2 §1.5：**所有卡牌一视同仁** —— 必须在 `ctx.战术手牌` 里才能打出。
+     删掉了 P1.1 给 `CMD_ALL_OUT` / `CMD_COVER` 的「不在手牌就自动塞进去」特例分支。 */
+  const card = ctx.战术手牌.find(c => c && (c.id === cardId || c.名 === cardId));
+  if (!card) return { 成功: false, 原因: '手牌中不存在该战术牌' };
+  if (card.剩余次数 != null && card.剩余次数 <= 0) return { 成功: false, 原因: '使用次数已用尽' };
+  if ((Number(card.当前冷却) || 0) > 0) return { 成功: false, 原因: '冷却中' };
+  const 耗 = Number(card.耗气) || 0;
+  const 回 = Number(card.回气) || 0;
+  const 气势前 = Number(ctx.气势) || 0;
+  if (气势前 < 耗) return { 成功: false, 原因: '气势不足' };
+
+  const 上限 = Number(气势总攻参数().上限) || 100;
+  ctx.气势 = Math.max(0, Math.min(上限, 气势前 - 耗 + 回));
+  /* ★ P1.2 §1.5：气势这一步只改数值 —— 条件发牌的复查**放到整张牌结算完**（见函数末尾那一次
+     `检查条件发牌(ctx, '打战术牌', {cardId})`）—— 这样卡牌效果里当场累加的 `ctx.战况计数`
+     （例如【TRANS-AM 解放】给 `刹那命中或TA` +1）也一起看得见，不用查两遍。 */
+
+  const allies = livingOf('ally', ctx);
+  const enemies = livingOf('enemy', ctx);
+  const src = `卡牌:${card.id}`;
+
+  switch (card.id) {
+    case 'C_HEAVY_1': { // 【铁壁】前排及重装防御 +40、15% HP 护盾
+      for (const u of allies) {
+        if (unitRow(u) === ROW_FRONT || 职业是(u, '重装')) {
+          换同源增益(u, src, { def: 40, 剩余: 1 });
+          加卡牌护盾(u, Math.round(u.maxHp * 0.15));
+        }
+      }
+      break;
+    }
+    case 'C_HEAVY_2': { // 【根性】受创重装回复 25% HP 并防御 +30（2回合）
+      const 重装们 = allies.filter(u => 职业是(u, '重装'));
+      const 目标们 = 重装们.length ? 重装们 : (allies.length ? [allies.slice().sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0]] : []);
+      for (const u of 目标们) {
+        u.hp = Math.min(u.maxHp, u.hp + Math.round(u.maxHp * 0.25));
+        换同源增益(u, src, { def: 30, 剩余: 2 });
+      }
+      break;
+    }
+    case 'C_GUARD_1': { // 【热血】近卫造成伤害 ×1.35、命中 +15
+      for (const u of allies) {
+        if (职业是(u, '近卫')) 换同源增益(u, src, { dmgMul: 0.35, hit: 15, 剩余: 1 });
+      }
+      break;
+    }
+    case 'C_GUARD_2': { // 【连斩追击】全队近战伤害 +20% 且近卫大招冷却 −1
+      for (const u of allies) {
+        换同源增益(u, src, { meleeDmgMul: 0.20, 剩余: 1 });
+        if (职业是(u, '近卫')) 减单位大招冷却(u, 1);
+      }
+      break;
+    }
+    case 'C_VANG_1': { // 【集中】尖兵闪避 +25、命中 +15、暴击 +15%
+      for (const u of allies) {
+        if (职业是(u, '尖兵')) 换同源增益(u, src, { eva: 25, hit: 15, crit: 15, 剩余: 1 });
+      }
+      break;
+    }
+    case 'C_VANG_2': { // 【幻影反击】尖兵暴击率 +35%、伤害 +20%
+      for (const u of allies) {
+        if (职业是(u, '尖兵')) 换同源增益(u, src, { crit: 35, dmgMul: 0.20, 剩余: 1 });
+      }
+      break;
+    }
+    case 'C_SNIPE_1': { // 【必中·直击】狙击命中 +40、暴击 +20%、伤害 +20%
+      for (const u of allies) {
+        if (职业是(u, '狙击')) 换同源增益(u, src, { hit: 40, crit: 20, dmgMul: 0.20, 剩余: 1 });
+      }
+      break;
+    }
+    case 'C_SNIPE_2': { // 【精密锁敌】带标敌机追加 防御 −30（2回合）并补满至 3 层标定
+      const 带标 = enemies.filter(e => (typeof 标定经济层数 === 'function' ? 标定经济层数(e) : 0) > 0);
+      const 靶 = 带标.length ? 带标 : enemies;
+      for (const e of 靶) {
+        换同源增益(e, src, { def: -30, 剩余: 2 });
+        卡牌加标定(e, 3, card.名, true);
+      }
+      break;
+    }
+    case 'C_CMD_1': { // 【激励】全队 +25 气势（已加），本回合全队命中 +10
+      for (const u of allies) 换同源增益(u, src, { hit: 10, 剩余: 1 });
+      break;
+    }
+    case 'C_CMD_2': { // 【战术点名】敌方当前 HP 最高者与后排各挂 1 层标定 + 命中 −15
+      const 最高 = enemies.slice().sort((a, b) => b.hp - a.hp || a.slot - b.slot)[0];
+      const 靶集 = new Set(enemies.filter(e => unitRow(e) === ROW_BACK));
+      if (最高) 靶集.add(最高);
+      for (const e of 靶集) {
+        卡牌加标定(e, 1, card.名);
+        换同源增益(e, src, { hit: -15, 剩余: 1 });
+      }
+      break;
+    }
+    case 'C_SPEC_1': { // 【扰乱】敌方全体挂 { src:'卡牌扰乱', hit: -20, turns: 1 }
+      for (const e of enemies) {
+        换同源增益(e, '卡牌扰乱', { hit: -20, turns: 1, 剩余: 1 });
+      }
+      break;
+    }
+    case 'C_SPEC_2': { // 【破甲引信】所有带标定敌机额外挂 { src:'破甲引信', def: -25, turns: 2 }
+      const 带标 = enemies.filter(e => (typeof 标定经济层数 === 'function' ? 标定经济层数(e) : 0) > 0);
+      const 靶 = 带标.length ? 带标 : enemies;
+      for (const e of 靶) {
+        换同源增益(e, '破甲引信', { def: -25, turns: 2, 剩余: 2 });
+      }
+      break;
+    }
+    case 'F_SEED_1': { // 【防线死守】卫星国防军及前排获得 15% 最大 HP 护盾
+      for (const u of allies) {
+        if (提取单位三层信息(u).势力 === '卫星国防军' || unitRow(u) === ROW_FRONT) {
+          加卡牌护盾(u, Math.round(u.maxHp * 0.15));
+        }
+      }
+      break;
+    }
+    case 'F_SEED_2': { // 【SEED·爆种】国防军成员伤害 +30%、闪避 +20、大招冷却 −1
+      for (const u of allies) {
+        if (提取单位三层信息(u).势力 === '卫星国防军') {
+          换同源增益(u, src, { dmgMul: 0.30, eva: 20, 剩余: 1 });
+          减单位大招冷却(u, 1);
+        }
+      }
+      break;
+    }
+    case 'F_METEOR_1': { // 【游击机动】流星小队闪避 +25、攻击能力 +25
+      for (const u of allies) {
+        if (提取单位三层信息(u).势力 === '流星小队') {
+          换同源增益(u, src, { eva: 25, dmg: 25, 剩余: 1 });
+        }
+      }
+      break;
+    }
+    case 'F_METEOR_2': { // 【孤狼突袭】流星小队暴击率 +30%、伤害 ×1.3
+      for (const u of allies) {
+        if (提取单位三层信息(u).势力 === '流星小队') {
+          换同源增益(u, src, { crit: 30, dmgMul: 0.30, 剩余: 1 });
+        }
+      }
+      break;
+    }
+    case 'F_MOON_1': { // 【月光祈愿·信赖】HP 比例最低单位回复 30% 最大 HP 并全队 +10 气势
+      if (allies.length) {
+        const 最低 = allies.slice().sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp) || a.slot - b.slot)[0];
+        最低.hp = Math.min(最低.maxHp, 最低.hp + Math.round(最低.maxHp * 0.30));
+      }
+      break;
+    }
+    case 'F_MOON_2': { // 【残月共鸣】月球王国成员伤害 +25%、防御 +20
+      for (const u of allies) {
+        if (提取单位三层信息(u).势力 === '月球王国') {
+          换同源增益(u, src, { dmgMul: 0.25, def: 20, 剩余: 1 });
+        }
+      }
+      break;
+    }
+    case 'F_CB_1': { // 【TRANS-AM 解放】激活在场天人机体 TRANS-AM 状态
+      for (const u of allies) {
+        if (提取单位三层信息(u).势力 === '天人') {
+          if (typeof 势力状态 === 'function') {
+            const 状 = 势力状态(u, '天人');
+            状.激活 = true;
+            状.剩余回合 = 2;
+            状.启动回合 = ctx.turn || 1;
+            状.结束回合 = (ctx.turn || 1) + 2;
+          }
+          /* ★ P1.2 §1.3：CB1 靠这张牌开启 TRANS-AM → 当场给 `ctx.战况计数.刹那命中或TA` +1。 */
+          if (ctx.战况计数 && (u.key === 'CB1' || u.tplKey === 'CB1')) ctx.战况计数.刹那命中或TA++;
+          换同源增益(u, src, { eva: 15, dmgMul: 0.30, 剩余: 2 });
+        }
+      }
+      break;
+    }
+    case 'F_CB_2': { // 【GN 粒子力场】天人机体 25% HP 护盾并大招冷却 −1
+      for (const u of allies) {
+        if (提取单位三层信息(u).势力 === '天人') {
+          加卡牌护盾(u, Math.round(u.maxHp * 0.25));
+          减单位大招冷却(u, 1);
+        }
+      }
+      break;
+    }
+    case 'F_ATX_1': { // 【好运加护·必闪】ATX 成员闪避 +25、暴击率 +20%
+      for (const u of allies) {
+        if (提取单位三层信息(u).势力 === 'ATX') {
+          换同源增益(u, src, { eva: 25, crit: 20, 剩余: 1 });
+        }
+      }
+      break;
+    }
+    case 'F_ATX_2': { // 【赌徒孤注】全队大招冷却 −2、本回合命中 +25
+      for (const u of allies) {
+        减单位大招冷却(u, 2);
+        换同源增益(u, src, { hit: 25, 剩余: 1 });
+      }
+      break;
+    }
+    case 'F_MITH_1': { // 【ECS 光学迷彩】秘银成员闪避 +25、命中 +15
+      for (const u of allies) {
+        if (提取单位三层信息(u).势力 === '秘银') {
+          换同源增益(u, src, { eva: 25, hit: 15, 剩余: 1 });
+        }
+      }
+      break;
+    }
+    case 'F_MITH_2': { // 【SRT 突击接力】全队秘银伤害 +25% 并给所有存活敌机挂 1 层通用标定
+      for (const u of allies) {
+        if (提取单位三层信息(u).势力 === '秘银') {
+          换同源增益(u, src, { dmgMul: 0.25, 剩余: 1 });
+        }
+      }
+      for (const e of enemies) 卡牌加标定(e, 1, card.名);
+      break;
+    }
+    case 'U_CB1': { // 【觉醒·七剑解放】刹那大招冷却清零、伤害 ×1.4、命中 +25
+      for (const u of allies) {
+        if (u.key === 'CB1' || u.tplKey === 'CB1') {
+          减单位大招冷却(u, 99, true);
+          换同源增益(u, src, { dmgMul: 0.40, hit: 25, 剩余: 1 });
+        }
+      }
+      break;
+    }
+    case 'U_CB2': { // 【乱射·狙击神技】洛克昂暴击率 +40%、伤害 ×1.35
+      for (const u of allies) {
+        if (u.key === 'CB2' || u.tplKey === 'CB2') {
+          换同源增益(u, src, { crit: 40, dmgMul: 0.35, 剩余: 1 });
+        }
+      }
+      break;
+    }
+    case 'U_M1': { // 【满月·星落】全队回复 15% HP、命中 +15，Feena 大招冷却 −2
+      for (const u of allies) {
+        u.hp = Math.min(u.maxHp, u.hp + Math.round(u.maxHp * 0.15));
+        换同源增益(u, src, { hit: 15, 剩余: 1 });
+        if (u.key === 'M1' || u.tplKey === 'M1') 减单位大招冷却(u, 2);
+      }
+      break;
+    }
+    case 'U_A1': { // 【王牌决断·魂】响介大招冷却清零且伤害 ×1.5
+      for (const u of allies) {
+        if (u.key === 'A1' || u.tplKey === 'A1') {
+          减单位大招冷却(u, 99, true);
+          换同源增益(u, src, { dmgMul: 0.50, 剩余: 1 });
+        }
+      }
+      break;
+    }
+    case 'U_S1': { // 【永恒之爱】全队回复 25% HP、清除负面减益并伤害 +25%
+      for (const u of allies) {
+        u.hp = Math.min(u.maxHp, u.hp + Math.round(u.maxHp * 0.25));
+        u.debuffs = [];
+        u.armorCut = 0;
+        if (Array.isArray(u.buffs)) u.buffs = u.buffs.filter(b => !(b && ((b.hit || 0) < 0 || (b.def || 0) < 0)));
+        换同源增益(u, src, { dmgMul: 0.25, 剩余: 1 });
+      }
+      break;
+    }
+    case 'U_B1': { // 【突击号令】宗介 20% HP 护盾、伤害 +25% 并给对位敌机挂 2 层标定
+      for (const u of allies) {
+        if (u.key === 'B1' || u.tplKey === 'B1') {
+          加卡牌护盾(u, Math.round(u.maxHp * 0.20));
+          换同源增益(u, src, { dmgMul: 0.25, 剩余: 1 });
+          const 同路敌 = enemies.find(e => colOfSlot(e.slot) === colOfSlot(u.slot)) || enemies[0];
+          if (同路敌) 卡牌加标定(同路敌, 2, card.名);
+        }
+      }
+      break;
+    }
+    case 'CMD_ALL_OUT': { // 【⚡全军总攻】
+      ctx.当前战术 = '总攻';
+      for (const u of allies) {
+        换同源增益(u, src, { dmgMul: 0.35, hit: 15, 剩余: 1 });
+        减单位大招冷却(u, 1);
+      }
+      break;
+    }
+    case 'CMD_COVER': { // 【🛡紧急掩护】
+      ctx.当前战术 = '掩护';
+      for (const u of allies) {
+        加卡牌护盾(u, Math.round(u.maxHp * 0.25));
+        u.debuffs = [];
+        u.armorCut = 0;
+      }
+      break;
+    }
+    default:
+      break;
+  }
+
+  card.剩余次数 = (card.剩余次数 != null ? Number(card.剩余次数) : 1) - 1;
+  card.当前冷却 = Number(card.冷却) || 1;
+  card.新触发 = false;
+  if (card.剩余次数 <= 0) {
+    ctx.战术手牌 = ctx.战术手牌.filter(c => c !== card);
+  }
+  if (!Array.isArray(ctx.已打出战术牌)) ctx.已打出战术牌 = [];
+  ctx.已打出战术牌.push(card.id);
+
+  const 气势字 = 回 > 0 ? `-${耗}/+${回}` : `-${耗}`;
+  if (Array.isArray(ctx.log)) {
+    pushLog(ctx, `〔战术牌〕发动【${card.名}】（气势 ${气势字}）：${card.效果说明}`, {
+      类型: '战术牌',
+      卡牌ID: card.id,
+      牌名: card.名,
+      层级: card.层级,
+      归属: card.归属,
+      精神标签: card.精神标签,
+      耗气: 耗,
+      回气: 回,
+      气势前,
+      气势后: ctx.气势,
+      效果说明: card.效果说明,
+      回合: ctx.turn || 1,
+    });
+  }
+  /* ★ P1.2 §1.5（ARGON 玩法时机裁定）：**结算完气势增减与卡牌效果后**立即复查一次条件发牌 ——
+     ① 【激励】/【月光祈愿】这类回气牌把 `ctx.气势` 推到 75 → 统帅牌（`MORALE_75`）当回合当场入牌；
+     ② 【TRANS-AM 解放】这类效果牌把 `ctx.战况计数.刹那命中或TA` +1 → 天人 / 刹那衍生条件牌当场入牌。
+     它们当回合当场进 `ctx.战术手牌`、**可以继续连打**（不在手牌里一律打不出，见函数开头那条一视同仁的校验）。
+     关牌（`战术卡牌开(ctx) === false`）时 `检查条件发牌()` 第一句就返回 → 默认路径零污染、零 `rng`。 */
+  检查条件发牌(ctx, '打战术牌', { cardId: card.id });
+  return { 成功: true, 牌: card, 气势: ctx.气势 };
+}
+
+

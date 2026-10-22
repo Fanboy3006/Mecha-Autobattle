@@ -1,0 +1,40 @@
+# 依赖 / 生成物
+node_modules/
+art/out/
+audio/out/
+.chrome-tmp/
+dist/
+
+# aider 的现场文件
+.aider*
+.env
+.env.local
+
+# 版权音乐（作者本地的版权曲只在本地试玩用，不能公开；audio/SUNO/ 是 Suno 生成的，可以进仓库）
+audio/*.mp3
+audio/*.ogg
+audio/*.m4a
+audio/*.wav
+audio/*.flac
+audio/本地音乐/
+audio/SUNO/*.download
+
+# 版权图片（作品截图，不能公开；绝不复制进本仓库）
+图片库/
+
+# 子助手 / 工具留下的临时目录（探针脚本、草稿、构建中间产物）——
+# 它们不是源文件，**绝不要提交进仓库**（2026-10-11 起：balance 线留下过 .tmp-balance/）
+.tmp-*/
+.tmp/
+*.tmp
+# 各条线为「避开别人正在改的文档」而暂存的追加段（照协作框架第 5 节 A2 的做法）
+tmp-*.md
+tmp-*
+
+# 点开头的临时文件（各线在仓库根放的探针/中途产物）——2026-10-12 补
+.tmp-*
+
+# ★ 构建戳：CI / 导出脚本现生成（主菜单显示提交与构建时间），不进版本库
+godot/data/build_info.json
+# 剧情 / 设定 / 敌方设计：剧透，只进本机私密仓库（协作/私密/ 自带 .git），绝不进 GitHub
+协作/私密/
